@@ -1,7 +1,7 @@
 const std = @import("std");
 const Program = @import("program.zig").Program;
 const ca1d = @import("ca1d.zig");
-
+const workspace = @import("workspace.zig");
 
 pub fn writeHeightmapPgm(
     io: std.Io,
@@ -11,19 +11,13 @@ pub fn writeHeightmapPgm(
     const width = program.ca_width;
     const steps = program.ca_steps;
 
-    const output_dir = try std.fmt.allocPrint(
-        allocator,
-        "../workspace/{s}",
-        .{program.namespace},
-    );
+    try workspace.ensureNamespace(io, program);
 
-    const output_path = try std.fmt.allocPrint(
+    const output_path = try workspace.artifactPath(
         allocator,
-        "{s}/heightmap.pgm",
-        .{output_dir},
+        program,
+        "heightmap.pgm",
     );
-
-    try std.Io.Dir.cwd().createDirPath(io, output_dir);
 
     var file = try std.Io.Dir.cwd().createFile(io, output_path, .{
         .read = true,

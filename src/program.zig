@@ -7,7 +7,7 @@ pub const Program = struct {
     ca_steps: usize = 0,
 
     height_scale: f32 = 1.0,
-
+    solid_base: f32 = 0.0,
     export_format: []const u8 = "",
     export_path: []const u8 = "",
 };

@@ -1,6 +1,7 @@
 const std = @import("std");
 const Program = @import("program.zig").Program;
 const ca1d = @import("ca1d.zig");
+const workspace = @import("workspace.zig");
 
 
 pub fn writeCaStateJsonl(io: std.Io, allocator: std.mem.Allocator, program: Program) !void {
@@ -18,23 +19,14 @@ pub fn writeCaStateJsonl(io: std.Io, allocator: std.mem.Allocator, program: Prog
 
     current[width / 2] = 1;
 
-    if (program.namespace.len == 0) {
-        return error.MissingNamespace;
-    }
+    try workspace.ensureNamespace(io, program);
 
-    const output_dir = try std.fmt.allocPrint(
+    const output_path = try workspace.artifactPath(
         allocator,
-        "../workspace/{s}",
-        .{program.namespace},
+        program,
+        program.export_path
     );
 
-    const output_path = try std.fmt.allocPrint(
-        allocator,
-        "{s}/state.jsonl",
-        .{output_dir},
-    );
-
-    try std.Io.Dir.cwd().createDirPath(io, output_dir);
 
     var file = try std.Io.Dir.cwd().createFile(io, output_path, .{
         .read = true,

@@ -3,7 +3,6 @@ const program_mod = @import("program.zig");
 
 const Program = program_mod.Program;
 
-
 pub fn tokenize(writer: anytype, source: []const u8) !void {
     var line_iter = std.mem.splitScalar(u8, source, '\n');
     var line_number: usize = 1;
@@ -88,6 +87,19 @@ pub fn parseProgram(source: []const u8) !Program {
             continue;
         }
 
+        if (std.mem.eql(u8, first, "solidify")) {
+            const key = tokens.next() orelse return error.MissingSolidifyKey;
+            const value = tokens.next() orelse return error.MissingSolidifyValue;
+
+            if (std.mem.eql(u8, key, "base")) {
+                program.solid_base = try std.fmt.parseFloat(f32, value);
+            } else {
+                return error.UnknownSolidifyKey;
+            }
+
+            continue;
+        }
+
         if (std.mem.eql(u8, first, "export")) {
             program.export_format = tokens.next() orelse return error.MissingExportFormat;
             program.export_path = tokens.next() orelse return error.MissingExportPath;
@@ -99,4 +111,3 @@ pub fn parseProgram(source: []const u8) !Program {
 
     return program;
 }
-

@@ -158,6 +158,7 @@ pub fn main(init: std.process.Init) !void {
     try stdout_writer.print("\nWrote state.jsonl\n", .{});
     try export_pgm.writeHeightmapPgm(io, arena, program);
     try export_obj.writeObjHeightmap(io, arena, program);
+    try stdout_writer.print("solid base: {d}\n", .{program.solid_base});
     try stdout_writer.print("Wrote {s}\n", .{program.export_path});
     try stdout_writer.flush();
 }
