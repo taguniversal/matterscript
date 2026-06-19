@@ -311,81 +311,317 @@ Rather than explicitly designing objects, MatterScript explores the possibility 
 
 ---
 
-# Roadmap
+# Roadmap: From Computational State Space to Manufacturing
 
-## Phase 1 (Current)
+MatterScript began as a simple experiment: can computational processes be interpreted as geometry?
 
-- [x] Script Loader
-- [x] Tokenizer
-- [x] Parser
-- [x] Rule 30
-- [x] JSONL Export
-- [x] PGM Export
-- [x] OBJ Export
+The first milestone answered that question.
 
-## Phase 2
+A one-dimensional Rule 30 cellular automaton was transformed into a height field, converted into a solid mesh, validated as a watertight manifold, and successfully imported into manufacturing software.
 
-- [ ] SVG Renderer
-- [ ] STL Export
-- [ ] Voxel Renderer
-- [ ] Multiple CA Rules
-- [ ] Rule Libraries
-
-## Phase 3
-
-- [ ] 2D Cellular Automata
-- [ ] Multiway Systems
-- [ ] Graph Rewriting
-- [ ] NKS Geometry Primitives
-
-## Phase 4
-
-- [ ] MKSTORM Integration
-- [ ] Deterministic Artifact Addressing
-- [ ] Distributed Matter Generation
-- [ ] Procedural Manufacturing Pipelines
+The result demonstrates a complete pipeline from computation to fabrication.
 
 ---
 
-# Vision
+## Current Architecture
 
-MatterScript is an experiment in treating computation itself as a material.
+```text
+MatterScript Source
+
+        ↓
+
+Cellular Automata
+
+        ↓
+
+State Fields
+
+        ↓
+
+Height Fields
+
+        ↓
+
+Solid Meshes
+
+        ↓
+
+Topology Validation
+
+        ↓
+
+Manufacturing
+```
+
+Current capabilities:
+
+* MatterScript parser
+* Rule 30 simulation
+* JSONL state export
+* Heightmap generation
+* OBJ mesh export
+* Solidify pass
+* Watertight manifold validation
+* MeshLab integration
+* Manufacturing-ready geometry
+
+Recent MeshLab validation:
+
+```text
+Vertices: 4096
+Edges: 12282
+Faces: 8188
+
+Boundary Edges: 0
+Connected Components: 1
+Two-Manifold: Yes
+Holes: 0
+Genus: 0
+```
+
+These measurements confirm that MatterScript successfully generated a closed, watertight solid suitable for downstream manufacturing workflows.
+
+---
+
+## Computational Geometry Philosophy
+
+Traditional geometry systems begin with primitives:
+
+```text
+Cube
+Sphere
+Cylinder
+Extrusion
+Boolean Operations
+```
+
+MatterScript begins with computational primitives:
+
+```text
+Rule
+State
+Transition
+Event
+Chain
+Neighborhood
+```
+
+Geometry is not explicitly designed.
+
+Geometry emerges from computation.
+
+This approach is inspired by the principles of A New Kind of Science (NKS), where simple computational rules can generate unexpectedly rich structures.
+
+---
+
+## Relationship to MKSTORM
+
+MKSTORM provides persistent computational state.
+
+MatterScript provides geometric interpretation of that state.
+
+```text
+MKRAND
+    ↓
+
+MKSTORM
+    ↓
+
+MatterScript
+    ↓
+
+Geometry
+    ↓
+
+Topology
+    ↓
+
+Manufacturing
+```
+
+In this model, the blockchain is no longer viewed as a ledger.
+
+It becomes a coordinate system for computation.
+
+---
+
+## Future Direction: Persistent Geometry
+
+Today:
 
 ```text
 MatterScript
-      ↓
-State Evolution
-      ↓
-Geometry
-      ↓
-Manufacturing
-      ↓
-Matter
+    ↓
+Rule 30
+    ↓
+Height Field
+    ↓
+Solid Mesh
 ```
 
-The long-term goal is to create a deterministic computational pipeline capable of generating reproducible physical structures from simple symbolic rules.
+Future:
 
-## Milestone: First Watertight Solid
+```text
+MKSTORM
+    ↓
+Persistent State Space
+    ↓
+MatterScript
+    ↓
+Voxel Fields
+    ↓
+Topology
+    ↓
+Fabrication
+```
 
-MatterScript successfully generated a closed, manifold 3D mesh from a one-dimensional cellular automaton.
+Geometry becomes a projection of computational state.
 
-Validation was performed using MeshLab.
+---
 
-Topology Results:
+## MeshLab as a Geometry Laboratory
 
-* Vertices: 4096
-* Edges: 12282
-* Faces: 8188
-* Boundary Edges: 0
-* Connected Components: 1
-* Two-Manifold: Yes
-* Holes: 0
-* Genus: 0
+MeshLab has become an important part of the development workflow.
 
-These results confirm that the generated OBJ is a watertight solid suitable for downstream manufacturing workflows such as slicing, STL conversion, and 3D printing.
+It currently provides:
 
-This represents the first complete MatterScript pipeline:
+* Mesh visualization
+* Topological analysis
+* Manifold validation
+* Hole detection
+* Connected-component analysis
+* Geometry repair
 
-MatterScript Source → Cellular Automaton → State Field → Heightmap → Closed Solid Mesh → Manufacturing Artifact
+Example validation output:
+
+```text
+Boundary Edges = 0
+Connected Components = 1
+Two-Manifold
+Holes = 0
+Genus = 0
+```
+
+These measurements serve as mathematical certification that generated structures are valid solids.
+
+Long term, these capabilities may be reimplemented directly in Zig, allowing MatterScript to perform topology analysis natively.
+
+---
+
+## Roadmap
+
+### Phase 1 — Computational Geometry Foundation
+
+Completed:
+
+* MatterScript parser
+* Cellular automata simulation
+* Heightmap generation
+* OBJ export
+* Solidify pass
+* MeshLab validation
+
+---
+
+### Phase 2 — Volumetric Geometry
+
+Planned:
+
+* Voxel fields
+* Multiple CA layers
+* Boolean operations
+* Distance fields
+* Morphological operations
+* Native STL export
+
+---
+
+### Phase 3 — Persistent Computational Matter
+
+Planned:
+
+* MKSTORM-backed geometry
+* Persistent state spaces
+* Cross-chain geometry
+* Distributed geometric computation
+* Temporal geometry
+
+---
+
+### Phase 4 — Native Topology Engine
+
+Planned:
+
+* Connected-component analysis
+* Hole detection
+* Manifold validation
+* Euler characteristic
+* Genus computation
+* Automatic repair passes
+
+Implemented directly in Zig.
+
+---
+
+### Phase 5 — Geometry-Aware Silicon
+
+Long-term vision:
+
+```text
+MKRAND
+    ↓
+
+MKSTORM
+    ↓
+
+MatterScript
+    ↓
+
+Topology Engine
+    ↓
+
+Fabrication
+```
+
+Possible hardware acceleration targets:
+
+* Cellular automata evaluation
+* Voxel operations
+* Topology analysis
+* Geometry synthesis
+* Fabrication pipelines
+
+The goal is not simply faster geometry.
+
+The goal is a computational substrate that understands geometric structure as a first-class concept.
+
+---
+![Roadmap](roadmap.png)
+## Long-Term Vision
+
+Most CAD systems begin with geometry and add computation.
+
+MatterScript begins with computation and discovers geometry.
+
+```text
+Computation
+      ↓
+
+Geometry
+      ↓
+
+Topology
+      ↓
+
+Manufacturing
+```
+
+The objective is to create a programmable framework where physical artifacts emerge naturally from computational processes.
+
+Not drawing objects.
+
+Mining structures from computational state space.
 
 ![Meshlab solid](meshlab_solid.png)
+
+

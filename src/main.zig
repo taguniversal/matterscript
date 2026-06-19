@@ -6,8 +6,8 @@ const parser = @import("parser.zig");
 const export_jsonl = @import("export_jsonl.zig");
 const export_pgm = @import("export_pgm.zig");
 const export_obj = @import("export_obj.zig");
+const export_voxel = @import("export_voxel_obj.zig");
 const Program = program_mod.Program;
-
 
 fn runCa1d(writer: anytype, program: Program) !void {
     const width = program.ca_width;
@@ -80,8 +80,6 @@ fn runCa1d(writer: anytype, program: Program) !void {
     }
 }
 
-
-
 fn stepCa1d(current: []u8, next: []u8) void {
     const width = current.len;
 
@@ -108,7 +106,6 @@ fn stepCa1d(current: []u8, next: []u8) void {
 
     @memcpy(current, next);
 }
-
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
@@ -157,7 +154,12 @@ pub fn main(init: std.process.Init) !void {
     try export_jsonl.writeCaStateJsonl(io, arena, program);
     try stdout_writer.print("\nWrote state.jsonl\n", .{});
     try export_pgm.writeHeightmapPgm(io, arena, program);
-    try export_obj.writeObjHeightmap(io, arena, program);
+    if (std.mem.eql(u8, program.export_format, "obj")) {
+        try export_obj.writeObjHeightmap(io, arena, program);
+    }
+    if (std.mem.eql(u8, program.export_format, "voxel")) {
+    try export_voxel.writeObjVoxel(io, arena, program);
+}
     try stdout_writer.print("solid base: {d}\n", .{program.solid_base});
     try stdout_writer.print("Wrote {s}\n", .{program.export_path});
     try stdout_writer.flush();
