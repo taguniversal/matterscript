@@ -1,23 +1,32 @@
 const std = @import("std");
-const Program = @import("program.zig").Program;
+const Program = @import("../../common/program.zig").Program;
 const ca1d = @import("ca1d.zig");
-const workspace = @import("workspace.zig");
+const workspace = @import("../../common/workspace.zig");
 
-pub fn writeHeightmapPgm(
-    io: std.Io,
-    allocator: std.mem.Allocator,
-    program: Program,
-) !void {
+
+pub fn writeCaStateJsonl(io: std.Io, allocator: std.mem.Allocator, program: Program) !void {
     const width = program.ca_width;
     const steps = program.ca_steps;
+
+    var current = try allocator.alloc(u8, width);
+    defer allocator.free(current);
+
+    var next = try allocator.alloc(u8, width);
+    defer allocator.free(next);
+
+    @memset(current, 0);
+    @memset(next, 0);
+
+    current[width / 2] = 1;
 
     try workspace.ensureNamespace(io, program);
 
     const output_path = try workspace.artifactPath(
         allocator,
         program,
-        "heightmap.pgm",
+        program.export_path
     );
+
 
     var file = try std.Io.Dir.cwd().createFile(io, output_path, .{
         .read = true,
@@ -25,27 +34,23 @@ pub fn writeHeightmapPgm(
     });
     defer file.close(io);
 
-    var buffer: [8192]u8 = undefined;
+    var buffer: [4096]u8 = undefined;
     var writer = file.writer(io, &buffer);
-
-    try writer.interface.print("P2\n{d} {d}\n255\n", .{ width, steps });
-
-    var current = try allocator.alloc(u8, width);
-    var next = try allocator.alloc(u8, width);
-
-    @memset(current, 0);
-    @memset(next, 0);
-
-    current[width / 2] = 1;
 
     var step: usize = 0;
     while (step < steps) : (step += 1) {
+        try writer.interface.print(
+            "{{\"step\":{d},\"row\":\"",
+            .{step},
+        );
+
         for (current) |cell| {
-            const value: u8 = if (cell == 1) 0 else 255;
-            try writer.interface.print("{d} ", .{value});
+            const ch: u8 = if (cell == 1) '#' else '.';
+
+            try writer.interface.print("{c}", .{ch});
         }
 
-        try writer.interface.print("\n", .{});
+        try writer.interface.print("\"}}\n", .{});
 
         var x: usize = 0;
         while (x < width) : (x += 1) {

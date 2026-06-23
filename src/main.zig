@@ -1,12 +1,12 @@
 const std = @import("std");
 const Io = std.Io;
-const ca1d = @import("ca1d.zig");
-const program_mod = @import("program.zig");
-const parser = @import("parser.zig");
-const export_jsonl = @import("export_jsonl.zig");
-const export_pgm = @import("export_pgm.zig");
-const export_obj = @import("export_obj.zig");
-const export_voxel = @import("export_voxel_obj.zig");
+const ca1d = @import("dialects/geo/ca1d.zig");
+const program_mod = @import("common/program.zig");
+const parser = @import("dialects/geo/parser.zig");
+const export_jsonl = @import("dialects/geo/export_jsonl.zig");
+const export_pgm = @import("dialects/geo/export_pgm.zig");
+const export_obj = @import("dialects/geo/export_obj.zig");
+const export_voxel = @import("dialects/geo/export_voxel_obj.zig");
 const Program = program_mod.Program;
 
 fn runCa1d(writer: anytype, program: Program) !void {

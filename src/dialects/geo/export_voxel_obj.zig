@@ -1,7 +1,7 @@
 const std = @import("std");
 const ca1d = @import("ca1d.zig");
-const Program = @import("program.zig").Program;
-const workspace = @import("workspace.zig");
+const Program = @import("../../common/program.zig").Program;
+const workspace = @import("../../common/workspace.zig");
 
 pub fn writeObjVoxel(
     io: std.Io,

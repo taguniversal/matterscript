@@ -1,7 +1,7 @@
 const std = @import("std");
-const Program = @import("program.zig").Program;
+const Program = @import("../../common/program.zig").Program;
 const ca1d = @import("ca1d.zig");
-const workspace = @import("workspace.zig");
+const workspace = @import("../../common/workspace.zig");
 
 pub fn writeObjHeightmap(
     io: std.Io,
