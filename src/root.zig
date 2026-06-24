@@ -2,6 +2,12 @@
 const std = @import("std");
 const Io = std.Io;
 
+pub const chain_fuzz =
+    @import("common/chain_fuzz.zig");
+
+test {
+    std.testing.refAllDecls(@This());
+}
 /// This is a documentation comment to explain the `printAnotherMessage` function below.
 ///
 /// Accepting an `Io.Writer` instance is a handy way to write reusable code.

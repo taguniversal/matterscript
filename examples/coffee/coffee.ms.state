@@ -1,0 +1,17 @@
+machine CoffeeShop
+
+state Greeting
+state TakeOrder
+state Payment
+state PrepareDrink
+state Complete
+
+event CustomerArrived
+event OrderPlaced
+event PaymentApproved
+event DrinkReady
+
+transition Greeting TakeOrder CustomerArrived
+transition TakeOrder Payment OrderPlaced
+transition Payment PrepareDrink PaymentApproved
+transition PrepareDrink Complete DrinkReady

@@ -624,4 +624,217 @@ Mining structures from computational state space.
 
 ![Meshlab solid](meshlab_solid.png)
 
+---
+
+# Testing Strategy
+
+MatterScript is designed around deterministic computation.
+
+This property allows every generated artifact, state machine, and event stream to be reproduced exactly from the same seed.
+
+Rather than relying on nondeterministic fuzzing, MatterScript uses MKRAND as a deterministic entropy source.
+
+```text
+Seed
+    ↓
+
+MKRAND
+    ↓
+
+Entropy Stream
+    ↓
+
+Event Generator
+    ↓
+
+State Machine
+    ↓
+
+MKSTORM Log
+```
+
+## Deterministic Fuzzing
+
+Every test begins with a known seed.
+
+Example:
+
+```text
+"fuzz"
+```
+
+The seed is expanded into a deterministic sequence of 128-bit values using MKRAND.
+
+```text
+Seed
+    ↓
+
+MKRAND
+
+    ↓
+
+Seg 0
+Seg 1
+Seg 2
+Seg 3
+...
+```
+
+Because MKRAND is deterministic, every generated event stream can be reproduced exactly.
+
+This allows test failures to be replayed and analyzed.
+
+---
+
+## Event Generation
+
+MatterScript state machines declare their event types.
+
+Example:
+
+```text
+machine ProofOfWorth {
+
+    event CheckIn
+    event TaskCompleted
+    event WitnessApproved
+    event VoucherIssued
+
+}
+```
+
+The fuzzer uses the declared event schema to transform MKRAND output into valid event instances.
+
+```text
+MKRAND
+    ↓
+
+Raw Entropy
+    ↓
+
+Event Selection
+    ↓
+
+Typed Event
+```
+
+Example:
+
+```text
+Seg
+    ↓
+
+CheckIn
+
+Seg
+    ↓
+
+TaskCompleted
+
+Seg
+    ↓
+
+WitnessApproved
+```
+
+The generated events are cast into the declared event datatypes of the machine under test.
+
+---
+
+## State Machine Validation
+
+Generated events are replayed against the state machine.
+
+```text
+Event Stream
+      ↓
+
+Transition Engine
+      ↓
+
+State Evolution
+      ↓
+
+Invariant Checks
+```
+
+Example:
+
+```text
+Unknown
+      ↓ CheckIn
+
+Participating
+      ↓ TaskCompleted
+
+Verified
+      ↓ WitnessApproved
+
+Trusted
+```
+
+Invalid transitions are expected and form part of the test corpus.
+
+```text
+Unknown
+      ↓ VoucherIssued
+
+Reject
+```
+
+---
+
+## Reproducible Failures
+
+Every test run can be reproduced using the original seed.
+
+Example:
+
+```text
+FAILED
+
+Seed: "fuzz"
+
+Event Index: 4832
+
+State: Participating
+
+Event: VoucherIssued
+
+Expected: Reject
+
+Actual: Trusted
+```
+
+Re-running the test with the same seed produces the identical event sequence and failure.
+
+---
+
+## Future Direction
+
+As MatterScript evolves beyond cellular automata into event-driven systems, the same testing infrastructure will be used across the ecosystem.
+
+```text
+MKRAND
+    ↓
+
+MatterScript
+    ↓
+
+MKULTRA
+    ↓
+
+MKSTORM
+    ↓
+
+State Machines
+    ↓
+
+Deterministic Fuzz Testing
+```
+
+The goal is to provide a unified framework where computational structures, event-driven systems, persistent state spaces, and generated geometry can all be validated using the same deterministic testing methodology.
+
+![Testing](testing.png)
+
 

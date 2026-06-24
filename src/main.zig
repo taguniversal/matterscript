@@ -9,6 +9,7 @@ const GeoProgram = @import("dialects/geo/program.zig").Program;
 const geo_build = @import("dialects/geo/build.zig");
 const StateProgram = @import("dialects/state/program.zig").Program;
 const cell_runner = @import("dialects/geo/runner.zig");
+const state_export_test = @import("dialects/state/export_test.zig");
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
@@ -55,6 +56,13 @@ pub fn main(init: std.process.Init) !void {
             arena,
             state_program,
             "machine.zig",
+        );
+
+        try state_export_test.writeZigTests(
+            io,
+            arena,
+            state_program,
+            "machine_test.zig",
         );
 
         try stdout_writer.flush();
