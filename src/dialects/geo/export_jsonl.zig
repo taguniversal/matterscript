@@ -1,5 +1,5 @@
 const std = @import("std");
-const Program = @import("../../common/program.zig").Program;
+const Program = @import("program.zig").Program;
 const ca1d = @import("ca1d.zig");
 const workspace = @import("../../common/workspace.zig");
 

@@ -1,4 +1,5 @@
 const std = @import("std");
+const GeoProgram = @import("program.zig").Program;
 
 pub fn step(current: []u8, next: []u8) void {
     const width = current.len;

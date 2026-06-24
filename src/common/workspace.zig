@@ -1,9 +1,8 @@
 const std = @import("std");
-const Program = @import("program.zig").Program;
 
 pub fn namespaceDir(
     allocator: std.mem.Allocator,
-    program: Program,
+    program: anytype,
 ) ![]const u8 {
     return try std.fmt.allocPrint(
         allocator,
@@ -14,7 +13,7 @@ pub fn namespaceDir(
 
 pub fn artifactPath(
     allocator: std.mem.Allocator,
-    program: Program,
+    program: anytype,
     filename: []const u8,
 ) ![]const u8 {
     return try std.fmt.allocPrint(
@@ -26,7 +25,7 @@ pub fn artifactPath(
 
 pub fn ensureNamespace(
     io: std.Io,
-    program: Program,
+    program: anytype,
 ) !void {
     var buffer: [512]u8 = undefined;
 
