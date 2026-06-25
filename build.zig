@@ -86,7 +86,7 @@ pub fn build(b: *std.Build) void {
                 // can be extremely useful in case of collisions (which can happen
                 // importing modules from different packages).
                 .{ .name = "matterscript", .module = mod },
-                .{ .name = "mkrand", .module = mkrand_mod }
+                .{ .name = "mkrand", .module = mkrand_mod },
             },
         }),
     });
@@ -147,6 +147,35 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
+
+    // ------------------------------------------------------------
+    // Verify pipeline
+    // ------------------------------------------------------------
+
+    const verify_step = b.step(
+        "verify",
+        "Generate and compile verification artifacts",
+    );
+
+    verify_step.dependOn(&run_mod_tests.step);
+    verify_step.dependOn(&run_exe_tests.step);
+
+    const generated_tests_mod = b.createModule(.{
+    .root_source_file = b.path("../workspace/coffee/machine_test.zig"),
+    .target = target,
+    .optimize = optimize,
+});
+
+generated_tests_mod.addImport("matterscript", mod);
+generated_tests_mod.addImport("mkrand", mkrand_mod);
+
+const generated_tests = b.addTest(.{
+    .root_module = generated_tests_mod,
+});
+
+const run_generated_tests = b.addRunArtifact(generated_tests);
+
+verify_step.dependOn(&run_generated_tests.step);
 
     // Just like flags, top level steps are also listed in the `--help` menu.
     //
