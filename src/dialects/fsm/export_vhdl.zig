@@ -144,21 +144,22 @@ pub fn write(writer: anytype, m: machine.Machine) !void {
         \\  end process;
         \\
         \\  -- state output encoding
+        \\  with current_state select
         \\
     , .{});
 
-    // state output: binary encoded using helper
+    // state output: with/select — VHDL resolves type from signal declaration
     var st_bits_buf: [64]u8 = undefined;
     for (m.states, 0..) |s, i| {
         const bits = binStr(&st_bits_buf, i, state_bits);
         try writer.print(
-            "  state_out <= \"{s}\" when current_state = {s} else\n",
+            "    state_out <= \"{s}\" when {s},\n",
             .{ bits, s.name },
         );
     }
     const zero_bits = binStr(&st_bits_buf, 0, state_bits);
     try writer.print(
-        "             \"{s}\";\n\n",
+        "    state_out <= \"{s}\" when others;\n\n",
         .{zero_bits},
     );
 
