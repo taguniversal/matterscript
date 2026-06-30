@@ -84,7 +84,7 @@ pub fn build(b: *std.Build) void {
 
     // Step 1: generate machine.vhd by running matterscript on the example script
     const gen_vhd = b.addRunArtifact(exe);
-    gen_vhd.addArg("examples/coffee.ms.fsm");
+    gen_vhd.addArg("examples/coffee/coffee.ms.fsm");
     gen_vhd.step.dependOn(b.getInstallStep());
     verify_step.dependOn(&gen_vhd.step);
 
@@ -94,10 +94,9 @@ pub fn build(b: *std.Build) void {
         // If verilator is not installed this step will fail with a clear error.
         // Install with: sudo apt install verilator
         const verilator_check = b.addSystemCommand(&.{
-            "verilator",
-            "--lint-only",
-            "--language",
-            "VHDL",
+            "ghdl",
+            "-s", // syntax check only
+            "--std=08", // VHDL 2008
             "../workspace/coffee/machine.vhd",
         });
         verilator_check.step.dependOn(&gen_vhd.step);
