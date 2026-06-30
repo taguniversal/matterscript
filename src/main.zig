@@ -6,7 +6,7 @@ const geo_parser = @import("dialects/geo/parser.zig");
 const state_parser = @import("dialects/state/parser.zig");
 const state_export_zig = @import("dialects/state/export_zig.zig");
 const GeoProgram = @import("dialects/geo/program.zig").Program;
-const geo_build = @import("dialects/geo/build.zig");
+const geo_build = @import("dialects/geo/geo_build.zig");
 const StateProgram = @import("dialects/state/program.zig").Program;
 const cell_runner = @import("dialects/geo/runner.zig");
 const state_export_test = @import("dialects/state/export_test.zig");
@@ -44,7 +44,7 @@ pub fn main(init: std.process.Init) !void {
     try stdout_writer.print("\nParsed Program:\n", .{});
 
     if (std.mem.endsWith(u8, script_path, ".ms.state")) {
-        const machine = try state_parser.parse(source);
+        const machine = try state_parser.parse(arena, source);
         const state_program = StateProgram{
             .namespace = "coffee",
             .machine = machine,

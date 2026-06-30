@@ -1,17 +1,34 @@
 machine CoffeeShop
 
+-- states
 state Greeting
 state TakeOrder
 state Payment
 state PrepareDrink
 state Complete
 
+-- events
 event CustomerArrived
 event OrderPlaced
 event PaymentApproved
 event DrinkReady
 
+-- transitions
 transition Greeting TakeOrder CustomerArrived
 transition TakeOrder Payment OrderPlaced
 transition Payment PrepareDrink PaymentApproved
 transition PrepareDrink Complete DrinkReady
+
+-- hardware modules
+module payment_validator
+  in card_present card_valid
+  out approved declined
+  approved = card_present & card_valid
+  declined = card_present & ~card_valid
+end
+
+module drink_ready_detector
+  in brew_done cup_placed
+  out ready
+  ready = brew_done & cup_placed
+end
