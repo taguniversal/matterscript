@@ -148,18 +148,25 @@ pub fn write(writer: anytype, m: machine.Machine) !void {
         \\
     , .{});
 
-    // state output: with/select — VHDL resolves type from signal declaration
+    // state output: with/select single assignment — only one <= for the whole statement
     var st_bits_buf: [64]u8 = undefined;
     for (m.states, 0..) |s, i| {
         const bits = binStr(&st_bits_buf, i, state_bits);
-        try writer.print(
-            "    state_out <= \"{s}\" when {s},\n",
-            .{ bits, s.name },
-        );
+        if (i == 0) {
+            try writer.print(
+                "    state_out <= \"{s}\" when {s},\n",
+                .{ bits, s.name },
+            );
+        } else {
+            try writer.print(
+                "                 \"{s}\" when {s},\n",
+                .{ bits, s.name },
+            );
+        }
     }
     const zero_bits = binStr(&st_bits_buf, 0, state_bits);
     try writer.print(
-        "    state_out <= \"{s}\" when others;\n\n",
+        "                 \"{s}\" when others;\n\n",
         .{zero_bits},
     );
 
