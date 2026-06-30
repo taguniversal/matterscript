@@ -1,15 +1,13 @@
 const std = @import("std");
 const Io = std.Io;
-const ca1d = @import("dialects/geo/ca1d.zig");
 
 const geo_parser = @import("dialects/geo/parser.zig");
-const state_parser = @import("dialects/state/parser.zig");
-const state_export_zig = @import("dialects/state/export_zig.zig");
+const state_parser = @import("dialects/fsm/parser.zig");
+const state_export_vhdl = @import("dialects/fsm/export_vhdl.zig");
 const GeoProgram = @import("dialects/geo/program.zig").Program;
 const geo_build = @import("dialects/geo/geo_build.zig");
-const StateProgram = @import("dialects/state/program.zig").Program;
+const StateProgram = @import("dialects/fsm/program.zig").Program;
 const cell_runner = @import("dialects/geo/runner.zig");
-const state_export_test = @import("dialects/state/export_test.zig");
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
@@ -38,38 +36,36 @@ pub fn main(init: std.process.Init) !void {
     try stdout_writer.print("MatterScript source: {s}\n\n", .{script_path});
     try stdout_writer.print("{s}\n", .{source});
 
+    if (std.mem.endsWith(u8, script_path, ".ms.fsm")) {
+        const m = try state_parser.parse(arena, source);
+        const state_program = StateProgram{
+            .namespace = "coffee",
+            .machine = m,
+            .export_path = "",
+        };
+
+        try stdout_writer.print("Parsed FSM: {s}\n", .{m.name});
+        try stdout_writer.print("  states:      {d}\n", .{m.states.len});
+        try stdout_writer.print("  events:      {d}\n", .{m.events.len});
+        try stdout_writer.print("  transitions: {d}\n\n", .{m.transitions.len});
+
+        try state_export_vhdl.writeVhdlMachine(
+            io,
+            arena,
+            state_program,
+            "machine.vhd",
+        );
+
+        try stdout_writer.print("Wrote machine.vhd\n", .{});
+        try stdout_writer.flush();
+        return;
+    }
+
+    // geo dialect
     try stdout_writer.print("\nTokens:\n", .{});
     try geo_parser.tokenize(stdout_writer, source);
 
     try stdout_writer.print("\nParsed Program:\n", .{});
-
-    if (std.mem.endsWith(u8, script_path, ".ms.state")) {
-        const machine = try state_parser.parse(arena, source);
-        const state_program = StateProgram{
-            .namespace = "coffee",
-            .machine = machine,
-            .export_path = "",
-        };
-
-        try state_export_zig.writeZigMachine(
-            io,
-            arena,
-            state_program,
-            "machine.zig",
-        );
-
-        try state_export_test.writeZigTests(
-            io,
-            arena,
-            state_program,
-            "machine_test.zig",
-        );
-
-        try stdout_writer.flush();
-
-        return;
-    }
-
     const program = try geo_parser.parseProgram(source);
 
     try stdout_writer.print("namespace: {s}\n", .{program.namespace});
@@ -92,8 +88,9 @@ fn usage(writer: anytype) !void {
         \\Usage:
         \\  matterscript <script.ms>
         \\
-        \\Example:
-        \\  matterscript examples/hello.ms
+        \\Examples:
+        \\  matterscript examples/coffee.ms.fsm
+        \\  matterscript examples/terrain.ms.geo
         \\
     , .{});
 }
