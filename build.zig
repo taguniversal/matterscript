@@ -85,37 +85,28 @@ pub fn build(b: *std.Build) void {
     if (is_linux) {
         // Step 1: analyze
         const ghdl_analyze = b.addSystemCommand(&.{
-            "ghdl", "-a", "--std=08",
-            "--workdir=../workspace/coffee",
-            "../workspace/coffee/machine.vhd",
+            "ghdl-llvm",                     "-a",                              "--std=08",
+            "--workdir=../workspace/coffee", "../workspace/coffee/machine.vhd",
         });
         ghdl_analyze.step.dependOn(&gen_vhd.step);
 
-        // Step 2: elaborate
-        const ghdl_elaborate = b.addSystemCommand(&.{
-            "ghdl", "-e", "--std=08",
-            "--workdir=../workspace/coffee",
-            "CoffeeShop",
-        });
-        ghdl_elaborate.step.dependOn(&ghdl_analyze.step);
-
         // Step 3: synthesize to Verilog
         const ghdl_synth = b.addSystemCommand(&.{
-            "ghdl-llvm", "--synth", "--std=08",
-            "--workdir=../workspace/coffee",
-            "--out=verilog",
-            "CoffeeShop",
-            "-o", "../workspace/coffee/machine.sv",
+            "sh",                                                                                                               "-c",
+            "ghdl-llvm synth --std=08 --workdir=../workspace/coffee --out=verilog CoffeeShop > ../workspace/coffee/machine.sv",
         });
-        ghdl_synth.step.dependOn(&ghdl_elaborate.step);
+        ghdl_synth.step.dependOn(&ghdl_analyze.step);
 
         // Step 4: verilator compile with testbench
         const verilator_build = b.addSystemCommand(&.{
             "verilator",
-            "--cc", "--exe", "--build",
-            "--Mdir", "../workspace/coffee/obj_dir",
+            "--cc",
+            "--exe",
+            "--build",
+            "--Mdir",
+            "../workspace/coffee/obj_dir",
             "../workspace/coffee/machine.sv",
-            "tb/tb_coffee.cpp",
+            "../workspace/coffee/tb_machine.cpp",
         });
         verilator_build.step.dependOn(&ghdl_synth.step);
 
