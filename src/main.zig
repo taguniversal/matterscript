@@ -4,6 +4,7 @@ const Io = std.Io;
 const geo_parser = @import("dialects/geo/parser.zig");
 const state_parser = @import("dialects/fsm/parser.zig");
 const state_export_vhdl = @import("dialects/fsm/export_vhdl.zig");
+const state_export_tb = @import("dialects/fsm/export_tb.zig");
 const GeoProgram = @import("dialects/geo/program.zig").Program;
 const geo_build = @import("dialects/geo/geo_build.zig");
 const StateProgram = @import("dialects/fsm/program.zig").Program;
@@ -49,14 +50,11 @@ pub fn main(init: std.process.Init) !void {
         try stdout_writer.print("  events:      {d}\n", .{m.events.len});
         try stdout_writer.print("  transitions: {d}\n\n", .{m.transitions.len});
 
-        try state_export_vhdl.writeVhdlMachine(
-            io,
-            arena,
-            state_program,
-            "machine.vhd",
-        );
+        try state_export_vhdl.writeVhdlMachine(io, arena, state_program, "machine.vhd");
+        try state_export_tb.writeTbMachine(io, arena, state_program, "tb_machine.cpp");
 
         try stdout_writer.print("Wrote machine.vhd\n", .{});
+        try stdout_writer.print("Wrote tb_machine.cpp\n", .{});
         try stdout_writer.flush();
         return;
     }
@@ -89,7 +87,7 @@ fn usage(writer: anytype) !void {
         \\  matterscript <script.ms>
         \\
         \\Examples:
-        \\  matterscript examples/coffee.ms.fsm
+        \\  matterscript examples/coffee/coffee.ms.fsm
         \\  matterscript examples/terrain.ms.geo
         \\
     , .{});

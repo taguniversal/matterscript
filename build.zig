@@ -86,7 +86,7 @@ pub fn build(b: *std.Build) void {
         // Step 1: analyze
         const ghdl_analyze = b.addSystemCommand(&.{
             "ghdl", "-a", "--std=08",
-            "--work-dir=../workspace/coffee",
+            "--workdir=../workspace/coffee",
             "../workspace/coffee/machine.vhd",
         });
         ghdl_analyze.step.dependOn(&gen_vhd.step);
@@ -94,15 +94,15 @@ pub fn build(b: *std.Build) void {
         // Step 2: elaborate
         const ghdl_elaborate = b.addSystemCommand(&.{
             "ghdl", "-e", "--std=08",
-            "--work-dir=../workspace/coffee",
+            "--workdir=../workspace/coffee",
             "CoffeeShop",
         });
         ghdl_elaborate.step.dependOn(&ghdl_analyze.step);
 
         // Step 3: synthesize to Verilog
         const ghdl_synth = b.addSystemCommand(&.{
-            "ghdl", "--synth", "--std=08",
-            "--work-dir=../workspace/coffee",
+            "ghdl-llvm", "--synth", "--std=08",
+            "--workdir=../workspace/coffee",
             "--out=verilog",
             "CoffeeShop",
             "-o", "../workspace/coffee/machine.sv",
