@@ -106,7 +106,7 @@ pub fn build(b: *std.Build) void {
             "--Mdir",
             "../workspace/coffee/obj_dir",
             "-CFLAGS",
-            "-I../workspace/coffee/obj_dir",
+            "-I.",
             "../workspace/coffee/machine.sv",
             "../workspace/coffee/tb_machine.cpp",
         });
