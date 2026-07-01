@@ -52,7 +52,7 @@ pub fn main(init: std.process.Init) !void {
 
         try state_export_vhdl.writeVhdlMachine(io, arena, state_program, "machine.vhd");
         try state_export_tb.writeTbMachine(io, arena, state_program, "tb_machine.cpp");
-
+      
         try stdout_writer.print("Wrote machine.vhd\n", .{});
         try stdout_writer.print("Wrote tb_machine.cpp\n", .{});
         try stdout_writer.flush();

@@ -92,8 +92,9 @@ pub fn build(b: *std.Build) void {
 
         // Step 3: synthesize to Verilog
         const ghdl_synth = b.addSystemCommand(&.{
-            "sh",                                                                                                               "-c",
-            "ghdl-llvm synth --std=08 --workdir=../workspace/coffee --out=verilog CoffeeShop > ../workspace/coffee/machine.sv",
+            "sh",
+            "-c",
+            "ghdl-llvm synth --std=08 --workdir=../workspace/coffee --out=verilog CoffeeShop > ../workspace/coffee/CoffeeShop.sv",
         });
         ghdl_synth.step.dependOn(&ghdl_analyze.step);
 
@@ -107,7 +108,7 @@ pub fn build(b: *std.Build) void {
             "../workspace/coffee/obj_dir",
             "-CFLAGS",
             "-I.",
-            "../workspace/coffee/machine.sv",
+            "../workspace/coffee/CoffeeShop.sv",
             "../workspace/coffee/tb_machine.cpp",
         });
         verilator_build.step.dependOn(&ghdl_synth.step);
