@@ -9,6 +9,8 @@ const GeoProgram = @import("dialects/geo/program.zig").Program;
 const geo_build = @import("dialects/geo/geo_build.zig");
 const StateProgram = @import("dialects/fsm/program.zig").Program;
 const cell_runner = @import("dialects/geo/runner.zig");
+const il_parser = @import("dialects/il/parser.zig");
+const il_export_vhdl = @import("dialects/il/export_vhdl.zig");
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
@@ -52,9 +54,40 @@ pub fn main(init: std.process.Init) !void {
 
         try state_export_vhdl.writeVhdlMachine(io, arena, state_program, "machine.vhd");
         try state_export_tb.writeTbMachine(io, arena, state_program, "tb_machine.cpp");
-      
+
         try stdout_writer.print("Wrote machine.vhd\n", .{});
         try stdout_writer.print("Wrote tb_machine.cpp\n", .{});
+        try stdout_writer.flush();
+        return;
+    }
+
+    // add this branch in main() alongside the .ms.fsm branch:
+    if (std.mem.endsWith(u8, script_path, ".ms.il")) {
+        const net = try il_parser.parse(arena, source);
+
+        try stdout_writer.print("Parsed IL network\n", .{});
+        try stdout_writer.print("  definitions: {d}\n", .{net.definitions.len});
+        for (net.definitions) |def| {
+            try stdout_writer.print("\ndef {s}\n", .{def.name});
+            try stdout_writer.print("  destinations: {d}\n", .{def.destinations.len});
+            try stdout_writer.print("  sources:      {d}\n", .{def.sources.len});
+            try stdout_writer.print("  statements:   {d}\n", .{def.resolution.len});
+            for (def.constants) |tbl| {
+                try stdout_writer.print("  table {s}: {d} entries\n", .{ tbl.composed_name, tbl.entries.len });
+            }
+        }
+        if (net.entry) |e| {
+            try stdout_writer.print("\nentry: {s} with {d} args\n", .{ e.name, e.args.len });
+        }
+
+        try il_export_vhdl.writeVhdlNetwork(
+            io,
+            arena,
+            "add", // namespace — matches workspace/add/
+            net,
+            "add.vhd",
+        );
+        try stdout_writer.print("\nWrote add.vhd\n", .{});
         try stdout_writer.flush();
         return;
     }
