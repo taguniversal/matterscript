@@ -838,3 +838,122 @@ The goal is to provide a unified framework where computational structures, event
 ![Testing](testing.png)
 
 
+
+## MatterScript Invocation Language
+![Invocation](invocation.png)
+### Theoretical Foundation: Null Convention Logic
+
+Null Convention Logic (NCL) is a asynchronous logic paradigm developed by Karl Fant. Traditional synchronous digital logic uses a clock signal to coordinate when data is valid and when computations should proceed. NCL eliminates the clock entirely, replacing it with a data completeness protocol built into the signals themselves.
+
+In NCL every signal carries not just a value but an indication of whether that value is meaningful. A signal in the NULL state indicates no data is present. A signal in the DATA state carries a valid value. Computation proceeds not when a clock edge arrives but when all inputs to a function have transitioned from NULL to DATA — this is called *completeness*. Once a function has produced its DATA outputs they flow downstream, and once the downstream has consumed them the signals return to NULL, creating a self-timed wave of NULL and DATA that ripples through the network without any central coordination.
+
+This has profound consequences:
+
+- **No clock domain crossing problems** — since there is no clock, there are no domain boundaries to cross
+- **Natural pipeline correctness** — a stage cannot fire until its inputs are complete, so pipeline hazards are structurally impossible
+- **Automatic power scaling** — logic only switches when it has work to do, never driven by a clock it doesn't need
+- **Network transparency** — the same completeness handshake works whether logic is on the same chip, across a bus, or across a network, because the protocol is in the data itself
+- **Sequentiality as a degenerate case** — sequential behavior emerges naturally from data dependencies rather than being imposed by execution order or clock edges
+
+Karl Fant's broader framework, described in *Computer Science Reconsidered*, argues that all computation is inherently concurrent and that sequentiality is simply what happens when data dependencies form a chain. The Invocation Language is his formalism for expressing computation in these terms.
+
+---
+
+### The Invocation Language
+
+The Invocation Language describes computation as a network of *definitions* and *invocations*. There are no statements, no assignments, no control flow. There is only the flow of tokens through places, governed by completeness.
+
+#### Thengs and Places
+
+The fundamental concept is the *theng* — something that has a location in the network and asserts a value. A wire is a theng. A memory cell is a theng. A token in flight is a theng. Thengs occupy *places*, which are named locations in the network.
+
+Places come in two kinds:
+
+- **Destination place** — written `$name`. Receives a token from the outer context. The `$` prefix indicates the place is a sink — data flows into it.
+- **Source place** — written `name<>`. Emits a token to the outer context once it has been filled. The `<>` suffix indicates the place is a source — data flows out of it.
+
+A place in the NULL state has no token. A place in the DATA state holds a token. The transition from NULL to DATA is called *completeness*. Nothing downstream of a source place can proceed until that place is complete.
+
+#### Definitions
+
+A definition is a named network fragment with a set of destination places (inputs), source places (outputs), a resolution area, and an optional constant table:
+
+```
+name[($dest1 $dest2 ...)(source1<> source2<> ...)
+  resolution area
+|
+  constant definitions
+]
+```
+
+The destination list declares what tokens the definition expects from the outer context. The source list declares what tokens it will produce. The resolution area describes how tokens flow from destinations to sources through the network. The constant table defines lookup tables used in the resolution area.
+
+Definitions are *flat* — they do not nest. All definitions live at the top level of a network and reference each other by name. This is not a limitation but a reflection of the underlying model: the network is a graph of places and connections, not a tree of scopes.
+
+#### Invocations
+
+An invocation applies a definition to actual tokens:
+
+```
+name((arg1 arg2 ...)(output1<> output2<> ...))
+```
+
+The argument list provides the actual token values or place references that will be bound to the definition's destination places in order. The output list declares source places in the outer context that will receive the definition's outputs by name correspondence.
+
+Name correspondence is the scoping mechanism of the IL. When a definition fills `result<$c>` and the invocation declares `(x<>)`, the value flows from `result` inside the definition to `x` in the outer context. Inside the definition it is `$result`. Outside it is `$x`. The names differ but the token is the same.
+
+#### Name Composition and Constant Tables
+
+The IL's most distinctive feature is name composition. Destination place values can be concatenated to form a lookup key:
+
+```
+$a$b()
+```
+
+When `$a` holds the value `1` and `$b` holds the value `3`, the composition `$a$b()` forms the name `13` and looks it up in the associated constant table. The constant table is defined after the `|` separator:
+
+```
+$a$b() : 00:0 01:1 02:2 03:3
+          10:1 11:2 12:3 13:4
+          20:2 21:3 22:4 23:5
+          30:3 31:4 32:5 33:6
+```
+
+Each entry is a `key:value` pair. The key is the composed name string. The value is the token that flows back to the invocation site. If no entry matches the composed name the invocation never resolves — it remains NULL indefinitely. This is not an error. It is how the IL expresses partial functions and conditional behavior without any conditional syntax.
+
+The constant table is simultaneously a lookup table, a truth table, and a ROM. In hardware it synthesizes directly to a combinational case statement or a block RAM.
+
+#### Completeness Semantics
+
+A source fill `result<$expr>` pushes the value of `$expr` into the source place `result<>`. The source place transitions from NULL to DATA. Anything in the outer context that depends on `$result` can now proceed.
+
+An entire definition is complete when all of its source places have been filled. The definition's outputs flow to the outer context simultaneously — there is no ordering between them.
+
+A composition `$a$b()` is complete only when all contributing destinations are in the DATA state. If any destination is NULL the composition does not fire. This is the fundamental completeness gate — the logical AND of all input validities, built into the syntax itself.
+
+Deasserting a place's valid bit freezes the token without destroying it. The token value is preserved but the place returns to NULL from the perspective of downstream logic. This is how tokens are held, gated, and released without requiring explicit storage or control signals.
+
+#### A Complete Example
+
+```
+// 2-bit integer adder
+add[($a $b)(result<>)
+  result<$a$b()>
+|
+  $a$b() : 00:0 01:1 02:2 03:3
+            10:1 11:2 12:3 13:4
+            20:2 21:3 22:4 23:5
+            30:3 31:4 32:5 33:6
+]
+
+// add 1 + 3, result flows into x
+add((1 3)(x<>))
+```
+
+When invoked, `$a` is bound to `1` and `$b` to `3`. The composition `$a$b()` forms the key `13`, looks it up in the table, and finds `4`. The value `4` flows into `result<>`, which flows out as `x<>` in the outer context. `$x` now holds `4`. The entire computation required no clock, no sequencing, and no control flow — only the completeness of the inputs.
+
+---
+
+That's a solid foundation for the docs. Want me to also write the hardware encoding section describing the 8-bit `{ data[6:0], valid }` signal convention and how it maps to VHDL?
+
+
