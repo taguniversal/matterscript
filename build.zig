@@ -50,70 +50,72 @@ pub fn build(b: *std.Build) void {
     // ------------------------------------------------------------
     // Verify pipeline
     // ------------------------------------------------------------
-    // 1. Run matterscript to generate machine.vhd from the coffee example
-    // 2. Run ghdl syntax check (cross-platform)
-    // Note: Verilator requires GHDL->Verilog synthesis before it can process
-    // VHDL — that is handled by the simulate step below.
+    // 1. Generate machine.vhd from coffee FSM example
+    // 2. Generate add.vhd from add IL example
+    // 3. GHDL syntax check both
     // ------------------------------------------------------------
 
     const verify_step = b.step("verify", "Generate VHDL and syntax check with GHDL");
 
-    const gen_vhd = b.addRunArtifact(exe);
-    gen_vhd.addArg("examples/coffee/coffee.ms.fsm");
-    gen_vhd.step.dependOn(b.getInstallStep());
-    verify_step.dependOn(&gen_vhd.step);
+    // --- FSM: coffee ---
+    const gen_coffee = b.addRunArtifact(exe);
+    gen_coffee.addArg("examples/coffee/coffee.ms.fsm");
+    gen_coffee.step.dependOn(b.getInstallStep());
+    verify_step.dependOn(&gen_coffee.step);
 
-    const ghdl_check = b.addSystemCommand(&.{
+    const ghdl_coffee = b.addSystemCommand(&.{
         "ghdl", "-s", "--std=08", "../workspace/coffee/machine.vhd",
     });
-    ghdl_check.step.dependOn(&gen_vhd.step);
-    verify_step.dependOn(&ghdl_check.step);
+    ghdl_coffee.step.dependOn(&gen_coffee.step);
+    verify_step.dependOn(&ghdl_coffee.step);
+
+    // --- IL: add ---
+    const gen_add = b.addRunArtifact(exe);
+    gen_add.addArg("examples/add/add.ms.il");
+    gen_add.step.dependOn(b.getInstallStep());
+    verify_step.dependOn(&gen_add.step);
+
+    const ghdl_add = b.addSystemCommand(&.{
+        "ghdl", "-s", "--std=08", "../workspace/add/add.vhd",
+    });
+    ghdl_add.step.dependOn(&gen_add.step);
+    verify_step.dependOn(&ghdl_add.step);
 
     // ------------------------------------------------------------
     // Simulate pipeline (Linux only)
     // ------------------------------------------------------------
     // 1. ghdl -a  — analyze VHDL
-    // 2. ghdl -e  — elaborate
-    // 3. ghdl --synth — export to Verilog netlist
-    // 4. verilator  — compile with C++ testbench to native binary
-    // 5. run the simulation binary
+    // 2. ghdl --synth — export to Verilog netlist
+    // 3. verilator  — compile with C++ testbench to native binary
+    // 4. run the simulation binary
     // ------------------------------------------------------------
 
     const simulate_step = b.step("simulate", "Full GHDL->Verilator simulation (Linux only)");
 
     const is_linux = b.graph.host.result.os.tag == .linux;
     if (is_linux) {
-        // Step 1: analyze
         const ghdl_analyze = b.addSystemCommand(&.{
-            "ghdl-llvm",                     "-a",                              "--std=08",
+            "ghdl-llvm", "-a", "--std=08",
             "--workdir=../workspace/coffee", "../workspace/coffee/machine.vhd",
         });
-        ghdl_analyze.step.dependOn(&gen_vhd.step);
+        ghdl_analyze.step.dependOn(&gen_coffee.step);
 
-        // Step 3: synthesize to Verilog
         const ghdl_synth = b.addSystemCommand(&.{
-            "sh",
-            "-c",
+            "sh", "-c",
             "ghdl-llvm synth --std=08 --workdir=../workspace/coffee --out=verilog CoffeeShop > ../workspace/coffee/CoffeeShop.sv",
         });
         ghdl_synth.step.dependOn(&ghdl_analyze.step);
 
-        // Step 4: verilator compile with testbench
         const verilator_build = b.addSystemCommand(&.{
             "verilator",
-            "--cc",
-            "--exe",
-            "--build",
-            "--Mdir",
-            "../workspace/coffee/obj_dir",
-            "-CFLAGS",
-            "-I.",
+            "--cc", "--exe", "--build",
+            "--Mdir", "../workspace/coffee/obj_dir",
+            "-CFLAGS", "-I.",
             "../workspace/coffee/CoffeeShop.sv",
             "../workspace/coffee/tb_machine.cpp",
         });
         verilator_build.step.dependOn(&ghdl_synth.step);
 
-        // Step 5: run the simulation binary
         const run_sim = b.addSystemCommand(&.{
             "../workspace/coffee/obj_dir/VCoffeeShop",
         });

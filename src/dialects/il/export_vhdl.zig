@@ -15,7 +15,7 @@ const network = @import("network.zig");
 const workspace = @import("../../common/workspace.zig");
 
 const SIGNAL_WIDTH = 8; // data[6:0] & valid
-const DATA_WIDTH   = 7; // signal[7:1]
+const DATA_WIDTH = 7; // signal[7:1]
 
 pub fn writeVhdlNetwork(
     io: std.Io,
@@ -156,7 +156,6 @@ fn writeDefinition(
     for (def.constants) |tbl| {
         const tbl_id = try sanitizeName(allocator, tbl.composed_name);
         defer allocator.free(tbl_id);
-        const key_bits = countDestinations(tbl.composed_name) * DATA_WIDTH;
         const val_bits = valueWidth(tbl);
 
         try writer.print("\n  -- ROM lookup for {s}\n", .{tbl.composed_name});
@@ -170,8 +169,13 @@ fn writeDefinition(
         var val_buf: [64]u8 = undefined;
 
         for (tbl.entries) |entry| {
-            const key_int = std.fmt.parseInt(u64, entry.key, 10) catch 0;
-            const key_str = binStr(&key_buf, key_int, key_bits);
+            var key_pos: usize = 0;
+            for (entry.key) |ch| {
+                const digit_val: u64 = ch - '0';
+                const seg = binStr(key_buf[key_pos..], digit_val, DATA_WIDTH);
+                key_pos += seg.len;
+            }
+            const key_str = key_buf[0..key_pos];
             const val_int = std.fmt.parseInt(u64, entry.value, 10) catch 0;
             const val_str = binStr(&val_buf, val_int, val_bits);
             try writer.print(
@@ -225,7 +229,9 @@ fn sanitizeName(allocator: std.mem.Allocator, composed: []const u8) ![]u8 {
 
 fn countDestinations(composed: []const u8) usize {
     var count: usize = 0;
-    for (composed) |c| if (c == '$') { count += 1; };
+    for (composed) |c| if (c == '$') {
+        count += 1;
+    };
     return count;
 }
 
