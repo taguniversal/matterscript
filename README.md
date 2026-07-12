@@ -954,6 +954,6 @@ When invoked, `$a` is bound to `1` and `$b` to `3`. The composition `$a$b()` for
 
 ---
 
-That's a solid foundation for the docs. Want me to also write the hardware encoding section describing the 8-bit `{ data[6:0], valid }` signal convention and how it maps to VHDL?
+
 
 
