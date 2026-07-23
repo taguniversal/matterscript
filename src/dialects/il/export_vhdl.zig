@@ -1,21 +1,17 @@
 // export_vhdl.zig
 // VHDL emitter for MatterScript Invocation Language networks
 //
-// Encoding convention (applies to every place — source, destination, internal):
+// Signal encoding:
 //   signal[7:0] = { data[6:0], valid }
 //   signal[0]   = valid bit  (1=DATA, 0=NULL)
 //   signal[7:1] = 7-bit data payload (up to 127 distinct token values)
-//
-// A place is complete when valid='1'.
-// Deasserting valid freezes a token without destroying its data value.
-// Connections between networks are plain 8-bit wire assignments.
 
 const std = @import("std");
 const network = @import("network.zig");
 const workspace = @import("../../common/workspace.zig");
 
-const SIGNAL_WIDTH = 8; // data[6:0] & valid
-const DATA_WIDTH = 7; // signal[7:1]
+const SIGNAL_WIDTH = 8;
+const DATA_WIDTH   = 7;
 
 pub fn writeVhdlNetwork(
     io: std.Io,
@@ -24,12 +20,8 @@ pub fn writeVhdlNetwork(
     net: network.Network,
     output_name: []const u8,
 ) !void {
-    // reuse workspace path helper via a minimal stub
     const output_path = try std.fmt.allocPrint(
-        allocator,
-        "../workspace/{s}/{s}",
-        .{ namespace, output_name },
-    );
+        allocator, "../workspace/{s}/{s}", .{ namespace, output_name });
     defer allocator.free(output_path);
 
     var file = try std.Io.Dir.cwd().createFile(io, output_path, .{});
@@ -37,7 +29,6 @@ pub fn writeVhdlNetwork(
 
     var buffer: [65536]u8 = undefined;
     var writer = file.writer(io, &buffer);
-
     try write(allocator, &writer.interface, net);
     try writer.interface.flush();
 }
@@ -68,26 +59,21 @@ fn writeDefinition(
     try writer.print("entity {s} is\n  port(\n", .{def.name});
     try writer.print("    clk : in  std_logic;\n", .{});
     try writer.print("    rst : in  std_logic;\n", .{});
-
     for (def.destinations) |dest| {
         try writer.print(
             "    {s} : in  std_logic_vector({d} downto 0);  -- destination place\n",
-            .{ dest.name, SIGNAL_WIDTH - 1 },
-        );
+            .{ dest.name, SIGNAL_WIDTH - 1 });
     }
     for (def.sources, 0..) |src, i| {
         const last = i == def.sources.len - 1;
         try writer.print(
             "    {s} : out std_logic_vector({d} downto 0){s}  -- source place\n",
-            .{ src.name, SIGNAL_WIDTH - 1, if (last) "" else ";" },
-        );
+            .{ src.name, SIGNAL_WIDTH - 1, if (last) "" else ";" });
     }
     try writer.print("  );\nend {s};\n\n", .{def.name});
 
     // architecture header
     try writer.print("architecture rtl of {s} is\n", .{def.name});
-
-    // valid signals per destination
     for (def.destinations) |dest| {
         try writer.print("  signal {s}_valid : std_logic;\n", .{dest.name});
     }
@@ -98,15 +84,13 @@ fn writeDefinition(
         const tbl_id = try sanitizeName(allocator, tbl.composed_name);
         defer allocator.free(tbl_id);
         const key_bits = countDestinations(tbl.composed_name) * DATA_WIDTH;
-        const val_bits = valueWidth(tbl);
+        const val_bits = try tableValueWidth(allocator, tbl);
         try writer.print(
             "  signal {s}_key   : std_logic_vector({d} downto 0);\n",
-            .{ tbl_id, key_bits - 1 },
-        );
+            .{ tbl_id, key_bits - 1 });
         try writer.print(
             "  signal {s}_data  : std_logic_vector({d} downto 0);\n",
-            .{ tbl_id, val_bits - 1 },
-        );
+            .{ tbl_id, val_bits - 1 });
         try writer.print("  signal {s}_valid : std_logic;\n", .{tbl_id});
     }
 
@@ -145,9 +129,7 @@ fn writeDefinition(
                 if (!first) try writer.print(" & ", .{});
                 try writer.print("{s}(7 downto 1)", .{dname});
                 first = false;
-            } else {
-                i += 1;
-            }
+            } else i += 1;
         }
         try writer.print(";\n", .{});
     }
@@ -156,7 +138,7 @@ fn writeDefinition(
     for (def.constants) |tbl| {
         const tbl_id = try sanitizeName(allocator, tbl.composed_name);
         defer allocator.free(tbl_id);
-        const val_bits = valueWidth(tbl);
+        const val_bits = try tableValueWidth(allocator, tbl);
 
         try writer.print("\n  -- ROM lookup for {s}\n", .{tbl.composed_name});
         try writer.print("  process({s}_key, complete) begin\n", .{tbl_id});
@@ -165,23 +147,46 @@ fn writeDefinition(
         try writer.print("    if complete = '1' then\n", .{});
         try writer.print("      case {s}_key is\n", .{tbl_id});
 
-        var key_buf: [128]u8 = undefined;
-        var val_buf: [64]u8 = undefined;
+        switch (tbl.kind) {
+            .explicit => |entries| {
+                var key_buf: [128]u8 = undefined;
+                var val_buf: [64]u8 = undefined;
+                for (entries) |entry| {
+                    var key_pos: usize = 0;
+                    for (entry.key) |ch| {
+                        const digit_val: u64 = ch - '0';
+                        const seg = binStr(key_buf[key_pos..], digit_val, DATA_WIDTH);
+                        key_pos += seg.len;
+                    }
+                    const key_str = key_buf[0..key_pos];
+                    const val_int = std.fmt.parseInt(u64, entry.value, 10) catch 0;
+                    const val_str = binStr(&val_buf, val_int, val_bits);
+                    try writer.print(
+                        "        when \"{s}\" => {s}_data <= \"{s}\"; {s}_valid <= '1';\n",
+                        .{ key_str, tbl_id, val_str, tbl_id });
+                }
+            },
+            .generate => |gen| {
+                // enumerate all input combinations at compile time
+                const entries = try enumerateGenerate(allocator, gen);
+                defer allocator.free(entries);
 
-        for (tbl.entries) |entry| {
-            var key_pos: usize = 0;
-            for (entry.key) |ch| {
-                const digit_val: u64 = ch - '0';
-                const seg = binStr(key_buf[key_pos..], digit_val, DATA_WIDTH);
-                key_pos += seg.len;
-            }
-            const key_str = key_buf[0..key_pos];
-            const val_int = std.fmt.parseInt(u64, entry.value, 10) catch 0;
-            const val_str = binStr(&val_buf, val_int, val_bits);
-            try writer.print(
-                "        when \"{s}\" => {s}_data <= \"{s}\"; {s}_valid <= '1';\n",
-                .{ key_str, tbl_id, val_str, tbl_id },
-            );
+                var key_buf: [128]u8 = undefined;
+                var val_buf: [64]u8 = undefined;
+                for (entries) |entry| {
+                    // key: encode each input value as DATA_WIDTH bits
+                    var key_pos: usize = 0;
+                    for (entry.input_values) |v| {
+                        const seg = binStr(key_buf[key_pos..], @intCast(v), DATA_WIDTH);
+                        key_pos += seg.len;
+                    }
+                    const key_str = key_buf[0..key_pos];
+                    const val_str = binStr(&val_buf, @intCast(entry.output_value), val_bits);
+                    try writer.print(
+                        "        when \"{s}\" => {s}_data <= \"{s}\"; {s}_valid <= '1';\n",
+                        .{ key_str, tbl_id, val_str, tbl_id });
+                }
+            },
         }
 
         try writer.print("        when others => null;\n", .{});
@@ -197,14 +202,11 @@ fn writeDefinition(
                 defer allocator.free(tbl_id);
                 try writer.print(
                     "  {s} <= {s}_data & {s}_valid;\n",
-                    .{ f.source_name, tbl_id, tbl_id },
-                );
+                    .{ f.source_name, tbl_id, tbl_id });
             },
             .invoke => |inv| {
                 try writer.print(
-                    "  -- TODO: component instantiation for {s}\n",
-                    .{inv.name},
-                );
+                    "  -- TODO: component instantiation for {s}\n", .{inv.name});
             },
         }
     }
@@ -213,33 +215,142 @@ fn writeDefinition(
 }
 
 // ----------------------------------------------------------------
+// Generate block evaluator
+// ----------------------------------------------------------------
+
+const GeneratedEntry = struct {
+    input_values: []const i64,
+    output_value: i64,
+};
+
+fn enumerateGenerate(
+    allocator: std.mem.Allocator,
+    gen: network.GenerateBlock,
+) ![]const GeneratedEntry {
+    // build constant map
+    var const_map = std.StringHashMap(i64).init(allocator);
+    defer const_map.deinit();
+    for (gen.constants) |c| try const_map.put(c.name, c.value);
+
+    var entries: std.ArrayListUnmanaged(GeneratedEntry) = .empty;
+    var var_map = std.StringHashMap(i64).init(allocator);
+    defer var_map.deinit();
+
+    // track current values for key building
+    const current_vals = try allocator.alloc(i64, gen.inputs.len);
+    defer allocator.free(current_vals);
+
+    try enumerateRecursive(
+        allocator, gen, gen.inputs, current_vals, 0,
+        &var_map, const_map, &entries);
+
+    return entries.toOwnedSlice(allocator);
+}
+
+fn enumerateRecursive(
+    allocator: std.mem.Allocator,
+    gen: network.GenerateBlock,
+    inputs: []const network.InputDecl,
+    current_vals: []i64,
+    depth: usize,
+    var_map: *std.StringHashMap(i64),
+    const_map: std.StringHashMap(i64),
+    entries: *std.ArrayListUnmanaged(GeneratedEntry),
+) !void {
+    if (depth == inputs.len) {
+        const result = try evalExpr(gen.expr, var_map.*, const_map);
+        const clamped = @max(gen.output_min, @min(gen.output_max, result));
+        const vals_copy = try allocator.dupe(i64, current_vals);
+        try entries.append(allocator, .{
+            .input_values = vals_copy,
+            .output_value = clamped,
+        });
+        return;
+    }
+
+    const inp = inputs[depth];
+    var v = inp.min;
+    while (v <= inp.max) : (v += 1) {
+        current_vals[depth] = v;
+        try var_map.put(inp.name, v);
+        try enumerateRecursive(
+            allocator, gen, inputs, current_vals, depth + 1,
+            var_map, const_map, entries);
+    }
+}
+
+fn evalExpr(
+    expr: *const network.Expr,
+    variables: std.StringHashMap(i64),
+    constants: std.StringHashMap(i64),
+) !i64 {
+    return switch (expr.kind) {
+        .integer  => expr.int_val,
+        .variable => variables.get(expr.name) orelse 0,
+        .constant => constants.get(expr.name) orelse 0,
+        .binary   => {
+            const l = try evalExpr(expr.left.?, variables, constants);
+            const r = try evalExpr(expr.right.?, variables, constants);
+            return switch (expr.op) {
+                .add => l + r,
+                .sub => l - r,
+                .mul => l * r,
+                .div => if (r == 0) 0 else @divTrunc(l, r),
+            };
+        },
+        .call => {
+            if (std.mem.eql(u8, expr.func, "clamp")) {
+                const val = try evalExpr(expr.args[0], variables, constants);
+                const lo  = try evalExpr(expr.args[1], variables, constants);
+                const hi  = try evalExpr(expr.args[2], variables, constants);
+                return @max(lo, @min(hi, val));
+            }
+            if (std.mem.eql(u8, expr.func, "avg")) {
+                var sum: i64 = 0;
+                for (expr.args) |arg|
+                    sum += try evalExpr(arg, variables, constants);
+                return if (expr.args.len == 0) 0
+                       else @divTrunc(sum, @as(i64, @intCast(expr.args.len)));
+            }
+            return 0;
+        },
+    };
+}
+
+// ----------------------------------------------------------------
 // Helpers
 // ----------------------------------------------------------------
 
-// strip $, (, ) from composed name — "$a$b()" -> "ab"
 fn sanitizeName(allocator: std.mem.Allocator, composed: []const u8) ![]u8 {
     var buf: std.ArrayListUnmanaged(u8) = .empty;
     for (composed) |c| {
-        if (std.ascii.isAlphanumeric(c) or c == '_') {
+        if (std.ascii.isAlphanumeric(c) or c == '_')
             try buf.append(allocator, c);
-        }
     }
     return buf.toOwnedSlice(allocator);
 }
 
 fn countDestinations(composed: []const u8) usize {
     var count: usize = 0;
-    for (composed) |c| if (c == '$') {
-        count += 1;
-    };
+    for (composed) |c| if (c == '$') { count += 1; };
     return count;
 }
 
-fn valueWidth(tbl: network.TableDef) usize {
+fn tableValueWidth(allocator: std.mem.Allocator, tbl: network.TableDef) !usize {
     var max_val: u64 = 0;
-    for (tbl.entries) |e| {
-        const v = std.fmt.parseInt(u64, e.value, 10) catch 0;
-        if (v > max_val) max_val = v;
+    switch (tbl.kind) {
+        .explicit => |entries| {
+            for (entries) |e| {
+                const v = std.fmt.parseInt(u64, e.value, 10) catch 0;
+                if (v > max_val) max_val = v;
+            }
+        },
+        .generate => |gen| {
+            // compute max possible output from the range
+            const range_max: u64 = @intCast(@max(0, gen.output_max));
+            max_val = range_max;
+            _ = allocator;
+        },
     }
     if (max_val == 0) return 1;
     var bits: usize = 0;

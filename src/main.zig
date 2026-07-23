@@ -73,7 +73,10 @@ pub fn main(init: std.process.Init) !void {
             try stdout_writer.print("  sources:      {d}\n", .{def.sources.len});
             try stdout_writer.print("  statements:   {d}\n", .{def.resolution.len});
             for (def.constants) |tbl| {
-                try stdout_writer.print("  table {s}: {d} entries\n", .{ tbl.composed_name, tbl.entries.len });
+                switch (tbl.kind) {
+                    .explicit => |entries| try stdout_writer.print("  table {s}: {d} entries (explicit)\n", .{ tbl.composed_name, entries.len }),
+                    .generate => try stdout_writer.print("  table {s}: generate block\n", .{tbl.composed_name}),
+                }
             }
         }
         if (net.entry) |e| {

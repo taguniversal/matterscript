@@ -16,12 +16,11 @@
 add[($a $b)(result<>)
   result<$a$b()>
 |
-  $a$b() : 00:0 01:1 02:2 03:3
-            10:1 11:2 12:3 13:4
-            20:2 21:3 22:4 23:5
-            30:3 31:4 32:5 33:6
+  $a$b() : generate {
+    clamp($a + $b, 0, 6)
+    inputs: $a 0..3, $b 0..3
+    output: 0..6
+  }
 ]
 
-// entry invocation: add 1 + 3, result flows into x<>
 add((1 3)(x<>))
-
