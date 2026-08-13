@@ -1,23 +1,18 @@
 // parser.zig
 // Recursive descent parser for the MatterScript Invocation Language
 //
-// Grammar:
-//   network      = definition* entry?
-//   definition   = name '[' dest-list source-list resolution '|' constants ']'
-//   dest-list    = '(' dest* ')'
-//   source-list  = '(' source* ')'
-//   dest         = '$' name
-//   source       = name '<>'
-//   resolution   = statement*
-//   statement    = source-fill | invocation
-//   source-fill  = name '<' expr '>'
-//   expr         = ('$' name)+ '()'?
-//   invocation   = name '(' '(' arg* ')' '(' output* ')' ')'
-//   constants    = table-def*
-//   table-def    = composition ':' (generate-block | entry+)
-//   generate     = 'generate' '{' expr 'inputs:' decls 'output:' range
-//                  ('const' name '=' int)* '}'
-//   entry        = key ':' value
+// Authoritative grammar (Fant 2007 p.203):
+//
+//   Invocation:  NAME($dest1 $dest2)(source1<> source2<>)
+//   Definition:  NAME[(source1<> source2<>)($dest1 $dest2) resolution : tables ]
+//
+//   In a definition:
+//     first list  = source places (name<>) — tokens flow IN from outside
+//     second list = destination places ($name) — tokens flow OUT to outside
+//
+//   In an invocation:
+//     first list  = destination args ($name or literal) — values passed to definition sources
+//     second list = source places (name<>) — outputs returned to caller
 
 const std = @import("std");
 const network = @import("network.zig");
@@ -63,8 +58,7 @@ const Parser = struct {
             if (c == ' ' or c == '\t' or c == '\n' or c == '\r') {
                 p.pos += 1;
             } else if (c == '/' and p.pos + 1 < p.src.len and
-                p.src[p.pos + 1] == '/')
-            {
+                       p.src[p.pos + 1] == '/') {
                 while (p.pos < p.src.len and p.src[p.pos] != '\n') p.pos += 1;
             } else break;
         }
@@ -78,10 +72,7 @@ const Parser = struct {
 
     fn tryConsume(p: *Parser, ch: u8) bool {
         p.skipWhitespaceAndComments();
-        if (p.peek() == ch) {
-            _ = p.advance();
-            return true;
-        }
+        if (p.peek() == ch) { _ = p.advance(); return true; }
         return false;
     }
 
@@ -90,7 +81,8 @@ const Parser = struct {
         const start = p.pos;
         while (p.pos < p.src.len) {
             const c = p.src[p.pos];
-            if (std.ascii.isAlphanumeric(c) or c == '_') p.pos += 1 else break;
+            if (std.ascii.isAlphanumeric(c) or c == '_') p.pos += 1
+            else break;
         }
         if (p.pos == start) return ParseError.ExpectedName;
         return p.src[start..p.pos];
@@ -118,14 +110,14 @@ const Parser = struct {
         return .{ .min = min, .max = max };
     }
 
-    /// Check if the next non-whitespace token is this keyword, without consuming.
     fn peekKeyword(p: *Parser, kw: []const u8) bool {
         const saved = p.pos;
         p.skipWhitespaceAndComments();
         const start = p.pos;
         while (p.pos < p.src.len) {
             const c = p.src[p.pos];
-            if (std.ascii.isAlphanumeric(c) or c == '_') p.pos += 1 else break;
+            if (std.ascii.isAlphanumeric(c) or c == '_') p.pos += 1
+            else break;
         }
         const word = p.src[start..p.pos];
         p.pos = saved;
@@ -136,14 +128,14 @@ const Parser = struct {
         p.skipWhitespaceAndComments();
         const name = try p.readName();
         if (!std.mem.eql(u8, name, kw)) return ParseError.ExpectedName;
-        _ = p.tryConsume(':'); // optional colon for inputs: output:
+        _ = p.tryConsume(':');
     }
 
     // ----------------------------------------------------------------
-    // IL expression parser (source fills, composition refs)
+    // IL source-fill expression parser (composition refs like $a$b())
     // ----------------------------------------------------------------
 
-    fn parseExpr(p: *Parser) ![]const u8 {
+    fn parseILExpr(p: *Parser) ![]const u8 {
         p.skipWhitespaceAndComments();
         const start = p.pos;
         while (p.peek() == '$') {
@@ -163,7 +155,10 @@ const Parser = struct {
     // Generate block expression parser (arithmetic AST)
     // ----------------------------------------------------------------
 
-    const GenExprError = ParseError || std.mem.Allocator.Error || error{ Overflow, InvalidCharacter };
+    const GenExprError = ParseError ||
+        std.mem.Allocator.Error ||
+        error{ Overflow, InvalidCharacter };
+
     fn parseGenExpr(p: *Parser) GenExprError!*network.Expr {
         return p.parseGenAddSub();
     }
@@ -172,7 +167,9 @@ const Parser = struct {
         var left = try p.parseGenMulDiv();
         while (true) {
             p.skipWhitespaceAndComments();
-            const op: network.BinaryOp = if (p.peek() == '+') .add else if (p.peek() == '-') .sub else break;
+            const op: network.BinaryOp = if (p.peek() == '+') .add
+                                          else if (p.peek() == '-') .sub
+                                          else break;
             _ = p.advance();
             const right = try p.parseGenMulDiv();
             const node = try p.allocator.create(network.Expr);
@@ -186,7 +183,9 @@ const Parser = struct {
         var left = try p.parseGenAtom();
         while (true) {
             p.skipWhitespaceAndComments();
-            const op: network.BinaryOp = if (p.peek() == '*') .mul else if (p.peek() == '/') .div else break;
+            const op: network.BinaryOp = if (p.peek() == '*') .mul
+                                          else if (p.peek() == '/') .div
+                                          else break;
             _ = p.advance();
             const right = try p.parseGenAtom();
             const node = try p.allocator.create(network.Expr);
@@ -199,7 +198,6 @@ const Parser = struct {
     fn parseGenAtom(p: *Parser) GenExprError!*network.Expr {
         p.skipWhitespaceAndComments();
 
-        // parenthesized expression
         if (p.peek() == '(') {
             _ = p.advance();
             const inner = try p.parseGenExpr();
@@ -207,7 +205,6 @@ const Parser = struct {
             return inner;
         }
 
-        // variable: $name
         if (p.peek() == '$') {
             _ = p.advance();
             const name = try p.readName();
@@ -216,7 +213,6 @@ const Parser = struct {
             return node;
         }
 
-        // negative integer
         if (p.peek() == '-') {
             const val = try p.readInteger();
             const node = try p.allocator.create(network.Expr);
@@ -224,7 +220,6 @@ const Parser = struct {
             return node;
         }
 
-        // positive integer
         if (p.pos < p.src.len and std.ascii.isDigit(p.src[p.pos])) {
             const val = try p.readInteger();
             const node = try p.allocator.create(network.Expr);
@@ -232,7 +227,6 @@ const Parser = struct {
             return node;
         }
 
-        // name — function call or constant reference
         const name = try p.readName();
         p.skipWhitespaceAndComments();
         if (p.peek() == '(') {
@@ -256,22 +250,19 @@ const Parser = struct {
             return node;
         }
 
-        // named constant
         const node = try p.allocator.create(network.Expr);
         node.* = .{ .kind = .constant, .name = name };
         return node;
     }
 
     // ----------------------------------------------------------------
-    // Generate block parser
+    // Generate block
     // ----------------------------------------------------------------
 
     fn parseGenerateBlock(p: *Parser) !network.GenerateBlock {
-        // consume 'generate'
         try p.consumeKeyword("generate");
         try p.expect('{');
 
-        // read expression source — everything up to 'inputs'
         const expr_start = p.pos;
         while (p.pos < p.src.len) {
             if (p.peekKeyword("inputs")) break;
@@ -279,11 +270,9 @@ const Parser = struct {
         }
         const expr_src = std.mem.trim(u8, p.src[expr_start..p.pos], " \t\n\r");
 
-        // parse the expression from extracted source
         var ep = Parser.init(p.allocator, expr_src);
         const expr = try ep.parseGenExpr();
 
-        // inputs: $name min..max, ...
         try p.consumeKeyword("inputs");
         var inputs: std.ArrayListUnmanaged(network.InputDecl) = .empty;
         while (true) {
@@ -295,19 +284,14 @@ const Parser = struct {
             p.skipWhitespaceAndComments();
             const range = try p.readRange();
             try inputs.append(p.allocator, .{
-                .name = name,
-                .min = range.min,
-                .max = range.max,
-            });
+                .name = name, .min = range.min, .max = range.max });
             p.skipWhitespaceAndComments();
             _ = p.tryConsume(',');
         }
 
-        // output: min..max
         try p.consumeKeyword("output");
         const out_range = try p.readRange();
 
-        // const name = value (zero or more)
         var constants: std.ArrayListUnmanaged(network.ConstDecl) = .empty;
         while (true) {
             p.skipWhitespaceAndComments();
@@ -332,57 +316,11 @@ const Parser = struct {
     }
 
     // ----------------------------------------------------------------
-    // Statement parsers
+    // Definition list parsers (corrected Fant order)
     // ----------------------------------------------------------------
 
-    fn parseSourceFill(p: *Parser, name: []const u8) !network.Statement {
-        _ = p.advance(); // consume <
-        const expr = try p.parseExpr();
-        try p.expect('>');
-        return network.Statement{ .fill = .{ .source_name = name, .expr = expr } };
-    }
-
-    fn parseInvocation(p: *Parser, name: []const u8) !network.Statement {
-        try p.expect('(');
-        try p.expect('(');
-        var args: std.ArrayListUnmanaged([]const u8) = .empty;
-        p.skipWhitespaceAndComments();
-        while (p.peek() != ')' and p.peek() != null) {
-            p.skipWhitespaceAndComments();
-            if (p.peek() == '$') {
-                const expr = try p.parseExpr();
-                try args.append(p.allocator, expr);
-            } else {
-                const lit = try p.readName();
-                try args.append(p.allocator, lit);
-            }
-            p.skipWhitespaceAndComments();
-        }
-        try p.expect(')');
-        const outputs = try p.parseSourceList();
-        try p.expect(')');
-        return network.Statement{ .invoke = .{
-            .name = name,
-            .args = try args.toOwnedSlice(p.allocator),
-            .outputs = outputs,
-        } };
-    }
-
-    fn parseDestList(p: *Parser) ![]const network.Place {
-        try p.expect('(');
-        var list: std.ArrayListUnmanaged(network.Place) = .empty;
-        p.skipWhitespaceAndComments();
-        while (p.peek() == '$') {
-            _ = p.advance();
-            const name = try p.readName();
-            try list.append(p.allocator, .{ .name = name, .kind = .destination });
-            p.skipWhitespaceAndComments();
-        }
-        try p.expect(')');
-        return list.toOwnedSlice(p.allocator);
-    }
-
-    fn parseSourceList(p: *Parser) ![]const network.Place {
+    /// Definition first list: (name<> ...) — source places, tokens flow IN
+    fn parseDefSourceList(p: *Parser) ![]const network.Place {
         try p.expect('(');
         var list: std.ArrayListUnmanaged(network.Place) = .empty;
         while (true) {
@@ -398,6 +336,81 @@ const Parser = struct {
         }
         try p.expect(')');
         return list.toOwnedSlice(p.allocator);
+    }
+
+    /// Definition second list: ($name ...) — destination places, tokens flow OUT
+    fn parseDefDestList(p: *Parser) ![]const network.Place {
+        try p.expect('(');
+        var list: std.ArrayListUnmanaged(network.Place) = .empty;
+        p.skipWhitespaceAndComments();
+        while (p.peek() == '$') {
+            _ = p.advance();
+            const name = try p.readName();
+            try list.append(p.allocator, .{ .name = name, .kind = .destination });
+            p.skipWhitespaceAndComments();
+        }
+        try p.expect(')');
+        return list.toOwnedSlice(p.allocator);
+    }
+
+    /// Invocation first list: ($name or literal ...) — args passed to definition sources
+    fn parseInvArgList(p: *Parser) ![]const []const u8 {
+        try p.expect('(');
+        var args: std.ArrayListUnmanaged([]const u8) = .empty;
+        p.skipWhitespaceAndComments();
+        while (p.peek() != ')' and p.peek() != null) {
+            p.skipWhitespaceAndComments();
+            if (p.peek() == '$') {
+                const expr = try p.parseILExpr();
+                try args.append(p.allocator, expr);
+            } else {
+                const lit = try p.readName();
+                try args.append(p.allocator, lit);
+            }
+            p.skipWhitespaceAndComments();
+        }
+        try p.expect(')');
+        return args.toOwnedSlice(p.allocator);
+    }
+
+    /// Invocation second list: (name<> ...) — outputs returned to caller
+    fn parseInvOutputList(p: *Parser) ![]const network.Place {
+        try p.expect('(');
+        var list: std.ArrayListUnmanaged(network.Place) = .empty;
+        while (true) {
+            p.skipWhitespaceAndComments();
+            const c = p.peek() orelse break;
+            if (c == ')') break;
+            const name = try p.readName();
+            p.skipWhitespaceAndComments();
+            if (p.peek() != '<') return ParseError.ExpectedToken;
+            _ = p.advance();
+            try p.expect('>');
+            try list.append(p.allocator, .{ .name = name, .kind = .source });
+        }
+        try p.expect(')');
+        return list.toOwnedSlice(p.allocator);
+    }
+
+    // ----------------------------------------------------------------
+    // Resolution area
+    // ----------------------------------------------------------------
+
+    fn parseSourceFill(p: *Parser, name: []const u8) !network.Statement {
+        _ = p.advance(); // consume <
+        const expr = try p.parseILExpr();
+        try p.expect('>');
+        return network.Statement{ .fill = .{ .dest_name = name, .expr = expr } };
+    }
+
+    fn parseInvocation(p: *Parser, name: []const u8) !network.Statement {
+        const args = try p.parseInvArgList();
+        const outputs = try p.parseInvOutputList();
+        return network.Statement{ .invoke = .{
+            .name = name,
+            .args = args,
+            .outputs = outputs,
+        } };
     }
 
     fn parseResolution(p: *Parser) ![]const network.Statement {
@@ -418,6 +431,10 @@ const Parser = struct {
         return stmts.toOwnedSlice(p.allocator);
     }
 
+    // ----------------------------------------------------------------
+    // Constants
+    // ----------------------------------------------------------------
+
     fn parseConstants(p: *Parser) ![]const network.TableDef {
         var tables: std.ArrayListUnmanaged(network.TableDef) = .empty;
         while (true) {
@@ -426,7 +443,6 @@ const Parser = struct {
             if (c == ']') break;
             if (c != '$') break;
 
-            // read composed name: $a$b()
             const start = p.pos;
             while (p.peek() == '$') {
                 _ = p.advance();
@@ -438,7 +454,6 @@ const Parser = struct {
             try p.expect(':');
             p.skipWhitespaceAndComments();
 
-            // decide: generate block or explicit entries
             if (p.peekKeyword("generate")) {
                 const gen = try p.parseGenerateBlock();
                 try tables.append(p.allocator, .{
@@ -446,7 +461,6 @@ const Parser = struct {
                     .kind = .{ .generate = gen },
                 });
             } else {
-                // explicit key:value pairs
                 var entries: std.ArrayListUnmanaged(network.TableEntry) = .empty;
                 while (p.pos < p.src.len) {
                     p.skipWhitespaceAndComments();
@@ -466,51 +480,46 @@ const Parser = struct {
         return tables.toOwnedSlice(p.allocator);
     }
 
+    // ----------------------------------------------------------------
+    // Definition and entry invocation
+    // ----------------------------------------------------------------
+
     fn parseDefinition(p: *Parser) !network.Definition {
         const name = try p.readName();
         try p.expect('[');
-        const destinations = try p.parseDestList();
-        const sources = try p.parseSourceList();
-        const resolution = try p.parseResolution();
+
+        // Fant order: sources first (name<>), then destinations ($name)
+        const sources      = try p.parseDefSourceList();
+        const destinations = try p.parseDefDestList();
+        const resolution   = try p.parseResolution();
         _ = p.tryConsume('|');
-        const constants = try p.parseConstants();
+        const constants    = try p.parseConstants();
         try p.expect(']');
+
         return network.Definition{
-            .name = name,
+            .name         = name,
+            .sources      = sources,
             .destinations = destinations,
-            .sources = sources,
-            .resolution = resolution,
-            .constants = constants,
+            .resolution   = resolution,
+            .constants    = constants,
         };
     }
 
-    fn parseEntry(p: *Parser, name: []const u8) !network.EntryInvocation {
-        try p.expect('(');
-        try p.expect('(');
-        var args: std.ArrayListUnmanaged([]const u8) = .empty;
-        p.skipWhitespaceAndComments();
-        while (p.peek() != ')' and p.peek() != null) {
-            p.skipWhitespaceAndComments();
-            if (p.peek() == '$') {
-                _ = p.advance();
-                const n = try p.readName();
-                try args.append(p.allocator, n);
-            } else {
-                const lit = try p.readName();
-                try args.append(p.allocator, lit);
-            }
-            p.skipWhitespaceAndComments();
-        }
-        try p.expect(')');
-        const outputs = try p.parseSourceList();
-        try p.expect(')');
+    fn parseEntryInvocation(p: *Parser, name: []const u8) !network.EntryInvocation {
+        // Fant invocation order: args first ($name/literal), outputs second (name<>)
+        const args    = try p.parseInvArgList();
+        const outputs = try p.parseInvOutputList();
         return network.EntryInvocation{
-            .name = name,
-            .args = try args.toOwnedSlice(p.allocator),
+            .name    = name,
+            .args    = args,
             .outputs = outputs,
         };
     }
 };
+
+// ----------------------------------------------------------------
+// Public API
+// ----------------------------------------------------------------
 
 pub fn parse(allocator: std.mem.Allocator, source: []const u8) !network.Network {
     var p = Parser.init(allocator, source);
@@ -531,13 +540,13 @@ pub fn parse(allocator: std.mem.Allocator, source: []const u8) !network.Network 
             const def = try p.parseDefinition();
             try definitions.append(allocator, def);
         } else if (next == '(') {
-            entry = try p.parseEntry(name);
+            entry = try p.parseEntryInvocation(name);
             break;
         } else return error.UnexpectedChar;
     }
 
     return network.Network{
         .definitions = try definitions.toOwnedSlice(allocator),
-        .entry = entry,
+        .entry       = entry,
     };
 }

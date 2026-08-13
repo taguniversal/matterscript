@@ -1,2 +1,10 @@
-.zig-cache/
+# 1. Ignore all generated asset subdirectories across all literate documents
+*.assets/generated/
+
+# 2. Ignore compiler build directories
 zig-out/
+.zig-cache/
+
+# 3. Ignore simulation outputs
+*.vcd
+*.fst

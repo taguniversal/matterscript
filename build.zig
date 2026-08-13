@@ -10,7 +10,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const mkrand_mod = b.addModule("mkrand", .{
-        .root_source_file = b.path("../../mkrand/src/mkrand.zig"),
+        .root_source_file = b.path("../mkrand/src/mkrand.zig"),
         .target = target,
     });
 

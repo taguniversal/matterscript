@@ -1,6 +1,10 @@
 // export_vhdl.zig
 // VHDL emitter for MatterScript Invocation Language networks
 //
+// Port mapping (Fant authoritative grammar):
+//   Definition source place  (name<>) → VHDL input  port  (tokens flow IN)
+//   Definition destination place ($name) → VHDL output port (tokens flow OUT)
+//
 // Signal encoding:
 //   signal[7:0] = { data[6:0], valid }
 //   signal[0]   = valid bit  (1=DATA, 0=NULL)
@@ -59,23 +63,29 @@ fn writeDefinition(
     try writer.print("entity {s} is\n  port(\n", .{def.name});
     try writer.print("    clk : in  std_logic;\n", .{});
     try writer.print("    rst : in  std_logic;\n", .{});
-    for (def.destinations) |dest| {
+
+    // sources → inputs (tokens flow IN to the definition)
+    for (def.sources) |src| {
         try writer.print(
-            "    {s} : in  std_logic_vector({d} downto 0);  -- destination place\n",
-            .{ dest.name, SIGNAL_WIDTH - 1 });
+            "    {s} : in  std_logic_vector({d} downto 0);  -- source place (input)\n",
+            .{ src.name, SIGNAL_WIDTH - 1 });
     }
-    for (def.sources, 0..) |src, i| {
-        const last = i == def.sources.len - 1;
+
+    // destinations → outputs (tokens flow OUT of the definition)
+    for (def.destinations, 0..) |dest, i| {
+        const last = i == def.destinations.len - 1;
         try writer.print(
-            "    {s} : out std_logic_vector({d} downto 0){s}  -- source place\n",
-            .{ src.name, SIGNAL_WIDTH - 1, if (last) "" else ";" });
+            "    {s} : out std_logic_vector({d} downto 0){s}  -- destination place (output)\n",
+            .{ dest.name, SIGNAL_WIDTH - 1, if (last) "" else ";" });
     }
     try writer.print("  );\nend {s};\n\n", .{def.name});
 
-    // architecture header
+    // architecture
     try writer.print("architecture rtl of {s} is\n", .{def.name});
-    for (def.destinations) |dest| {
-        try writer.print("  signal {s}_valid : std_logic;\n", .{dest.name});
+
+    // valid signals — one per source (input)
+    for (def.sources) |src| {
+        try writer.print("  signal {s}_valid : std_logic;\n", .{src.name});
     }
     try writer.print("  signal complete   : std_logic;\n", .{});
 
@@ -83,7 +93,7 @@ fn writeDefinition(
     for (def.constants) |tbl| {
         const tbl_id = try sanitizeName(allocator, tbl.composed_name);
         defer allocator.free(tbl_id);
-        const key_bits = countDestinations(tbl.composed_name) * DATA_WIDTH;
+        const key_bits = countSources(tbl.composed_name) * DATA_WIDTH;
         const val_bits = try tableValueWidth(allocator, tbl);
         try writer.print(
             "  signal {s}_key   : std_logic_vector({d} downto 0);\n",
@@ -96,18 +106,18 @@ fn writeDefinition(
 
     try writer.print("begin\n\n", .{});
 
-    // valid extraction
-    try writer.print("  -- extract valid bits from destination places\n", .{});
-    for (def.destinations) |dest| {
-        try writer.print("  {s}_valid <= {s}(0);\n", .{ dest.name, dest.name });
+    // valid extraction from source places (inputs)
+    try writer.print("  -- extract valid bits from source places (inputs)\n", .{});
+    for (def.sources) |src| {
+        try writer.print("  {s}_valid <= {s}(0);\n", .{ src.name, src.name });
     }
 
-    // completeness
-    try writer.print("\n  -- complete when all destinations are valid\n", .{});
+    // completeness: AND of all source valids
+    try writer.print("\n  -- complete when all source places are valid\n", .{});
     try writer.print("  complete <= ", .{});
-    for (def.destinations, 0..) |dest, i| {
+    for (def.sources, 0..) |src, i| {
         if (i > 0) try writer.print(" and ", .{});
-        try writer.print("{s}_valid", .{dest.name});
+        try writer.print("{s}_valid", .{src.name});
     }
     try writer.print(";\n", .{});
 
@@ -125,9 +135,9 @@ fn writeDefinition(
                 i += 1;
                 const start = i;
                 while (i < cn.len and cn[i] != '$' and cn[i] != '(') i += 1;
-                const dname = cn[start..i];
+                const sname = cn[start..i];
                 if (!first) try writer.print(" & ", .{});
-                try writer.print("{s}(7 downto 1)", .{dname});
+                try writer.print("{s}(7 downto 1)", .{sname});
                 first = false;
             } else i += 1;
         }
@@ -154,8 +164,8 @@ fn writeDefinition(
                 for (entries) |entry| {
                     var key_pos: usize = 0;
                     for (entry.key) |ch| {
-                        const digit_val: u64 = ch - '0';
-                        const seg = binStr(key_buf[key_pos..], digit_val, DATA_WIDTH);
+                        const dv: u64 = ch - '0';
+                        const seg = binStr(key_buf[key_pos..], dv, DATA_WIDTH);
                         key_pos += seg.len;
                     }
                     const key_str = key_buf[0..key_pos];
@@ -167,14 +177,11 @@ fn writeDefinition(
                 }
             },
             .generate => |gen| {
-                // enumerate all input combinations at compile time
                 const entries = try enumerateGenerate(allocator, gen);
                 defer allocator.free(entries);
-
                 var key_buf: [128]u8 = undefined;
                 var val_buf: [64]u8 = undefined;
                 for (entries) |entry| {
-                    // key: encode each input value as DATA_WIDTH bits
                     var key_pos: usize = 0;
                     for (entry.input_values) |v| {
                         const seg = binStr(key_buf[key_pos..], @intCast(v), DATA_WIDTH);
@@ -193,8 +200,8 @@ fn writeDefinition(
         try writer.print("      end case;\n    end if;\n  end process;\n", .{});
     }
 
-    // source fills
-    try writer.print("\n  -- source fills\n", .{});
+    // destination fills (outputs)
+    try writer.print("\n  -- destination fills (outputs)\n", .{});
     for (def.resolution) |stmt| {
         switch (stmt) {
             .fill => |f| {
@@ -202,7 +209,7 @@ fn writeDefinition(
                 defer allocator.free(tbl_id);
                 try writer.print(
                     "  {s} <= {s}_data & {s}_valid;\n",
-                    .{ f.source_name, tbl_id, tbl_id });
+                    .{ f.dest_name, tbl_id, tbl_id });
             },
             .invoke => |inv| {
                 try writer.print(
@@ -227,7 +234,6 @@ fn enumerateGenerate(
     allocator: std.mem.Allocator,
     gen: network.GenerateBlock,
 ) ![]const GeneratedEntry {
-    // build constant map
     var const_map = std.StringHashMap(i64).init(allocator);
     defer const_map.deinit();
     for (gen.constants) |c| try const_map.put(c.name, c.value);
@@ -236,7 +242,6 @@ fn enumerateGenerate(
     var var_map = std.StringHashMap(i64).init(allocator);
     defer var_map.deinit();
 
-    // track current values for key building
     const current_vals = try allocator.alloc(i64, gen.inputs.len);
     defer allocator.free(current_vals);
 
@@ -267,7 +272,6 @@ fn enumerateRecursive(
         });
         return;
     }
-
     const inp = inputs[depth];
     var v = inp.min;
     while (v <= inp.max) : (v += 1) {
@@ -330,7 +334,8 @@ fn sanitizeName(allocator: std.mem.Allocator, composed: []const u8) ![]u8 {
     return buf.toOwnedSlice(allocator);
 }
 
-fn countDestinations(composed: []const u8) usize {
+// count $ signs in composed name to determine key width
+fn countSources(composed: []const u8) usize {
     var count: usize = 0;
     for (composed) |c| if (c == '$') { count += 1; };
     return count;
@@ -346,10 +351,8 @@ fn tableValueWidth(allocator: std.mem.Allocator, tbl: network.TableDef) !usize {
             }
         },
         .generate => |gen| {
-            // compute max possible output from the range
-            const range_max: u64 = @intCast(@max(0, gen.output_max));
-            max_val = range_max;
             _ = allocator;
+            max_val = @intCast(@max(0, gen.output_max));
         },
     }
     if (max_val == 0) return 1;

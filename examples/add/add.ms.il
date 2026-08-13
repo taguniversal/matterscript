@@ -13,7 +13,7 @@
 // Completeness: result<> remains NULL until $a$b() resolves.
 // If either $a or $b is NULL the composition never fires — correct NCL behavior.
 
-add[($a $b)(result<>)
+add[(a<> b<>)($result)
   result<$a$b()>
 |
   $a$b() : generate {
