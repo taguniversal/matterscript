@@ -4,6 +4,27 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // ------------------------------------------------------------------------
+    // 1. Build the Tangle Helper Executable
+    // ------------------------------------------------------------------------
+    const tangle_exe = b.addExecutable(.{
+        .name = "tangle",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/tangle.zig"),
+            .target = b.graph.host, // Compile for the host machine running the build
+            .optimize = .Debug,
+        }),
+    });
+
+    // Run the tangle executable as a build step
+    const run_tangle = b.addRunArtifact(tangle_exe);
+    run_tangle.addArgs(&[_][]const u8{ "--input", "docs/", "--output", "src/generated/" });
+
+    // Explicit step for `zig build tangle`
+    const tangle_step = b.step("tangle", "Extract code blocks from documentation");
+    tangle_step.dependOn(&run_tangle.step);
+
+
     const mod = b.addModule("matterscript", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -29,7 +50,28 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    // CRITICAL: Ensure tangle runs BEFORE compiling the main program
+    exe.step.dependOn(&run_tangle.step);
+
     b.installArtifact(exe);
+
+    // ------------------------------------------------------------------------
+    // 3. Build the Weave Helper Executable
+    // ------------------------------------------------------------------------
+    const weave_exe = b.addExecutable(.{
+    .name = "weave",
+    .root_module = b.createModule(.{
+        .root_source_file = b.path("tools/weave.zig"),
+        .target = b.graph.host,
+        .optimize = .Debug,
+    }),
+    });
+
+    const run_weave = b.addRunArtifact(weave_exe);
+    run_weave.addArgs(&[_][]const u8{ "--docs-dir", "docs/", "--output-dir", "dist/docs/" });
+
+    const weave_step = b.step("weave", "Build documentation and visual assets");
+    weave_step.dependOn(&run_weave.step);
 
     const run_step = b.step("run", "Run the app");
     const run_cmd = b.addRunArtifact(exe);

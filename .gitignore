@@ -1,5 +1,6 @@
 # 1. Ignore all generated asset subdirectories across all literate documents
 *.assets/generated/
+src/generated/
 
 # 2. Ignore compiler build directories
 zig-out/
