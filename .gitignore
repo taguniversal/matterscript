@@ -9,3 +9,4 @@ zig-out/
 # 3. Ignore simulation outputs
 *.vcd
 *.fst
+.openmono/
