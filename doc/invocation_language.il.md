@@ -242,3 +242,27 @@ Note that the first source place of the source list of the invocation of FULLADD
 There are three contained definitions. The AND and OR definitions use a different set of value transform rule definitions with the same set of names. Each set of value transform rules is isolated within a definition, so there is no ambiguity of name correspondence.
 
 Figure 12.8 shows the associations from the source list of the definition to destination places within the expression at the place of resolution. The expression is identical to Example 12.19 except that some invocations have been doubled up on a single line. Figure 12.9 shows the associations of resolution flow within the resolution expression and the flow of the results to SUM and CARRY.
+
+## Example 12.19
+```
+inv FULLADD(0, 1, 0)(< > CARRYOUT < >) . . . $CARRYOUT
+
+def FULLADD[(X< >Y< >C< >) ($SUM $CARRY)
+NOT($X)(OP1< >)
+AND($OP1 $Y)(OP4< >)
+NOT($Y)(OP2< >)
+AND($X $OP2)(OP3< >)
+OR($OP4 $OP3)(FIRSTSUM< >)
+NOT($FIRSTSUM)(OP6< >)
+AND($C $OP6)(OP7< >)
+NOT($C)(OP5< >)
+AND($OP5 $FIRSTSUM)(OP8< >)
+OR($OP7 $OP8)(SUM< >)
+AND($X $Y)(OP10< >)
+AND($C $FIRSTSUM)(OP9< >)
+OR($OP10 $OP9)(CARRY< >)
+: OR[(A< > B< >)($res) res<$A$B()> :00[0] 01[1] 10[1] 11[1] ]
+  AND[(A< > B< >)($res) res<$A$B()> :00[0] 01[0] 10[0] 11[1] ]
+  NOT[(A< >)($res) res<$A()> :1[0] 0[1] ] ]
+```
+
