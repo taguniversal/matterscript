@@ -8,4 +8,4 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+An invocation associates destination places in a destination list and source places in a source list. Each place and each list represents a boundary of completeness behavior. Content flow from boundary to boundary must be coordinated both within an invocation and between invocations. The completeness boundaries of the invocation are reflected to a definition, as shown in Figure 12.19, that contains the expression between these two boundaries in its place of resolution. The expression inside the definition will also contain invocations with boundaries forming a hierarchical structure of composition boundaries, which expresses rich possibilities of partitioning and coordinating.

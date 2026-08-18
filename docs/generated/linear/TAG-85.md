@@ -8,4 +8,10 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+Large domains of mutually exclusive differentness are expressed with large sets of unique names. For a pure association expression, each unique place must have a correspondence name. For a pure value expression, the character set of the language will rapidly run out of unique characters and the values will need to be represented as unique names. Proteins, for instance, might be represented with their fully spelled out protein names.
+
+The discussion will focus on association expression. The simplest expression of a large domain of differentness is a large collection of places with unique association relationships. Each place is an appreciation of an interaction of differentnesses.
+
+Figure 12.26 illustrates expression of unique places as appreciation of interactions of differentnesses. It shows both the graphical expression and the language expression of the minterm form of a pure association expression for a binary full-adder. In the language expression there are eight invocations with just a destination list. Each destination list is a unique combination of associations to places in the source list. Given the mutual exclusivity relationships of the places in the source list, only one invocation destination list will become complete, thus enabling its invocation. The enabled invocation will invoke its named definition and generate the indicated output behavior.
+
+There can be large mutually exclusive input domains of differentness whose interaction produces a very large mutually exclusive domain of appreciation differentnesses. A large domain of differentness can be expressed by expanding the mutually exclusive input domains. Figure 12.27 shows an expression with two large input domains and a very large minterm. There might be K mutually exclusive input domains each with L possibilities resulting in L^K possible appreciation minterm places. Each appreciation can enable a behavior appropriate to the appreciated name. The names are shown in the example as a progression of place-value names, and while there may be convenient aspects to expressing the names as place-value numbers, there is no need that the names be ordinal or cardinal or be otherwise related beyond each being unique.

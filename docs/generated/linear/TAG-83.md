@@ -8,4 +8,8 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+Within an invocation the content of the destination list ultimately flows to the content of the source list, and the completeness of the source list is coordinated with the completeness of the destination list. Each destination place in the destination list will associate with and coordinate with a source place in the greater expression. Each source place in the source list will associate with and coordinate with one or more destination places in the greater expression. Within the invocation the source list as a whole must coordinate with the destination list as a whole. 
+
+Each boundary must acknowledge all the places that contribute to its content and must be acknowledged by all the places to which it contributes. Acknowledge relationships for the example of Figure 12.19 are shown in Figure 12.24. When the four destination places of the destination list are complete, the destination list acknowledges the four source places. When the two source places of the source list are complete, the source list acknowledges the destination list. When the three destination places associated with the two source places of the source list are complete, each acknowledges the source list. When acknowledges from all destination places are received, the source list of the invocation is acknowledged.
+
+​All boundaries between explicitly coordinated boundaries are coordinated with the completeness criterion. All boundaries above explicitly coordinated boundaries are coordinated in terms of the explicitly coordinated boundaries. These coordination relationships are discussed in Section 7.2

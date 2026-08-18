@@ -8,4 +8,4 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+Coordination can also be added at a chosen hierarchical level with a time interval, a clock and clocked registers. However, the timing behavior of the encompassed expression must then be guaranteed to be within the timing constraints of the clock and the behavior of the registers. Figure 12.25 shows the four-bit adder coordinated with clocked registers.
