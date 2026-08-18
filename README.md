@@ -21,6 +21,7 @@ Matter
 ```
 
 ---
+[Linear Documentation](docs/generated/linear/index.md)
 
 # Current Status
 

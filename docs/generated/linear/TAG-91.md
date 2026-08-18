@@ -8,4 +8,8 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+The binary Linear Feedback Shift Register (LFSR) shown in Figure 12.33 is a complex cyclic association structure of invocations of XORs and invocations of buffers. Each buffer is initialized with 0 or 1. The expression of the LFSR is the association structure of invocations of XOR and BUF. In the graphic expression, the output of each function is named with a letter. In the string expression, the output of each invocation is named with the corresponding letter. Any number of invocations can associate with any source place of the LFSR from anywhere in the greater expression. [TAG-135](https://linear.app/taguniversal/issue/TAG-135/example-1247-linear-feedback-shift-register) shows three external invocations associating with the LFSR.
+
+The LFSR could be isolated in a definition, but that would limit its accessibility. The LFSR is a wavefront source. The initialized values continually cycle around the rings of the LFSR, producing a steady stream of wavefronts to all associated destination places. Residing in the midst of a large expression, it can send wavefronts to many places simultaneously. 
+
+.

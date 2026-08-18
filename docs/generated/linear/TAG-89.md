@@ -8,4 +8,8 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+The code detector of Example 12.45 detects the occurrence of code sequence 0010111 in a continuous stream of bits. It is a state machine that enters a particular state when the sequence is detected. The invocation of code, receives the current state and the next bit in the stream, invokes the definition of code, and receives in return the next state and the detect condition. The next state in the source list associates with current state in the destination list. When the next bit arrives, the definition is invoked with the current state and the next bit. The expression is initialized by setting the content of state<> to S0. The behavior of the state machine is presented in Figure 12.31 as a function table and as a state transition graph.
+
+The code detector always asserts a yes or a no for the detect condition. A response filter expression, such as Example 12.16 shown earlier in this chapter, can receive the detect condition and only pass on the yes condition
+
+.

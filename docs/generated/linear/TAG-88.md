@@ -8,4 +8,6 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+[TAG-137](https://linear.app/taguniversal/issue/TAG-137/example-1241-four-value-sequencer) is a simple expression that continually rotates through four values. Each time it is invoked, it returns the next value. The value is maintained in the invocation itself in the feedback association from the source list to the destination list. The value is initialized by setting the content of value<> to 0. Example 12.42 is a pure association version of a value sequencer. Example 12.43 is a pure value version of a value sequencer.
+
+​The invocation maintaining the value can be inside the definition, as in Example 12.44. In this case the invocation does not send the current value but just requests the next value. The internal memory value sequencer is a wavefront source continually presenting successive wavefronts to the place of the invocation.
