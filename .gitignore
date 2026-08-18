@@ -13,6 +13,3 @@ zig-out/
 *.vcd
 *.fst
 .openmono/
-
-# Ignore generated docs
-docs/generated/
