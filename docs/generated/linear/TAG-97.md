@@ -22,7 +22,7 @@ Invocation invocationname(destination list)(source list)
 
 ## The Definition 
 
-The definition expresses the network of associations between the boundaries of the associated invocation. A definition is a named syntax structure delimited by brackets containing a source list delimited by parenthesis, a destination list delimited by parenthesis, a place of resolution terminated by a colon followed by a place of contained definitions. Definitionname is the correspondence name of the definition. The source list is the input for the definition through which a formed name is received, and the destination list is the output for the definition through which the results are delivered. The place of resolution is best understood as a bounded pure value expression that can contain association expressions. definition
+The definition expresses the network of associations between the boundaries of the associated invocation. A definition is a named syntax structure delimited by brackets containing a source list delimited by parenthesis, a destination list delimited by parenthesis, a place of resolution terminated by a colon followed by a place of contained definitions. Definitionname is the correspondence name of the definition. The source list is the input for the definition through which a formed name is received, and the destination list is the output for the definition through which the results are delivered. The place of resolution is best understood as a bounded pure value expression that can contain association expressions. 
 
 ```
 definitionname[(source list)(destination list) 

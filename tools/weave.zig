@@ -14,6 +14,8 @@ const SOFTWARE_NOTES_MARKER = "## Software Notes";
 const REFERENCE_MARKER = "## Reference";
 const NOT_YET_WRITTEN = "_(not yet written)_";
 
+const IMAGE_DIR = "docs/generated/linear/images";
+
 const IssueSections = struct {
     software_notes: []const u8,
     reference: []const u8,
@@ -35,6 +37,123 @@ const SortEntry = struct {
     identifier: []const u8,
     title: []const u8,
 };
+
+/// Scan markdown for ![label](https://uploads.linear.app/...) image
+/// links, download each (authenticated) into a shared pool keyed by
+/// the alt-text label, and rewrite the markdown to point at the local
+/// relative path — so the same figure referenced from multiple issues
+/// is only ever fetched/stored once, and generated docs render
+/// standalone on GitHub without a Linear session.
+///
+/// Convention: when pasting an image into a Linear issue description,
+/// set its alt text to the figure's stable label (e.g. "fig_12_1") —
+/// that's what becomes the pool key and local filename.
+fn localizeImages(
+    allocator: std.mem.Allocator,
+    io: std.Io,
+    client: *std.http.Client,
+    api_key: []const u8,
+    markdown: []const u8,
+) ![]const u8 {
+    var out: std.ArrayListUnmanaged(u8) = .empty;
+    var pos: usize = 0;
+
+    while (std.mem.indexOfPos(u8, markdown, pos, "![")) |bang_idx| {
+        // copy everything up to this point verbatim
+        try out.appendSlice(allocator, markdown[pos..bang_idx]);
+
+        const label_start = bang_idx + 2;
+        const label_end = std.mem.indexOfPos(u8, markdown, label_start, "](") orelse {
+            // malformed — bail, copy rest verbatim
+            try out.appendSlice(allocator, markdown[bang_idx..]);
+            pos = markdown.len;
+            break;
+        };
+        const label = markdown[label_start..label_end];
+
+        const url_start = label_end + 2;
+        const url_end = std.mem.indexOfPos(u8, markdown, url_start, ")") orelse {
+            try out.appendSlice(allocator, markdown[bang_idx..]);
+            pos = markdown.len;
+            break;
+        };
+        const url = markdown[url_start..url_end];
+
+        if (std.mem.indexOf(u8, url, "uploads.linear.app") != null) {
+            const ext = std.fs.path.extension(label); // e.g. ".jpg" from "fig_12_1.jpg"
+            const stem = label[0 .. label.len - ext.len]; // "fig_12_1"
+            const local_path = try std.fmt.allocPrint(allocator, "{s}/{s}{s}", .{ IMAGE_DIR, stem, ext });
+
+            // fetch once per label — skip if already downloaded this run
+            const already_exists = fileExists(io, local_path);
+            if (!already_exists) {
+                try downloadImage(allocator, io, client, api_key, url, local_path);
+                std.debug.print("  fetched image: {s}\n", .{label});
+            }
+
+            const rel_path = try std.fmt.allocPrint(allocator, "./images/{s}{s}", .{ label, ext });
+            try out.appendSlice(allocator, "![");
+            try out.appendSlice(allocator, label);
+            try out.appendSlice(allocator, "](");
+            try out.appendSlice(allocator, rel_path);
+            try out.appendSlice(allocator, ")");
+        } else {
+            // not a Linear-hosted image — leave untouched
+            try out.appendSlice(allocator, markdown[bang_idx .. url_end + 1]);
+        }
+
+        pos = url_end + 1;
+    }
+
+    try out.appendSlice(allocator, markdown[pos..]);
+    return out.toOwnedSlice(allocator);
+}
+
+
+fn fileExists(io: std.Io, path: []const u8) bool {
+    var file = std.Io.Dir.cwd().openFile(io, path, .{}) catch return false;
+    file.close(io);
+    return true;
+}
+
+fn downloadImage(
+    allocator: std.mem.Allocator,
+    io: std.Io,
+    client: *std.http.Client,
+    api_key: []const u8,
+    url: []const u8,
+    local_path: []const u8,
+) !void {
+    var body: std.ArrayList(u8) = .empty;
+    defer body.deinit(allocator);
+    var response_writer: std.Io.Writer.Allocating = .fromArrayList(allocator, &body);
+
+    const result = client.fetch(.{
+        .location = .{ .url = url },
+        .method = .GET,
+        .extra_headers = &.{
+            .{ .name = "Authorization", .value = api_key },
+        },
+        .response_writer = &response_writer.writer,
+    }) catch |err| {
+        std.debug.print("  image fetch failed for {s}: {s}\n", .{ url, @errorName(err) });
+        return;
+    };
+
+    if (result.status != .ok) {
+        std.debug.print("  image fetch returned status {d} for {s}\n", .{ @intFromEnum(result.status), url });
+        return;
+    }
+
+    body = response_writer.toArrayList();
+
+    var file = try std.Io.Dir.cwd().createFile(io, local_path, .{});
+    defer file.close(io);
+    var buffer: [8192]u8 = undefined;
+    var writer = file.writer(io, &buffer);
+    try writer.interface.writeAll(body.items);
+    try writer.interface.flush();
+}
 
 /// Parse a leading dotted numeric prefix off a title, e.g.
 /// "12.5.3 Conditional Completeness" -> { parts = [12, 5, 3] }.
@@ -106,6 +225,11 @@ pub fn main(init: std.process.Init) !void {
     const args = try init.minimal.args.toSlice(arena);
     const io = init.io;
 
+    // Single HTTP client shared across the GraphQL fetch and any
+    // subsequent image downloads — avoids reconnecting per request.
+    var client: std.http.Client = .{ .allocator = arena, .io = io };
+    defer client.deinit();
+
     std.debug.print("Weaving documentation and visual assets...\n", .{});
     std.debug.print("  args: {d}\n", .{args.len});
 
@@ -125,7 +249,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // --- 3. Fetch issues ---
-    const issues = try fetchIssues(arena, io, api_key, project_name);
+    const issues = try fetchIssues(arena, &client, api_key, project_name);
     std.debug.print("  fetched {d} issues for project '{s}'\n", .{ issues.len, project_name });
 
     // --- 4. Bake each issue's Reference section into committed markdown ---
@@ -135,9 +259,12 @@ pub fn main(init: std.process.Init) !void {
     try makeDirRecursive(io, "docs");
     try makeDirRecursive(io, "docs/generated");
     try makeDirRecursive(io, "docs/generated/linear");
+    try makeDirRecursive(io, "docs/generated/linear/images");
 
     for (issues) |issue| {
-        const sections = splitSections(issue.description);
+        var sections = splitSections(issue.description);
+        sections.software_notes = try localizeImages(arena, io, &client, api_key, sections.software_notes);
+        sections.reference = try localizeImages(arena, io, &client, api_key, sections.reference);
         const out_path = try std.fmt.allocPrint(
             arena,
             "docs/generated/linear/{s}.md",
@@ -190,7 +317,7 @@ pub fn main(init: std.process.Init) !void {
 /// Fetch all issues for the named project via Linear's GraphQL API.
 fn fetchIssues(
     allocator: std.mem.Allocator,
-    io: std.Io,
+    client: *std.http.Client,
     api_key: []const u8,
     project_name: []const u8,
 ) ![]const LinearIssue {
@@ -200,11 +327,6 @@ fn fetchIssues(
     ,
         .{project_name},
     );
-
-    // zig-dev-0.17: Client now requires an .io field (HTTP was reworked
-    // to depend only on std.Io streams, not networking directly).
-    var client: std.http.Client = .{ .allocator = allocator, .io = io };
-    defer client.deinit();
 
     // response_storage is gone — responses now stream into a caller-
     // supplied writer. Wrap an ArrayList via Writer.Allocating so we

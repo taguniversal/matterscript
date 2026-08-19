@@ -8,4 +8,18 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+The dialogue is identical to the classic four-phase handshake protocol, which is typically presented, as shown in Figure 12.22, as two signals with interlocking behavior coordinating the transfer of content between two places. Only the send behaviors are explicitly represented by the signals, which are labeled with the behavior names. The receive behaviors are implied by the send behaviors and are usually illustrated with arrows. "Content" implies that the request was received. "Thanks" implies that the content was received. "Welcome" implies that the "thanks" was received. "Request" implies that the welcome was received. 
+
+Protocol Breakdown
+
+In asynchronous digital design and null convention logic (NCL), a standard return-to-zero (RTZ) four-phase handshake coordinates data transfer between a sender (requestor) and receiver (acknowledger) across four distinct signal transitions:
+
+ * Phase 1 (Data Present / Request Asserted): The sender places valid data onto the bus and drives the request signal high (\text{Req} \rightarrow 1).
+
+ * Phase 2 (Acknowledge Asserted): The receiver detects valid data, consumes or stores it, and responds by driving the acknowledge signal high (\text{Ack} \rightarrow 1).
+
+ * Phase 3 (Data Cleared / Request Deasserted): The sender sees the high acknowledge, withdraws the data (returns the bus to a NULL/spacer state), and drops the request line (\text{Req} \rightarrow 0).
+
+ * Phase 4 (Acknowledge Deasserted): The receiver detects the NULL state and low request line, resetting the acknowledge signal low (\text{Ack} \rightarrow 0).
+
+Once Phase 4 completes, the channel returns to its initial idle state, ready for the next data transaction cycle.

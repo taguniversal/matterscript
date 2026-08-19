@@ -8,4 +8,4 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+Cycle behavior introduced in Section 7.2.1 is a direct expression of the completeness dialogue. The dialogue can be interlinked just like cycles are interlinked to manage flow of content. Interlinked cycles express a progression of coordination dialogues. [TAG-140](https://linear.app/taguniversal/issue/TAG-140/figure-1223-protocol-behavior-of-interlinked-cycles) illustrates the dialogue behavior of interlinked cycles forming an autonomously behaving pipeline.

@@ -8,4 +8,6 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+The completeness criterion enables the simple dialogue of Figure 12.20. This dialogue assumes the NULL convention as an integral part of the dialogue. The dialogue occurs between the output boundary of an invocation and all the destination places to which its source places associate. And the dialogue occurs between the input boundary of an invocation and all the source places to which its destination places associate. A dialogue also occurs between the input boundary as a whole and the output boundary as a whole of an invocation, shown in Figure 12.21. The thank you and the request are also called an acknowledge.
+
+The two dialogues are structurally identical. It is such a dialogue, based on completeness relationships, that is assumed by the language to coordinate the flow of content between all boundaries

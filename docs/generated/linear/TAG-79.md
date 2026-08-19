@@ -8,4 +8,10 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+The essence of coordination is completeness behavior. In a sequence of operations, each operation must be completed before the next operation in the sequence can commence. In an invocation language expression, the resolution of each invocation must be completed before its correct result flows to further associations and it accepts a new presentation to resolve.
+
+Just as a sequential language assumes that any implementation will properly coordinate the completeness behavior of a sequence, the invocation language assumes a universal convention of completeness behavior and assumes that when an invocation expression is mapped to autonomous behavior and partitioned in various ways along boundaries according to the available resources, that the partitioned boundaries will be coordinated in ways which realize the completenessn behavior in one way or another. It is sufficient for the language to express coordination boundaries with their completeness criteria without expressing the details of coordination.
+
+The universal convention assumed by the language is the completeness criterion: the completeness of content at one boundary implies completeness at boundaries from which content flows to that boundary. The completeness criterion forms a basis of coordination supporting protocols from the NULL convention to the cycle to high-level communication protocols. The completeness criterion also encompasses the interval and the clock protocol. The task of the interval is to express when a resolution is complete and correct. The task of the clock is to synchronize the completeness of concurrent intervals and of successive intervals.
+
+.

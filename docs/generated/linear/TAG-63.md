@@ -8,4 +8,26 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+The values K, L, M, and N are added as output values that are unique from the input values.
+
+S means A = 0
+
+T means A = 1
+
+U means B = 0
+
+V means B = 1
+
+W means CI = 0
+
+X means CI = 1
+
+K means SUM = 0
+
+L means SUM = 1
+
+M means CO = 0
+
+N means CO = 1
+
+The output values can now be delivered to the place of resolution as free values and can effect their own output, in this case by invoking a definition that contains a source place with themselves as content that associates to RSUM and RCARRY. The expression of Example 12.25, as a whole, is a pure value expression.
