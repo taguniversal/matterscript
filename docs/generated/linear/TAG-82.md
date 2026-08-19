@@ -2,6 +2,8 @@
 
 ### TAG-82: The Cycle Protocol
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

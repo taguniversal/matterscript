@@ -2,6 +2,8 @@
 
 ### TAG-91: 12.18 LFSR
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

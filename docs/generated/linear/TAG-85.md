@@ -2,6 +2,8 @@
 
 ### TAG-85: 12.12 Large Domains of Differentness
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

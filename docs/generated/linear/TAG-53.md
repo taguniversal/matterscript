@@ -2,6 +2,8 @@
 
 ### TAG-53: 12.7.1 Name Correspondence Search
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

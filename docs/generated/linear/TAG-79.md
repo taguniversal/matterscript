@@ -2,13 +2,15 @@
 
 ### TAG-79: 12.11.2 Coordination Behavior
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_
 
 ## Reference
 
-The essence of coordination is completeness behavior. In a sequence of operations, each operation must be completed before the next operation in the sequence can commence. In an invocation language expression, the resolution of each invocation must be completed before its correct result flows to further associations and it accepts a new presentation to resolve.
+The essence of coordination is completeness behavior. In a sequence of operations, each operation must be completed before the next operation in the sequence can commence. In an invocationf language expression, the resolution of each invocation must be completed before its correct result flows to further associations and it accepts a new presentation to resolve.
 
 Just as a sequential language assumes that any implementation will properly coordinate the completeness behavior of a sequence, the invocation language assumes a universal convention of completeness behavior and assumes that when an invocation expression is mapped to autonomous behavior and partitioned in various ways along boundaries according to the available resources, that the partitioned boundaries will be coordinated in ways which realize the completenessn behavior in one way or another. It is sufficient for the language to express coordination boundaries with their completeness criteria without expressing the details of coordination.
 

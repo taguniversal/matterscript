@@ -2,6 +2,8 @@
 
 ### TAG-46: Serial Bus: Fan-In/Fan-out Expression
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 .

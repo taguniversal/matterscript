@@ -2,6 +2,8 @@
 
 ### TAG-92: 12.19 Summary
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

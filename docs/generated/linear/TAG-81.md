@@ -2,6 +2,8 @@
 
 ### TAG-81: Four-phase Handshake Protocol
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

@@ -2,6 +2,8 @@
 
 ### TAG-71: 12.9.3 Nested Definitions
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

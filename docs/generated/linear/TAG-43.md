@@ -2,6 +2,8 @@
 
 ### TAG-43: 12.5.3 Conditional Completeness
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

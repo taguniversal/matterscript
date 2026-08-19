@@ -2,6 +2,8 @@
 
 ### TAG-52: 12.7 Expression Structure
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

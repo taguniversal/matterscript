@@ -2,6 +2,8 @@
 
 ### TAG-86: 12.13 Experience Memory
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

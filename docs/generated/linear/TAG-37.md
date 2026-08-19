@@ -2,6 +2,8 @@
 
 ### TAG-37: The Pure Value Expression
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

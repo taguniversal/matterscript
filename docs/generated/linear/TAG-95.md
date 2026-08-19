@@ -2,6 +2,8 @@
 
 ### TAG-95: 12.3 The Syntax Structures
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

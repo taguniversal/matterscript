@@ -2,6 +2,8 @@
 
 ### TAG-51: 12.6 Bundled Content
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

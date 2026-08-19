@@ -2,6 +2,8 @@
 
 ### TAG-72: 12.9.4 Structureless Expression
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

@@ -2,6 +2,8 @@
 
 ### TAG-41: 12.5.1 Full Completeness
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

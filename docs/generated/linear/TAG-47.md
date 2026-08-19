@@ -2,6 +2,8 @@
 
 ### TAG-47: Parallel Bus: Fan-out/Fan-In Expression
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

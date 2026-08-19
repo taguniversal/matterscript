@@ -2,6 +2,8 @@
 
 ### TAG-48: 12.5.4 Arbitration Completeness
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

@@ -2,6 +2,8 @@
 
 ### TAG-98: 12.3.3 The Association of Invocation and Definition
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

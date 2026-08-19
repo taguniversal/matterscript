@@ -2,6 +2,8 @@
 
 ### TAG-66: 12.8.9 Pure Association Expression
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

@@ -2,6 +2,8 @@
 
 ### TAG-40: 12.5 Completeness Relations
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

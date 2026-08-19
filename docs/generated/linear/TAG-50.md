@@ -2,6 +2,8 @@
 
 ### TAG-50: 12.5.6 The Occasional Output
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

@@ -2,6 +2,8 @@
 
 ### TAG-88: 12.15 Value Sequencer
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

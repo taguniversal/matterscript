@@ -2,6 +2,8 @@
 
 ### TAG-87: 12.14 Conditional Iteration
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

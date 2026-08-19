@@ -2,6 +2,8 @@
 
 ### TAG-59: 12.8.3 Netlist Form
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

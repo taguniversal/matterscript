@@ -2,6 +2,8 @@
 
 ### TAG-54: 12.7.2 Scope of Correspondence Name Reference
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

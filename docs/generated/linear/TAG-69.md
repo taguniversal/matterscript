@@ -2,6 +2,8 @@
 
 ### TAG-69: 12.9.1 Associated Invocations
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

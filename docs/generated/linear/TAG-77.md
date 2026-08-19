@@ -2,6 +2,8 @@
 
 ### TAG-77: 12.11 Coordination Boundaries
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

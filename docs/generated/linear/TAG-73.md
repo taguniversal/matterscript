@@ -2,6 +2,8 @@
 
 ### TAG-73: 12.10 Conditionality
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

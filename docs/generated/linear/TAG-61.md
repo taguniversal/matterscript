@@ -2,6 +2,8 @@
 
 ### TAG-61: 12.8.5 Limited Set of Name-Forming Symbols
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

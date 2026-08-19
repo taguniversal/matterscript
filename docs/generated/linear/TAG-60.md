@@ -2,6 +2,8 @@
 
 ### TAG-60: 12.8.4 Longer Value Transform Rule Names
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

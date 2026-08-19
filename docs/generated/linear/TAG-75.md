@@ -2,6 +2,8 @@
 
 ### TAG-75: 12.10.2 If-Then
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

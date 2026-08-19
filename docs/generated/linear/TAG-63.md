@@ -2,6 +2,8 @@
 
 ### TAG-63: 12.8.7 Pure Value Expression
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

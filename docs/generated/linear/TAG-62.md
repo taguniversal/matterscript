@@ -2,6 +2,8 @@
 
 ### TAG-62: 12.8.6 More Available Content Values
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

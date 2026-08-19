@@ -2,6 +2,8 @@
 
 ### TAG-83: 12.11.3 Coordinating Boundaries
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

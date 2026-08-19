@@ -2,6 +2,8 @@
 
 ### TAG-68: 12.9 Greater Composition: Four-Bit Adder
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

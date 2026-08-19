@@ -2,6 +2,8 @@
 
 ### TAG-78: 12.11.1 Invocation Boundaries
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

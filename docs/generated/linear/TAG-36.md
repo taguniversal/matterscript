@@ -2,6 +2,8 @@
 
 ### TAG-36: The Constant Definition
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

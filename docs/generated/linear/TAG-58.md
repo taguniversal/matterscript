@@ -2,6 +2,8 @@
 
 ### TAG-58: 12.8.2 Functional Form
 
+**Status:** ⬜ Not started  |  📝 Needs content
+
 ## Software Notes
 
 _(not yet written)_

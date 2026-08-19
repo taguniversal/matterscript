@@ -2,6 +2,8 @@
 
 ### TAG-84: Clocked Coordination
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

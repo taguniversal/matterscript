@@ -2,6 +2,8 @@
 
 ### TAG-42: 12.5.2 Mutually Exclusive Completeness Relations
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

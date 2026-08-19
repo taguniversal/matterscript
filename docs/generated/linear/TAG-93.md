@@ -2,6 +2,8 @@
 
 ### TAG-93: 12.1 The Nature of Symbol String Expression
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

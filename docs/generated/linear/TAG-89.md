@@ -2,6 +2,8 @@
 
 ### TAG-89: 12.16 Code Detector
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

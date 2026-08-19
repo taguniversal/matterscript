@@ -2,6 +2,8 @@
 
 ### TAG-49: 12.5.5 Complex Completeness Relationships
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

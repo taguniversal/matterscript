@@ -2,6 +2,8 @@
 
 ### TAG-94: 12.2 A Language of Association Relationships
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

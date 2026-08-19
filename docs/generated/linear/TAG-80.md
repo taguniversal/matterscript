@@ -2,6 +2,8 @@
 
 ### TAG-80: The Completeness Dialogue
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

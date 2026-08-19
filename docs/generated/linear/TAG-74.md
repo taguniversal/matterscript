@@ -2,6 +2,8 @@
 
 ### TAG-74: 12.10.1 If-Then-Else
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

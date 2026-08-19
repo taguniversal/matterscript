@@ -2,6 +2,8 @@
 
 ### TAG-56: 12.8 A Progression of Examples
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

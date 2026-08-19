@@ -2,6 +2,8 @@
 
 ### TAG-67: 12.8.8 Another Pure Association Full Adder
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_
