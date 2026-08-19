@@ -10,4 +10,10 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+If there are no list parenthesis in a place of resolution, then there are no explicit invocations. The contents flowing into a place of resolution are assumed to be freely associating values of a pure value expression that will form names of contained definitions. The contained definitions are value transform rules, or they contain association expression fragments to be inserted into the place of resolution.
+
+```
+definitionname[(A< >B< >C< >)(...)] $A$B$C ...]
+```
+
+The place of resolution of Example 12.26, as seen later in this chapter, contains a pure value expression.

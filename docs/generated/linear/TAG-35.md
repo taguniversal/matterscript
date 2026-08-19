@@ -10,4 +10,8 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+If an invocation has an empty destination list, i.e. no input, then the invocation name itself must express the variable part of the invocation. The conditional invocation name is the mechanism of content transformation in the language. The invocation correspondence name is formed from the content of one or more contiguous destination places. Content emerges from flow paths to interact by forming the corresponding name of an invocation. All content flowing through the association paths eventually emerges to form an invocation correspondence name. This is how value transform rules are invoked to transform the flowing content of the expression.
+
+```
+$place1$place2$place3()
+```

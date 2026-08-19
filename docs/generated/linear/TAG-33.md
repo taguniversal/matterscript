@@ -10,4 +10,6 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+If an invocation receives a single result in its own place, there is no need of a source list. The corresponding definition can express the single return with the absence of a destination list and with the presence of a single unnamed source place in the place of resolution. An expression like [TAG-143](https://linear.app/taguniversal/issue/TAG-143/example-122-expressing-a-single-return-to-place-of-invocation) can be further abbreviated to the form of [TAG-142](https://linear.app/taguniversal/issue/TAG-142/example-123-further-abbreviated-expression-of-a-single-return-to-place) 
+
+This abbreviation supports the familiar expressional form of functional nesting. In [TAG-141](https://linear.app/taguniversal/issue/TAG-141/example-124-nested-invocations) each invocation has only a destination list and is part of the destination list of another invocation or is within a source place.

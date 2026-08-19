@@ -10,4 +10,8 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+If a definition does not contain a source list and does not contain a definition, it is a constant definition. With no input associations there is no content now into the definition to resolve, no need for internal definitions and no need for the colon. A constant definition contains only a place of resolution between the brackets, which contains a constant.
+
+```
+definitioname[constant]
+```

@@ -2,6 +2,8 @@
 
 ### TAG-29: 12.3.4 Abbreviated Forms of the Invocation and Definition
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_

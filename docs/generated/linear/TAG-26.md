@@ -2,6 +2,8 @@
 
 ### TAG-26: 12.3.1 Lateral Composition - Place-to-Place Association
 
+**Status:** ⬜ Not started
+
 ## Software Notes
 
 _(not yet written)_
