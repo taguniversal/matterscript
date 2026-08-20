@@ -381,7 +381,7 @@ fn fetchIssues(
 ) ![]const LinearIssue {
     const query = try std.fmt.allocPrint(
         allocator,
-        \\{{"query": "query {{ issues(filter: {{ project: {{ name: {{ eq: \"{s}\" }} }} }}, first: 100) {{ nodes {{ identifier title description labels {{ nodes {{ name }} }} state {{ name }} }} }} }}"}}
+        \\{{"query": "query {{ issues(filter: {{ project: {{ name: {{ eq: \"{s}\" }} }} }}, first: 200) {{ nodes {{ identifier title description labels {{ nodes {{ name }} }} state {{ name }} }} }} }}"}}
     ,
         .{project_name},
     );
