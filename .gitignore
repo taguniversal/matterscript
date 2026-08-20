@@ -13,3 +13,4 @@ zig-out/
 *.vcd
 *.fst
 .openmono/
+.verify_scratch/

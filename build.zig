@@ -24,7 +24,6 @@ pub fn build(b: *std.Build) void {
     const tangle_step = b.step("tangle", "Extract code blocks from documentation");
     tangle_step.dependOn(&run_tangle.step);
 
-
     const mod = b.addModule("matterscript", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -59,12 +58,12 @@ pub fn build(b: *std.Build) void {
     // 3. Build the Weave Helper Executable
     // ------------------------------------------------------------------------
     const weave_exe = b.addExecutable(.{
-    .name = "weave",
-    .root_module = b.createModule(.{
-        .root_source_file = b.path("tools/weave.zig"),
-        .target = b.graph.host,
-        .optimize = .Debug,
-    }),
+        .name = "weave",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/weave.zig"),
+            .target = b.graph.host,
+            .optimize = .Debug,
+        }),
     });
 
     const run_weave = b.addRunArtifact(weave_exe);
@@ -137,22 +136,26 @@ pub fn build(b: *std.Build) void {
     const is_linux = b.graph.host.result.os.tag == .linux;
     if (is_linux) {
         const ghdl_analyze = b.addSystemCommand(&.{
-            "ghdl-llvm", "-a", "--std=08",
+            "ghdl-llvm",                     "-a",                              "--std=08",
             "--workdir=../workspace/coffee", "../workspace/coffee/machine.vhd",
         });
         ghdl_analyze.step.dependOn(&gen_coffee.step);
 
         const ghdl_synth = b.addSystemCommand(&.{
-            "sh", "-c",
+            "sh",                                                                                                                  "-c",
             "ghdl-llvm synth --std=08 --workdir=../workspace/coffee --out=verilog CoffeeShop > ../workspace/coffee/CoffeeShop.sv",
         });
         ghdl_synth.step.dependOn(&ghdl_analyze.step);
 
         const verilator_build = b.addSystemCommand(&.{
             "verilator",
-            "--cc", "--exe", "--build",
-            "--Mdir", "../workspace/coffee/obj_dir",
-            "-CFLAGS", "-I.",
+            "--cc",
+            "--exe",
+            "--build",
+            "--Mdir",
+            "../workspace/coffee/obj_dir",
+            "-CFLAGS",
+            "-I.",
             "../workspace/coffee/CoffeeShop.sv",
             "../workspace/coffee/tb_machine.cpp",
         });
@@ -170,4 +173,56 @@ pub fn build(b: *std.Build) void {
         });
         simulate_step.dependOn(&note.step);
     }
+
+    // ------------------------------------------------------------
+    // Book example verification: parse + emit VHDL + GHDL syntax
+    // check every examples/docs/<TAG>/*.ms.il against status.json.
+    //
+    // Discovered here at build-config time via std.Io.Dir, using the
+    // Io instance the build graph itself exposes (b.graph.io) — plain
+    // std.fs.cwd() no longer exists in this generation; all fs access
+    // goes through Io uniformly, even in build.zig.
+    // ------------------------------------------------------------
+    const verify_examples_exe = b.addExecutable(.{
+        .name = "verify_examples",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/verify_examples.zig"),
+            .target = b.graph.host,
+            .optimize = .Debug,
+            .imports = &.{
+                .{ .name = "matterscript", .module = mod },
+            },
+        }),
+    });
+
+    const run_verify_examples = b.addRunArtifact(verify_examples_exe);
+    run_verify_examples.addArgs(&[_][]const u8{ "--status", "docs/generated/linear/status.json" });
+
+    {
+        const io = b.graph.io;
+        var docs_dir = std.Io.Dir.cwd().openDir(io, "examples/docs", .{ .iterate = true }) catch null;
+        if (docs_dir) |*dir| {
+            defer dir.close(io);
+            var it = dir.iterate();
+            while (it.next(io) catch null) |tag_entry| {
+                if (tag_entry.kind != .directory) continue;
+                const tag_name = b.dupe(tag_entry.name);
+                const sub_path = std.fs.path.join(b.allocator, &.{ "examples/docs", tag_entry.name }) catch continue;
+
+                var sub_dir = std.Io.Dir.cwd().openDir(io, sub_path, .{ .iterate = true }) catch continue;
+                defer sub_dir.close(io);
+                var sub_it = sub_dir.iterate();
+                while (sub_it.next(io) catch null) |file_entry| {
+                    if (file_entry.kind != .file) continue;
+                    if (!std.mem.endsWith(u8, file_entry.name, ".ms.il")) continue;
+                    const full_path = std.fs.path.join(b.allocator, &.{ sub_path, file_entry.name }) catch continue;
+                    run_verify_examples.addArgs(&[_][]const u8{ "--example", tag_name, b.dupe(full_path) });
+                }
+            }
+        }
+    }
+
+    const verify_examples_step = b.step("verify-examples", "Parse+VHDL+GHDL check all examples/docs sources against status.json");
+    verify_examples_step.dependOn(&run_verify_examples.step);
+    verify_step.dependOn(&run_verify_examples.step);
 }
