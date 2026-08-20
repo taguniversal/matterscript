@@ -27,18 +27,15 @@ const LinearIssue = struct {
     title: []const u8,
     description: []const u8,
     labels: []const []const u8,
+    workflow_state: []const u8,
 };
+
 const SectionKey = struct {
     parts: []const usize,
     has_section: bool,
 };
 
-const SortEntry = struct {
-    key: SectionKey,
-    identifier: []const u8,
-    title: []const u8,
-    labels: []const []const u8
-};
+const SortEntry = struct { key: SectionKey, identifier: []const u8, title: []const u8, labels: []const []const u8 };
 
 /// Scan markdown for ![label](https://uploads.linear.app/...) image
 /// links, download each (authenticated) into a shared pool keyed by
@@ -323,6 +320,9 @@ pub fn main(init: std.process.Init) !void {
         try writer.interface.flush();
     }
 
+    try writeStatusManifest(io, issues);
+    std.debug.print("Wrote status.json ({d} issues)\n", .{issues.len});
+
     var entries: std.ArrayListUnmanaged(SortEntry) = .empty;
     for (issues) |issue| {
         const key = try parseSectionKey(arena, issue.title);
@@ -381,7 +381,7 @@ fn fetchIssues(
 ) ![]const LinearIssue {
     const query = try std.fmt.allocPrint(
         allocator,
-        \\{{"query": "query {{ issues(filter: {{ project: {{ name: {{ eq: \"{s}\" }} }} }}, first: 200) {{ nodes {{ identifier title description labels {{ nodes {{ name }} }} }} }} }}"}}
+        \\{{"query": "query {{ issues(filter: {{ project: {{ name: {{ eq: \"{s}\" }} }} }}, first: 100) {{ nodes {{ identifier title description labels {{ nodes {{ name }} }} state {{ name }} }} }} }}"}}
     ,
         .{project_name},
     );
@@ -433,6 +433,7 @@ fn parseIssuesResponse(allocator: std.mem.Allocator, body: []const u8) ![]const 
         const identifier = try allocator.dupe(u8, node.object.get("identifier").?.string);
         const title = try allocator.dupe(u8, node.object.get("title").?.string);
         const description = try allocator.dupe(u8, node.object.get("description").?.string);
+        const workflow_state = try allocator.dupe(u8, node.object.get("state").?.object.get("name").?.string);
 
         var labels: std.ArrayListUnmanaged([]const u8) = .empty;
         const label_nodes = node.object.get("labels").?.object.get("nodes").?.array;
@@ -441,12 +442,7 @@ fn parseIssuesResponse(allocator: std.mem.Allocator, body: []const u8) ![]const 
             try labels.append(allocator, name);
         }
 
-        try issues.append(allocator, .{
-            .identifier = identifier,
-            .title = title,
-            .description = description,
-            .labels = try labels.toOwnedSlice(allocator),
-        });
+        try issues.append(allocator, .{ .identifier = identifier, .title = title, .description = description, .labels = try labels.toOwnedSlice(allocator), .workflow_state = workflow_state });
     }
     return issues.toOwnedSlice(allocator);
 }
@@ -459,4 +455,39 @@ fn makeDirRecursive(io: std.Io, path: []const u8) !void {
         error.PathAlreadyExists => {},
         else => return err,
     };
+}
+
+/// Write docs/generated/linear/status.json — a committed manifest mapping
+/// each issue to its implementation status (from the Implemented/Partial/
+/// Spec Only labels) and Linear's native workflow state. The example
+/// runner reads this file rather than querying Linear directly, keeping
+/// example verification offline and deterministic like the rest of weave.
+///
+/// Hand-written JSON rather than std.json.Stringify — that API has moved
+/// under us before on this toolchain, and this shape is simple enough
+/// not to be worth the risk of guessing at it again.
+fn writeStatusManifest(io: std.Io, issues: []const LinearIssue) !void {
+    var file = try std.Io.Dir.cwd().createFile(io, "docs/generated/linear/status.json", .{});
+    defer file.close(io);
+
+    var buffer: [16384]u8 = undefined;
+    var writer = file.writer(io, &buffer);
+    const w = &writer.interface;
+
+    try w.writeAll("{\n");
+    for (issues, 0..) |issue, i| {
+        const impl_status = resolveStatus(issue.labels);
+
+        try w.print("  \"{s}\": {{\n", .{issue.identifier});
+        try w.writeAll("    \"implementation_status\": ");
+        if (impl_status) |s| {
+            try w.print("\"{s}\"", .{s});
+        } else {
+            try w.writeAll("null");
+        }
+        try w.print(",\n    \"workflow_state\": \"{s}\"\n", .{issue.workflow_state});
+        try w.writeAll(if (i + 1 < issues.len) "  },\n" else "  }\n");
+    }
+    try w.writeAll("}\n");
+    try w.flush();
 }

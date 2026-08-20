@@ -4,19 +4,15 @@
 
 ## Progress
 
-✅ Implemented: 0  |  🟡 Partial: 0  |  ⬛ Spec only: 0  |  ⬜ Not started: 105  |  Total: 105
+✅ Implemented: 0  |  🟡 Partial: 0  |  ⬛ Spec only: 0  |  ⬜ Not started: 100  |  Total: 100
 
 - ⬜ Not started [12.1 The Nature of Symbol String Expression](TAG-93.md)
 - ⬜ Not started [12.2 A Language of Association Relationships](TAG-94.md)
 - ⬜ Not started [12.3 The Syntax Structures](TAG-95.md)
 - ⬜ Not started [12.3.1 Lateral Composition: Place-to-Place Association](TAG-96.md)
-- ⬜ Not started [12.3.1 Lateral Composition - Place-to-Place Association](TAG-26.md)
 - ⬜ Not started [12.3.2 Hierarchical Composition: The Invocation and Definition](TAG-97.md)
-- ⬜ Not started [12.3.2 Hierarchical Composition: The Invocation and Definition](TAG-27.md)
 - ⬜ Not started [12.3.3 The Association of Invocation and Definition](TAG-98.md)
-- ⬜ Not started [12.3.3 The Association of Invocation and Definition](TAG-28.md)
 - ⬜ Not started [12.3.4 Abbreviated Forms of the Invocation and Definition](TAG-110.md)
-- ⬜ Not started [12.3.4 Abbreviated Forms of the Invocation and Definition](TAG-29.md)
 - ⬜ Not started [12.4 The Comma](TAG-111.md)
 - ⬜ Not started [12.5 Completeness Relations](TAG-40.md)
 - ⬜ Not started [12.5.1 Full Completeness](TAG-41.md)
@@ -97,7 +93,6 @@
 - ⬜ Not started [Example 12.4 Nested Invocations](TAG-141.md)
 - ⬜ Not started [Example 12.3 Further abbreviated expression of a single return to place of invocation](TAG-142.md)
 - ⬜ Not started [Example 12.2 Expressing a single return to place of invocation](TAG-143.md)
-- ⬜ Not started [Return a Content to Place of Invocation](TAG-32.md)
 - ⬜ Not started [Single Return to Place of Invocation](TAG-33.md)
 - ⬜ Not started [The Conditional Invocation Name](TAG-35.md)
 - ⬜ Not started [The Constant Definition](TAG-36.md)
