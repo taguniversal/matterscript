@@ -58,7 +58,8 @@ const Parser = struct {
             if (c == ' ' or c == '\t' or c == '\n' or c == '\r') {
                 p.pos += 1;
             } else if (c == '/' and p.pos + 1 < p.src.len and
-                       p.src[p.pos + 1] == '/') {
+                p.src[p.pos + 1] == '/')
+            {
                 while (p.pos < p.src.len and p.src[p.pos] != '\n') p.pos += 1;
             } else break;
         }
@@ -72,7 +73,10 @@ const Parser = struct {
 
     fn tryConsume(p: *Parser, ch: u8) bool {
         p.skipWhitespaceAndComments();
-        if (p.peek() == ch) { _ = p.advance(); return true; }
+        if (p.peek() == ch) {
+            _ = p.advance();
+            return true;
+        }
         return false;
     }
 
@@ -81,8 +85,7 @@ const Parser = struct {
         const start = p.pos;
         while (p.pos < p.src.len) {
             const c = p.src[p.pos];
-            if (std.ascii.isAlphanumeric(c) or c == '_') p.pos += 1
-            else break;
+            if (std.ascii.isAlphanumeric(c) or c == '_') p.pos += 1 else break;
         }
         if (p.pos == start) return ParseError.ExpectedName;
         return p.src[start..p.pos];
@@ -116,8 +119,7 @@ const Parser = struct {
         const start = p.pos;
         while (p.pos < p.src.len) {
             const c = p.src[p.pos];
-            if (std.ascii.isAlphanumeric(c) or c == '_') p.pos += 1
-            else break;
+            if (std.ascii.isAlphanumeric(c) or c == '_') p.pos += 1 else break;
         }
         const word = p.src[start..p.pos];
         p.pos = saved;
@@ -167,9 +169,7 @@ const Parser = struct {
         var left = try p.parseGenMulDiv();
         while (true) {
             p.skipWhitespaceAndComments();
-            const op: network.BinaryOp = if (p.peek() == '+') .add
-                                          else if (p.peek() == '-') .sub
-                                          else break;
+            const op: network.BinaryOp = if (p.peek() == '+') .add else if (p.peek() == '-') .sub else break;
             _ = p.advance();
             const right = try p.parseGenMulDiv();
             const node = try p.allocator.create(network.Expr);
@@ -183,9 +183,7 @@ const Parser = struct {
         var left = try p.parseGenAtom();
         while (true) {
             p.skipWhitespaceAndComments();
-            const op: network.BinaryOp = if (p.peek() == '*') .mul
-                                          else if (p.peek() == '/') .div
-                                          else break;
+            const op: network.BinaryOp = if (p.peek() == '*') .mul else if (p.peek() == '/') .div else break;
             _ = p.advance();
             const right = try p.parseGenAtom();
             const node = try p.allocator.create(network.Expr);
@@ -283,8 +281,7 @@ const Parser = struct {
             const name = try p.readName();
             p.skipWhitespaceAndComments();
             const range = try p.readRange();
-            try inputs.append(p.allocator, .{
-                .name = name, .min = range.min, .max = range.max });
+            try inputs.append(p.allocator, .{ .name = name, .min = range.min, .max = range.max });
             p.skipWhitespaceAndComments();
             _ = p.tryConsume(',');
         }
@@ -489,33 +486,33 @@ const Parser = struct {
         try p.expect('[');
 
         // Fant order: sources first (name<>), then destinations ($name)
-        const sources      = try p.parseDefSourceList();
+        const sources = try p.parseDefSourceList();
         const destinations = try p.parseDefDestList();
-        const resolution   = try p.parseResolution();
+        const resolution = try p.parseResolution();
         _ = p.tryConsume('|');
-        const constants    = try p.parseConstants();
+        const constants = try p.parseConstants();
         try p.expect(']');
 
         return network.Definition{
-            .name         = name,
-            .sources      = sources,
+            .name = name,
+            .sources = sources,
             .destinations = destinations,
-            .resolution   = resolution,
-            .constants    = constants,
+            .resolution = resolution,
+            .constants = constants,
         };
     }
 
-    fn parseEntryInvocation(p: *Parser, name: []const u8) !network.EntryInvocation {
+        fn parseEntryInvocation(p: *Parser, name: []const u8) !network.EntryInvocation {
         // Fant invocation order: args first ($name/literal), outputs second (name<>)
-        const args    = try p.parseInvArgList();
+        const args = try p.parseInvArgList();
         const outputs = try p.parseInvOutputList();
         return network.EntryInvocation{
-            .name    = name,
-            .args    = args,
+            .name = name,
+            .args = args,
             .outputs = outputs,
         };
     }
-};
+}; // <-- Parser struct closes HERE, not at the end of the file
 
 // ----------------------------------------------------------------
 // Public API
@@ -540,13 +537,19 @@ pub fn parse(allocator: std.mem.Allocator, source: []const u8) !network.Network 
             const def = try p.parseDefinition();
             try definitions.append(allocator, def);
         } else if (next == '(') {
-            entry = try p.parseEntryInvocation(name);
-            break;
+            // The entry invocation can appear anywhere in the source —
+            // Fant's own examples often show the call site before the
+            // definitions it depends on (e.g. Example 12.40's GCD).
+            // Parsing it no longer halts the whole network: keep
+            // scanning so trailing definitions aren't silently dropped.
+            const parsed_entry = try p.parseEntryInvocation(name);
+            if (entry != null) return error.MultipleEntryInvocations;
+            entry = parsed_entry;
         } else return error.UnexpectedChar;
     }
 
     return network.Network{
         .definitions = try definitions.toOwnedSlice(allocator),
-        .entry       = entry,
+        .entry = entry,
     };
 }
