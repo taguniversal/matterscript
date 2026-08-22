@@ -74,14 +74,15 @@ pub fn main(init: std.process.Init) !void {
             continue;
         };
 
-        const net = il_parser.parse(arena, source) catch {
+        const net = il_parser.parse(arena, source) catch |err| {
+            std.debug.print("  [{s}] parse error: {s}\n", .{ ex.tag, @errorName(err) });
             try rows.append(arena, .{
                 .tag = ex.tag,
                 .path = ex.path,
                 .expected_status = expectedStatus(status_map, ex.tag),
                 .parse_ok = false,
                 .ghdl_ok = false,
-                .result = classify( expectedStatus(status_map, ex.tag), false, false),
+                .result = classify(expectedStatus(status_map, ex.tag), false, false),
             });
             continue;
         };

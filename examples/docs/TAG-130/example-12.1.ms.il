@@ -1,4 +1,4 @@
 // linear: TAG-130
 
-FULLADD(0,1,0)(<> CARRYOUT<>) ... $CARRYOUT
+FULLADD(0,1,0)(<> CARRYOUT<>)  $CARRYOUT
 FULLADD[(X<>Y<>C<>)($SUM $CARRY)]

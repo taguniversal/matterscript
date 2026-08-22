@@ -1,6 +1,6 @@
 // linear: TAG-129 Imperative form of expression
 
-FULLADD(0, 1, 0)(< > CARRYOUT < >) . . . $CARRYOUT
+FULLADD(0, 1, 0)(< > CARRYOUT < >)  $CARRYOUT
 
 FULLADD[(X< >Y< >C< >) ($SUM $CARRY)
 NOT($X)(OP1< >)
