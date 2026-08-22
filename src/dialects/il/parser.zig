@@ -437,7 +437,7 @@ const Parser = struct {
         while (true) {
             p.skipWhitespaceAndComments();
             const c = p.peek() orelse break;
-            if (c == '|' or c == ']') break;
+            if (c == ':' or c == ']') break;
             const name = try p.readName();
             p.skipWhitespaceAndComments();
             const next = p.peek() orelse return ParseError.UnexpectedEnd;
@@ -511,7 +511,7 @@ const Parser = struct {
         const sources = try p.parseDefSourceList();
         const destinations = try p.parseDefDestList();
         const resolution = try p.parseResolution();
-        _ = p.tryConsume('|');
+        _ = p.tryConsume(':');
         const constants = try p.parseConstants();
         try p.expect(']');
 
