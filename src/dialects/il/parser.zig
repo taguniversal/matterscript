@@ -542,6 +542,13 @@ const Parser = struct {
 
 pub fn parse(allocator: std.mem.Allocator, source: []const u8) !network.Network {
     var p = Parser.init(allocator, source);
+    return parseInner(&p, allocator) catch |err| {
+        reportError(&p, err);
+        return err;
+    };
+}
+
+fn parseInner(p: *Parser, allocator: std.mem.Allocator) !network.Network {
     var definitions: std.ArrayListUnmanaged(network.Definition) = .empty;
     var entry: ?network.EntryInvocation = null;
 
@@ -559,11 +566,6 @@ pub fn parse(allocator: std.mem.Allocator, source: []const u8) !network.Network 
             const def = try p.parseDefinition();
             try definitions.append(allocator, def);
         } else if (next == '(') {
-            // The entry invocation can appear anywhere in the source —
-            // Fant's own examples often show the call site before the
-            // definitions it depends on (e.g. Example 12.40's GCD).
-            // Parsing it no longer halts the whole network: keep
-            // scanning so trailing definitions aren't silently dropped.
             const parsed_entry = try p.parseEntryInvocation(name);
             if (entry != null) return error.MultipleEntryInvocations;
             entry = parsed_entry;
@@ -574,4 +576,41 @@ pub fn parse(allocator: std.mem.Allocator, source: []const u8) !network.Network 
         .definitions = try definitions.toOwnedSlice(allocator),
         .entry = entry,
     };
+}
+
+/// On parse failure, print the 1-indexed line/column and the offending
+/// line's text. p.pos reflects wherever the deepest failing call left
+/// it — Parser is threaded through every function by pointer and never
+/// rewound except at a couple of controlled backtrack points — so this
+/// works without touching any individual parse function.
+///
+/// Known gap: parseGenerateBlock spins up a *second*, independent
+/// Parser over an extracted sub-string for generate-block expressions.
+/// A failure inside that inner parser won't be reflected here — the
+/// outer p.pos will just show wherever parseGenerateBlock was called
+/// from, not the actual failure point within the expression.
+fn reportError(p: *const Parser, err: anyerror) void {
+    var line: usize = 1;
+    var col: usize = 1;
+    var line_start: usize = 0;
+    var i: usize = 0;
+    while (i < p.pos and i < p.src.len) : (i += 1) {
+        if (p.src[i] == '\n') {
+            line += 1;
+            col = 1;
+            line_start = i + 1;
+        } else {
+            col += 1;
+        }
+    }
+    var line_end = line_start;
+    while (line_end < p.src.len and p.src[line_end] != '\n') line_end += 1;
+    const line_text = p.src[line_start..line_end];
+
+    std.debug.print("  parse error: {s} at line {d}, column {d}\n", .{ @errorName(err), line, col });
+    std.debug.print("    {s}\n", .{line_text});
+    std.debug.print("    ", .{});
+    var j: usize = 1;
+    while (j < col) : (j += 1) std.debug.print(" ", .{});
+    std.debug.print("^\n", .{});
 }
