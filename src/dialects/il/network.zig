@@ -35,8 +35,12 @@ pub const PlaceKind = enum {
 };
 
 pub const Place = struct {
-    name: []const u8,
+    name: []const u8,          // "" means unnamed — the abbreviated single-return
+                               // form (Fant §12.3.4), associates implicitly to
+                               // the invocation's own place
     kind: PlaceKind,
+    content: ?[]const u8 = null,  // literal content between < and >, if
+                                  // present (e.g. state<S0>, value<0>)
 };
 
 /// A single entry in an explicit key:value constant table.

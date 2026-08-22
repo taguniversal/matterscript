@@ -316,23 +316,50 @@ const Parser = struct {
     // Definition list parsers (corrected Fant order)
     // ----------------------------------------------------------------
 
-    /// Definition first list: (name<> ...) — source places, tokens flow IN
-    fn parseDefSourceList(p: *Parser) ![]const network.Place {
+    /// Shared parser for "(name<> ...)"-style lists — a definition's
+    /// source-place list and an invocation's output list share
+    /// identical grammar. Handles three forms per Fant §12.3.4:
+    ///   name<>        — normal named, empty place
+    ///   name<content> — named place carrying literal content (state<S0>)
+    ///   <>  / <content> — unnamed place (abbreviated single-return
+    ///                     form), represented as Place{ .name = "" }
+    fn parsePlaceList(p: *Parser, kind: network.PlaceKind) ![]const network.Place {
         try p.expect('(');
         var list: std.ArrayListUnmanaged(network.Place) = .empty;
         while (true) {
             p.skipWhitespaceAndComments();
             const c = p.peek() orelse break;
             if (c == ')') break;
-            const name = try p.readName();
-            p.skipWhitespaceAndComments();
+
+            var name: []const u8 = "";
+            if (c != '<') {
+                name = try p.readName();
+                p.skipWhitespaceAndComments();
+            }
+
             if (p.peek() != '<') return ParseError.ExpectedToken;
-            _ = p.advance();
+            _ = p.advance(); // consume '<'
+            p.skipWhitespaceAndComments();
+
+            var content: ?[]const u8 = null;
+            if (p.peek() != '>') {
+                const content_start = p.pos;
+                while (p.pos < p.src.len and p.src[p.pos] != '>') p.pos += 1;
+                content = std.mem.trim(u8, p.src[content_start..p.pos], " \t\r\n");
+            }
             try p.expect('>');
-            try list.append(p.allocator, .{ .name = name, .kind = .source });
+
+            try list.append(p.allocator, .{ .name = name, .kind = kind, .content = content });
+            p.skipWhitespaceAndComments();
+            _ = p.tryConsume(','); // §12.4 — comma is a general, optional separator
         }
         try p.expect(')');
         return list.toOwnedSlice(p.allocator);
+    }
+
+    /// Definition first list: (name<> ...) — source places, tokens flow IN
+    fn parseDefSourceList(p: *Parser) ![]const network.Place {
+        return p.parsePlaceList(.source);
     }
 
     /// Definition second list: ($name ...) — destination places, tokens flow OUT
@@ -345,6 +372,7 @@ const Parser = struct {
             const name = try p.readName();
             try list.append(p.allocator, .{ .name = name, .kind = .destination });
             p.skipWhitespaceAndComments();
+            _ = p.tryConsume(','); // §12.4 — comma is a general, optional separator
         }
         try p.expect(')');
         return list.toOwnedSlice(p.allocator);
@@ -365,6 +393,8 @@ const Parser = struct {
                 try args.append(p.allocator, lit);
             }
             p.skipWhitespaceAndComments();
+            _ = p.tryConsume(','); // §12.4 — comma is a general, optional separator
+            p.skipWhitespaceAndComments();
         }
         try p.expect(')');
         return args.toOwnedSlice(p.allocator);
@@ -372,21 +402,7 @@ const Parser = struct {
 
     /// Invocation second list: (name<> ...) — outputs returned to caller
     fn parseInvOutputList(p: *Parser) ![]const network.Place {
-        try p.expect('(');
-        var list: std.ArrayListUnmanaged(network.Place) = .empty;
-        while (true) {
-            p.skipWhitespaceAndComments();
-            const c = p.peek() orelse break;
-            if (c == ')') break;
-            const name = try p.readName();
-            p.skipWhitespaceAndComments();
-            if (p.peek() != '<') return ParseError.ExpectedToken;
-            _ = p.advance();
-            try p.expect('>');
-            try list.append(p.allocator, .{ .name = name, .kind = .source });
-        }
-        try p.expect(')');
-        return list.toOwnedSlice(p.allocator);
+        return p.parsePlaceList(.source);
     }
 
     // ----------------------------------------------------------------
@@ -502,7 +518,7 @@ const Parser = struct {
         };
     }
 
-        fn parseEntryInvocation(p: *Parser, name: []const u8) !network.EntryInvocation {
+    fn parseEntryInvocation(p: *Parser, name: []const u8) !network.EntryInvocation {
         // Fant invocation order: args first ($name/literal), outputs second (name<>)
         const args = try p.parseInvArgList();
         const outputs = try p.parseInvOutputList();
