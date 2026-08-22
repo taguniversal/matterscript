@@ -2,9 +2,9 @@
 
 code(statenextbit)(state< S0 > detect< >)
 
-code[(currentstate< > newbit< >)(statedetect) :
+code[(currentstate< > newbit< >)($state $detect) :
 
-newbitcurrentstate( ) :
+$newbit$currentstate( ) :
 
 0S0[detect< no > state<S1>]
 
