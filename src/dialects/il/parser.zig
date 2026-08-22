@@ -149,7 +149,13 @@ const Parser = struct {
             _ = p.advance();
             try p.expect(')');
         }
-        if (p.pos == start) return ParseError.ExpectedDollar;
+        if (p.pos == start) {
+            // No $-prefixed composition present — fall back to a plain
+            // literal token, e.g. a resolution-body fill like
+            // "init< 0 >" or "state<S0>" carrying a bare constant
+            // rather than a name-composition expression.
+            _ = try p.readName();
+        }
         return p.src[start..p.pos];
     }
 
