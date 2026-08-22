@@ -12,7 +12,7 @@ _(not yet written)_
 
 The graphic expression of Figure 12.7 is labeled with correspondence names for the inputs of the expression, which are destination places of the invocation, and the output of each function, which are the source places in the expression. [TAG-129](https://linear.app/taguniversal/issue/TAG-129/example-1219) expresses the full-adder as an imperative expression. It is a collection of statements, each an invocation of a function with its input and output. The associations are completely in terms of name correspondence relationships. There is a one-to-one correspondence between the graphic expression and the string expression.
 
-Note that the first source place of the source list of the invocation of FULLADD is unnamed and the $SUM result of the definition is associated to the place of the invocation. The CARRY result associates by name correspondence to CARRY in the definition destination list, by syntax correspondence to CARRYOUT<> in the invocation source list and then by name correspondence to CARRYOUT.
+Note that the first source place of the source list of the invocation of FULLADD is unnamed and the $SUM result of the definition is associated to the place of the invocation. The CARRY result associates by name correspondence to $CARRY in the definition destination list, by syntax correspondence to CARRYOUT<> in the invocation source list and then by name correspondence to $CARRYOUT.
 
 There are three contained definitions. The AND and OR definitions use a different set of value transform rule definitions with the same set of names. Each set of value transform rules is isolated within a definition, so there is no ambiguity of name correspondence.
 

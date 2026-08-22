@@ -151,4 +151,14 @@ pub const EntryInvocation = struct {
 pub const Network = struct {
     definitions: []const Definition,
     entry: ?EntryInvocation,
+    free_destinations: []const []const u8 = &.{}, // bare $name references
+        // appearing at the top level of the network, outside any
+        // invocation or definition syntax — Fant's "outlying
+        // destination places" (§12.7). Zero or more may appear,
+        // anywhere in the string. Each participates through name
+        // correspondence with a source place of the same name
+        // elsewhere — including, in feedback cases like Example 12.41's
+        // value<>/$value, the very invocation that precedes it.
+        // Semantics/VHDL emission are deliberately deferred here —
+        // this only captures the syntax.
 };

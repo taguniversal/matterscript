@@ -551,10 +551,21 @@ pub fn parse(allocator: std.mem.Allocator, source: []const u8) !network.Network 
 fn parseInner(p: *Parser, allocator: std.mem.Allocator) !network.Network {
     var definitions: std.ArrayListUnmanaged(network.Definition) = .empty;
     var entry: ?network.EntryInvocation = null;
+    var free_refs: std.ArrayListUnmanaged([]const u8) = .empty;
 
     while (true) {
         p.skipWhitespaceAndComments();
         if (p.pos >= p.src.len) break;
+
+        // A bare $name at the top level is a free-floating "outlying
+        // destination place" (§12.7) — not attached to any invocation
+        // or definition structure. Zero or more may appear anywhere.
+        if (p.peek() == '$') {
+            _ = p.advance();
+            const ref_name = try p.readName();
+            try free_refs.append(allocator, ref_name);
+            continue;
+        }
 
         const name_start = p.pos;
         const name = try p.readName();
@@ -575,6 +586,7 @@ fn parseInner(p: *Parser, allocator: std.mem.Allocator) !network.Network {
     return network.Network{
         .definitions = try definitions.toOwnedSlice(allocator),
         .entry = entry,
+        .free_destinations = try free_refs.toOwnedSlice(allocator),
     };
 }
 
