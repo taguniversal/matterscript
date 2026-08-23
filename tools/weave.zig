@@ -273,8 +273,11 @@ pub fn main(init: std.process.Init) !void {
         }
     }
 
+
     // --- 3. Fetch issues ---
     const issues = try fetchIssues(arena, &client, api_key, project_name);
+    try cleanOrphanedIssuePages(io, arena, issues);
+
     std.debug.print("  fetched {d} issues for project '{s}'\n", .{ issues.len, project_name });
 
     // --- 4. Bake each issue's Reference section into committed markdown ---
@@ -455,6 +458,43 @@ fn makeDirRecursive(io: std.Io, path: []const u8) !void {
         error.PathAlreadyExists => {},
         else => return err,
     };
+}
+
+/// Remove any docs/generated/linear/TAG-*.md file whose issue no longer
+/// exists in the current fetch. status.json and index.md are already
+/// fully rebuilt from scratch every run — this is the one artifact
+/// weave only ever creates/overwrites, never deletes, so a Linear
+/// issue deletion previously left its stale .md page behind forever.
+fn cleanOrphanedIssuePages(io: std.Io, allocator: std.mem.Allocator, issues: []const LinearIssue) !void {
+    var live = std.StringHashMap(void).init(allocator);
+    for (issues) |issue| {
+        const filename = try std.fmt.allocPrint(allocator, "{s}.md", .{issue.identifier});
+        try live.put(filename, {});
+    }
+
+    var dir = std.Io.Dir.cwd().openDir(io, "docs/generated/linear", .{ .iterate = true }) catch |err| switch (err) {
+        error.FileNotFound => return, // nothing to clean on a fresh checkout
+        else => return err,
+    };
+    defer dir.close(io);
+
+    var it = dir.iterate();
+    var to_delete: std.ArrayListUnmanaged([]const u8) = .empty;
+    while (try it.next(io)) |entry| {
+        if (entry.kind != .file) continue;
+        if (!std.mem.endsWith(u8, entry.name, ".md")) continue;
+        if (std.mem.eql(u8, entry.name, "index.md")) continue; // fully regenerated separately
+        if (live.contains(entry.name)) continue;
+        try to_delete.append(allocator, try allocator.dupe(u8, entry.name));
+    }
+
+    for (to_delete.items) |name| {
+        dir.deleteFile(io, name) catch |err| {
+            std.debug.print("  warning: could not remove orphaned {s}: {s}\n", .{ name, @errorName(err) });
+            continue;
+        };
+        std.debug.print("  removed orphaned page: {s}\n", .{name});
+    }
 }
 
 /// Write docs/generated/linear/status.json — a committed manifest mapping
