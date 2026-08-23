@@ -397,11 +397,31 @@ const Parser = struct {
     fn parseDefDestList(p: *Parser) ![]const network.Place {
         try p.expect('(');
         var list: std.ArrayListUnmanaged(network.Place) = .empty;
-        p.skipWhitespaceAndComments();
-        while (p.peek() == '$') {
-            _ = p.advance();
-            const name = try p.readName();
-            try list.append(p.allocator, .{ .name = name, .kind = .destination });
+        while (true) {
+            p.skipWhitespaceAndComments();
+            const c = p.peek() orelse break;
+            if (c == ')') break;
+
+            if (c == '{') {
+                const group_start = p.pos;
+                _ = p.advance();
+                var depth: usize = 1;
+                while (depth > 0) {
+                    const ch = p.advance() orelse return ParseError.UnexpectedEnd;
+                    if (ch == '{') depth += 1;
+                    if (ch == '}') depth -= 1;
+                }
+                try list.append(p.allocator, .{
+                    .name = "{group}",
+                    .kind = .destination,
+                    .content = p.src[group_start..p.pos],
+                });
+            } else {
+                try p.expect('$');
+                const name = try p.readName();
+                try list.append(p.allocator, .{ .name = name, .kind = .destination });
+            }
+
             p.skipWhitespaceAndComments();
             _ = p.tryConsume(','); // §12.4 — comma is a general, optional separator
         }
@@ -654,7 +674,7 @@ pub fn parseWithTag(
 
 fn parseInner(p: *Parser, allocator: std.mem.Allocator) !network.Network {
     var definitions: std.ArrayListUnmanaged(network.Definition) = .empty;
-    var entry: ?network.EntryInvocation = null;
+    var entries: std.ArrayListUnmanaged(network.EntryInvocation) = .empty;
     var free_refs: std.ArrayListUnmanaged([]const u8) = .empty;
 
     while (true) {
@@ -682,14 +702,13 @@ fn parseInner(p: *Parser, allocator: std.mem.Allocator) !network.Network {
             try definitions.append(allocator, def);
         } else if (next == '(') {
             const parsed_entry = try p.parseEntryInvocation(name);
-            if (entry != null) return error.MultipleEntryInvocations;
-            entry = parsed_entry;
+            try entries.append(allocator, parsed_entry);
         } else return error.UnexpectedChar;
     }
 
     return network.Network{
         .definitions = try definitions.toOwnedSlice(allocator),
-        .entry = entry,
+        .entries = try entries.toOwnedSlice(allocator),
         .free_destinations = try free_refs.toOwnedSlice(allocator),
     };
 }

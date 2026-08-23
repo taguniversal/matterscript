@@ -25,3 +25,7 @@ Conditional output can also be expressed as shown in Example 12.11. The invocati
 **Serial Bus: Fan-in/Fan-out Expression**
 
 Example 12.12 is a serial bus expressed by two invocations associating the output of a fan-in with the input of a fan-out.
+
+**Parallel Bus: Fan-out/Fan-in expression**
+
+[TAG-147](https://linear.app/taguniversal/issue/TAG-147/example-1213-parallel-bus) is a parallel bus expressed by associating the output of multiple fan-outs with the input of multiple fan-ins. The outA's and outB's of the fan-out invocations associate to the inputs of the fan-in invocations.

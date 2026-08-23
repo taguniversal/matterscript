@@ -35,12 +35,12 @@ pub const PlaceKind = enum {
 };
 
 pub const Place = struct {
-    name: []const u8,          // "" means unnamed — the abbreviated single-return
-                               // form (Fant §12.3.4), associates implicitly to
-                               // the invocation's own place
+    name: []const u8, // "" means unnamed — the abbreviated single-return
+    // form (Fant §12.3.4), associates implicitly to
+    // the invocation's own place
     kind: PlaceKind,
-    content: ?[]const u8 = null,  // literal content between < and >, if
-                                  // present (e.g. state<S0>, value<0>)
+    content: ?[]const u8 = null, // literal content between < and >, if
+    // present (e.g. state<S0>, value<0>)
 };
 
 /// A single entry in an explicit key:value constant table.
@@ -66,8 +66,8 @@ pub const BinaryOp = enum { add, sub, mul, div };
 
 pub const ExprKind = enum {
     integer,
-    variable,  // $name — references a source place value
-    constant,  // name  — references a const decl
+    variable, // $name — references a source place value
+    constant, // name  — references a const decl
     binary,
     call,
 };
@@ -116,15 +116,13 @@ pub const Invocation = struct {
     outputs: []const Place,
 };
 
-
-
 pub const Statement = union(enum) {
     fill: SourceFill,
     invoke: Invocation,
     pure_value: []const u8, // a bare name-composition or literal with no
-        // explicit fill/invocation syntax — Fant's "Pure Value
-        // Expression" and the abbreviated "Constant Definition" form
-        // (e.g. the "1" inside "0[1]"). Semantics/resolution deferred.
+    // explicit fill/invocation syntax — Fant's "Pure Value
+    // Expression" and the abbreviated "Constant Definition" form
+    // (e.g. the "1" inside "0[1]"). Semantics/resolution deferred.
 };
 
 pub const Definition = struct {
@@ -134,10 +132,10 @@ pub const Definition = struct {
     resolution: []const Statement,
     constants: []const TableDef,
     contained: []const Definition = &.{}, // definitions nested inside
-        // this one's brackets, after the resolution's ':' separator
-        // (§12.3.2) — ranges from full sub-networks (FULLADD's nested
-        // OR/AND/NOT) down to bare constant definitions (0[1], 1[2]).
-        // Name resolution and VHDL emission are deliberately deferred.
+    // this one's brackets, after the resolution's ':' separator
+    // (§12.3.2) — ranges from full sub-networks (FULLADD's nested
+    // OR/AND/NOT) down to bare constant definitions (0[1], 1[2]).
+    // Name resolution and VHDL emission are deliberately deferred.
 };
 
 /// Top-level entry invocation.
@@ -152,15 +150,15 @@ pub const EntryInvocation = struct {
 
 pub const Network = struct {
     definitions: []const Definition,
-    entry: ?EntryInvocation,
+    entries: []const EntryInvocation,
     free_destinations: []const []const u8 = &.{}, // bare $name references
-        // appearing at the top level of the network, outside any
-        // invocation or definition syntax — Fant's "outlying
-        // destination places" (§12.7). Zero or more may appear,
-        // anywhere in the string. Each participates through name
-        // correspondence with a source place of the same name
-        // elsewhere — including, in feedback cases like Example 12.41's
-        // value<>/$value, the very invocation that precedes it.
-        // Semantics/VHDL emission are deliberately deferred here —
-        // this only captures the syntax.
+    // appearing at the top level of the network, outside any
+    // invocation or definition syntax — Fant's "outlying
+    // destination places" (§12.7). Zero or more may appear,
+    // anywhere in the string. Each participates through name
+    // correspondence with a source place of the same name
+    // elsewhere — including, in feedback cases like Example 12.41's
+    // value<>/$value, the very invocation that precedes it.
+    // Semantics/VHDL emission are deliberately deferred here —
+    // this only captures the syntax.
 };

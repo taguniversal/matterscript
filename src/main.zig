@@ -79,7 +79,7 @@ pub fn main(init: std.process.Init) !void {
                 }
             }
         }
-        if (net.entry) |e| {
+        for (net.entries) |e| {
             try stdout_writer.print("\nentry: {s} with {d} args\n", .{ e.name, e.args.len });
         }
 
