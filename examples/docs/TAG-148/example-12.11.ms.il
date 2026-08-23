@@ -1,0 +1,6 @@
+fanout($select $input)({output1< > output2< > output3< > output4< >})
+fanout[(select< > in< >)({$out1 $out2 $out3 $out4})
+     $select( ) :  A[out1< $in >]
+                   B[out2< $in >]
+                   C[out3< $in >]
+                   D[out4< $in >] ]

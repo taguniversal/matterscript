@@ -22,4 +22,6 @@ The content of select< > will form an invocation name in the place of resolution
 
 Conditional output can also be expressed as shown in Example 12.11. The invocation of fan-out will pass $input to output1< >,output2< >, output3< >, or output4< > depending on the content of select< >. Output completeness is exactly one of output1< >, output2< >, output3< >, or output4< >. The braces explicitly express this completeness criterion. The mutually exclusive completeness relationships are also reflected in the definition lists. 
 
-.
+**Serial Bus: Fan-in/Fan-out Expression**
+
+Example 12.12 is a serial bus expressed by two invocations associating the output of a fan-in with the input of a fan-out.
