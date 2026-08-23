@@ -74,8 +74,7 @@ pub fn main(init: std.process.Init) !void {
             continue;
         };
 
-        const net = il_parser.parse(arena, source) catch |err| {
-            std.debug.print("  [{s}] parse error: {s}\n", .{ ex.tag, @errorName(err) });
+        const net = il_parser.parseWithTag(arena, source, ex.tag) catch {
             try rows.append(arena, .{
                 .tag = ex.tag,
                 .path = ex.path,

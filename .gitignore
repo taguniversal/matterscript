@@ -1,15 +1,12 @@
-# 1. Ignore all generated asset subdirectories across all literate documents
-*.assets/generated/
-src/generated/
 
-# 2. Ignore compiler build directories
+# Ignore compiler build directories
 zig-out/
 .zig-cache/
 
 #ignore local environment (API keys)
 .env 
 
-# 3. Ignore simulation outputs
+# Ignore simulation outputs
 *.vcd
 *.fst
 .openmono/

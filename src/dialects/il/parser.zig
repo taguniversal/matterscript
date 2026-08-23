@@ -637,9 +637,17 @@ const Parser = struct {
 // ----------------------------------------------------------------
 
 pub fn parse(allocator: std.mem.Allocator, source: []const u8) !network.Network {
+    return parseWithTag(allocator, source, null);
+}
+
+pub fn parseWithTag(
+    allocator: std.mem.Allocator,
+    source: []const u8,
+    tag: []const u8,
+) !network.Network {
     var p = Parser.init(allocator, source);
     return parseInner(&p, allocator) catch |err| {
-        reportError(&p, err);
+        reportError(&p, err, tag);
         return err;
     };
 }
@@ -697,7 +705,7 @@ fn parseInner(p: *Parser, allocator: std.mem.Allocator) !network.Network {
 /// A failure inside that inner parser won't be reflected here — the
 /// outer p.pos will just show wherever parseGenerateBlock was called
 /// from, not the actual failure point within the expression.
-fn reportError(p: *const Parser, err: anyerror) void {
+fn reportError(p: *const Parser, err: anyerror, tag: ?[]const u8) void {
     var line: usize = 1;
     var col: usize = 1;
     var line_start: usize = 0;
@@ -715,10 +723,11 @@ fn reportError(p: *const Parser, err: anyerror) void {
     while (line_end < p.src.len and p.src[line_end] != '\n') line_end += 1;
     const line_text = p.src[line_start..line_end];
 
+    if (tag) |issue_tag| std.debug.print("  [{s}]\n", .{issue_tag});
     std.debug.print("  parse error: {s} at line {d}, column {d}\n", .{ @errorName(err), line, col });
     std.debug.print("    {s}\n", .{line_text});
     std.debug.print("    ", .{});
     var j: usize = 1;
     while (j < col) : (j += 1) std.debug.print(" ", .{});
-    std.debug.print("^\n", .{});
+    std.debug.print("^\n\n", .{});
 }

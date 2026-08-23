@@ -1,7 +1,5 @@
 // linear: TAG-147 Parallel bus
-fanout($seloutA $srcA)({outA1< > outA2< > outA3< > outA4< > outA5<
-
-     >)
+fanout($seloutA $srcA)({outA1< > outA2< > outA3< > outA4< > outA5<>})
 
 fanout($seloutB $srcB)({outB1< > outB2< > outB3< > outB4< > outB5< >})
 fanin($selin1 {$outA1 $outB1})(dest1< >)

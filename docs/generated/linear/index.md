@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 1  |  🟡 Partial: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 104  |  Total: 106
+✅ Implemented: 1  |  🟡 Partial: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 103  |  Total: 106
 
 - ⬜ Not started [12.1 The Nature of Symbol String Expression](TAG-93.md)
 - ⬜ Not started [12.2 A Language of Association Relationships](TAG-94.md)
@@ -88,7 +88,7 @@
 - ⬜ Not started [Example 12.16 Occasional Source Place](TAG-133.md)
 - ⬜ Not started [Example 12.46 A Streetlight control program](TAG-134.md)
 - ⬜ Not started [Example 12.47 Linear Feedback Shift Register](TAG-135.md)
-- ⬜ Not started [Example 12.45 Code detector state machine](TAG-136.md)
+- ⬛ Spec only [Example 12.45 Code detector state machine](TAG-136.md)
 - ⬜ Not started [Example 12.41 Four-value sequencer](TAG-137.md)
 - ⬜ Not started [Example 12.40 The invocation expression of the greatest common divisor](TAG-138.md)
 - ⬜ Not started [Figure 12.28 Experience Memory](TAG-139.md)
