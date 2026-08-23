@@ -16,7 +16,7 @@ Mod($cyclelesser $cyclegreater)(remainder< > )
 EQ0({$lesser $init})(incondition< > outcondition< > )
 
 dualfanout($outcondition $lesser $greater)
-  ({cyclelesser< > cyclegreater< > } ( SINK< > GCD< >) )
+  ({cyclelesser< > cyclegreater< > ) ( SINK< > GCD< >) )
 
 dualfanin[(steer< > ){A< > B< >}{C< > D< >}]($out1 $out2)
    $steer( ) : True[out1< $A > out2<$B >]
