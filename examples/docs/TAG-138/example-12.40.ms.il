@@ -8,15 +8,14 @@ init< 0 >
 
 LTsteer($M,$N)(inlesser< > ingreater< > )
 
-dualfanin($incondition {inlesserremainder}{ingreatercyclelesser})
+dualfanin($incondition {$inlesser $remainder}{$ingreater $cyclelesser})
+  (lesser< > greater< > )
 
-(lesser< > greater< > )
+Mod($cyclelesser $cyclegreater)(remainder< > )
 
-Mod(cyclelessercyclegreater)(remainder< > )
+EQ0({$lesser $init})(incondition< > outcondition< > )
 
-EQ0({lesserinit})(incondition< > outcondition< > )
-
-dualfanout($outcondition lessergreater)
+dualfanout($outcondition $lesser $greater)
   ({cyclelesser< > cyclegreater< > } ( SINK< > GCD< >) )
 
 dualfanin[(steer< > ){A< > B< >}{C< > D< >}]($out1 $out2)
