@@ -137,7 +137,7 @@ const Parser = struct {
     // IL source-fill expression parser (composition refs like $a$b())
     // ----------------------------------------------------------------
 
-        fn parseILExpr(p: *Parser) ![]const u8 {
+    fn parseILExpr(p: *Parser) ![]const u8 {
         p.skipWhitespaceAndComments();
         const start = p.pos;
         while (p.peek() == '$') {
@@ -441,7 +441,7 @@ const Parser = struct {
         } };
     }
 
-        fn parseResolution(p: *Parser) ![]const network.Statement {
+    fn parseResolution(p: *Parser) ![]const network.Statement {
         var stmts: std.ArrayListUnmanaged(network.Statement) = .empty;
         while (true) {
             p.skipWhitespaceAndComments();
@@ -478,7 +478,7 @@ const Parser = struct {
     // Constants
     // ----------------------------------------------------------------
 
-       /// Parses a single $-composed constant table: "$a$b() : entries" or
+    /// Parses a single $-composed constant table: "$a$b() : entries" or
     /// "$a$b() : generate { ... }".
     fn parseOneConstantTable(p: *Parser) !network.TableDef {
         const start = p.pos;
@@ -514,7 +514,7 @@ const Parser = struct {
     /// — Fant's "contained definitions" position (§12.3.2). Can hold
     /// $-composed constant tables and/or genuine nested Definitions
     /// (with their own sources/destinations/resolution), in any order.
-    fn parseContainedSection(p: *Parser) !struct {
+    fn parseContainedSection(p: *Parser) anyerror!struct {
         constants: []const network.TableDef,
         contained: []const network.Definition,
     } {
@@ -560,31 +560,15 @@ const Parser = struct {
     // ----------------------------------------------------------------
     // Definition and entry invocation
     // ----------------------------------------------------------------
-
-        fn parseDefinition(p: *Parser) !network.Definition {
+    fn parseDefinition(p: *Parser) anyerror!network.Definition {
         const name = try p.readName();
         try p.expect('[');
 
         p.skipWhitespaceAndComments();
-        if (p.peek() != '(') {
-            // §12.3.4 "Constant Definition" — no source list, no
-            // destination list; the brackets contain only a bare
-            // constant or expression fragment, e.g. "0[1]".
-            const content = try p.parseILExpr();
-            try p.expect(']');
-            const stmts = try p.allocator.alloc(network.Statement, 1);
-            stmts[0] = .{ .pure_value = content };
-            return network.Definition{
-                .name = name,
-                .sources = &.{},
-                .destinations = &.{},
-                .resolution = stmts,
-                .constants = &.{},
-                .contained = &.{},
-            };
-        }
-
-        const sources = try p.parseDefSourceList();
+        const sources: []const network.Place = if (p.peek() == '(')
+            try p.parseDefSourceList()
+        else
+            &.{};
 
         p.skipWhitespaceAndComments();
         const destinations: []const network.Place = if (p.peek() == '(')
