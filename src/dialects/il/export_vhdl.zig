@@ -15,7 +15,7 @@ const network = @import("network.zig");
 const workspace = @import("../../common/workspace.zig");
 
 const SIGNAL_WIDTH = 8;
-const DATA_WIDTH   = 7;
+const DATA_WIDTH = 7;
 
 pub fn writeVhdlNetwork(
     io: std.Io,
@@ -24,8 +24,7 @@ pub fn writeVhdlNetwork(
     net: network.Network,
     output_name: []const u8,
 ) !void {
-    const output_path = try std.fmt.allocPrint(
-        allocator, "../workspace/{s}/{s}", .{ namespace, output_name });
+    const output_path = try std.fmt.allocPrint(allocator, "../workspace/{s}/{s}", .{ namespace, output_name });
     defer allocator.free(output_path);
 
     var file = try std.Io.Dir.cwd().createFile(io, output_path, .{});
@@ -66,17 +65,13 @@ fn writeDefinition(
 
     // sources → inputs (tokens flow IN to the definition)
     for (def.sources) |src| {
-        try writer.print(
-            "    {s} : in  std_logic_vector({d} downto 0);  -- source place (input)\n",
-            .{ src.name, SIGNAL_WIDTH - 1 });
+        try writer.print("    {s} : in  std_logic_vector({d} downto 0);  -- source place (input)\n", .{ src.name, SIGNAL_WIDTH - 1 });
     }
 
     // destinations → outputs (tokens flow OUT of the definition)
     for (def.destinations, 0..) |dest, i| {
         const last = i == def.destinations.len - 1;
-        try writer.print(
-            "    {s} : out std_logic_vector({d} downto 0){s}  -- destination place (output)\n",
-            .{ dest.name, SIGNAL_WIDTH - 1, if (last) "" else ";" });
+        try writer.print("    {s} : out std_logic_vector({d} downto 0){s}  -- destination place (output)\n", .{ dest.name, SIGNAL_WIDTH - 1, if (last) "" else ";" });
     }
     try writer.print("  );\nend {s};\n\n", .{def.name});
 
@@ -95,12 +90,8 @@ fn writeDefinition(
         defer allocator.free(tbl_id);
         const key_bits = countSources(tbl.composed_name) * DATA_WIDTH;
         const val_bits = try tableValueWidth(allocator, tbl);
-        try writer.print(
-            "  signal {s}_key   : std_logic_vector({d} downto 0);\n",
-            .{ tbl_id, key_bits - 1 });
-        try writer.print(
-            "  signal {s}_data  : std_logic_vector({d} downto 0);\n",
-            .{ tbl_id, val_bits - 1 });
+        try writer.print("  signal {s}_key   : std_logic_vector({d} downto 0);\n", .{ tbl_id, key_bits - 1 });
+        try writer.print("  signal {s}_data  : std_logic_vector({d} downto 0);\n", .{ tbl_id, val_bits - 1 });
         try writer.print("  signal {s}_valid : std_logic;\n", .{tbl_id});
     }
 
@@ -171,9 +162,7 @@ fn writeDefinition(
                     const key_str = key_buf[0..key_pos];
                     const val_int = std.fmt.parseInt(u64, entry.value, 10) catch 0;
                     const val_str = binStr(&val_buf, val_int, val_bits);
-                    try writer.print(
-                        "        when \"{s}\" => {s}_data <= \"{s}\"; {s}_valid <= '1';\n",
-                        .{ key_str, tbl_id, val_str, tbl_id });
+                    try writer.print("        when \"{s}\" => {s}_data <= \"{s}\"; {s}_valid <= '1';\n", .{ key_str, tbl_id, val_str, tbl_id });
                 }
             },
             .generate => |gen| {
@@ -189,9 +178,7 @@ fn writeDefinition(
                     }
                     const key_str = key_buf[0..key_pos];
                     const val_str = binStr(&val_buf, @intCast(entry.output_value), val_bits);
-                    try writer.print(
-                        "        when \"{s}\" => {s}_data <= \"{s}\"; {s}_valid <= '1';\n",
-                        .{ key_str, tbl_id, val_str, tbl_id });
+                    try writer.print("        when \"{s}\" => {s}_data <= \"{s}\"; {s}_valid <= '1';\n", .{ key_str, tbl_id, val_str, tbl_id });
                 }
             },
         }
@@ -205,15 +192,14 @@ fn writeDefinition(
     for (def.resolution) |stmt| {
         switch (stmt) {
             .fill => |f| {
-                const tbl_id = try sanitizeName(allocator, f.expr);
-                defer allocator.free(tbl_id);
-                try writer.print(
-                    "  {s} <= {s}_data & {s}_valid;\n",
-                    .{ f.dest_name, tbl_id, tbl_id });
+                if (!try writeContainedLookup(allocator, writer, def, f)) {
+                    const tbl_id = try sanitizeName(allocator, f.expr);
+                    defer allocator.free(tbl_id);
+                    try writer.print("  {s} <= {s}_data & {s}_valid;\n", .{ f.dest_name, tbl_id, tbl_id });
+                }
             },
             .invoke => |inv| {
-                try writer.print(
-                    "  -- TODO: component instantiation for {s}\n", .{inv.name});
+                try writer.print("  -- TODO: component instantiation for {s}\n", .{inv.name});
             },
             .pure_value => |v| {
                 try writer.print("  -- TODO: pure value expression {s} (contained-definition resolution not yet implemented)\n", .{v});
@@ -222,6 +208,51 @@ fn writeDefinition(
     }
 
     try writer.print("\nend rtl;\n", .{});
+}
+
+fn writeContainedLookup(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    def: network.Definition,
+    fill: network.SourceFill,
+) !bool {
+    if (def.sources.len != 1 or def.contained.len == 0) return false;
+    if (std.mem.indexOf(u8, fill.expr, def.sources[0].name) == null) return false;
+
+    for (def.contained) |row| {
+        _ = std.fmt.parseInt(u64, row.name, 10) catch return false;
+        if (row.resolution.len != 1) return false;
+        switch (row.resolution[0]) {
+            .pure_value => |value| {
+                _ = std.fmt.parseInt(u64, value, 10) catch return false;
+            },
+            else => return false,
+        }
+    }
+
+    const source_name = def.sources[0].name;
+    try writer.print("  process({s}, complete) begin\n" ++
+        "    {s} <= (others => '0');\n" ++
+        "    if complete = '1' then\n" ++
+        "      case {s}({d} downto 1) is\n", .{ source_name, fill.dest_name, source_name, SIGNAL_WIDTH - 1 });
+
+    for (def.contained) |row| {
+        const input = try std.fmt.parseInt(u64, row.name, 10);
+        const output = switch (row.resolution[0]) {
+            .pure_value => |value| try std.fmt.parseInt(u64, value, 10),
+            else => unreachable,
+        };
+        var input_buf: [DATA_WIDTH]u8 = undefined;
+        const input_bits = binStr(&input_buf, input, DATA_WIDTH);
+        try writer.print("        when \"{s}\" => {s} <= std_logic_vector(to_unsigned({d}, {d})) & '1';\n", .{ input_bits, fill.dest_name, output, DATA_WIDTH });
+    }
+
+    try writer.print("        when others => null;\n" ++
+        "      end case;\n" ++
+        "    end if;\n" ++
+        "  end process;\n", .{});
+    _ = allocator;
+    return true;
 }
 
 // ----------------------------------------------------------------
@@ -248,9 +279,7 @@ fn enumerateGenerate(
     const current_vals = try allocator.alloc(i64, gen.inputs.len);
     defer allocator.free(current_vals);
 
-    try enumerateRecursive(
-        allocator, gen, gen.inputs, current_vals, 0,
-        &var_map, const_map, &entries);
+    try enumerateRecursive(allocator, gen, gen.inputs, current_vals, 0, &var_map, const_map, &entries);
 
     return entries.toOwnedSlice(allocator);
 }
@@ -280,9 +309,7 @@ fn enumerateRecursive(
     while (v <= inp.max) : (v += 1) {
         current_vals[depth] = v;
         try var_map.put(inp.name, v);
-        try enumerateRecursive(
-            allocator, gen, inputs, current_vals, depth + 1,
-            var_map, const_map, entries);
+        try enumerateRecursive(allocator, gen, inputs, current_vals, depth + 1, var_map, const_map, entries);
     }
 }
 
@@ -292,10 +319,10 @@ fn evalExpr(
     constants: std.StringHashMap(i64),
 ) !i64 {
     return switch (expr.kind) {
-        .integer  => expr.int_val,
+        .integer => expr.int_val,
         .variable => variables.get(expr.name) orelse 0,
         .constant => constants.get(expr.name) orelse 0,
-        .binary   => {
+        .binary => {
             const l = try evalExpr(expr.left.?, variables, constants);
             const r = try evalExpr(expr.right.?, variables, constants);
             return switch (expr.op) {
@@ -308,16 +335,15 @@ fn evalExpr(
         .call => {
             if (std.mem.eql(u8, expr.func, "clamp")) {
                 const val = try evalExpr(expr.args[0], variables, constants);
-                const lo  = try evalExpr(expr.args[1], variables, constants);
-                const hi  = try evalExpr(expr.args[2], variables, constants);
+                const lo = try evalExpr(expr.args[1], variables, constants);
+                const hi = try evalExpr(expr.args[2], variables, constants);
                 return @max(lo, @min(hi, val));
             }
             if (std.mem.eql(u8, expr.func, "avg")) {
                 var sum: i64 = 0;
                 for (expr.args) |arg|
                     sum += try evalExpr(arg, variables, constants);
-                return if (expr.args.len == 0) 0
-                       else @divTrunc(sum, @as(i64, @intCast(expr.args.len)));
+                return if (expr.args.len == 0) 0 else @divTrunc(sum, @as(i64, @intCast(expr.args.len)));
             }
             return 0;
         },
@@ -340,7 +366,9 @@ fn sanitizeName(allocator: std.mem.Allocator, composed: []const u8) ![]u8 {
 // count $ signs in composed name to determine key width
 fn countSources(composed: []const u8) usize {
     var count: usize = 0;
-    for (composed) |c| if (c == '$') { count += 1; };
+    for (composed) |c| if (c == '$') {
+        count += 1;
+    };
     return count;
 }
 
