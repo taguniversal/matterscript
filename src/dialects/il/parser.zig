@@ -441,7 +441,7 @@ const Parser = struct {
         } };
     }
 
-    fn parseResolution(p: *Parser) ![]const network.Statement {
+       fn parseResolution(p: *Parser) ![]const network.Statement {
         var stmts: std.ArrayListUnmanaged(network.Statement) = .empty;
         while (true) {
             p.skipWhitespaceAndComments();
@@ -454,14 +454,12 @@ const Parser = struct {
             }
 
             if (c == '$') {
-                // A pure value expression — a bare name-composition
-                // with no invocation syntax, forming the name of a
-                // contained definition to select.
                 const expr = try p.parseILExpr();
                 try stmts.append(p.allocator, .{ .pure_value = expr });
                 continue;
             }
 
+            const tok_start = p.pos;
             const name = try p.readName();
             p.skipWhitespaceAndComments();
             const next = p.peek() orelse return ParseError.UnexpectedEnd;
@@ -469,6 +467,11 @@ const Parser = struct {
                 try stmts.append(p.allocator, try p.parseSourceFill(name));
             } else if (next == '(') {
                 try stmts.append(p.allocator, try p.parseInvocation(name));
+            } else if (next == ':' or next == ']') {
+                // What we read wasn't a statement name at all — it was
+                // a bare literal with nothing following it (§12.3.4's
+                // simplest Constant Definition, e.g. the "1" in "0[1]").
+                try stmts.append(p.allocator, .{ .pure_value = p.src[tok_start..p.pos] });
             } else return ParseError.UnexpectedChar;
         }
         return stmts.toOwnedSlice(p.allocator);
