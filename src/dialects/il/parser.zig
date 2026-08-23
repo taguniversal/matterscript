@@ -341,16 +341,38 @@ const Parser = struct {
             const c = p.peek() orelse break;
             if (c == ')') break;
 
+            if (c == '{') {
+                // A brace-enclosed group — §12.5.2/12.5.3, mutually
+                // exclusive or conditional places, possibly wrapping
+                // the entire list. Captured as one opaque Place with a
+                // sentinel name; grouping semantics and VHDL emission
+                // are deliberately deferred, same as pure_value.
+                const group_start = p.pos;
+                _ = p.advance();
+                var depth: usize = 1;
+                while (depth > 0) {
+                    const ch = p.advance() orelse return ParseError.UnexpectedEnd;
+                    if (ch == '{') depth += 1;
+                    if (ch == '}') depth -= 1;
+                }
+                try list.append(p.allocator, .{
+                    .name = "{group}",
+                    .kind = kind,
+                    .content = p.src[group_start..p.pos],
+                });
+                p.skipWhitespaceAndComments();
+                _ = p.tryConsume(',');
+                continue;
+            }
+
             var name: []const u8 = "";
             if (c != '<') {
                 name = try p.readName();
                 p.skipWhitespaceAndComments();
             }
-
             if (p.peek() != '<') return ParseError.ExpectedToken;
-            _ = p.advance(); // consume '<'
+            _ = p.advance();
             p.skipWhitespaceAndComments();
-
             var content: ?[]const u8 = null;
             if (p.peek() != '>') {
                 const content_start = p.pos;
@@ -358,10 +380,9 @@ const Parser = struct {
                 content = std.mem.trim(u8, p.src[content_start..p.pos], " \t\r\n");
             }
             try p.expect('>');
-
             try list.append(p.allocator, .{ .name = name, .kind = kind, .content = content });
             p.skipWhitespaceAndComments();
-            _ = p.tryConsume(','); // §12.4 — comma is a general, optional separator
+            _ = p.tryConsume(',');
         }
         try p.expect(')');
         return list.toOwnedSlice(p.allocator);
@@ -441,7 +462,7 @@ const Parser = struct {
         } };
     }
 
-       fn parseResolution(p: *Parser) ![]const network.Statement {
+    fn parseResolution(p: *Parser) ![]const network.Statement {
         var stmts: std.ArrayListUnmanaged(network.Statement) = .empty;
         while (true) {
             p.skipWhitespaceAndComments();
