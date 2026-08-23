@@ -441,7 +441,7 @@ const Parser = struct {
         } };
     }
 
-    fn parseResolution(p: *Parser) ![]const network.Statement {
+        fn parseResolution(p: *Parser) ![]const network.Statement {
         var stmts: std.ArrayListUnmanaged(network.Statement) = .empty;
         while (true) {
             p.skipWhitespaceAndComments();
@@ -449,10 +449,16 @@ const Parser = struct {
             if (c == ':' or c == ']') break;
 
             if (c == '<') {
-                // "the presence of a single unnamed source place in the
-                // place of resolution" (§12.3.4) — used when the
-                // destination list has been omitted.
                 try stmts.append(p.allocator, try p.parseSourceFill(""));
+                continue;
+            }
+
+            if (c == '$') {
+                // A pure value expression — a bare name-composition
+                // with no invocation syntax, forming the name of a
+                // contained definition to select.
+                const expr = try p.parseILExpr();
+                try stmts.append(p.allocator, .{ .pure_value = expr });
                 continue;
             }
 
@@ -472,73 +478,123 @@ const Parser = struct {
     // Constants
     // ----------------------------------------------------------------
 
-    fn parseConstants(p: *Parser) ![]const network.TableDef {
+       /// Parses a single $-composed constant table: "$a$b() : entries" or
+    /// "$a$b() : generate { ... }".
+    fn parseOneConstantTable(p: *Parser) !network.TableDef {
+        const start = p.pos;
+        while (p.peek() == '$') {
+            _ = p.advance();
+            _ = try p.readName();
+        }
+        try p.expect('(');
+        try p.expect(')');
+        const composed = p.src[start..p.pos];
+        try p.expect(':');
+        p.skipWhitespaceAndComments();
+
+        if (p.peekKeyword("generate")) {
+            const gen = try p.parseGenerateBlock();
+            return .{ .composed_name = composed, .kind = .{ .generate = gen } };
+        }
+
+        var entries: std.ArrayListUnmanaged(network.TableEntry) = .empty;
+        while (p.pos < p.src.len) {
+            p.skipWhitespaceAndComments();
+            const d = p.peek() orelse break;
+            if (d == ']' or d == '$') break;
+            const key = try p.readName();
+            try p.expect(':');
+            const val = try p.readName();
+            try entries.append(p.allocator, .{ .key = key, .value = val });
+        }
+        return .{ .composed_name = composed, .kind = .{ .explicit = try entries.toOwnedSlice(p.allocator) } };
+    }
+
+    /// Parses everything after a definition's resolution-terminating ':'
+    /// — Fant's "contained definitions" position (§12.3.2). Can hold
+    /// $-composed constant tables and/or genuine nested Definitions
+    /// (with their own sources/destinations/resolution), in any order.
+    fn parseContainedSection(p: *Parser) !struct {
+        constants: []const network.TableDef,
+        contained: []const network.Definition,
+    } {
         var tables: std.ArrayListUnmanaged(network.TableDef) = .empty;
+        var nested: std.ArrayListUnmanaged(network.Definition) = .empty;
+
         while (true) {
             p.skipWhitespaceAndComments();
             const c = p.peek() orelse break;
             if (c == ']') break;
-            if (c != '$') break;
 
-            const start = p.pos;
-            while (p.peek() == '$') {
-                _ = p.advance();
-                _ = try p.readName();
+            if (c == '$') {
+                try tables.append(p.allocator, try p.parseOneConstantTable());
+                continue;
             }
-            try p.expect('(');
-            try p.expect(')');
-            const composed = p.src[start..p.pos];
-            try p.expect(':');
-            p.skipWhitespaceAndComments();
 
-            if (p.peekKeyword("generate")) {
-                const gen = try p.parseGenerateBlock();
-                try tables.append(p.allocator, .{
-                    .composed_name = composed,
-                    .kind = .{ .generate = gen },
-                });
-            } else {
-                var entries: std.ArrayListUnmanaged(network.TableEntry) = .empty;
-                while (p.pos < p.src.len) {
-                    p.skipWhitespaceAndComments();
-                    const d = p.peek() orelse break;
-                    if (d == ']' or d == '$') break;
-                    const key = try p.readName();
-                    try p.expect(':');
-                    const val = try p.readName();
-                    try entries.append(p.allocator, .{ .key = key, .value = val });
+            if (std.ascii.isAlphanumeric(c) or c == '_') {
+                const save = p.pos;
+                _ = p.readName() catch {
+                    p.pos = save;
+                    break;
+                };
+                p.skipWhitespaceAndComments();
+                if (p.peek() == '[') {
+                    p.pos = save;
+                    const def = try p.parseDefinition();
+                    try nested.append(p.allocator, def);
+                    continue;
                 }
-                try tables.append(p.allocator, .{
-                    .composed_name = composed,
-                    .kind = .{ .explicit = try entries.toOwnedSlice(p.allocator) },
-                });
+                p.pos = save;
+                break;
             }
+
+            break;
         }
-        return tables.toOwnedSlice(p.allocator);
+
+        return .{
+            .constants = try tables.toOwnedSlice(p.allocator),
+            .contained = try nested.toOwnedSlice(p.allocator),
+        };
     }
 
     // ----------------------------------------------------------------
     // Definition and entry invocation
     // ----------------------------------------------------------------
 
-    fn parseDefinition(p: *Parser) !network.Definition {
+        fn parseDefinition(p: *Parser) !network.Definition {
         const name = try p.readName();
         try p.expect('[');
 
-        // Fant order: sources first (name<>), then destinations ($name)
+        p.skipWhitespaceAndComments();
+        if (p.peek() != '(') {
+            // §12.3.4 "Constant Definition" — no source list, no
+            // destination list; the brackets contain only a bare
+            // constant or expression fragment, e.g. "0[1]".
+            const content = try p.parseILExpr();
+            try p.expect(']');
+            const stmts = try p.allocator.alloc(network.Statement, 1);
+            stmts[0] = .{ .pure_value = content };
+            return network.Definition{
+                .name = name,
+                .sources = &.{},
+                .destinations = &.{},
+                .resolution = stmts,
+                .constants = &.{},
+                .contained = &.{},
+            };
+        }
+
         const sources = try p.parseDefSourceList();
 
         p.skipWhitespaceAndComments();
         const destinations: []const network.Place = if (p.peek() == '(')
             try p.parseDefDestList()
         else
-            &.{}; // §12.3.4 "Single Return to Place of Invocation" —
-        // destination list omitted; parseResolution handles
-        // the resulting bare unnamed source place directly.
+            &.{};
 
         const resolution = try p.parseResolution();
         _ = p.tryConsume(':');
-        const constants = try p.parseConstants();
+        const section = try p.parseContainedSection();
         try p.expect(']');
 
         return network.Definition{
@@ -546,7 +602,8 @@ const Parser = struct {
             .sources = sources,
             .destinations = destinations,
             .resolution = resolution,
-            .constants = constants,
+            .constants = section.constants,
+            .contained = section.contained,
         };
     }
 

@@ -116,16 +116,17 @@ pub const Invocation = struct {
     outputs: []const Place,
 };
 
+
+
 pub const Statement = union(enum) {
     fill: SourceFill,
     invoke: Invocation,
+    pure_value: []const u8, // a bare name-composition or literal with no
+        // explicit fill/invocation syntax — Fant's "Pure Value
+        // Expression" and the abbreviated "Constant Definition" form
+        // (e.g. the "1" inside "0[1]"). Semantics/resolution deferred.
 };
 
-/// A complete definition.
-/// Fant syntax: NAME[(sources)($destinations) resolving-expression : tables ]
-///
-/// sources      — source places (name<>) — receive tokens FROM outside
-/// destinations — destination places ($name) — emit tokens TO outside
 pub const Definition = struct {
     name: []const u8,
     sources: []const Place,
@@ -133,11 +134,10 @@ pub const Definition = struct {
     resolution: []const Statement,
     constants: []const TableDef,
     contained: []const Definition = &.{}, // definitions nested inside
-        // this one's brackets, after the ':' separator (§12.3.2).
-        // Ranges from full sub-networks (FULLADD's nested OR/AND/NOT)
-        // down to bare constant definitions (0[1], 1[2] — §12.3.4's
-        // most-abbreviated form). Name resolution and codegen for
-        // contained definitions are handled later, not by the parser.
+        // this one's brackets, after the resolution's ':' separator
+        // (§12.3.2) — ranges from full sub-networks (FULLADD's nested
+        // OR/AND/NOT) down to bare constant definitions (0[1], 1[2]).
+        // Name resolution and VHDL emission are deliberately deferred.
 };
 
 /// Top-level entry invocation.

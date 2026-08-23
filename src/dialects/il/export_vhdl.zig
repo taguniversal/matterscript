@@ -215,6 +215,9 @@ fn writeDefinition(
                 try writer.print(
                     "  -- TODO: component instantiation for {s}\n", .{inv.name});
             },
+            .pure_value => |v| {
+                try writer.print("  -- TODO: pure value expression {s} (contained-definition resolution not yet implemented)\n", .{v});
+            },
         }
     }
 
