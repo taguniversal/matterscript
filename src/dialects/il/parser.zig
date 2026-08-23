@@ -379,11 +379,58 @@ const Parser = struct {
     ///   name<content> — named place carrying literal content (state<S0>)
     ///   <>  / <content> — unnamed place (abbreviated single-return
     ///                     form), represented as Place{ .name = "" }
-    fn parsePlaceList(p: *Parser, kind: network.PlaceKind) ![]const network.Place {
+     fn parsePlaceList(p: *Parser, kind: network.PlaceKind) ![]const network.Place {
         try p.expect('(');
-        const list = try p.parsePlaceSequence(kind, ')', false);
+        var list: std.ArrayListUnmanaged(network.Place) = .empty;
+        while (true) {
+            p.skipWhitespaceAndComments();
+            const c = p.peek() orelse break;
+            if (c == ')') break;
+
+            if (c == '{' or c == '[') {
+                // A brace-enclosed mutex/conditional group, a bundle
+                // bracket, or the two nested together. Captured as one
+                // opaque Place; grouping/bundling semantics and VHDL
+                // emission are deliberately deferred, same as
+                // pure_value.
+                const span = if (c == '{')
+                    try p.consumeBalanced('{', '}')
+                else
+                    try p.consumeBalanced('[', ']');
+                try list.append(p.allocator, .{
+                    .name = if (c == '{') "{group}" else "[bundle]",
+                    .kind = kind,
+                    .content = span,
+                });
+                p.skipWhitespaceAndComments();
+                _ = p.tryConsume(',');
+                continue;
+            }
+
+            var name: []const u8 = "";
+            if (c != '<') {
+                name = try p.readName();
+                p.skipWhitespaceAndComments();
+            }
+
+            if (p.peek() != '<') return ParseError.ExpectedToken;
+            _ = p.advance(); // consume '<'
+            p.skipWhitespaceAndComments();
+
+            var content: ?[]const u8 = null;
+            if (p.peek() != '>') {
+                const content_start = p.pos;
+                while (p.pos < p.src.len and p.src[p.pos] != '>') p.pos += 1;
+                content = std.mem.trim(u8, p.src[content_start..p.pos], " \t\r\n");
+            }
+            try p.expect('>');
+
+            try list.append(p.allocator, .{ .name = name, .kind = kind, .content = content });
+            p.skipWhitespaceAndComments();
+            _ = p.tryConsume(',');
+        }
         try p.expect(')');
-        return list;
+        return list.toOwnedSlice(p.allocator);
     }
 
     fn parsePlaceSequence(
@@ -439,27 +486,80 @@ const Parser = struct {
         return list.toOwnedSlice(p.allocator);
     }
 
+    /// Consume a balanced-delimiter span starting at the current
+    /// position, returning the full text including both delimiters.
+    /// Used for brace groups ({...} — mutex/conditional completeness,
+    /// §12.5.2/12.5.3) and bundle brackets ([...] — bundling/
+    /// unbundling, §12.6). Each call only tracks its own delimiter's
+    /// depth, so the two kinds nest inside each other transparently —
+    /// a "[" span just copies through any "{"/"}" it encounters as
+    /// inert content, and vice versa.
+    fn consumeBalanced(p: *Parser, open: u8, close: u8) ![]const u8 {
+        const start = p.pos;
+        _ = p.advance();
+        var depth: usize = 1;
+        while (depth > 0) {
+            const ch = p.advance() orelse return ParseError.UnexpectedEnd;
+            if (ch == open) depth += 1;
+            if (ch == close) depth -= 1;
+        }
+        return p.src[start..p.pos];
+    }
+
     /// Definition first list: (name<> ...) — source places, tokens flow IN
     fn parseDefSourceList(p: *Parser) ![]const network.Place {
         return p.parsePlaceList(.source);
     }
 
-    /// Definition second list: ($name ...) — destination places, tokens flow OUT
     fn parseDefDestList(p: *Parser) ![]const network.Place {
         try p.expect('(');
-        const list = try p.parsePlaceSequence(.destination, ')', true);
+        var list: std.ArrayListUnmanaged(network.Place) = .empty;
+        while (true) {
+            p.skipWhitespaceAndComments();
+            const c = p.peek() orelse break;
+            if (c == ')') break;
+
+            if (c == '{' or c == '[') {
+                const span = if (c == '{')
+                    try p.consumeBalanced('{', '}')
+                else
+                    try p.consumeBalanced('[', ']');
+                try list.append(p.allocator, .{
+                    .name = if (c == '{') "{group}" else "[bundle]",
+                    .kind = .destination,
+                    .content = span,
+                });
+                p.skipWhitespaceAndComments();
+                _ = p.tryConsume(',');
+                continue;
+            }
+
+            if (c != '$') break;
+            _ = p.advance();
+            const name = try p.readName();
+            try list.append(p.allocator, .{ .name = name, .kind = .destination });
+            p.skipWhitespaceAndComments();
+            _ = p.tryConsume(',');
+        }
         try p.expect(')');
-        return list;
+        return list.toOwnedSlice(p.allocator);
     }
 
     /// Invocation first list: ($name or literal ...) — args passed to definition sources
-    fn parseInvArgList(p: *Parser) ![]const []const u8 {
+        fn parseInvArgList(p: *Parser) ![]const []const u8 {
         try p.expect('(');
         var args: std.ArrayListUnmanaged([]const u8) = .empty;
         p.skipWhitespaceAndComments();
         while (p.peek() != ')' and p.peek() != null) {
             p.skipWhitespaceAndComments();
-            if (p.peek() == '$') {
+            const c = p.peek().?;
+            if (c == '{' or c == '[') {
+                const span = if (c == '{')
+                    try p.consumeBalanced('{', '}')
+                else
+                    try p.consumeBalanced('[', ']');
+                try args.append(p.allocator, span);
+            } else if (c == '$') {
                 const expr = try p.parseILExpr();
                 try args.append(p.allocator, expr);
             } else {
@@ -467,7 +567,7 @@ const Parser = struct {
                 try args.append(p.allocator, lit);
             }
             p.skipWhitespaceAndComments();
-            _ = p.tryConsume(','); // §12.4 — comma is a general, optional separator
+            _ = p.tryConsume(',');
             p.skipWhitespaceAndComments();
         }
         try p.expect(')');
