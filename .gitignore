@@ -11,3 +11,6 @@ zig-out/
 *.fst
 .openmono/
 .verify_scratch/
+
+# Ignore GHDL build artifacts
+*.cf
