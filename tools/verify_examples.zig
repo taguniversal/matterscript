@@ -180,16 +180,16 @@ fn readStatusManifest(
 }
 
 fn printTable(rows: []const ExampleRow) void {
-    const separator = "----------------------------------------------------------------------------------------------";
+    const separator = "--------------------------------------------------------------------------------";
 
-    std.debug.print("\n{s:<10} {s:<45} {s:<12} {s:<6} {s:<6} {s}\n", .{ "TAG", "example", "expected", "parse", "ghdl", "result" });
+    std.debug.print("\n{s:<8} {s:<24} {s:<12} {s:<5} {s:<5} {s}\n", .{ "TAG", "example", "expected", "parse", "ghdl", "result" });
     std.debug.print("{s}\n", .{separator});
 
     var pass_count: usize = 0;
     var fail_count: usize = 0;
 
     for (rows) |r| {
-        const expected_str = r.expected_status orelse "—";
+        const expected_str = r.expected_status orelse "-";
         const parse_str = if (r.parse_ok) "ok" else "FAIL";
         const ghdl_str = if (!r.parse_ok) "—" else if (r.ghdl_ok) "ok" else "FAIL";
         const result_str = switch (r.result) {
@@ -200,7 +200,7 @@ fn printTable(rows: []const ExampleRow) void {
         };
         if (r.result == .pass or r.result == .expected_fail) pass_count += 1 else fail_count += 1;
 
-        std.debug.print("{s:<10} {s:<45} {s:<12} {s:<6} {s:<6} {s}\n", .{
+        std.debug.print("{s:<8} {s:<24} {s:<12} {s:<5} {s:<5} {s}\n", .{
             r.tag, std.fs.path.basename(r.path), expected_str, parse_str, ghdl_str, result_str,
         });
     }
