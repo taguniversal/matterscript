@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 2  |  🟡 Partial: 0  |  ⬛ Spec only: 4  |  ⬜ Not started: 102  |  Total: 108
+✅ Implemented: 2  |  🟡 Partial: 1  |  ⬛ Spec only: 4  |  ⬜ Not started: 102  |  Total: 109
 
 - ⬜ Not started [12.1 The Nature of Symbol String Expression](TAG-93.md)
 - ⬜ Not started [12.2 A Language of Association Relationships](TAG-94.md)
@@ -102,6 +102,7 @@
 - ⬛ Spec only [Example 12.11 Controlled fan-out expression](TAG-148.md)
 - ⬛ Spec only [Example 12.9 Mutually Exclusive Completeness](TAG-149.md)
 - ⬜ Not started [Null Convention Library and ABI Spec](TAG-150.md)
+- 🟡 Partial [Example 12.17 Bundling mutually exclusive path into a single path](TAG-151.md)
 - ⬜ Not started [Return a Content to Place of Invocation](TAG-32.md)
 - ⬜ Not started [Single Return to Place of Invocation](TAG-33.md)
 - ⬜ Not started [The Conditional Invocation Name](TAG-35.md)

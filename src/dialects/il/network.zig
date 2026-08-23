@@ -41,6 +41,14 @@ pub const Place = struct {
     kind: PlaceKind,
     content: ?[]const u8 = null, // literal content between < and >, if
     // present (e.g. state<S0>, value<0>)
+    group: ?*const PlaceGroup = null,
+};
+
+pub const PlaceGroupKind = enum { bundle, mutex };
+
+pub const PlaceGroup = struct {
+    kind: PlaceGroupKind,
+    places: []const Place,
 };
 
 /// A single entry in an explicit key:value constant table.
@@ -106,6 +114,8 @@ pub const SourceFill = struct {
     dest_name: []const u8,
     /// The expression whose value fills the place
     expr: []const u8,
+    /// Parsed expression when the fill contains an unresolved invocation.
+    parsed_expr: ?*const Expr = null,
 };
 
 pub const Invocation = struct {

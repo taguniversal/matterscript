@@ -35,6 +35,7 @@ const Parser = struct {
     src: []const u8,
     pos: usize,
     allocator: std.mem.Allocator,
+    last_expr: ?*const network.Expr = null,
 
     fn init(allocator: std.mem.Allocator, src: []const u8) Parser {
         return .{ .src = src, .pos = 0, .allocator = allocator };
@@ -139,7 +140,37 @@ const Parser = struct {
 
     fn parseILExpr(p: *Parser) ![]const u8 {
         p.skipWhitespaceAndComments();
+        p.last_expr = null;
         const start = p.pos;
+        if (p.pos < p.src.len and
+            (std.ascii.isAlphanumeric(p.src[p.pos]) or p.src[p.pos] == '_'))
+        {
+            const saved = p.pos;
+            const name = try p.readName();
+            p.skipWhitespaceAndComments();
+            if (p.peek() == '(') {
+                _ = p.advance();
+                var args: std.ArrayListUnmanaged(*network.Expr) = .empty;
+                p.skipWhitespaceAndComments();
+                while (p.peek() != ')' and p.peek() != null) {
+                    const arg = try p.parseILCallArgument();
+                    try args.append(p.allocator, arg);
+                    p.skipWhitespaceAndComments();
+                    _ = p.tryConsume(',');
+                    p.skipWhitespaceAndComments();
+                }
+                try p.expect(')');
+                const call = try p.allocator.create(network.Expr);
+                call.* = .{
+                    .kind = .call,
+                    .func = name,
+                    .args = try args.toOwnedSlice(p.allocator),
+                };
+                p.last_expr = call;
+                return p.src[start..p.pos];
+            }
+            p.pos = saved;
+        }
         while (p.peek() == '$') {
             _ = p.advance();
             _ = try p.readName();
@@ -161,6 +192,21 @@ const Parser = struct {
             }
         }
         return p.src[start..p.pos];
+    }
+
+    fn parseILCallArgument(p: *Parser) !*network.Expr {
+        p.skipWhitespaceAndComments();
+        if (p.peek() == '$') {
+            _ = p.advance();
+            const name = try p.readName();
+            const node = try p.allocator.create(network.Expr);
+            node.* = .{ .kind = .variable, .name = name };
+            return node;
+        }
+        const name = try p.readName();
+        const node = try p.allocator.create(network.Expr);
+        node.* = .{ .kind = .constant, .name = name };
+        return node;
     }
 
     // ----------------------------------------------------------------
@@ -335,56 +381,61 @@ const Parser = struct {
     ///                     form), represented as Place{ .name = "" }
     fn parsePlaceList(p: *Parser, kind: network.PlaceKind) ![]const network.Place {
         try p.expect('(');
+        const list = try p.parsePlaceSequence(kind, ')', false);
+        try p.expect(')');
+        return list;
+    }
+
+    fn parsePlaceSequence(
+        p: *Parser,
+        kind: network.PlaceKind,
+        terminator: u8,
+        definition_destinations: bool,
+    ) ![]const network.Place {
         var list: std.ArrayListUnmanaged(network.Place) = .empty;
         while (true) {
             p.skipWhitespaceAndComments();
             const c = p.peek() orelse break;
-            if (c == ')') break;
+            if (c == terminator) break;
 
-            if (c == '{') {
-                // A brace-enclosed group — §12.5.2/12.5.3, mutually
-                // exclusive or conditional places, possibly wrapping
-                // the entire list. Captured as one opaque Place with a
-                // sentinel name; grouping semantics and VHDL emission
-                // are deliberately deferred, same as pure_value.
-                const group_start = p.pos;
+            if (c == '{' or c == '[') {
+                const group_kind: network.PlaceGroupKind = if (c == '{') .mutex else .bundle;
+                const closing: u8 = if (c == '{') '}' else ']';
                 _ = p.advance();
-                var depth: usize = 1;
-                while (depth > 0) {
-                    const ch = p.advance() orelse return ParseError.UnexpectedEnd;
-                    if (ch == '{') depth += 1;
-                    if (ch == '}') depth -= 1;
+                const places = try p.parsePlaceSequence(kind, closing, definition_destinations);
+                try p.expect(closing);
+                const group = try p.allocator.create(network.PlaceGroup);
+                group.* = .{ .kind = group_kind, .places = places };
+                try list.append(p.allocator, .{ .name = "{group}", .kind = kind, .group = group });
+            } else {
+                var name: []const u8 = "";
+                if (definition_destinations) {
+                    try p.expect('$');
+                    name = try p.readName();
+                    try list.append(p.allocator, .{ .name = name, .kind = kind });
+                    p.skipWhitespaceAndComments();
+                    _ = p.tryConsume(',');
+                    continue;
+                } else if (c != '<') name = try p.readName();
+                p.skipWhitespaceAndComments();
+                if (p.peek() != '<') {
+                    if (kind == .destination) return ParseError.ExpectedToken;
+                    return ParseError.ExpectedToken;
                 }
-                try list.append(p.allocator, .{
-                    .name = "{group}",
-                    .kind = kind,
-                    .content = p.src[group_start..p.pos],
-                });
+                _ = p.advance();
                 p.skipWhitespaceAndComments();
-                _ = p.tryConsume(',');
-                continue;
+                var content: ?[]const u8 = null;
+                if (p.peek() != '>') {
+                    const content_start = p.pos;
+                    while (p.pos < p.src.len and p.src[p.pos] != '>') p.pos += 1;
+                    content = std.mem.trim(u8, p.src[content_start..p.pos], " \t\r\n");
+                }
+                try p.expect('>');
+                try list.append(p.allocator, .{ .name = name, .kind = kind, .content = content });
             }
-
-            var name: []const u8 = "";
-            if (c != '<') {
-                name = try p.readName();
-                p.skipWhitespaceAndComments();
-            }
-            if (p.peek() != '<') return ParseError.ExpectedToken;
-            _ = p.advance();
-            p.skipWhitespaceAndComments();
-            var content: ?[]const u8 = null;
-            if (p.peek() != '>') {
-                const content_start = p.pos;
-                while (p.pos < p.src.len and p.src[p.pos] != '>') p.pos += 1;
-                content = std.mem.trim(u8, p.src[content_start..p.pos], " \t\r\n");
-            }
-            try p.expect('>');
-            try list.append(p.allocator, .{ .name = name, .kind = kind, .content = content });
             p.skipWhitespaceAndComments();
             _ = p.tryConsume(',');
         }
-        try p.expect(')');
         return list.toOwnedSlice(p.allocator);
     }
 
@@ -396,37 +447,9 @@ const Parser = struct {
     /// Definition second list: ($name ...) — destination places, tokens flow OUT
     fn parseDefDestList(p: *Parser) ![]const network.Place {
         try p.expect('(');
-        var list: std.ArrayListUnmanaged(network.Place) = .empty;
-        while (true) {
-            p.skipWhitespaceAndComments();
-            const c = p.peek() orelse break;
-            if (c == ')') break;
-
-            if (c == '{') {
-                const group_start = p.pos;
-                _ = p.advance();
-                var depth: usize = 1;
-                while (depth > 0) {
-                    const ch = p.advance() orelse return ParseError.UnexpectedEnd;
-                    if (ch == '{') depth += 1;
-                    if (ch == '}') depth -= 1;
-                }
-                try list.append(p.allocator, .{
-                    .name = "{group}",
-                    .kind = .destination,
-                    .content = p.src[group_start..p.pos],
-                });
-            } else {
-                try p.expect('$');
-                const name = try p.readName();
-                try list.append(p.allocator, .{ .name = name, .kind = .destination });
-            }
-
-            p.skipWhitespaceAndComments();
-            _ = p.tryConsume(','); // §12.4 — comma is a general, optional separator
-        }
+        const list = try p.parsePlaceSequence(.destination, ')', true);
         try p.expect(')');
-        return list.toOwnedSlice(p.allocator);
+        return list;
     }
 
     /// Invocation first list: ($name or literal ...) — args passed to definition sources
@@ -464,7 +487,11 @@ const Parser = struct {
         _ = p.advance(); // consume <
         const expr = try p.parseILExpr();
         try p.expect('>');
-        return network.Statement{ .fill = .{ .dest_name = name, .expr = expr } };
+        return network.Statement{ .fill = .{
+            .dest_name = name,
+            .expr = expr,
+            .parsed_expr = p.last_expr,
+        } };
     }
 
     fn parseInvocation(p: *Parser, name: []const u8) !network.Statement {
@@ -680,6 +707,11 @@ fn parseInner(p: *Parser, allocator: std.mem.Allocator) !network.Network {
     while (true) {
         p.skipWhitespaceAndComments();
         if (p.pos >= p.src.len) break;
+
+        if (p.peek() == ':') {
+            _ = p.advance();
+            continue;
+        }
 
         // A bare $name at the top level is a free-floating "outlying
         // destination place" (§12.7) — not attached to any invocation
