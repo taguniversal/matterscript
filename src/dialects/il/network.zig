@@ -128,14 +128,16 @@ pub const Statement = union(enum) {
 /// destinations — destination places ($name) — emit tokens TO outside
 pub const Definition = struct {
     name: []const u8,
-    /// Source places: tokens flow IN from the invocation context
     sources: []const Place,
-    /// Destination places: tokens flow OUT to the invocation context
     destinations: []const Place,
-    /// Resolving expression — statements that fill destination places
     resolution: []const Statement,
-    /// Constant lookup tables
     constants: []const TableDef,
+    contained: []const Definition = &.{}, // definitions nested inside
+        // this one's brackets, after the ':' separator (§12.3.2).
+        // Ranges from full sub-networks (FULLADD's nested OR/AND/NOT)
+        // down to bare constant definitions (0[1], 1[2] — §12.3.4's
+        // most-abbreviated form). Name resolution and codegen for
+        // contained definitions are handled later, not by the parser.
 };
 
 /// Top-level entry invocation.
