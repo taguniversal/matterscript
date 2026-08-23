@@ -137,7 +137,7 @@ const Parser = struct {
     // IL source-fill expression parser (composition refs like $a$b())
     // ----------------------------------------------------------------
 
-    fn parseILExpr(p: *Parser) ![]const u8 {
+        fn parseILExpr(p: *Parser) ![]const u8 {
         p.skipWhitespaceAndComments();
         const start = p.pos;
         while (p.peek() == '$') {
@@ -150,11 +150,15 @@ const Parser = struct {
             try p.expect(')');
         }
         if (p.pos == start) {
-            // No $-prefixed composition present — fall back to a plain
-            // literal token, e.g. a resolution-body fill like
-            // "init< 0 >" or "state<S0>" carrying a bare constant
-            // rather than a name-composition expression.
-            _ = try p.readName();
+            // No $-composition present. Try a plain literal token
+            // (e.g. "init< 0 >"); if there isn't one either — the
+            // content is genuinely empty, "<>" — that's valid too
+            // (an unnamed/empty fill, §12.3.4), so don't error.
+            if (p.pos < p.src.len and
+                (std.ascii.isAlphanumeric(p.src[p.pos]) or p.src[p.pos] == '_'))
+            {
+                _ = try p.readName();
+            }
         }
         return p.src[start..p.pos];
     }
@@ -424,7 +428,12 @@ const Parser = struct {
 
     fn parseInvocation(p: *Parser, name: []const u8) !network.Statement {
         const args = try p.parseInvArgList();
-        const outputs = try p.parseInvOutputList();
+        p.skipWhitespaceAndComments();
+        const outputs: []const network.Place = if (p.peek() == '(')
+            try p.parseInvOutputList()
+        else
+            &.{}; // §12.3.4 — output list omitted, implicit single
+        // unnamed return
         return network.Statement{ .invoke = .{
             .name = name,
             .args = args,
@@ -438,6 +447,15 @@ const Parser = struct {
             p.skipWhitespaceAndComments();
             const c = p.peek() orelse break;
             if (c == ':' or c == ']') break;
+
+            if (c == '<') {
+                // "the presence of a single unnamed source place in the
+                // place of resolution" (§12.3.4) — used when the
+                // destination list has been omitted.
+                try stmts.append(p.allocator, try p.parseSourceFill(""));
+                continue;
+            }
+
             const name = try p.readName();
             p.skipWhitespaceAndComments();
             const next = p.peek() orelse return ParseError.UnexpectedEnd;
@@ -509,7 +527,15 @@ const Parser = struct {
 
         // Fant order: sources first (name<>), then destinations ($name)
         const sources = try p.parseDefSourceList();
-        const destinations = try p.parseDefDestList();
+
+        p.skipWhitespaceAndComments();
+        const destinations: []const network.Place = if (p.peek() == '(')
+            try p.parseDefDestList()
+        else
+            &.{}; // §12.3.4 "Single Return to Place of Invocation" —
+        // destination list omitted; parseResolution handles
+        // the resulting bare unnamed source place directly.
+
         const resolution = try p.parseResolution();
         _ = p.tryConsume(':');
         const constants = try p.parseConstants();
@@ -527,7 +553,12 @@ const Parser = struct {
     fn parseEntryInvocation(p: *Parser, name: []const u8) !network.EntryInvocation {
         // Fant invocation order: args first ($name/literal), outputs second (name<>)
         const args = try p.parseInvArgList();
-        const outputs = try p.parseInvOutputList();
+        p.skipWhitespaceAndComments();
+        const outputs: []const network.Place = if (p.peek() == '(')
+            try p.parseInvOutputList()
+        else
+            &.{}; // §12.3.4 — output list omitted, implicit single
+        // unnamed return to the place of the invocation
         return network.EntryInvocation{
             .name = name,
             .args = args,

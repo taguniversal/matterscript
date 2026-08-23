@@ -208,4 +208,5 @@ fn printTable(rows: []const ExampleRow) void {
 
     std.debug.print("{s}\n", .{separator});
     std.debug.print("{d} ok, {d} unexpected\n\n", .{ pass_count, fail_count });
+    
 }
