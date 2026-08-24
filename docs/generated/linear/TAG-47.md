@@ -2,12 +2,49 @@
 
 ### TAG-47: Parallel Bus: Fan-out/Fan-In Expression
 
-**Status:** ⬜ Not started
+**Status:** ⬛ Spec only
 
 ## Software Notes
 
-_(not yet written)_
+That makes sense. [TAG-147](https://linear.app/taguniversal/issue/TAG-147/example-1213-parallel-bus) should be treated as a **composition-only** example, not a functional simulation target.
+
+For this case, the emitter can produce a valid shell such as:
+
+```
+entity parallel_bus is
+  port (
+    seloutA : in  ncl_signal;
+    srcA    : in  ncl_signal;
+    seloutB : in  ncl_signal;
+    srcB    : in  ncl_signal;
+    dest1   : out ncl_signal;
+    dest2   : out ncl_signal;
+    dest3   : out ncl_signal;
+    dest4   : out ncl_signal;
+    dest5   : out ncl_signal
+  );
+end entity;
+
+architecture shell of parallel_bus is
+begin
+  -- fanout/fanin composition intentionally unwired
+  dest1 <= null_value;
+  dest2 <= null_value;
+  dest3 <= null_value;
+  dest4 <= null_value;
+  dest5 <= null_value;
+end architecture;
+```
+
+The emitter would infer:
+
+* External inputs from arguments that are not supplied by another invocation.
+* Internal wires from produced output names such as `outA1` and `outB1`.
+* External outputs from invocation outputs that are not consumed internally.
+* Stubbed or NULL-driven behavior for the unresolved components.
+
+This would make GHDL syntax validation meaningful without pretending to implement fan-in/fan-out behavior. Marking [TAG-147](https://linear.app/taguniversal/issue/TAG-147/example-1213-parallel-bus) as `Spec Only` is the right status, and the verifier should distinguish “shell emitted and syntactically valid” from “functionally simulation-ready.”
 
 ## Reference
 
-Fan-out/Fan-in Expression Example 12.13 is a parallel bus expressed by associating the output of multiple fan-outs with the input of multiple fan-ins. The outA's and outB's of the fan-out invocations associate to the inputs of the fan-in invocations.
+Fan-out/Fan-in Expression [TAG-147](https://linear.app/taguniversal/issue/TAG-147/example-1213-parallel-bus)is a parallel bus expressed by associating the output of multiple fan-outs with the input of multiple fan-ins. The outA's and outB's of the fan-out invocations associate to the inputs of the fan-in invocations.

@@ -16,7 +16,7 @@
     "workflow_state": "In Progress"
   },
   "TAG-147": {
-    "implementation_status": null,
+    "implementation_status": "Spec Only",
     "workflow_state": "In Progress"
   },
   "TAG-146": {
@@ -376,7 +376,7 @@
     "workflow_state": "Backlog"
   },
   "TAG-47": {
-    "implementation_status": null,
+    "implementation_status": "Spec Only",
     "workflow_state": "Backlog"
   },
   "TAG-46": {

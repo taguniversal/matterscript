@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 2  |  🟡 Partial: 1  |  ⬛ Spec only: 4  |  ⬜ Not started: 102  |  Total: 109
+✅ Implemented: 2  |  🟡 Partial: 1  |  ⬛ Spec only: 6  |  ⬜ Not started: 100  |  Total: 109
 
 - ⬜ Not started [12.1 The Nature of Symbol String Expression](TAG-93.md)
 - ⬜ Not started [12.2 A Language of Association Relationships](TAG-94.md)
@@ -98,7 +98,7 @@
 - ⬜ Not started [Example 12.2 Expressing a single return to place of invocation](TAG-143.md)
 - ⬜ Not started [Parser stops at first entry-shaped invocation, silently discarding trailing definitions](TAG-144.md)
 - ⬜ Not started [Example 12.12 Serial Bus](TAG-146.md)
-- ⬜ Not started [Example 12.13 Parallel Bus](TAG-147.md)
+- ⬛ Spec only [Example 12.13 Parallel Bus](TAG-147.md)
 - ⬛ Spec only [Example 12.11 Controlled fan-out expression](TAG-148.md)
 - ⬛ Spec only [Example 12.9 Mutually Exclusive Completeness](TAG-149.md)
 - ⬜ Not started [Null Convention Library and ABI Spec](TAG-150.md)
@@ -109,7 +109,7 @@
 - ⬜ Not started [The Constant Definition](TAG-36.md)
 - ⬜ Not started [The Pure Value Expression](TAG-38.md)
 - ⬜ Not started [Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
-- ⬜ Not started [Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
+- ⬛ Spec only [Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [The Completeness Dialogue](TAG-80.md)
 - ⬜ Not started [Four-phase Handshake Protocol](TAG-81.md)
 - ⬜ Not started [The Cycle Protocol](TAG-82.md)

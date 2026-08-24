@@ -7,3 +7,15 @@ fanin($selin2 {$outA2 $outB2})(dest2< >)
 fanin($selin3 {$outA3 $outB3})(dest3< >)
 fanin($selin4 {$outA4 $outB4})(dest4< >)
 fanin($selin5 {$outA5 $outB5})(dest5< >)
+
+fanout[
+  (select<> input<>)
+  ({$out1 $out2 $out3 $out4 $out5})
+  :
+]
+
+fanin[
+  (select<> {in1<> in2<>})
+  ($out)
+  :
+]
