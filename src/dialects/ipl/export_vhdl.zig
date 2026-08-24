@@ -135,7 +135,24 @@ fn writeDefinition(
         try writeComponentDeclaration(allocator, writer, inv);
     }
 
+    for (def.resolution, 0..) |stmt, invocation_index| {
+        if (stmt != .invoke) continue;
+        const inv = stmt.invoke;
+        for (inv.args, 0..) |_, argument_index| {
+            try writer.print("  signal invocation_{d}_arg_{d} : ncl_signal;\n", .{ invocation_index, argument_index });
+        }
+    }
+
     try writer.print("begin\n\n", .{});
+
+    for (def.resolution, 0..) |stmt, invocation_index| {
+        if (stmt != .invoke) continue;
+        const inv = stmt.invoke;
+        for (inv.args, 0..) |arg, argument_index| {
+            try writeInvocationArgument(allocator, writer, invocation_index, argument_index, arg);
+        }
+        try writeInvocationInstance(allocator, writer, inv, invocation_index);
+    }
 
     // valid extraction from source places (inputs)
     try writer.print("  -- extract valid bits from source places (inputs)\n", .{});
@@ -250,7 +267,7 @@ fn writeDefinition(
                 }
             },
             .invoke => |inv| {
-                try writer.print("  -- TODO: component instantiation for {s}\n", .{inv.name});
+                _ = inv;
             },
             .pure_value => |v| {
                 try writer.print("  -- TODO: pure value expression {s} (contained-definition resolution not yet implemented)\n", .{v});
@@ -265,6 +282,51 @@ fn writeDefinition(
         try writer.print("\n", .{});
         try writeDefinition(allocator, writer, contained);
     }
+}
+
+fn writeInvocationArgument(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    invocation_index: usize,
+    argument_index: usize,
+    argument: []const u8,
+) !void {
+    const signal_name = try std.fmt.allocPrint(allocator, "invocation_{d}_arg_{d}", .{ invocation_index, argument_index });
+    defer allocator.free(signal_name);
+    const trimmed = std.mem.trim(u8, argument, " \t\r\n");
+    if (trimmed.len > 1 and trimmed[0] == '$' and std.mem.indexOfScalar(u8, trimmed[1..], '$') == null) {
+        const source_id = try sanitizeName(allocator, trimmed[1..]);
+        defer allocator.free(source_id);
+        try writer.print("  {s} <= {s};\n", .{ signal_name, source_id });
+    } else if (std.fmt.parseInt(u64, trimmed, 10)) |value| {
+        try writer.print("  {s} <= data_value({d});\n", .{ signal_name, value });
+    } else |_| {
+        try writer.print("  {s} <= null_value;\n", .{signal_name});
+    }
+}
+
+fn writeInvocationInstance(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    inv: network.Invocation,
+    invocation_index: usize,
+) !void {
+    const component_id = try sanitizeName(allocator, inv.name);
+    defer allocator.free(component_id);
+    try writer.print("  invocation_{d} : {s} port map (clk => clk, rst => rst", .{ invocation_index, component_id });
+    for (inv.args, 0..) |_, argument_index| {
+        try writer.print(", arg_{d} => invocation_{d}_arg_{d}", .{ argument_index, invocation_index, argument_index });
+    }
+    for (inv.outputs, 0..) |output, output_index| {
+        if (output.group != null or output.name.len == 0) {
+            try writer.print(", output_{d} => open", .{output_index});
+        } else {
+            const output_id = try placeName(allocator, output);
+            defer allocator.free(output_id);
+            try writer.print(", output_{d} => {s}", .{ output_index, output_id });
+        }
+    }
+    try writer.print(");\n", .{});
 }
 
 fn writeComponentDeclaration(
