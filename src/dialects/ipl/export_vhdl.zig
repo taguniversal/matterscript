@@ -68,14 +68,14 @@ fn writeDefinition(
 
     // sources → inputs (tokens flow IN to the definition)
     for (def.sources) |src| {
-        const src_id = try sanitizeName(allocator, src.name);
+        const src_id = try placeName(allocator, src);
         defer allocator.free(src_id);
         try writer.print("    {s} : in  std_logic_vector({d} downto 0);  -- source place (input)\n", .{ src_id, SIGNAL_WIDTH - 1 });
     }
 
     // destinations → outputs (tokens flow OUT of the definition)
     for (def.destinations, 0..) |dest, i| {
-        const dest_id = try sanitizeName(allocator, dest.name);
+        const dest_id = try placeName(allocator, dest);
         defer allocator.free(dest_id);
         const last = i == def.destinations.len - 1;
         try writer.print("    {s} : out std_logic_vector({d} downto 0){s}  -- destination place (output)\n", .{ dest_id, SIGNAL_WIDTH - 1, if (last) "" else ";" });
@@ -87,7 +87,7 @@ fn writeDefinition(
 
     // valid signals — one per source (input)
     for (def.sources) |src| {
-        const src_id = try sanitizeName(allocator, src.name);
+        const src_id = try placeName(allocator, src);
         defer allocator.free(src_id);
         try writer.print("  signal {s}_valid : std_logic;\n", .{src_id});
     }
@@ -109,7 +109,7 @@ fn writeDefinition(
     // valid extraction from source places (inputs)
     try writer.print("  -- extract valid bits from source places (inputs)\n", .{});
     for (def.sources) |src| {
-        const src_id = try sanitizeName(allocator, src.name);
+        const src_id = try placeName(allocator, src);
         defer allocator.free(src_id);
         try writer.print("  {s}_valid <= {s}(0);\n", .{ src_id, src_id });
     }
@@ -119,7 +119,7 @@ fn writeDefinition(
     try writer.print("  complete <= ", .{});
     for (def.sources, 0..) |src, i| {
         if (i > 0) try writer.print(" and ", .{});
-        const src_id = try sanitizeName(allocator, src.name);
+        const src_id = try placeName(allocator, src);
         defer allocator.free(src_id);
         try writer.print("{s}_valid", .{src_id});
     }
@@ -409,6 +409,23 @@ fn sanitizeName(allocator: std.mem.Allocator, composed: []const u8) ![]u8 {
         return prefixed.toOwnedSlice(allocator);
     }
     return buf.toOwnedSlice(allocator);
+}
+
+fn placeName(allocator: std.mem.Allocator, place: network.Place) ![]u8 {
+    if (place.group) |group| {
+        var raw: std.ArrayListUnmanaged(u8) = .empty;
+        try raw.appendSlice(allocator, "group");
+        for (group.places) |member| {
+            const member_name = try placeName(allocator, member);
+            defer allocator.free(member_name);
+            try raw.append(allocator, '_');
+            try raw.appendSlice(allocator, member_name);
+        }
+        const result = try sanitizeName(allocator, raw.items);
+        raw.deinit(allocator);
+        return result;
+    }
+    return sanitizeName(allocator, place.name);
 }
 
 fn isVhdlReserved(name: []const u8) bool {
