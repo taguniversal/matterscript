@@ -760,7 +760,7 @@ pub fn parse(allocator: std.mem.Allocator, source: []const u8) !network.Network 
 pub fn parseWithTag(
     allocator: std.mem.Allocator,
     source: []const u8,
-    tag: []const u8,
+    tag: ?[]const u8,
 ) !network.Network {
     var p = Parser.init(allocator, source);
     return parseInner(&p, allocator) catch |err| {

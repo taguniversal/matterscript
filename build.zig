@@ -116,10 +116,15 @@ pub fn build(b: *std.Build) void {
     gen_add.step.dependOn(b.getInstallStep());
     verify_step.dependOn(&gen_add.step);
 
+    const ghdl_ncl = b.addSystemCommand(&.{
+        "ghdl", "-a", "--std=08", "src/stdlib/ncl/matterscript_ncl.vhd",
+    });
+
     const ghdl_add = b.addSystemCommand(&.{
         "ghdl", "-s", "--std=08", "../workspace/add/add.vhd",
     });
     ghdl_add.step.dependOn(&gen_add.step);
+    ghdl_add.step.dependOn(&ghdl_ncl.step);
     verify_step.dependOn(&ghdl_add.step);
 
     // ------------------------------------------------------------
