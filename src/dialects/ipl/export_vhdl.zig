@@ -69,13 +69,14 @@ fn writeDefinition(
 
     // sources → inputs (tokens flow IN to the definition)
     var port_index: usize = 0;
+    var port_names: std.ArrayListUnmanaged([]const u8) = .empty;
     for (def.sources) |src| {
-        try writeBoundaryPorts(allocator, writer, src, "in", &port_index, boundary_count);
+        try writeBoundaryPorts(allocator, writer, src, "in", &port_index, boundary_count, &port_names);
     }
 
     // destinations → outputs (tokens flow OUT of the definition)
     for (def.destinations) |dest| {
-        try writeBoundaryPorts(allocator, writer, dest, "out", &port_index, boundary_count);
+        try writeBoundaryPorts(allocator, writer, dest, "out", &port_index, boundary_count, &port_names);
     }
     try writer.print("  );\nend {s};\n\n", .{def_id});
 
@@ -378,21 +379,48 @@ fn writeBoundaryPorts(
     direction: []const u8,
     index: *usize,
     total: usize,
+    names: *std.ArrayListUnmanaged([]const u8),
 ) !void {
     if (place.group) |group| {
         if (group.kind == .mutex) {
             for (group.places) |member| {
-                try writeBoundaryPorts(allocator, writer, member, direction, index, total);
+                try writeBoundaryPorts(allocator, writer, member, direction, index, total, names);
             }
             return;
         }
     }
-    const id = try placeName(allocator, place);
+    const base_id = try placeName(allocator, place);
+    defer allocator.free(base_id);
+    const id = try uniqueVhdlName(allocator, names.items, base_id);
     defer allocator.free(id);
+    try names.append(allocator, try allocator.dupe(u8, id));
     index.* += 1;
     try writer.print("    {s} : {s} std_logic_vector({d} downto 0){s}\n", .{
         id, direction, SIGNAL_WIDTH - 1, if (index.* == total) "" else ";",
     });
+}
+
+fn uniqueVhdlName(
+    allocator: std.mem.Allocator,
+    names: []const []const u8,
+    base: []const u8,
+) ![]u8 {
+    var suffix: usize = 0;
+    while (true) : (suffix += 1) {
+        const candidate = if (suffix == 0)
+            try allocator.dupe(u8, base)
+        else
+            try std.fmt.allocPrint(allocator, "{s}_{d}", .{ base, suffix });
+        var collision = false;
+        for (names) |name| {
+            if (std.ascii.eqlIgnoreCase(name, candidate)) {
+                collision = true;
+                break;
+            }
+        }
+        if (!collision) return candidate;
+        allocator.free(candidate);
+    }
 }
 
 fn writeBoundaryValidDeclarations(
