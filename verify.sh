@@ -7,4 +7,5 @@
 # Revisit if full-rebuild time becomes a real cost as the project
 # grows.
 rm -rf .zig-cache
+rm -rf .verify_scratch
 zig build verify-examples
