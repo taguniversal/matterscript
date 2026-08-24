@@ -105,21 +105,23 @@ fn writeDefinition(
         try writer.print("  signal {s}_valid : std_logic;\n", .{tbl_id});
     }
 
+    var intermediate_names: std.ArrayListUnmanaged([]const u8) = .empty;
     for (def.resolution) |stmt| {
-        if (stmt != .fill) continue;
-        const fill = stmt.fill;
-        if (std.fmt.parseInt(u64, std.mem.trim(u8, fill.expr, " \t\r\n"), 10)) |_| {
-            const fill_id = try sanitizeName(allocator, fill.dest_name);
-            defer allocator.free(fill_id);
-            var is_port = false;
-            for (def.destinations) |dest| {
-                if (std.mem.eql(u8, dest.name, fill.dest_name)) {
-                    is_port = true;
-                    break;
+        switch (stmt) {
+            .fill => |fill| {
+                try writeIntermediateSignal(allocator, writer, def, &intermediate_names, fill.dest_name);
+                try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, fill.expr);
+            },
+            .invoke => |inv| {
+                for (inv.outputs) |output| {
+                    try writeIntermediatePlaceSignal(allocator, writer, def, &intermediate_names, output);
                 }
-            }
-            if (!is_port) try writer.print("  signal {s} : ncl_signal;\n", .{fill_id});
-        } else |_| {}
+                for (inv.args) |arg| {
+                    try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, arg);
+                }
+            },
+            .pure_value => |value| try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, value),
+        }
     }
 
     try writer.print("begin\n\n", .{});
@@ -256,6 +258,59 @@ fn writeDefinition(
         try writer.print("\n", .{});
         try writeDefinition(allocator, writer, contained);
     }
+}
+
+fn writeIntermediatePlaceSignal(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    def: network.Definition,
+    names: *std.ArrayListUnmanaged([]const u8),
+    place: network.Place,
+) !void {
+    const name = try placeName(allocator, place);
+    defer allocator.free(name);
+    try writeIntermediateSignal(allocator, writer, def, names, name);
+}
+
+fn writeIntermediateSignal(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    def: network.Definition,
+    names: *std.ArrayListUnmanaged([]const u8),
+    raw_name: []const u8,
+) !void {
+    if (raw_name.len == 0 or isDefinitionPort(def, raw_name)) return;
+    for (names.items) |name| if (std.ascii.eqlIgnoreCase(name, raw_name)) return;
+    try names.append(allocator, try allocator.dupe(u8, raw_name));
+    const id = try sanitizeName(allocator, raw_name);
+    defer allocator.free(id);
+    try writer.print("  signal {s} : ncl_signal;\n", .{id});
+}
+
+fn writeDollarReferenceSignals(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    def: network.Definition,
+    names: *std.ArrayListUnmanaged([]const u8),
+    expression: []const u8,
+) !void {
+    var i: usize = 0;
+    while (i < expression.len) {
+        if (expression[i] != '$') {
+            i += 1;
+            continue;
+        }
+        i += 1;
+        const start = i;
+        while (i < expression.len and (std.ascii.isAlphanumeric(expression[i]) or expression[i] == '_')) i += 1;
+        if (i > start) try writeIntermediateSignal(allocator, writer, def, names, expression[start..i]);
+    }
+}
+
+fn isDefinitionPort(def: network.Definition, name: []const u8) bool {
+    for (def.sources) |place| if (std.ascii.eqlIgnoreCase(place.name, name)) return true;
+    for (def.destinations) |place| if (std.ascii.eqlIgnoreCase(place.name, name)) return true;
+    return false;
 }
 
 fn writeContainedLookup(
