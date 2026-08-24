@@ -62,7 +62,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // add this branch in main() alongside the .ms.fsm branch:
-    if (std.mem.endsWith(u8, script_path, ".ms.il")) {
+    if (std.mem.endsWith(u8, script_path, ".ms.ipl")) {
         const net = try il_parser.parse(arena, source);
 
         try stdout_writer.print("Parsed IL network\n", .{});

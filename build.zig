@@ -112,7 +112,7 @@ pub fn build(b: *std.Build) void {
 
     // --- IL: add ---
     const gen_add = b.addRunArtifact(exe);
-    gen_add.addArg("examples/add/add.ms.il");
+    gen_add.addArg("examples/add/add.ms.ipl");
     gen_add.step.dependOn(b.getInstallStep());
     verify_step.dependOn(&gen_add.step);
 
@@ -214,7 +214,7 @@ pub fn build(b: *std.Build) void {
                 var sub_it = sub_dir.iterate();
                 while (sub_it.next(io) catch null) |file_entry| {
                     if (file_entry.kind != .file) continue;
-                    if (!std.mem.endsWith(u8, file_entry.name, ".ms.il")) continue;
+                    if (!std.mem.endsWith(u8, file_entry.name, ".ms.ipl")) continue;
                     const full_path = std.fs.path.join(b.allocator, &.{ sub_path, file_entry.name }) catch continue;
                     run_verify_examples.addArgs(&[_][]const u8{ "--example", tag_name, b.dupe(full_path) });
                 }
