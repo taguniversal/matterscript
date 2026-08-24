@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 3  |  🟡 Partial: 2  |  ⬛ Spec only: 5  |  ⬜ Not started: 100  |  Total: 110
+✅ Implemented: 3  |  🟡 Partial: 3  |  ⬛ Spec only: 5  |  ⬜ Not started: 100  |  Total: 111
 
 - ⬜ Not started [12.1 The Nature of Symbol String Expression](TAG-93.md)
 - ⬜ Not started [12.2 A Language of Association Relationships](TAG-94.md)
@@ -104,6 +104,7 @@
 - ⬜ Not started [Null Convention Library and ABI Spec](TAG-150.md)
 - 🟡 Partial [Example 12.17 Bundling mutually exclusive path into a single path](TAG-151.md)
 - ⬜ Not started [Make TAG-147 Shell VHDL Emission Valid and GHDL-Checkable](TAG-152.md)
+- 🟡 Partial [Example 12.8 Comma Delimited destination places](TAG-153.md)
 - ⬜ Not started [Return a Content to Place of Invocation](TAG-32.md)
 - ⬜ Not started [Single Return to Place of Invocation](TAG-33.md)
 - ⬜ Not started [The Conditional Invocation Name](TAG-35.md)
