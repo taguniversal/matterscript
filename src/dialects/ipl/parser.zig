@@ -379,58 +379,11 @@ const Parser = struct {
     ///   name<content> — named place carrying literal content (state<S0>)
     ///   <>  / <content> — unnamed place (abbreviated single-return
     ///                     form), represented as Place{ .name = "" }
-     fn parsePlaceList(p: *Parser, kind: network.PlaceKind) ![]const network.Place {
+    fn parsePlaceList(p: *Parser, kind: network.PlaceKind) ![]const network.Place {
         try p.expect('(');
-        var list: std.ArrayListUnmanaged(network.Place) = .empty;
-        while (true) {
-            p.skipWhitespaceAndComments();
-            const c = p.peek() orelse break;
-            if (c == ')') break;
-
-            if (c == '{' or c == '[') {
-                // A brace-enclosed mutex/conditional group, a bundle
-                // bracket, or the two nested together. Captured as one
-                // opaque Place; grouping/bundling semantics and VHDL
-                // emission are deliberately deferred, same as
-                // pure_value.
-                const span = if (c == '{')
-                    try p.consumeBalanced('{', '}')
-                else
-                    try p.consumeBalanced('[', ']');
-                try list.append(p.allocator, .{
-                    .name = if (c == '{') "{group}" else "[bundle]",
-                    .kind = kind,
-                    .content = span,
-                });
-                p.skipWhitespaceAndComments();
-                _ = p.tryConsume(',');
-                continue;
-            }
-
-            var name: []const u8 = "";
-            if (c != '<') {
-                name = try p.readName();
-                p.skipWhitespaceAndComments();
-            }
-
-            if (p.peek() != '<') return ParseError.ExpectedToken;
-            _ = p.advance(); // consume '<'
-            p.skipWhitespaceAndComments();
-
-            var content: ?[]const u8 = null;
-            if (p.peek() != '>') {
-                const content_start = p.pos;
-                while (p.pos < p.src.len and p.src[p.pos] != '>') p.pos += 1;
-                content = std.mem.trim(u8, p.src[content_start..p.pos], " \t\r\n");
-            }
-            try p.expect('>');
-
-            try list.append(p.allocator, .{ .name = name, .kind = kind, .content = content });
-            p.skipWhitespaceAndComments();
-            _ = p.tryConsume(',');
-        }
+        const list = try p.parsePlaceSequence(kind, ')', false);
         try p.expect(')');
-        return list.toOwnedSlice(p.allocator);
+        return list;
     }
 
     fn parsePlaceSequence(
@@ -448,12 +401,29 @@ const Parser = struct {
             if (c == '{' or c == '[') {
                 const group_kind: network.PlaceGroupKind = if (c == '{') .mutex else .bundle;
                 const closing: u8 = if (c == '{') '}' else ']';
+                const group_start = p.pos;
                 _ = p.advance();
-                const places = try p.parsePlaceSequence(kind, closing, definition_destinations);
-                try p.expect(closing);
+                p.skipWhitespaceAndComments();
+                const has_nested_lists = p.peek() == '(';
+                p.pos = group_start;
+                const raw_group = if (has_nested_lists)
+                    try p.consumeBalanced(c, closing)
+                else
+                    null;
+                const places = if (raw_group != null) &.{} else blk: {
+                    _ = p.advance();
+                    const nested = try p.parsePlaceSequence(kind, closing, definition_destinations);
+                    try p.expect(closing);
+                    break :blk nested;
+                };
                 const group = try p.allocator.create(network.PlaceGroup);
                 group.* = .{ .kind = group_kind, .places = places };
-                try list.append(p.allocator, .{ .name = "{group}", .kind = kind, .group = group });
+                try list.append(p.allocator, .{
+                    .name = "{group}",
+                    .kind = kind,
+                    .content = raw_group,
+                    .group = group,
+                });
             } else {
                 var name: []const u8 = "";
                 if (definition_destinations) {
@@ -546,7 +516,7 @@ const Parser = struct {
     }
 
     /// Invocation first list: ($name or literal ...) — args passed to definition sources
-        fn parseInvArgList(p: *Parser) ![]const []const u8 {
+    fn parseInvArgList(p: *Parser) ![]const []const u8 {
         try p.expect('(');
         var args: std.ArrayListUnmanaged([]const u8) = .empty;
         p.skipWhitespaceAndComments();

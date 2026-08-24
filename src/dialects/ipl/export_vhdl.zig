@@ -64,22 +64,18 @@ fn writeDefinition(
     // entity
     try writer.print("entity {s} is\n  port(\n", .{def_id});
     try writer.print("    clk : in  std_logic;\n", .{});
-    try writer.print("    rst : in  std_logic{s}\n", .{if (def.sources.len + def.destinations.len == 0) "" else ";"});
+    const boundary_count = boundaryCount(def.sources) + boundaryCount(def.destinations);
+    try writer.print("    rst : in  std_logic{s}\n", .{if (boundary_count == 0) "" else ";"});
 
     // sources → inputs (tokens flow IN to the definition)
-    for (def.sources, 0..) |src, i| {
-        const src_id = try placeName(allocator, src);
-        defer allocator.free(src_id);
-        const last = i == def.sources.len - 1 and def.destinations.len == 0;
-        try writer.print("    {s} : in  std_logic_vector({d} downto 0){s}  -- source place (input)\n", .{ src_id, SIGNAL_WIDTH - 1, if (last) "" else ";" });
+    var port_index: usize = 0;
+    for (def.sources) |src| {
+        try writeBoundaryPorts(allocator, writer, src, "in", &port_index, boundary_count);
     }
 
     // destinations → outputs (tokens flow OUT of the definition)
-    for (def.destinations, 0..) |dest, i| {
-        const dest_id = try placeName(allocator, dest);
-        defer allocator.free(dest_id);
-        const last = i == def.destinations.len - 1;
-        try writer.print("    {s} : out std_logic_vector({d} downto 0){s}  -- destination place (output)\n", .{ dest_id, SIGNAL_WIDTH - 1, if (last) "" else ";" });
+    for (def.destinations) |dest| {
+        try writeBoundaryPorts(allocator, writer, dest, "out", &port_index, boundary_count);
     }
     try writer.print("  );\nend {s};\n\n", .{def_id});
 
@@ -88,9 +84,7 @@ fn writeDefinition(
 
     // valid signals — one per source (input)
     for (def.sources) |src| {
-        const src_id = try placeName(allocator, src);
-        defer allocator.free(src_id);
-        try writer.print("  signal {s}_valid : std_logic;\n", .{src_id});
+        try writeBoundaryValidDeclarations(allocator, writer, src);
     }
     try writer.print("  signal complete   : std_logic;\n", .{});
 
@@ -129,9 +123,7 @@ fn writeDefinition(
     // valid extraction from source places (inputs)
     try writer.print("  -- extract valid bits from source places (inputs)\n", .{});
     for (def.sources) |src| {
-        const src_id = try placeName(allocator, src);
-        defer allocator.free(src_id);
-        try writer.print("  {s}_valid <= {s}(0);\n", .{ src_id, src_id });
+        try writeBoundaryValidAssignments(allocator, writer, src);
     }
 
     // completeness: AND of all source valids
@@ -142,9 +134,7 @@ fn writeDefinition(
         try writer.print("  complete <= ", .{});
         for (def.sources, 0..) |src, i| {
             if (i > 0) try writer.print(" and ", .{});
-            const src_id = try placeName(allocator, src);
-            defer allocator.free(src_id);
-            try writer.print("{s}_valid", .{src_id});
+            try writeBoundaryValidExpression(allocator, writer, src);
         }
         try writer.print(";\n", .{});
     }
@@ -258,6 +248,95 @@ fn writeDefinition(
         try writer.print("\n", .{});
         try writeDefinition(allocator, writer, contained);
     }
+}
+
+fn boundaryCount(places: []const network.Place) usize {
+    var count: usize = 0;
+    for (places) |place| count += placeBoundaryCount(place);
+    return count;
+}
+
+fn placeBoundaryCount(place: network.Place) usize {
+    const group = place.group orelse return 1;
+    if (group.kind == .bundle) return 1;
+    return boundaryCount(group.places);
+}
+
+fn writeBoundaryPorts(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    place: network.Place,
+    direction: []const u8,
+    index: *usize,
+    total: usize,
+) !void {
+    if (place.group) |group| {
+        if (group.kind == .mutex) {
+            for (group.places) |member| {
+                try writeBoundaryPorts(allocator, writer, member, direction, index, total);
+            }
+            return;
+        }
+    }
+    const id = try placeName(allocator, place);
+    defer allocator.free(id);
+    index.* += 1;
+    try writer.print("    {s} : {s} std_logic_vector({d} downto 0){s}\n", .{
+        id, direction, SIGNAL_WIDTH - 1, if (index.* == total) "" else ";",
+    });
+}
+
+fn writeBoundaryValidDeclarations(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    place: network.Place,
+) !void {
+    if (place.group) |group| {
+        if (group.kind == .mutex) {
+            for (group.places) |member| try writeBoundaryValidDeclarations(allocator, writer, member);
+            return;
+        }
+    }
+    const id = try placeName(allocator, place);
+    defer allocator.free(id);
+    try writer.print("  signal {s}_valid : std_logic;\n", .{id});
+}
+
+fn writeBoundaryValidAssignments(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    place: network.Place,
+) !void {
+    if (place.group) |group| {
+        if (group.kind == .mutex) {
+            for (group.places) |member| try writeBoundaryValidAssignments(allocator, writer, member);
+            return;
+        }
+    }
+    const id = try placeName(allocator, place);
+    defer allocator.free(id);
+    try writer.print("  {s}_valid <= {s}(0);\n", .{ id, id });
+}
+
+fn writeBoundaryValidExpression(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    place: network.Place,
+) !void {
+    if (place.group) |group| {
+        if (group.kind == .mutex) {
+            try writer.print("(", .{});
+            for (group.places, 0..) |member, i| {
+                if (i > 0) try writer.print(" or ", .{});
+                try writeBoundaryValidExpression(allocator, writer, member);
+            }
+            try writer.print(")", .{});
+            return;
+        }
+    }
+    const id = try placeName(allocator, place);
+    defer allocator.free(id);
+    try writer.print("{s}_valid", .{id});
 }
 
 fn writeIntermediatePlaceSignal(
@@ -497,6 +576,9 @@ fn placeName(allocator: std.mem.Allocator, place: network.Place) ![]u8 {
     if (place.group) |group| {
         var raw: std.ArrayListUnmanaged(u8) = .empty;
         try raw.appendSlice(allocator, "group");
+        if (group.places.len == 0) {
+            if (place.content) |content| try raw.appendSlice(allocator, content);
+        }
         for (group.places) |member| {
             const member_name = try placeName(allocator, member);
             defer allocator.free(member_name);
