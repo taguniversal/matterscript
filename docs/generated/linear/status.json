@@ -56,7 +56,7 @@
     "workflow_state": "Backlog"
   },
   "TAG-138": {
-    "implementation_status": "Partial",
+    "implementation_status": "Implemented",
     "workflow_state": "In Progress"
   },
   "TAG-137": {
