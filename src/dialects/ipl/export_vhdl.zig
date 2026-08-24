@@ -134,14 +134,18 @@ fn writeDefinition(
 
     // completeness: AND of all source valids
     try writer.print("\n  -- complete when all source places are valid\n", .{});
-    try writer.print("  complete <= ", .{});
-    for (def.sources, 0..) |src, i| {
-        if (i > 0) try writer.print(" and ", .{});
-        const src_id = try placeName(allocator, src);
-        defer allocator.free(src_id);
-        try writer.print("{s}_valid", .{src_id});
+    if (def.sources.len == 0) {
+        try writer.print("  complete <= '1';\n", .{});
+    } else {
+        try writer.print("  complete <= ", .{});
+        for (def.sources, 0..) |src, i| {
+            if (i > 0) try writer.print(" and ", .{});
+            const src_id = try placeName(allocator, src);
+            defer allocator.free(src_id);
+            try writer.print("{s}_valid", .{src_id});
+        }
+        try writer.print(";\n", .{});
     }
-    try writer.print(";\n", .{});
 
     // key composition
     for (def.constants) |tbl| {
