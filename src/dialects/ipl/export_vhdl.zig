@@ -56,6 +56,7 @@ fn writeDefinition(
         \\library ieee;
         \\use ieee.std_logic_1164.all;
         \\use ieee.numeric_std.all;
+        \\use work.matterscript_ncl.all;
         \\
         \\
     , .{def.name});
@@ -222,6 +223,12 @@ fn writeDefinition(
     }
 
     try writer.print("\nend rtl;\n", .{});
+
+    for (def.contained) |contained| {
+        if (std.ascii.isDigit(contained.name[0])) continue;
+        try writer.print("\n", .{});
+        try writeDefinition(allocator, writer, contained);
+    }
 }
 
 fn writeContainedLookup(
@@ -230,8 +237,10 @@ fn writeContainedLookup(
     def: network.Definition,
     fill: network.SourceFill,
 ) !bool {
-    if (def.sources.len != 1 or def.contained.len == 0) return false;
-    if (std.mem.indexOf(u8, fill.expr, def.sources[0].name) == null) return false;
+    if (def.sources.len == 0 or def.contained.len == 0) return false;
+    for (def.sources) |source| {
+        if (std.mem.indexOf(u8, fill.expr, source.name) == null) return false;
+    }
 
     for (def.contained) |row| {
         _ = std.fmt.parseInt(u64, row.name, 10) catch return false;
@@ -244,11 +253,29 @@ fn writeContainedLookup(
         }
     }
 
-    const source_name = def.sources[0].name;
-    try writer.print("  process({s}, complete) begin\n" ++
+    try writer.print("  process(", .{});
+    for (def.sources, 0..) |source, i| {
+        if (i > 0) try writer.print(", ", .{});
+        const source_id = try sanitizeName(allocator, source.name);
+        defer allocator.free(source_id);
+        try writer.print("{s}", .{source_id});
+    }
+    const dest_id = try sanitizeName(allocator, fill.dest_name);
+    defer allocator.free(dest_id);
+    try writer.print(", complete) begin\n" ++
         "    {s} <= (others => '0');\n" ++
         "    if complete = '1' then\n" ++
-        "      case {s}({d} downto 1) is\n", .{ source_name, fill.dest_name, source_name, SIGNAL_WIDTH - 1 });
+        "      case ", .{dest_id});
+    // Rebuild the case expression from all source payloads.
+    var first_source = true;
+    for (def.sources) |source| {
+        const source_id = try sanitizeName(allocator, source.name);
+        defer allocator.free(source_id);
+        if (!first_source) try writer.print(" & ", .{});
+        try writer.print("{s}({d} downto 1)", .{ source_id, SIGNAL_WIDTH - 1 });
+        first_source = false;
+    }
+    try writer.print(" is\n", .{});
 
     for (def.contained) |row| {
         const input = try std.fmt.parseInt(u64, row.name, 10);
@@ -256,16 +283,16 @@ fn writeContainedLookup(
             .pure_value => |value| try std.fmt.parseInt(u64, value, 10),
             else => unreachable,
         };
-        var input_buf: [DATA_WIDTH]u8 = undefined;
-        const input_bits = binStr(&input_buf, input, DATA_WIDTH);
-        try writer.print("        when \"{s}\" => {s} <= std_logic_vector(to_unsigned({d}, {d})) & '1';\n", .{ input_bits, fill.dest_name, output, DATA_WIDTH });
+        const key_width = def.sources.len * DATA_WIDTH;
+        var input_buf: [128]u8 = undefined;
+        const input_bits = binStr(&input_buf, input, key_width);
+        try writer.print("        when \"{s}\" => {s} <= data_value({d});\n", .{ input_bits, dest_id, output });
     }
 
     try writer.print("        when others => null;\n" ++
         "      end case;\n" ++
         "    end if;\n" ++
         "  end process;\n", .{});
-    _ = allocator;
     return true;
 }
 

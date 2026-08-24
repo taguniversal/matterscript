@@ -136,6 +136,16 @@ fn classify(expected: ?[]const u8, parse_ok: bool, ghdl_ok: bool) ExampleResult 
 }
 
 fn runGhdlSyntaxCheck(allocator: std.mem.Allocator, io: std.Io, vhd_path: []const u8) bool {
+    const package_result = std.process.run(allocator, io, .{
+        .argv = &.{ "ghdl", "-a", "--std=08", "src/stdlib/ncl/matterscript_ncl.vhd" },
+    }) catch return false;
+    defer allocator.free(package_result.stdout);
+    defer allocator.free(package_result.stderr);
+    switch (package_result.term) {
+        .exited => |code| if (code != 0) return false,
+        else => return false,
+    }
+
     const result = std.process.run(allocator, io, .{
         .argv = &.{ "ghdl", "-s", "--std=08", vhd_path },
     }) catch return false;
