@@ -104,6 +104,23 @@ fn writeDefinition(
         try writer.print("  signal {s}_valid : std_logic;\n", .{tbl_id});
     }
 
+    for (def.resolution) |stmt| {
+        if (stmt != .fill) continue;
+        const fill = stmt.fill;
+        if (std.fmt.parseInt(u64, std.mem.trim(u8, fill.expr, " \t\r\n"), 10)) |_| {
+            const fill_id = try sanitizeName(allocator, fill.dest_name);
+            defer allocator.free(fill_id);
+            var is_port = false;
+            for (def.destinations) |dest| {
+                if (std.mem.eql(u8, dest.name, fill.dest_name)) {
+                    is_port = true;
+                    break;
+                }
+            }
+            if (!is_port) try writer.print("  signal {s} : ncl_signal;\n", .{fill_id});
+        } else |_| {}
+    }
+
     try writer.print("begin\n\n", .{});
 
     // valid extraction from source places (inputs)
@@ -205,7 +222,12 @@ fn writeDefinition(
     for (def.resolution) |stmt| {
         switch (stmt) {
             .fill => |f| {
-                if (!try writeContainedLookup(allocator, writer, def, f)) {
+                const literal = std.fmt.parseInt(u64, std.mem.trim(u8, f.expr, " \t\r\n"), 10) catch null;
+                if (literal) |value| {
+                    const dest_id = try sanitizeName(allocator, f.dest_name);
+                    defer allocator.free(dest_id);
+                    try writer.print("  {s} <= data_value({d});\n", .{ dest_id, value });
+                } else if (!try writeContainedLookup(allocator, writer, def, f)) {
                     const tbl_id = try sanitizeName(allocator, f.expr);
                     defer allocator.free(tbl_id);
                     const dest_id = try sanitizeName(allocator, f.dest_name);
