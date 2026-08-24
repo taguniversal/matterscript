@@ -64,13 +64,14 @@ fn writeDefinition(
     // entity
     try writer.print("entity {s} is\n  port(\n", .{def_id});
     try writer.print("    clk : in  std_logic;\n", .{});
-    try writer.print("    rst : in  std_logic;\n", .{});
+    try writer.print("    rst : in  std_logic{s}\n", .{if (def.sources.len + def.destinations.len == 0) "" else ";"});
 
     // sources → inputs (tokens flow IN to the definition)
-    for (def.sources) |src| {
+    for (def.sources, 0..) |src, i| {
         const src_id = try placeName(allocator, src);
         defer allocator.free(src_id);
-        try writer.print("    {s} : in  std_logic_vector({d} downto 0);  -- source place (input)\n", .{ src_id, SIGNAL_WIDTH - 1 });
+        const last = i == def.sources.len - 1 and def.destinations.len == 0;
+        try writer.print("    {s} : in  std_logic_vector({d} downto 0){s}  -- source place (input)\n", .{ src_id, SIGNAL_WIDTH - 1, if (last) "" else ";" });
     }
 
     // destinations → outputs (tokens flow OUT of the definition)
