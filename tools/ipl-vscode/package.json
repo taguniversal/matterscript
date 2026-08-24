@@ -1,0 +1,27 @@
+{
+  "name": "matterscript-il",
+  "displayName": "MatterScript Invocation Language",
+  "description": "Syntax highlighting and bracket matching for MatterScript's .ms.il Invocation Language dialect",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "matterscript-il",
+        "aliases": ["MatterScript IL", "Invocation Language", "matterscript-il"],
+        "extensions": [".ms.ipl"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "matterscript-il",
+        "scopeName": "source.matterscript-il",
+        "path": "./syntaxes/il.tmLanguage.json"
+      }
+    ]
+  }
+}

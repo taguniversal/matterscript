@@ -182,7 +182,7 @@ fn readStatusManifest(
 fn printTable(rows: []const ExampleRow) void {
     const separator = "--------------------------------------------------------------------------------";
 
-    std.debug.print("\n{s:<8} {s:<24} {s:<12} {s:<5} {s:<5} {s}\n", .{ "TAG", "example", "expected", "parse", "ghdl", "result" });
+    std.debug.print("\n{s:<8} {s:<24} {s:<12} {s:<5} {s:<5} {s}\n", .{ "Issue", "example", "expected", "parse", "ghdl", "result" });
     std.debug.print("{s}\n", .{separator});
 
     var pass_count: usize = 0;

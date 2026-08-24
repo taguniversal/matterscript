@@ -1,0 +1,107 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "MatterScript Invocation Language",
+  "scopeName": "source.matterscript-il",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#generate-keywords" },
+    { "include": "#destination-place" },
+    { "include": "#name-before-bracket" },
+    { "include": "#name-before-paren" },
+    { "include": "#name-before-angle" },
+    { "include": "#numbers" },
+    { "include": "#arithmetic" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.matterscript-il",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "generate-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.matterscript-il",
+          "match": "\\bgenerate\\b"
+        },
+        {
+          "name": "keyword.other.matterscript-il",
+          "match": "\\b(inputs|output|const)\\b(?=\\s*:)"
+        },
+        {
+          "name": "support.function.builtin.matterscript-il",
+          "match": "\\b(clamp|avg)\\b(?=\\s*\\()"
+        }
+      ]
+    },
+    "destination-place": {
+      "comment": "$name — a destination place reference, or one segment of a $a$b() name composition",
+      "name": "variable.parameter.destination.matterscript-il",
+      "match": "\\$[A-Za-z_][A-Za-z0-9_]*"
+    },
+    "name-before-bracket": {
+      "comment": "NAME[ — a definition declaration (Fant: NAME[(sources)(destinations) resolution : tables ])",
+      "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\b(?=\\s*\\[)",
+      "captures": {
+        "1": { "name": "entity.name.type.definition.matterscript-il" }
+      }
+    },
+    "name-before-paren": {
+      "comment": "NAME( — an invocation (Fant: NAME($dest1 $dest2)(source1<> source2<>))",
+      "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\b(?=\\s*\\()",
+      "captures": {
+        "1": { "name": "entity.name.function.invocation.matterscript-il" }
+      }
+    },
+    "name-before-angle": {
+      "comment": "NAME< — a source place (Fant: name<> or name<content>)",
+      "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\b(?=\\s*<)",
+      "captures": {
+        "1": { "name": "entity.name.function.place.matterscript-il" }
+      }
+    },
+    "numbers": {
+      "name": "constant.numeric.matterscript-il",
+      "match": "\\b[0-9]+\\b"
+    },
+    "arithmetic": {
+      "name": "keyword.operator.arithmetic.matterscript-il",
+      "match": "[+\\-*/]"
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "comment": "mutex/conditional completeness group — §12.5.2/12.5.3",
+          "match": "[{}]",
+          "name": "punctuation.definition.group.mutex.matterscript-il"
+        },
+        {
+          "comment": "bundle bracket (§12.6) or a definition's outer [...] body — same character, distinguished only by editor bracket-pair-colorization nesting level, not by this grammar",
+          "match": "[\\[\\]]",
+          "name": "punctuation.definition.bracket.matterscript-il"
+        },
+        {
+          "match": "[()]",
+          "name": "punctuation.definition.paren.matterscript-il"
+        },
+        {
+          "match": "[<>]",
+          "name": "punctuation.definition.place.matterscript-il"
+        },
+        {
+          "comment": "separates resolution from contained definitions/tables, or a key:value table entry",
+          "match": ":",
+          "name": "punctuation.separator.colon.matterscript-il"
+        },
+        {
+          "match": ",",
+          "name": "punctuation.separator.comma.matterscript-il"
+        }
+      ]
+    }
+  }
+}
