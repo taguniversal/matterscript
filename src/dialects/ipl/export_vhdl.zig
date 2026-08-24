@@ -118,6 +118,23 @@ fn writeDefinition(
         }
     }
 
+    var component_names: std.ArrayListUnmanaged([]const u8) = .empty;
+    for (def.resolution) |stmt| {
+        if (stmt != .invoke) continue;
+        const inv = stmt.invoke;
+        var already_declared = false;
+        for (component_names.items) |name| {
+            if (std.ascii.eqlIgnoreCase(name, inv.name)) {
+                already_declared = true;
+                break;
+            }
+        }
+        if (already_declared) continue;
+        const name = try allocator.dupe(u8, inv.name);
+        try component_names.append(allocator, name);
+        try writeComponentDeclaration(allocator, writer, inv);
+    }
+
     try writer.print("begin\n\n", .{});
 
     // valid extraction from source places (inputs)
@@ -248,6 +265,28 @@ fn writeDefinition(
         try writer.print("\n", .{});
         try writeDefinition(allocator, writer, contained);
     }
+}
+
+fn writeComponentDeclaration(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    inv: network.Invocation,
+) !void {
+    const component_id = try sanitizeName(allocator, inv.name);
+    defer allocator.free(component_id);
+    try writer.print("  component {s}\n    port(\n", .{component_id});
+    try writer.print("      clk : in std_logic;\n      rst : in std_logic", .{});
+    const port_count = inv.args.len + inv.outputs.len;
+    if (port_count > 0) try writer.print(";", .{});
+    try writer.print("\n", .{});
+
+    for (inv.args, 0..) |_, i| {
+        try writer.print("      arg_{d} : in ncl_signal{s}\n", .{ i, if (i + 1 == port_count) "" else ";" });
+    }
+    for (inv.outputs, 0..) |_, i| {
+        try writer.print("      output_{d} : out ncl_signal{s}\n", .{ i, if (i + inv.args.len + 1 == port_count) "" else ";" });
+    }
+    try writer.print("    );\n  end component;\n\n", .{});
 }
 
 fn boundaryCount(places: []const network.Place) usize {
