@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 3  |  🟡 Partial: 3  |  ⬛ Spec only: 5  |  ⬜ Not started: 105  |  Total: 116
+✅ Implemented: 3  |  🟡 Partial: 3  |  ⬛ Spec only: 5  |  ⬜ Not started: 110  |  Total: 121
 
 - ⬜ Not started [12.1 The Nature of Symbol String Expression](TAG-93.md)
 - ⬜ Not started [12.2 A Language of Association Relationships](TAG-94.md)
@@ -110,6 +110,11 @@
 - ⬜ Not started [A deliberate design decision (register)](TAG-156.md)
 - ⬜ Not started [Actual simulation, not syntax checking](TAG-157.md)
 - ⬜ Not started [CSR Contents](TAG-158.md)
+- ⬜ Not started [Example 12.33 Conditional invocationname](TAG-160.md)
+- ⬜ Not started [Example 12.34 Conditional invocation of value transform rules](TAG-161.md)
+- ⬜ Not started [Example 12.35 IF-THEN-ELSE expression conventions](TAG-162.md)
+- ⬜ Not started [Example 12.36 Set of definitions establishing correspondence name connvention](TAG-163.md)
+- ⬜ Not started [Example 12.38 Expression of multi-way conditionality](TAG-164.md)
 - ⬜ Not started [Return a Content to Place of Invocation](TAG-32.md)
 - ⬜ Not started [Single Return to Place of Invocation](TAG-33.md)
 - ⬜ Not started [The Conditional Invocation Name](TAG-35.md)

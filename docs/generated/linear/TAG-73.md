@@ -2,7 +2,7 @@
 
 ### TAG-73: 12.10 Conditionality
 
-**Status:** ⬜ Not started  |  📝 Needs content
+**Status:** ⬜ Not started
 
 ## Software Notes
 
@@ -10,4 +10,6 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+The basis of conditionality in the language is content emerging from association flow paths at a destination place to form correspondence names dynamically forming association relationships. The formed name must match the name of an expressed definition.
+
+In Example 12.33 the invocationname is expressed as two destination places. When content flows to both destination places, an invocationname is formed and the named definition is invoked. The most primitive conditionality is the invocation of a value transform rule. The definition of the Boolean OR operator in Example 12.34 illustrates conditional invocation of value transform rules. The contents of association paths A<> and B<> emerge at the destination places $A and $B to form an invocationname. The invoked definition returns a constant, which becomes the content of the single source place, which is returned to the place of invocation as content of the un-named source place and begins flowing through association paths.

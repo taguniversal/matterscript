@@ -1,0 +1,2 @@
+// Linear: TAG-160 Conditional invocationname
+OR[(A<>B<>)<$A$B()>: 0[0] 1[1] 00[0] 01[1] 10[1] 11[1]]

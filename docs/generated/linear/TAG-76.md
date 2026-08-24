@@ -2,7 +2,7 @@
 
 ### TAG-76: 12.10.3 Multiway Conditionality
 
-**Status:** ⬜ Not started  |  📝 Needs content
+**Status:** ⬜ Not started
 
 ## Software Notes
 
@@ -10,4 +10,4 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+Multi-way conditionality is directly expressed in the invocation language with multiple name to multiple place correspondence as shown in Example 12.38. The invocation passes the name of the definition to be invoked. The set of names must be a pre-expressed convention between the invocation and the definition. While nested IFs can be expressed in the language, there is no inherent need to binary encode conditions and decode them with nested IFs.

@@ -10,4 +10,8 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+The IF-THEN-ELSE construct can be expressed with simple name conventions. In Example 12.35 the association path $logic to logical<> to $logical is assumed by convention to contain either TRUE or FALSE. The contents of the second and third places of the destination list are constants that are the names of the conditional definitions. $logical becomes either TRUE or FALSE, invoking the named definitions contained within the definition of IF. The definition for TRUE returns the content of thename<>. The definition for FALSE returns the content of elsename<>. The returned content flows through $name to result<> to $result to form an invocation of either THIS or THAT, which are definitions contained in the definition containing the invocation of IF. The thename and the elsename can be any arbitrary local names. The names just have to have corresponding definitions.
+
+A convention of naming is established with a set of definitions that return a set of common names. Example 12.36 is a set of conditionals that all return TRUE or FALSE.
+
+An invocation of a conditional can be nested in a destination list of the invocation of IF as in Example 12.37.
