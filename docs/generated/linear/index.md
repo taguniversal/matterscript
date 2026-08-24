@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 2  |  🟡 Partial: 2  |  ⬛ Spec only: 6  |  ⬜ Not started: 100  |  Total: 110
+✅ Implemented: 3  |  🟡 Partial: 2  |  ⬛ Spec only: 5  |  ⬜ Not started: 100  |  Total: 110
 
 - ⬜ Not started [12.1 The Nature of Symbol String Expression](TAG-93.md)
 - ⬜ Not started [12.2 A Language of Association Relationships](TAG-94.md)
@@ -82,7 +82,7 @@
 - ⬜ Not started [NKS CA-on-mesh: neighborhood-aware rule evaluation](TAG-120.md)
 - ⬜ Not started [Round-trip validation: mesh-driven network compiles and passes topology checks](TAG-121.md)
 - ⬜ Not started [Language to Mesh map stability](TAG-122.md)
-- ⬛ Spec only [Example 12.19 Imperative form of expression](TAG-129.md)
+- ✅ Implemented [Example 12.19 Imperative form of expression](TAG-129.md)
 - ✅ Implemented [Example 12.1 Unnamed source place in an invocation](TAG-130.md)
 - ⬜ Not started [Example 12.2 Expressing a single return to place of invocation](TAG-132.md)
 - ⬜ Not started [Example 12.16 Occasional Source Place](TAG-133.md)
