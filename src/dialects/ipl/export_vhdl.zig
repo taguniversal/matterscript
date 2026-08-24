@@ -141,6 +141,10 @@ fn writeDefinition(
         for (inv.args, 0..) |_, argument_index| {
             try writer.print("  signal invocation_{d}_arg_{d} : ncl_signal;\n", .{ invocation_index, argument_index });
         }
+        for (inv.outputs, 0..) |output, output_index| {
+            if (output.group == null and output.name.len != 0) continue;
+            try writer.print("  signal invocation_{d}_output_{d} : ncl_signal;\n", .{ invocation_index, output_index });
+        }
     }
 
     try writer.print("begin\n\n", .{});
@@ -150,6 +154,10 @@ fn writeDefinition(
         const inv = stmt.invoke;
         for (inv.args, 0..) |arg, argument_index| {
             try writeInvocationArgument(allocator, writer, invocation_index, argument_index, arg);
+        }
+        for (inv.outputs, 0..) |output, output_index| {
+            if (output.group == null and output.name.len != 0) continue;
+            try writer.print("  invocation_{d}_output_{d} <= null_value;\n", .{ invocation_index, output_index });
         }
         try writeInvocationInstance(allocator, writer, inv, invocation_index);
     }
@@ -319,7 +327,7 @@ fn writeInvocationInstance(
     }
     for (inv.outputs, 0..) |output, output_index| {
         if (output.group != null or output.name.len == 0) {
-            try writer.print(", output_{d} => open", .{output_index});
+            try writer.print(", output_{d} => invocation_{d}_output_{d}", .{ output_index, invocation_index, output_index });
         } else {
             const output_id = try placeName(allocator, output);
             defer allocator.free(output_id);
