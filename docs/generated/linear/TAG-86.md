@@ -12,4 +12,6 @@ _(not yet written)_
 
 An enabled place can be a ring that remembers the behaviors coincident with an appreciation. There might be several input domains of differentness such as visual recognition input, tactile input, smell input, or hearing input. These differentnesses can combine resolving to a very large domain of unique places appreciating an experience. The current behavior is presented to all the rings, and each experience appreciation enables one ring that remembers the behaviors coincident with the experience. One can start with a very large expression, and as experience accrues, the rings become populated with content. Each access of a ring is both a read and a write. The remembered content spills out, combines with the current content of the experience, flows back into the ring, and continues on to influence the next behavior of the expression.
 
+![figure-12.28.jpg](./images/figure-12.28.jpg.jpg)
+
 Figure 12.28 shows the structure of an experience memory and its language expression. The inputs are the current behavior and the multiple differentness domains. The appreciation is the familiarity and the content of the memory is the reminiscence. The memory associates experience through time.
