@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 4  |  🟡 Partial: 2  |  ⬛ Spec only: 5  |  ⬜ Not started: 100  |  Total: 111
+✅ Implemented: 3  |  🟡 Partial: 3  |  ⬛ Spec only: 5  |  ⬜ Not started: 105  |  Total: 116
 
 - ⬜ Not started [12.1 The Nature of Symbol String Expression](TAG-93.md)
 - ⬜ Not started [12.2 A Language of Association Relationships](TAG-94.md)
@@ -90,7 +90,7 @@
 - ⬜ Not started [Example 12.47 Linear Feedback Shift Register](TAG-135.md)
 - ⬛ Spec only [Example 12.45 Code detector state machine](TAG-136.md)
 - ✅ Implemented [Example 12.41 Four-value sequencer](TAG-137.md)
-- ✅ Implemented [Example 12.40 The invocation expression of the greatest common divisor](TAG-138.md)
+- 🟡 Partial [Example 12.40 The invocation expression of the greatest common divisor](TAG-138.md)
 - ⬜ Not started [Figure 12.28 Experience Memory](TAG-139.md)
 - ⬜ Not started [Figure 12.23 Protocol behavior of interlinked cycles](TAG-140.md)
 - ⬜ Not started [Example 12.4 Nested Invocations](TAG-141.md)
@@ -105,6 +105,11 @@
 - 🟡 Partial [Example 12.17 Bundling mutually exclusive path into a single path](TAG-151.md)
 - ⬜ Not started [Make TAG-147 Shell VHDL Emission Valid and GHDL-Checkable](TAG-152.md)
 - 🟡 Partial [Example 12.8 Comma Delimited destination places](TAG-153.md)
+- ⬜ Not started [A real NCL register/storage primitive](TAG-154.md)
+- ⬜ Not started [Cycle detection](TAG-155.md)
+- ⬜ Not started [A deliberate design decision (register)](TAG-156.md)
+- ⬜ Not started [Actual simulation, not syntax checking](TAG-157.md)
+- ⬜ Not started [CSR Contents](TAG-158.md)
 - ⬜ Not started [Return a Content to Place of Invocation](TAG-32.md)
 - ⬜ Not started [Single Return to Place of Invocation](TAG-33.md)
 - ⬜ Not started [The Conditional Invocation Name](TAG-35.md)
