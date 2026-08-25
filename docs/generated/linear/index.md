@@ -4,8 +4,9 @@
 
 ## Progress
 
-✅ Implemented: 3  |  🟡 Partial: 3  |  ⬛ Spec only: 5  |  ⬜ Not started: 110  |  Total: 121
+✅ Implemented: 3  |  🟡 Partial: 3  |  ⬛ Spec only: 5  |  ⬜ Not started: 111  |  Total: 122
 
+- ⬜ Not started [8.2.3 The Feedback Ring](TAG-166.md)
 - ⬜ Not started [12.1 The Nature of Symbol String Expression](TAG-93.md)
 - ⬜ Not started [12.2 A Language of Association Relationships](TAG-94.md)
 - ⬜ Not started [12.3 The Syntax Structures](TAG-95.md)
