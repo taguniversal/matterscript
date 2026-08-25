@@ -273,7 +273,6 @@ pub fn main(init: std.process.Init) !void {
         }
     }
 
-
     // --- 3. Fetch issues ---
     const issues = try fetchIssues(arena, &client, api_key, project_name);
     try cleanOrphanedIssuePages(io, arena, issues);

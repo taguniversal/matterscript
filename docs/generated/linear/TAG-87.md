@@ -10,4 +10,14 @@ _(not yet written)_
 
 ## Reference
 
-_(not yet written)_
+The greatest common divisor algorithm of Euclid (GCD), shown in the flowchart of Figure 12.29, illustrates conditional iteration in the language. The algorithm generates intermediate values until M is equal to 0, at which point N is equal to the greatest common divisor of the input M and N. [TAG-138](https://linear.app/taguniversal/issue/TAG-138/example-1240-the-invocation-expression-of-the-greatest-common-divisor) is the invocation expression of the greatest common divisor algorithm.
+
+The association relationships form a ring that the content flows around until the termination state is reached. N is passed on as the GCD, and a new pair of numbers is allowed.
+
+Figure 12.30 shows the association structure of the invocation expression. LTsteer makes sure that the inputs are correctly oriented in terms of magnitude. The invocation of dualfanin accepts input from either the input or the feedback ring depending on the content of $lesser (M). If lesser is equal to zero, then a new input can be accepted. If it is greater than zero, then a resolution is in progress. The content of source place init<> provides an input of 0 to the invocation of EQ0 to configure the expression to accept its first input.
+
+The invocation of dualfanout delivers the content of the pipeline into the ring or to the output depending on the value of $lesser. The function N mod M is performed in the feedback ring and passed through dualfanin; then the content of $lesser is tested. If $lesser is zero, then the resolution is completed and dualfanout delivers the content of $greater to the output as the greatest common divisor and discards the content of lesser.
+
+![figure12.29.jpg](./images/figure12.29.jpg)
+
+![figure12.30.jpg](./images/figure12.30.jpg)
