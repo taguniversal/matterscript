@@ -90,7 +90,7 @@ fn localizeImages(
                 std.debug.print("  fetched image: {s}\n", .{label});
             }
 
-            const rel_path = try std.fmt.allocPrint(allocator, "./images/{s}{s}", .{ label, ext });
+            const rel_path = try std.fmt.allocPrint(allocator, "./images/{s}{s}", .{ stem, ext });
             try out.appendSlice(allocator, "![");
             try out.appendSlice(allocator, label);
             try out.appendSlice(allocator, "](");
