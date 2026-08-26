@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-fe0f133a.js";
+            window.path_to_searchindex_js = "../searchindex-6c22e251.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-fd20b4b2.js"></script>
@@ -177,6 +177,69 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="why-software-forgot-geometry"><a class="header" href="#why-software-forgot-geometry">Why Software Forgot Geometry</a></h1>
+<p>Programming languages are built on an assumption so fundamental that most programmers never think to question it.</p>
+<p><strong>Computation is independent of space.</strong></p>
+<p>Variables have no location.</p>
+<p>Functions occupy no physical volume.</p>
+<p>Messages travel instantly.</p>
+<p>Memory appears to be equally distant from every instruction.</p>
+<p>The compiler may decide where code ultimately executes, but the programmer rarely cares. Geometry is someone else’s problem.</p>
+<p>This wasn’t always inevitable.</p>
+<p>In fact, for most of human history, geometry was considered the most intuitive and trustworthy branch of mathematics.</p>
+<p>Euclid described mathematics in terms of points, lines, surfaces, and their relationships. Newton presented his revolutionary work in <em>Principia</em> using geometric arguments because they reflected physical reality in a way that symbolic algebra did not. For centuries, geometry was regarded as the language through which the physical world could be understood.</p>
+<p>Algebra occupied a different role.</p>
+<p>It was useful, often extraordinarily powerful, but it dealt with symbols detached from any particular physical interpretation. Equations could represent almost anything—or nothing at all.</p>
+<p>Over time, that distinction disappeared.</p>
+<p>During the nineteenth century, mathematics gradually shifted away from geometric reasoning toward symbolic manipulation. Hilbert demonstrated that geometry itself could be expressed axiomatically as symbols obeying formal rules. What mattered was no longer the interpretation of the symbols but the consistency of the rules governing them.</p>
+<p>At nearly the same time, mathematicians became fascinated by a different question.</p>
+<p>Could reasoning itself be mechanized?</p>
+<p>The Hindu-Arabic numeral system had already shown that complex arithmetic could be performed through simple mechanical procedures. Leibniz imagined a universal symbolic language in which every scientific question could be answered by calculation alone. Later, Hilbert sought a formal method that could determine the truth or falsehood of any mathematical statement.</p>
+<p>The search ultimately failed. Gödel proved there were limits to formal systems, while Church and Turing showed that no universal mechanical procedure could decide every mathematical question.</p>
+<p>Yet something profound emerged from that work.</p>
+<p>To study the limits of mathematics, researchers had developed a precise notion of a <strong>mechanical computation</strong>.</p>
+<p>That notion became the algorithm.</p>
+<p>The electronic computer arrived at exactly the right moment.</p>
+<p>Unlike earlier calculating machines, electronic computers were capable of carrying out enormous numbers of these mechanical procedures automatically. Many of the mathematicians investigating algorithms—including John von Neumann and Alan Turing—were directly involved in their development.</p>
+<p>As a result, computer science inherited not only the hardware, but the mathematical framework that had been created to study effective procedures.</p>
+<p>The algorithm became the organizing principle of programming.</p>
+<p>That inheritance made perfect sense.</p>
+<p>The earliest computers possessed almost no memory, extremely limited processing power, and primitive input and output devices. Programs were written to solve numerical problems one instruction at a time. Thinking of computation as a sequence of symbolic transformations was both natural and extraordinarily successful.</p>
+<p>For seventy years, programming languages refined this idea.</p>
+<p>Assembly organized instructions.</p>
+<p>FORTRAN organized calculations.</p>
+<p>C organized memory.</p>
+<p>Object-oriented languages organized data.</p>
+<p>Functional languages organized transformations.</p>
+<p>Distributed systems organized communication.</p>
+<p>But throughout every generation, one assumption remained remarkably constant:</p>
+<p><strong>Programs describe sequences of operations on symbols.</strong></p>
+<p>Geometry disappeared.</p>
+<p>Not because it was unimportant, but because it seemed unnecessary.</p>
+<hr>
+<p>Today that assumption deserves to be reconsidered.</p>
+<p>Modern processors contain billions of transistors arranged with nanometer precision.</p>
+<p>FPGAs expose millions of programmable logic elements whose physical placement directly influences performance.</p>
+<p>Robots navigate three-dimensional environments.</p>
+<p>Autonomous vehicles continuously model space.</p>
+<p>Scientific simulations solve problems defined on meshes, lattices, and finite elements.</p>
+<p>Machine learning increasingly depends on spatial data structures, graph relationships, and locality of computation.</p>
+<p>In every one of these domains, geometry is not incidental.</p>
+<p>It is the computation.</p>
+<p>Yet our programming languages continue to describe these systems as though geometry were merely an implementation detail to be recovered later by compilers and place-and-route tools.</p>
+<p>We routinely manufacture computational devices whose physical organization determines their behavior, while programming them in languages that pretend physical organization does not exist.</p>
+<p>The gap between software and hardware has never been wider.</p>
+<hr>
+<p>MatterScript begins with a different assumption.</p>
+<p>Computation always happens somewhere.</p>
+<p>Information always travels through space.</p>
+<p>Propagation always takes time.</p>
+<p>The geometry of a computation is not an optimization to be discovered after the program is written—it is part of the program itself.</p>
+<p>This does not replace algorithms.</p>
+<p>Algorithms remain an extraordinarily useful way to describe many classes of computation.</p>
+<p>But they are not the only way.</p>
+<p>Just as geometry and algebra eventually came to coexist within mathematics, sequential algorithms and spatial computation can coexist within programming.</p>
+<p>MatterScript explores what programming looks like when we stop treating geometry as an implementation detail and instead make it one of the fundamental concepts of the language.</p>
+<hr>
 <p><em>Drafting in progress…</em></p>
 
                     </main>

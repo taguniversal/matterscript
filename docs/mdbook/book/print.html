@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe0f133a.js";
+            window.path_to_searchindex_js = "searchindex-6c22e251.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fd20b4b2.js"></script>
@@ -178,7 +178,29 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="foreword"><a class="header" href="#foreword">Foreword</a></h1>
-<p>From Software to Matter…</p>
+<h2 id="from-software-to-matter"><a class="header" href="#from-software-to-matter">From Software to Matter…</a></h2>
+<p>In 2002, Stephen Wolfram published <em>A New Kind of Science</em>, arguing that many of nature’s most complex phenomena arise not from complicated equations, but from the repeated application of remarkably simple computational rules. His work challenged the centuries-old assumption that mathematics was the only fundamental language of science, suggesting instead that programs themselves could serve as the basis for understanding reality.</p>
+<p>Five years later, in 2007, Karl Fant published <em>Computer Science Reconsidered</em>. While Wolfram was exploring the computational universe from the perspective of simple programs, Fant approached computation from an entirely different direction. He questioned many of the assumptions underlying modern computer architecture and programming languages, presenting the Invocation Model and Null Convention Logic as a fundamentally different way to think about computation—not as sequences of instructions synchronized by clocks, but as networks of relationships whose behavior emerges through the propagation of information.</p>
+<p>For nearly two decades, these two works existed largely in parallel.</p>
+<p>One explored the idea that simple computational rules could explain the complexity of nature.</p>
+<p>The other explored a model of computation in which information propagates naturally through asynchronous networks without imposing artificial sequential order.</p>
+<p>Both were intellectually compelling. Both hinted at possibilities that extended well beyond their immediate applications. Yet for most programmers, they remained difficult to translate into practical systems. The hardware, software tools, compiler technology, and AI-assisted development environments needed to connect these ideas simply did not exist.</p>
+<p>Today, at the close of 2026, that situation has changed.</p>
+<p>Modern semiconductor manufacturing routinely produces chips containing billions of transistors positioned with nanometer precision and operating with nanosecond timing accuracy. FPGA devices provide reconfigurable hardware of extraordinary capability. Open-source synthesis tools have matured into robust engineering platforms. Equally important, AI systems have become capable collaborators, accelerating language design, compiler construction, hardware architecture, and scientific exploration.</p>
+<p>For the first time, these developments make it practical to build programming languages that treat computation as a physical process rather than an abstract sequence of instructions.</p>
+<p>MatterScript is an attempt to bring these threads together.</p>
+<p>It takes seriously Wolfram’s insight that simple computational structures can describe complex physical systems. It embraces Fant’s view that propagation and causality are more fundamental than clocks and instruction streams. It combines those ideas with modern compiler technology, geometry processing, asynchronous logic, and programmable hardware to create something neither work attempted on its own: a language that unifies geometry and computation.</p>
+<p>In MatterScript, space is no longer an implementation detail hidden inside a place-and-route tool. Time is no longer merely a clock signal distributed across a chip. Both become first-class programming constructs.</p>
+<p>A MatterScript program describes not only <em>what</em> should be computed, but <em>where</em> it exists, <em>how</em> information propagates through it, and <em>why</em> that physical arrangement matters.</p>
+<p>This is not simply another hardware description language, nor is it another programming language with novel syntax. It is an attempt to narrow a gap that has existed since the earliest days of computing.</p>
+<p>Our hardware has become astonishingly faithful to physical reality.</p>
+<p>Our programming languages have not.</p>
+<p>That mismatch has become increasingly costly as we ask computers to simulate fluids, biological systems, electromagnetic fields, autonomous vehicles, factories, cities, and eventually the physical world itself. We manufacture computational devices with extraordinary spatial and temporal precision, yet we continue to program them using abstractions that deliberately erase those same dimensions.</p>
+<p>MatterScript proposes a different path.</p>
+<p>Rather than hiding space and time beneath layers of abstraction, it makes them part of the language itself.</p>
+<p>Whether this approach ultimately represents a new direction for programming languages is for history to decide. But the convergence of ideas that once seemed isolated—computational universes, asynchronous computation, geometry-aware placement, AI-assisted engineering, and modern programmable hardware—suggests that this is an appropriate moment to ask a simple question:</p>
+<p><strong>What if software could finally speak the same language as the hardware on which it runs?</strong></p>
+<p>The chapters that follow are one possible answer.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="introduction-the-missing-dimension-in-programming"><a class="header" href="#introduction-the-missing-dimension-in-programming">Introduction: The Missing Dimension in Programming</a></h1>
@@ -206,6 +228,69 @@ Time is merely an implementation detail managed by clocks.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="why-software-forgot-geometry"><a class="header" href="#why-software-forgot-geometry">Why Software Forgot Geometry</a></h1>
+<p>Programming languages are built on an assumption so fundamental that most programmers never think to question it.</p>
+<p><strong>Computation is independent of space.</strong></p>
+<p>Variables have no location.</p>
+<p>Functions occupy no physical volume.</p>
+<p>Messages travel instantly.</p>
+<p>Memory appears to be equally distant from every instruction.</p>
+<p>The compiler may decide where code ultimately executes, but the programmer rarely cares. Geometry is someone else’s problem.</p>
+<p>This wasn’t always inevitable.</p>
+<p>In fact, for most of human history, geometry was considered the most intuitive and trustworthy branch of mathematics.</p>
+<p>Euclid described mathematics in terms of points, lines, surfaces, and their relationships. Newton presented his revolutionary work in <em>Principia</em> using geometric arguments because they reflected physical reality in a way that symbolic algebra did not. For centuries, geometry was regarded as the language through which the physical world could be understood.</p>
+<p>Algebra occupied a different role.</p>
+<p>It was useful, often extraordinarily powerful, but it dealt with symbols detached from any particular physical interpretation. Equations could represent almost anything—or nothing at all.</p>
+<p>Over time, that distinction disappeared.</p>
+<p>During the nineteenth century, mathematics gradually shifted away from geometric reasoning toward symbolic manipulation. Hilbert demonstrated that geometry itself could be expressed axiomatically as symbols obeying formal rules. What mattered was no longer the interpretation of the symbols but the consistency of the rules governing them.</p>
+<p>At nearly the same time, mathematicians became fascinated by a different question.</p>
+<p>Could reasoning itself be mechanized?</p>
+<p>The Hindu-Arabic numeral system had already shown that complex arithmetic could be performed through simple mechanical procedures. Leibniz imagined a universal symbolic language in which every scientific question could be answered by calculation alone. Later, Hilbert sought a formal method that could determine the truth or falsehood of any mathematical statement.</p>
+<p>The search ultimately failed. Gödel proved there were limits to formal systems, while Church and Turing showed that no universal mechanical procedure could decide every mathematical question.</p>
+<p>Yet something profound emerged from that work.</p>
+<p>To study the limits of mathematics, researchers had developed a precise notion of a <strong>mechanical computation</strong>.</p>
+<p>That notion became the algorithm.</p>
+<p>The electronic computer arrived at exactly the right moment.</p>
+<p>Unlike earlier calculating machines, electronic computers were capable of carrying out enormous numbers of these mechanical procedures automatically. Many of the mathematicians investigating algorithms—including John von Neumann and Alan Turing—were directly involved in their development.</p>
+<p>As a result, computer science inherited not only the hardware, but the mathematical framework that had been created to study effective procedures.</p>
+<p>The algorithm became the organizing principle of programming.</p>
+<p>That inheritance made perfect sense.</p>
+<p>The earliest computers possessed almost no memory, extremely limited processing power, and primitive input and output devices. Programs were written to solve numerical problems one instruction at a time. Thinking of computation as a sequence of symbolic transformations was both natural and extraordinarily successful.</p>
+<p>For seventy years, programming languages refined this idea.</p>
+<p>Assembly organized instructions.</p>
+<p>FORTRAN organized calculations.</p>
+<p>C organized memory.</p>
+<p>Object-oriented languages organized data.</p>
+<p>Functional languages organized transformations.</p>
+<p>Distributed systems organized communication.</p>
+<p>But throughout every generation, one assumption remained remarkably constant:</p>
+<p><strong>Programs describe sequences of operations on symbols.</strong></p>
+<p>Geometry disappeared.</p>
+<p>Not because it was unimportant, but because it seemed unnecessary.</p>
+<hr>
+<p>Today that assumption deserves to be reconsidered.</p>
+<p>Modern processors contain billions of transistors arranged with nanometer precision.</p>
+<p>FPGAs expose millions of programmable logic elements whose physical placement directly influences performance.</p>
+<p>Robots navigate three-dimensional environments.</p>
+<p>Autonomous vehicles continuously model space.</p>
+<p>Scientific simulations solve problems defined on meshes, lattices, and finite elements.</p>
+<p>Machine learning increasingly depends on spatial data structures, graph relationships, and locality of computation.</p>
+<p>In every one of these domains, geometry is not incidental.</p>
+<p>It is the computation.</p>
+<p>Yet our programming languages continue to describe these systems as though geometry were merely an implementation detail to be recovered later by compilers and place-and-route tools.</p>
+<p>We routinely manufacture computational devices whose physical organization determines their behavior, while programming them in languages that pretend physical organization does not exist.</p>
+<p>The gap between software and hardware has never been wider.</p>
+<hr>
+<p>MatterScript begins with a different assumption.</p>
+<p>Computation always happens somewhere.</p>
+<p>Information always travels through space.</p>
+<p>Propagation always takes time.</p>
+<p>The geometry of a computation is not an optimization to be discovered after the program is written—it is part of the program itself.</p>
+<p>This does not replace algorithms.</p>
+<p>Algorithms remain an extraordinarily useful way to describe many classes of computation.</p>
+<p>But they are not the only way.</p>
+<p>Just as geometry and algebra eventually came to coexist within mathematics, sequential algorithms and spatial computation can coexist within programming.</p>
+<p>MatterScript explores what programming looks like when we stop treating geometry as an implementation detail and instead make it one of the fundamental concepts of the language.</p>
+<hr>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="time-is-not-a-clock"><a class="header" href="#time-is-not-a-clock">Time is Not a Clock</a></h1>
