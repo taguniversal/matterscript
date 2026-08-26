@@ -262,31 +262,31 @@ fn writeDefinition(
 
     // destination fills (outputs)
     try writer.print("\n  -- destination fills (outputs)\n", .{});
-    for (def.resolution) |stmt| {
-        switch (stmt) {
-            .fill => |f| {
-                const literal = std.fmt.parseInt(u64, std.mem.trim(u8, f.expr, " \t\r\n"), 10) catch null;
-                if (literal) |value| {
-                    const dest_id = try sanitizeName(allocator, f.dest_name);
-                    defer allocator.free(dest_id);
-                    try writer.print("  {s} <= data_value({d});\n", .{ dest_id, value });
-                } else if (!try writeContainedLookup(allocator, writer, def, f) and
-                    !try writeExpressionFill(allocator, writer, f))
-                {
-                    const dest_id = try sanitizeName(allocator, f.dest_name);
-                    defer allocator.free(dest_id);
-                    try writer.print("  {s} <= null_value;\n", .{dest_id});
-                }
-            },
-            .invoke => |inv| {
-                _ = inv;
-            },
-            .pure_value => |v| {
-                try writer.print("  -- TODO: pure value expression {s} (contained-definition resolution not yet implemented)\n", .{v});
-            },
+    if (!try writeContainedLookupTable(allocator, writer, def)) {
+        for (def.resolution) |stmt| {
+            switch (stmt) {
+                .fill => |f| {
+                    const literal = std.fmt.parseInt(u64, std.mem.trim(u8, f.expr, " \t\r\n"), 10) catch null;
+                    if (literal) |value| {
+                        const dest_id = try sanitizeName(allocator, f.dest_name);
+                        defer allocator.free(dest_id);
+                        try writer.print("  {s} <= data_value({d});\n", .{ dest_id, value });
+                    } else if (!try writeExpressionFill(allocator, writer, f)) {
+                        const dest_id = try sanitizeName(allocator, f.dest_name);
+                        defer allocator.free(dest_id);
+                        try writer.print("  {s} <= null_value;\n", .{dest_id});
+                    }
+                },
+                .invoke => |inv| {
+                    _ = inv;
+                },
+                .pure_value => |v| {
+                    try writer.print("  -- TODO: pure value expression {s} (not a recognized lookup-table shape)\n", .{v});
+                },
+            }
         }
     }
-
+    
     try writer.print("\nend rtl;\n", .{});
 
     for (def.contained) |contained| {
@@ -595,72 +595,151 @@ fn isDefinitionPort(def: network.Definition, name: []const u8) bool {
     for (def.destinations) |place| if (std.ascii.eqlIgnoreCase(place.name, name)) return true;
     return false;
 }
-
-fn writeContainedLookup(
+/// Detects whether `def.contained` represents a flat lookup table in
+/// Fant's most-abbreviated "Constant Definition" form (§12.3.4),
+/// composed from `def.sources` via a bare pure-value expression or a
+/// single fill — e.g. OR's "0,0[0] 0,1[1] 1,0[1] 1,1[1]" or the code
+/// detector's "0,S0[detect<no> state<S1>] ...". Each row's name must
+/// split (via §12.4's comma) into exactly `def.sources.len` segments —
+/// this is required, not optional: a run-together key like "10" is
+/// genuinely ambiguous once more than one source or any symbolic
+/// (non-numeric) token is involved, and silently mis-encoding it
+/// produces VHDL that passes a syntax-only check while being wrong at
+/// simulation time.
+///
+/// If the shape matches, emits one ROM/case-select per outer
+/// destination that any row provides a fill for, using a symbol table
+/// shared across the WHOLE definition — so e.g. "S1" encodes to the
+/// same integer whether it appears in a key segment or a fill value,
+/// which matters for state machines where a destination's output
+/// feeds back as a future invocation's source.
+///
+/// Returns true if it fully handled this definition's destination
+/// fills — the caller should skip the ordinary per-statement path
+/// entirely in that case.
+fn writeContainedLookupTable(
     allocator: std.mem.Allocator,
     writer: anytype,
     def: network.Definition,
-    fill: network.SourceFill,
 ) !bool {
     if (def.sources.len == 0 or def.contained.len == 0) return false;
-    for (def.sources) |source| {
-        if (std.mem.indexOf(u8, fill.expr, source.name) == null) return false;
-    }
 
     for (def.contained) |row| {
-        _ = std.fmt.parseInt(u64, row.name, 10) catch return false;
-        if (row.resolution.len != 1) return false;
-        switch (row.resolution[0]) {
-            .pure_value => |value| {
-                _ = std.fmt.parseInt(u64, value, 10) catch return false;
-            },
-            else => return false,
+        if (row.sources.len != 0 or row.destinations.len != 0) return false;
+        var seg_count: usize = 1;
+        for (row.name) |ch| {
+            if (ch == ',') seg_count += 1;
+        }
+        if (seg_count != def.sources.len) return false;
+        if (row.resolution.len == 0) return false;
+        for (row.resolution) |stmt| {
+            if (stmt != .fill) return false;
         }
     }
 
-    try writer.print("  process(", .{});
-    for (def.sources, 0..) |source, i| {
-        if (i > 0) try writer.print(", ", .{});
-        const source_id = try sanitizeName(allocator, source.name);
-        defer allocator.free(source_id);
-        try writer.print("{s}", .{source_id});
-    }
-    const dest_id = try sanitizeName(allocator, fill.dest_name);
-    defer allocator.free(dest_id);
-    try writer.print(", complete) begin\n" ++
-        "    {s} <= (others => '0');\n" ++
-        "    if complete = '1' then\n" ++
-        "      case ", .{dest_id});
-    // Rebuild the case expression from all source payloads.
-    var first_source = true;
-    for (def.sources) |source| {
-        const source_id = try sanitizeName(allocator, source.name);
-        defer allocator.free(source_id);
-        if (!first_source) try writer.print(" & ", .{});
-        try writer.print("{s}({d} downto 1)", .{ source_id, SIGNAL_WIDTH - 1 });
-        first_source = false;
-    }
-    try writer.print(" is\n", .{});
+    // One symbol table for the whole definition: every key segment and
+    // every fill value that isn't already numeric gets interned to a
+    // stable small integer, in first-encountered order.
+    var symbols: std.ArrayListUnmanaged([]const u8) = .empty;
 
     for (def.contained) |row| {
-        const input = try std.fmt.parseInt(u64, row.name, 10);
-        const output = switch (row.resolution[0]) {
-            .pure_value => |value| try std.fmt.parseInt(u64, value, 10),
-            else => unreachable,
-        };
-        const key_width = def.sources.len * DATA_WIDTH;
-        var input_buf: [128]u8 = undefined;
-        const input_bits = binStr(&input_buf, input, key_width);
-        try writer.print("        when \"{s}\" => {s} <= data_value({d});\n", .{ input_bits, dest_id, output });
+        var it = std.mem.splitScalar(u8, row.name, ',');
+        while (it.next()) |seg| {
+            _ = try internSymbol(&symbols, allocator, std.mem.trim(u8, seg, " \t\r\n"));
+        }
+        for (row.resolution) |stmt| {
+            _ = try internSymbol(&symbols, allocator, std.mem.trim(u8, stmt.fill.expr, " \t\r\n"));
+        }
     }
 
-    try writer.print("        when others => null;\n" ++
-        "      end case;\n" ++
-        "    end if;\n" ++
-        "  end process;\n", .{});
+    if (symbols.items.len > 0) {
+        try writer.print("  -- symbol encoding: ", .{});
+        for (symbols.items, 0..) |sym, i| {
+            if (i > 0) try writer.print(", ", .{});
+            try writer.print("{s}={d}", .{ sym, i });
+        }
+        try writer.print("\n", .{});
+    }
+
+    // Which outer destinations does any row actually provide a fill for?
+    var covered: std.ArrayListUnmanaged([]const u8) = .empty;
+    for (def.contained) |row| {
+        for (row.resolution) |stmt| {
+            const dname = stmt.fill.dest_name;
+            var have = false;
+            for (covered.items) |c| {
+                if (std.mem.eql(u8, c, dname)) {
+                    have = true;
+                    break;
+                }
+            }
+            if (!have) try covered.append(allocator, dname);
+        }
+    }
+
+    for (covered.items) |dest_name| {
+        const dest_id = try sanitizeName(allocator, dest_name);
+        defer allocator.free(dest_id);
+
+        try writer.print("\n  -- lookup for {s}\n", .{dest_name});
+        try writer.print("  process(", .{});
+        for (def.sources, 0..) |source, i| {
+            if (i > 0) try writer.print(", ", .{});
+            const source_id = try sanitizeName(allocator, source.name);
+            defer allocator.free(source_id);
+            try writer.print("{s}", .{source_id});
+        }
+        try writer.print(", complete) begin\n" ++
+            "    {s} <= null_value;\n" ++
+            "    if complete = '1' then\n" ++
+            "      case ", .{dest_id});
+        for (def.sources, 0..) |source, i| {
+            const source_id = try sanitizeName(allocator, source.name);
+            defer allocator.free(source_id);
+            if (i > 0) try writer.print(" & ", .{});
+            try writer.print("{s}({d} downto 1)", .{ source_id, SIGNAL_WIDTH - 1 });
+        }
+        try writer.print(" is\n", .{});
+
+        for (def.contained) |row| {
+            var key_buf: [128]u8 = undefined;
+            var key_pos: usize = 0;
+            var it = std.mem.splitScalar(u8, row.name, ',');
+            while (it.next()) |seg| {
+                const value = try internSymbol(&symbols, allocator, std.mem.trim(u8, seg, " \t\r\n"));
+                const piece = binStr(key_buf[key_pos..], value, DATA_WIDTH);
+                key_pos += piece.len;
+            }
+            const key_str = key_buf[0..key_pos];
+
+            for (row.resolution) |stmt| {
+                if (!std.mem.eql(u8, stmt.fill.dest_name, dest_name)) continue;
+                const value = try internSymbol(&symbols, allocator, std.mem.trim(u8, stmt.fill.expr, " \t\r\n"));
+                try writer.print("        when \"{s}\" => {s} <= data_value({d});\n", .{ key_str, dest_id, value });
+            }
+        }
+
+        try writer.print("        when others => null;\n" ++
+            "      end case;\n" ++
+            "    end if;\n" ++
+            "  end process;\n", .{});
+    }
+
     return true;
 }
 
+/// Interns `token` into `list`, returning a stable integer: numeric
+/// tokens pass through as their own value; non-numeric (symbolic)
+/// tokens are assigned the next free slot in first-encountered order,
+/// or reuse an existing slot if already seen.
+fn internSymbol(list: *std.ArrayListUnmanaged([]const u8), allocator: std.mem.Allocator, token: []const u8) !u64 {
+    if (std.fmt.parseInt(u64, token, 10)) |n| return n else |_| {}
+    for (list.items, 0..) |existing, i| {
+        if (std.mem.eql(u8, existing, token)) return @intCast(i);
+    }
+    try list.append(allocator, try allocator.dupe(u8, token));
+    return @intCast(list.items.len - 1);
+}
 // ----------------------------------------------------------------
 // Generate block evaluator
 // ----------------------------------------------------------------

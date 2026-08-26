@@ -6,7 +6,7 @@
 
 In 2002, Stephen Wolfram published *A New Kind of Science*, arguing that many of nature's most complex phenomena arise not from complicated equations, but from the repeated application of remarkably simple computational rules. His work challenged the centuries-old assumption that mathematics was the only fundamental language of science, suggesting instead that programs themselves could serve as the basis for understanding reality. 
 
-Five years later, in 2007, Karl Fant published *Computer Science Reconsidered*. While Wolfram was exploring the computational universe from the perspective of simple programs, Fant approached computation from an entirely different direction. He questioned many of the assumptions underlying modern computer architecture and programming languages, presenting the Invocation Model and Null Convention Logic as a fundamentally different way to think about computation—not as sequences of instructions synchronized by clocks, but as networks of relationships whose behavior emerges through the propagation of information.
+Five years later, in 2007, Karl Fant published *Computer Science Reconsidered*. While Wolfram was exploring the computational universe from the perspective of simple programs, Fant approached computation from an entirely different direction. He questioned many of the assumptions underlying modern computer architecture and programming languages, presenting the **Invocation Model and Null Convention Logic** as a fundamentally different way to think about computation—not as sequences of instructions synchronized by clocks, but as networks of relationships whose behavior emerges through the propagation of information.
 
 For nearly two decades, these two works existed largely in parallel.
 
@@ -22,7 +22,7 @@ Modern semiconductor manufacturing routinely produces chips containing billions 
 
 For the first time, these developments make it practical to build programming languages that treat computation as a physical process rather than an abstract sequence of instructions.
 
-MatterScript is an attempt to bring these threads together.
+**MatterScript** is an attempt to bring these threads together.
 
 It takes seriously Wolfram's insight that simple computational structures can describe complex physical systems. It embraces Fant's view that propagation and causality are more fundamental than clocks and instruction streams. It combines those ideas with modern compiler technology, geometry processing, asynchronous logic, and programmable hardware to create something neither work attempted on its own: a language that unifies geometry and computation.
 

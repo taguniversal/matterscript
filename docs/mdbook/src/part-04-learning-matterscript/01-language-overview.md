@@ -35,8 +35,8 @@ OR($OP7 $OP8)(SUM< >)
 AND($X $Y)(OP10< >)
 AND($C $FIRSTSUM)(OP9< >)
 OR($OP10 $OP9)(CARRY< >)
-: OR[(A< > B< >)($res) res<$A$B()> :00[0] 01[1] 10[1] 11[1] ]
-  AND[(A< > B< >)($res) res<$A$B()> :00[0] 01[0] 10[0] 11[1] ]
+: OR[(A< > B< >)($res) res<$A$B()> :0,0[0] 0,1[1] 1,0[1] 1,1[1] ]
+  AND[(A< > B< >)($res) res<$A$B()> :0,0[0] 0,1[0] 1,0[0] 1,1[1] ]
   NOT[(A< >)($res) res<$A()> :1[0] 0[1] ] ]
 ```
 
@@ -137,10 +137,10 @@ AND[(A<> B<>)($res)
 
 res<$A$B()>
 
-:00[0]
- 01[0]
- 10[0]
- 11[1]
+:0,0[0]
+ 0,1[0]
+ 1,0[0]
+ 1,1[1]
 ]
 ```
 
@@ -149,6 +149,8 @@ The lines following the colon are themselves constant definitions.
 Each key on the left represents a possible invocation name formed by concatenating the values arriving on `$A` and `$B`.
 
 When `$A` contains `1` and `$B` contains `0`, the composed name becomes `10`. The compiler locates the constant definition named `10` and returns its associated value—in this case `0`.
+
+While the formed symbols are the concatenaed values like 00 and 01, for correct compiler interpretation of separate symbols, you as the developer register your intent in the source code by separating the content values with the general separator comma ','.
 
 Rather than executing conditional logic, MatterScript performs a lookup. The incoming token values determine which constant definition is selected, and that definition immediately returns its contents to the invocation.
 
@@ -195,10 +197,10 @@ These are not built-in language keywords. They are ordinary MatterScript definit
 The only difference is that they terminate in collections of constant definitions rather than invoking additional networks.
 
 ```matterscript
-:00[0]
- 01[0]
- 10[0]
- 11[1]
+:0,0[0]
+ 0,1[0]
+ 1,0[0]
+ 1,1[1]
 ```
 
 This collection of constant definitions completely specifies the behavior of the AND gate.

@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6c22e251.js";
+            window.path_to_searchindex_js = "searchindex-a02c5cd9.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fd20b4b2.js"></script>
@@ -180,7 +180,7 @@
                         <h1 id="foreword"><a class="header" href="#foreword">Foreword</a></h1>
 <h2 id="from-software-to-matter"><a class="header" href="#from-software-to-matter">From Software to Matter…</a></h2>
 <p>In 2002, Stephen Wolfram published <em>A New Kind of Science</em>, arguing that many of nature’s most complex phenomena arise not from complicated equations, but from the repeated application of remarkably simple computational rules. His work challenged the centuries-old assumption that mathematics was the only fundamental language of science, suggesting instead that programs themselves could serve as the basis for understanding reality.</p>
-<p>Five years later, in 2007, Karl Fant published <em>Computer Science Reconsidered</em>. While Wolfram was exploring the computational universe from the perspective of simple programs, Fant approached computation from an entirely different direction. He questioned many of the assumptions underlying modern computer architecture and programming languages, presenting the Invocation Model and Null Convention Logic as a fundamentally different way to think about computation—not as sequences of instructions synchronized by clocks, but as networks of relationships whose behavior emerges through the propagation of information.</p>
+<p>Five years later, in 2007, Karl Fant published <em>Computer Science Reconsidered</em>. While Wolfram was exploring the computational universe from the perspective of simple programs, Fant approached computation from an entirely different direction. He questioned many of the assumptions underlying modern computer architecture and programming languages, presenting the <strong>Invocation Model and Null Convention Logic</strong> as a fundamentally different way to think about computation—not as sequences of instructions synchronized by clocks, but as networks of relationships whose behavior emerges through the propagation of information.</p>
 <p>For nearly two decades, these two works existed largely in parallel.</p>
 <p>One explored the idea that simple computational rules could explain the complexity of nature.</p>
 <p>The other explored a model of computation in which information propagates naturally through asynchronous networks without imposing artificial sequential order.</p>
@@ -188,7 +188,7 @@
 <p>Today, at the close of 2026, that situation has changed.</p>
 <p>Modern semiconductor manufacturing routinely produces chips containing billions of transistors positioned with nanometer precision and operating with nanosecond timing accuracy. FPGA devices provide reconfigurable hardware of extraordinary capability. Open-source synthesis tools have matured into robust engineering platforms. Equally important, AI systems have become capable collaborators, accelerating language design, compiler construction, hardware architecture, and scientific exploration.</p>
 <p>For the first time, these developments make it practical to build programming languages that treat computation as a physical process rather than an abstract sequence of instructions.</p>
-<p>MatterScript is an attempt to bring these threads together.</p>
+<p><strong>MatterScript</strong> is an attempt to bring these threads together.</p>
 <p>It takes seriously Wolfram’s insight that simple computational structures can describe complex physical systems. It embraces Fant’s view that propagation and causality are more fundamental than clocks and instruction streams. It combines those ideas with modern compiler technology, geometry processing, asynchronous logic, and programmable hardware to create something neither work attempted on its own: a language that unifies geometry and computation.</p>
 <p>In MatterScript, space is no longer an implementation detail hidden inside a place-and-route tool. Time is no longer merely a clock signal distributed across a chip. Both become first-class programming constructs.</p>
 <p>A MatterScript program describes not only <em>what</em> should be computed, but <em>where</em> it exists, <em>how</em> information propagates through it, and <em>why</em> that physical arrangement matters.</p>
@@ -248,7 +248,7 @@ Time is merely an implementation detail managed by clocks.</p>
 <p>The search ultimately failed. Gödel proved there were limits to formal systems, while Church and Turing showed that no universal mechanical procedure could decide every mathematical question.</p>
 <p>Yet something profound emerged from that work.</p>
 <p>To study the limits of mathematics, researchers had developed a precise notion of a <strong>mechanical computation</strong>.</p>
-<p>That notion became the algorithm.</p>
+<p>That notion became <strong>the algorithm</strong>.</p>
 <p>The electronic computer arrived at exactly the right moment.</p>
 <p>Unlike earlier calculating machines, electronic computers were capable of carrying out enormous numbers of these mechanical procedures automatically. Many of the mathematicians investigating algorithms—including John von Neumann and Alan Turing—were directly involved in their development.</p>
 <p>As a result, computer science inherited not only the hardware, but the mathematical framework that had been created to study effective procedures.</p>
@@ -275,12 +275,12 @@ Time is merely an implementation detail managed by clocks.</p>
 <p>Scientific simulations solve problems defined on meshes, lattices, and finite elements.</p>
 <p>Machine learning increasingly depends on spatial data structures, graph relationships, and locality of computation.</p>
 <p>In every one of these domains, geometry is not incidental.</p>
-<p>It is the computation.</p>
+<p>It is <strong>the computation</strong>.</p>
 <p>Yet our programming languages continue to describe these systems as though geometry were merely an implementation detail to be recovered later by compilers and place-and-route tools.</p>
 <p>We routinely manufacture computational devices whose physical organization determines their behavior, while programming them in languages that pretend physical organization does not exist.</p>
 <p>The gap between software and hardware has never been wider.</p>
 <hr>
-<p>MatterScript begins with a different assumption.</p>
+<p><strong>MatterScript</strong> begins with a different assumption.</p>
 <p>Computation always happens somewhere.</p>
 <p>Information always travels through space.</p>
 <p>Propagation always takes time.</p>
@@ -387,8 +387,8 @@ OR($OP7 $OP8)(SUM&lt; &gt;)
 AND($X $Y)(OP10&lt; &gt;)
 AND($C $FIRSTSUM)(OP9&lt; &gt;)
 OR($OP10 $OP9)(CARRY&lt; &gt;)
-: OR[(A&lt; &gt; B&lt; &gt;)($res) res&lt;$A$B()&gt; :00[0] 01[1] 10[1] 11[1] ]
-  AND[(A&lt; &gt; B&lt; &gt;)($res) res&lt;$A$B()&gt; :00[0] 01[0] 10[0] 11[1] ]
+: OR[(A&lt; &gt; B&lt; &gt;)($res) res&lt;$A$B()&gt; :0,0[0] 0,1[1] 1,0[1] 1,1[1] ]
+  AND[(A&lt; &gt; B&lt; &gt;)($res) res&lt;$A$B()&gt; :0,0[0] 0,1[0] 1,0[0] 1,1[1] ]
   NOT[(A&lt; &gt;)($res) res&lt;$A()&gt; :1[0] 0[1] ] ]
 </code></pre>
 <p>At first glance this looks unusual, but there are really only three ideas at work.</p>
@@ -446,15 +446,16 @@ ZERO[0]
 
 res&lt;$A$B()&gt;
 
-:00[0]
- 01[0]
- 10[0]
- 11[1]
+:0,0[0]
+ 0,1[0]
+ 1,0[0]
+ 1,1[1]
 ]
 </code></pre>
 <p>The lines following the colon are themselves constant definitions.</p>
 <p>Each key on the left represents a possible invocation name formed by concatenating the values arriving on <code>$A</code> and <code>$B</code>.</p>
 <p>When <code>$A</code> contains <code>1</code> and <code>$B</code> contains <code>0</code>, the composed name becomes <code>10</code>. The compiler locates the constant definition named <code>10</code> and returns its associated value—in this case <code>0</code>.</p>
+<p>While the formed symbols are the concatenaed values like 00 and 01, for correct compiler interpretation of separate symbols, you as the developer register your intent in the source code by separating the content values with the general separator comma ‘,’.</p>
 <p>Rather than executing conditional logic, MatterScript performs a lookup. The incoming token values determine which constant definition is selected, and that definition immediately returns its contents to the invocation.</p>
 <p>Taken together, these constant definitions form the complete truth table of the AND gate.</p>
 <p>This idea extends far beyond Boolean logic. A constant definition doesn’t have to return a single integer. It can return an entire fragment of MatterScript that is inserted back into the network and resolved as if it had been written directly in place.</p>
@@ -484,10 +485,10 @@ NOT[...]
 </code></pre>
 <p>These are not built-in language keywords. They are ordinary MatterScript definitions written in exactly the same language as every other component.</p>
 <p>The only difference is that they terminate in collections of constant definitions rather than invoking additional networks.</p>
-<pre><code class="language-matterscript">:00[0]
- 01[0]
- 10[0]
- 11[1]
+<pre><code class="language-matterscript">:0,0[0]
+ 0,1[0]
+ 1,0[0]
+ 1,1[1]
 </code></pre>
 <p>This collection of constant definitions completely specifies the behavior of the AND gate.</p>
 <p>Likewise, the OR and NOT definitions each contain their own independent lookup tables. Even though all three definitions use names such as <code>A</code>, <code>B</code>, and <code>res</code>, those names exist only within the definition in which they are declared. There is no possibility of collision because every definition has its own private scope.</p>

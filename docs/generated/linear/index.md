@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 3  |  🟡 Partial: 4  |  ⬛ Spec only: 5  |  ⬜ Not started: 117  |  Total: 129
+✅ Implemented: 2  |  🟡 Partial: 5  |  ⬛ Spec only: 5  |  ⬜ Not started: 118  |  Total: 130
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [7. Composing Boundaries](TAG-167.md)
@@ -86,7 +86,7 @@
 - ⬜ Not started [NKS CA-on-mesh: neighborhood-aware rule evaluation](TAG-120.md)
 - ⬜ Not started [Round-trip validation: mesh-driven network compiles and passes topology checks](TAG-121.md)
 - ⬜ Not started [Language to Mesh map stability](TAG-122.md)
-- ✅ Implemented [Example 12.19 Imperative form of expression](TAG-129.md)
+- 🟡 Partial [Example 12.19 Imperative form of expression](TAG-129.md)
 - ✅ Implemented [Example 12.1 Unnamed source place in an invocation](TAG-130.md)
 - ⬜ Not started [Example 12.2 Expressing a single return to place of invocation](TAG-132.md)
 - ⬜ Not started [Example 12.16 Occasional Source Place](TAG-133.md)
@@ -123,6 +123,7 @@
 - ⬜ Not started [Content Field to VHDL Emission](TAG-170.md)
 - ⬜ Not started [Nested sub-definition name collisions](TAG-171.md)
 - ⬜ Not started [VHDL Numeric table emission](TAG-172.md)
+- ⬜ Not started [Domain Layers](TAG-174.md)
 - ⬜ Not started [Return a Content to Place of Invocation](TAG-32.md)
 - ⬜ Not started [Single Return to Place of Invocation](TAG-33.md)
 - ⬜ Not started [The Conditional Invocation Name](TAG-35.md)

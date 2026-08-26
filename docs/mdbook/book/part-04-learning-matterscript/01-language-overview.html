@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6c22e251.js";
+            window.path_to_searchindex_js = "../searchindex-a02c5cd9.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-fd20b4b2.js"></script>
@@ -203,8 +203,8 @@ OR($OP7 $OP8)(SUM&lt; &gt;)
 AND($X $Y)(OP10&lt; &gt;)
 AND($C $FIRSTSUM)(OP9&lt; &gt;)
 OR($OP10 $OP9)(CARRY&lt; &gt;)
-: OR[(A&lt; &gt; B&lt; &gt;)($res) res&lt;$A$B()&gt; :00[0] 01[1] 10[1] 11[1] ]
-  AND[(A&lt; &gt; B&lt; &gt;)($res) res&lt;$A$B()&gt; :00[0] 01[0] 10[0] 11[1] ]
+: OR[(A&lt; &gt; B&lt; &gt;)($res) res&lt;$A$B()&gt; :0,0[0] 0,1[1] 1,0[1] 1,1[1] ]
+  AND[(A&lt; &gt; B&lt; &gt;)($res) res&lt;$A$B()&gt; :0,0[0] 0,1[0] 1,0[0] 1,1[1] ]
   NOT[(A&lt; &gt;)($res) res&lt;$A()&gt; :1[0] 0[1] ] ]
 </code></pre>
 <p>At first glance this looks unusual, but there are really only three ideas at work.</p>
@@ -262,15 +262,16 @@ ZERO[0]
 
 res&lt;$A$B()&gt;
 
-:00[0]
- 01[0]
- 10[0]
- 11[1]
+:0,0[0]
+ 0,1[0]
+ 1,0[0]
+ 1,1[1]
 ]
 </code></pre>
 <p>The lines following the colon are themselves constant definitions.</p>
 <p>Each key on the left represents a possible invocation name formed by concatenating the values arriving on <code>$A</code> and <code>$B</code>.</p>
 <p>When <code>$A</code> contains <code>1</code> and <code>$B</code> contains <code>0</code>, the composed name becomes <code>10</code>. The compiler locates the constant definition named <code>10</code> and returns its associated value—in this case <code>0</code>.</p>
+<p>While the formed symbols are the concatenaed values like 00 and 01, for correct compiler interpretation of separate symbols, you as the developer register your intent in the source code by separating the content values with the general separator comma ‘,’.</p>
 <p>Rather than executing conditional logic, MatterScript performs a lookup. The incoming token values determine which constant definition is selected, and that definition immediately returns its contents to the invocation.</p>
 <p>Taken together, these constant definitions form the complete truth table of the AND gate.</p>
 <p>This idea extends far beyond Boolean logic. A constant definition doesn’t have to return a single integer. It can return an entire fragment of MatterScript that is inserted back into the network and resolved as if it had been written directly in place.</p>
@@ -300,10 +301,10 @@ NOT[...]
 </code></pre>
 <p>These are not built-in language keywords. They are ordinary MatterScript definitions written in exactly the same language as every other component.</p>
 <p>The only difference is that they terminate in collections of constant definitions rather than invoking additional networks.</p>
-<pre><code class="language-matterscript">:00[0]
- 01[0]
- 10[0]
- 11[1]
+<pre><code class="language-matterscript">:0,0[0]
+ 0,1[0]
+ 1,0[0]
+ 1,1[1]
 </code></pre>
 <p>This collection of constant definitions completely specifies the behavior of the AND gate.</p>
 <p>Likewise, the OR and NOT definitions each contain their own independent lookup tables. Even though all three definitions use names such as <code>A</code>, <code>B</code>, and <code>res</code>, those names exist only within the definition in which they are declared. There is no possibility of collision because every definition has its own private scope.</p>

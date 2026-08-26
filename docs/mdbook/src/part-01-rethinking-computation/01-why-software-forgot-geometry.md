@@ -41,7 +41,7 @@ Yet something profound emerged from that work.
 
 To study the limits of mathematics, researchers had developed a precise notion of a **mechanical computation**.
 
-That notion became the algorithm.
+That notion became **the algorithm**.
 
 The electronic computer arrived at exactly the right moment.
 
@@ -95,7 +95,7 @@ Machine learning increasingly depends on spatial data structures, graph relation
 
 In every one of these domains, geometry is not incidental.
 
-It is the computation.
+It is **the computation**.
 
 Yet our programming languages continue to describe these systems as though geometry were merely an implementation detail to be recovered later by compilers and place-and-route tools.
 
@@ -105,7 +105,7 @@ The gap between software and hardware has never been wider.
 
 ---
 
-MatterScript begins with a different assumption.
+**MatterScript** begins with a different assumption.
 
 Computation always happens somewhere.
 
