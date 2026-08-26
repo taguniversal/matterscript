@@ -13,6 +13,7 @@ default-theme = "light"
 preferred-dark-theme = "navy"
 smart-punctuation = true
 mathjax-support = true
+additional-js = ["grammars/matterscript.js"]
 
 [output.html.search]
 enable = true

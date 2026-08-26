@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-3a889d7d.js";
+            window.path_to_searchindex_js = "searchindex-fe0f133a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fd20b4b2.js"></script>
@@ -276,12 +276,154 @@ Every computation is embedded in a physical substrate.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="language-overview"><a class="header" href="#language-overview">Language Overview</a></h1>
-<p><em>Drafting in progress…</em></p>
+<h2 id="understanding-a-matterscript-definition"><a class="header" href="#understanding-a-matterscript-definition">Understanding a MatterScript Definition</a></h2>
+<p>If you’ve written software before, the first thing you’ll notice about MatterScript is what isn’t there.</p>
+<p>There are no variables.</p>
+<p>There are no assignments.</p>
+<p>There are no if statements.</p>
+<p>There are no loops.</p>
+<p>Instead, a MatterScript program describes a network of computations connected together by named places. Values don’t move through a sequence of instructions—they propagate through a graph. Every definition is a small network, and larger systems are built by composing those networks together.</p>
+<p>Let’s look at a complete example.</p>
+<pre><code class="language-matterscript">// linear: TAG-129 Imperative form of expression
+
+FULLADD(0, 1, 0)(&lt; &gt; CARRYOUT &lt; &gt;)  $CARRYOUT
+
+FULLADD[(X&lt; &gt;Y&lt; &gt;C&lt; &gt;) ($SUM $CARRY)
+NOT($X)(OP1&lt; &gt;)
+AND($OP1 $Y)(OP4&lt; &gt;)
+NOT($Y)(OP2&lt; &gt;)
+AND($X $OP2)(OP3&lt; &gt;)
+OR($OP4 $OP3)(FIRSTSUM&lt; &gt;)
+NOT($FIRSTSUM)(OP6&lt; &gt;)
+AND($C $OP6)(OP7&lt; &gt;)
+NOT($C)(OP5&lt; &gt;)
+AND($OP5 $FIRSTSUM)(OP8&lt; &gt;)
+OR($OP7 $OP8)(SUM&lt; &gt;)
+AND($X $Y)(OP10&lt; &gt;)
+AND($C $FIRSTSUM)(OP9&lt; &gt;)
+OR($OP10 $OP9)(CARRY&lt; &gt;)
+: OR[(A&lt; &gt; B&lt; &gt;)($res) res&lt;$A$B()&gt; :00[0] 01[1] 10[1] 11[1] ]
+  AND[(A&lt; &gt; B&lt; &gt;)($res) res&lt;$A$B()&gt; :00[0] 01[0] 10[0] 11[1] ]
+  NOT[(A&lt; &gt;)($res) res&lt;$A()&gt; :1[0] 0[1] ] ]
+</code></pre>
+<p>At first glance this looks unusual, but there are really only three ideas at work.</p>
+<h2 id="definitions"><a class="header" href="#definitions">Definitions</a></h2>
+<p>Every MatterScript program is built from <strong>definitions</strong>. If you’re coming from a conventional programming language, the closest analogy is a function or module, but a MatterScript definition describes a <strong>network of relationships</strong> rather than a sequence of instructions.</p>
+<p>A definition begins with a name followed by two interface lists.</p>
+<pre><code class="language-matterscript">FULLADD[(X&lt;&gt; Y&lt;&gt; C&lt;&gt;) ($SUM $CARRY)
+</code></pre>
+<p>The first list declares the <strong>source places</strong> that provide information to the definition.</p>
+<p>The second list declares the <strong>destination places</strong> that the definition will eventually produce.</p>
+<p>You can think of these as the external interface of the network. Everything inside the definition exists to transform information arriving at the source places into information that eventually reaches the destination places.</p>
+<p>Unlike an imperative function, a MatterScript definition doesn’t “run” from top to bottom. It becomes active as values propagate through its internal network. Once every dependency needed by a particular invocation is complete, that portion of the network resolves naturally.</p>
+<hr>
+<h2 id="invocations"><a class="header" href="#invocations">Invocations</a></h2>
+<p>The body of a definition consists almost entirely of function invocations.</p>
+<pre><code class="language-matterscript">NOT($X)(OP1&lt;&gt;)
+
+AND($OP1 $Y)(OP4&lt;&gt;)
+
+OR($OP4 $OP3)(FIRSTSUM&lt;&gt;)
+</code></pre>
+<p>Each line says exactly one thing:</p>
+<blockquote>
+<p>Invoke this definition using these named inputs and place the result into this named output.</p>
+</blockquote>
+<p>Nothing is assigned.</p>
+<p>Nothing is overwritten.</p>
+<p>Each invocation simply adds another node to the growing computation graph.</p>
+<p>Notice that the order of the statements isn’t particularly important. Unlike an imperative language, MatterScript doesn’t execute one statement after another. An invocation becomes active as soon as every destination place it references contains a complete value. The apparent sequence of the source code exists primarily to make the network readable for humans.</p>
+<hr>
+<h2 id="names-create-connections"><a class="header" href="#names-create-connections">Names Create Connections</a></h2>
+<p>Perhaps the most unusual feature of MatterScript is that wires are never drawn explicitly.</p>
+<p>Instead, names create the connections automatically.</p>
+<p>When the output of one invocation is named <code>FIRSTSUM</code>…</p>
+<pre><code class="language-matterscript">OR($OP4 $OP3)(FIRSTSUM&lt;&gt;)
+</code></pre>
+<p>…another invocation can consume it simply by referring to <code>$FIRSTSUM</code>.</p>
+<pre><code class="language-matterscript">AND($C $FIRSTSUM)(OP9&lt;&gt;)
+</code></pre>
+<p>No explicit wiring statement is needed. The compiler recognizes that both names refer to the same place and connects them together.</p>
+<p>Throughout a MatterScript program, names define <strong>connectivity</strong>, not variable storage.</p>
+<p>This is one of the language’s defining ideas. Rather than describing how values are copied from one location to another, you describe the relationships between computations, and the compiler constructs the network automatically.</p>
+<hr>
+<h2 id="constant-definitions"><a class="header" href="#constant-definitions">Constant Definitions</a></h2>
+<p>Most definitions contain an internal network of invocations. Some definitions, however, are much simpler.</p>
+<p>A <strong>constant definition</strong> contains no input interface, no internal definitions, and no resolution expression. It consists only of a name and a value.</p>
+<pre><code class="language-matterscript">ONE[1]
+
+ZERO[0]
+</code></pre>
+<p>Because there are no inputs to resolve, the value is immediately returned whenever the definition is invoked.</p>
+<p>Although these look trivial, constant definitions are one of the fundamental building blocks of MatterScript. They define the <strong>value transformation rules</strong> that describe how information moves through a network.</p>
+<p>Consider the AND gate introduced earlier.</p>
+<pre><code class="language-matterscript">AND[(A&lt;&gt; B&lt;&gt;)($res)
+
+res&lt;$A$B()&gt;
+
+:00[0]
+ 01[0]
+ 10[0]
+ 11[1]
+]
+</code></pre>
+<p>The lines following the colon are themselves constant definitions.</p>
+<p>Each key on the left represents a possible invocation name formed by concatenating the values arriving on <code>$A</code> and <code>$B</code>.</p>
+<p>When <code>$A</code> contains <code>1</code> and <code>$B</code> contains <code>0</code>, the composed name becomes <code>10</code>. The compiler locates the constant definition named <code>10</code> and returns its associated value—in this case <code>0</code>.</p>
+<p>Rather than executing conditional logic, MatterScript performs a lookup. The incoming token values determine which constant definition is selected, and that definition immediately returns its contents to the invocation.</p>
+<p>Taken together, these constant definitions form the complete truth table of the AND gate.</p>
+<p>This idea extends far beyond Boolean logic. A constant definition doesn’t have to return a single integer. It can return an entire fragment of MatterScript that is inserted back into the network and resolved as if it had been written directly in place.</p>
+<p>For example, a selector might choose between two different computation paths:</p>
+<pre><code class="language-matterscript">A[...]
+
+B[...]
+
+SELECT[(select&lt;&gt;)($out)
+
+$out&lt;$select()&gt;
+
+:A[A()]
+ B[B()]
+]
+</code></pre>
+<p>If <code>select</code> contains <code>A</code>, the constant definition <code>A[...]</code> is selected and its contents are returned to the place of invocation. If <code>select</code> contains <code>B</code>, the alternate definition is returned instead.</p>
+<p>In this sense, constant definitions are much more than literals. They are the language’s mechanism for expressing lookup tables, truth tables, compile-time dispatch, and even dynamic substitution of computation. Throughout MatterScript you’ll encounter constant definitions everywhere—from primitive logic gates to large physics lookup tables generated automatically by the compiler.</p>
+<hr>
+<h2 id="primitive-definitions"><a class="header" href="#primitive-definitions">Primitive Definitions</a></h2>
+<p>At the end of the full-adder listing are three more definitions.</p>
+<pre><code class="language-matterscript">AND[...]
+
+OR[...]
+
+NOT[...]
+</code></pre>
+<p>These are not built-in language keywords. They are ordinary MatterScript definitions written in exactly the same language as every other component.</p>
+<p>The only difference is that they terminate in collections of constant definitions rather than invoking additional networks.</p>
+<pre><code class="language-matterscript">:00[0]
+ 01[0]
+ 10[0]
+ 11[1]
+</code></pre>
+<p>This collection of constant definitions completely specifies the behavior of the AND gate.</p>
+<p>Likewise, the OR and NOT definitions each contain their own independent lookup tables. Even though all three definitions use names such as <code>A</code>, <code>B</code>, and <code>res</code>, those names exist only within the definition in which they are declared. There is no possibility of collision because every definition has its own private scope.</p>
+<p>This is an important design principle: there are no privileged language primitives. Even the simplest logical operators are expressed using the same mechanisms available to every MatterScript programmer.</p>
+<hr>
+<h2 id="reading-matterscript"><a class="header" href="#reading-matterscript">Reading MatterScript</a></h2>
+<p>A useful way to read MatterScript is to ignore the formatting at first and focus on the flow of information.</p>
+<p>Every definition follows the same pattern:</p>
+<ol>
+<li>Declare the external interface.</li>
+<li>Invoke other definitions.</li>
+<li>Connect them together through shared names.</li>
+<li>Produce one or more outputs.</li>
+</ol>
+<p>Once you begin thinking in terms of connected computations rather than sequential instructions, the language becomes surprisingly regular. Large systems are built from the same small vocabulary repeated over and over: definitions, places, invocations, and constant definitions.</p>
+<p>The full adder shown here may appear very different from an equivalent implementation in C or Verilog, but conceptually it is doing something remarkably simple. It is describing a network of relationships. The compiler’s job is to transform that description into executable hardware while preserving those relationships exactly.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="files-and-projects"><a class="header" href="#files-and-projects">Files and Projects</a></h1>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="definitions"><a class="header" href="#definitions">Definitions</a></h1>
+<h1 id="definitions-1"><a class="header" href="#definitions-1">Definitions</a></h1>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="places"><a class="header" href="#places">Places</a></h1>
@@ -563,22 +705,6 @@ LIDAR scans become computational substrates.</p>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>
@@ -595,6 +721,7 @@ LIDAR scans become computational substrates.</p>
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="grammars/matterscript-ed785eae.js"></script>
 
         <script>
         window.addEventListener('load', function() {
