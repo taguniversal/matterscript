@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 3  |  🟡 Partial: 4  |  ⬛ Spec only: 5  |  ⬜ Not started: 112  |  Total: 124
+✅ Implemented: 3  |  🟡 Partial: 4  |  ⬛ Spec only: 5  |  ⬜ Not started: 116  |  Total: 128
 
 - ⬜ Not started [7. Composing Boundaries](TAG-167.md)
 - ⬜ Not started [7.1.1 Association Boundaries](TAG-168.md)
@@ -118,6 +118,10 @@
 - ⬜ Not started [Example 12.35 IF-THEN-ELSE expression conventions](TAG-162.md)
 - ⬜ Not started [Example 12.36 Set of definitions establishing correspondence name connvention](TAG-163.md)
 - ⬜ Not started [Example 12.38 Expression of multi-way conditionality](TAG-164.md)
+- ⬜ Not started [Bundling Semantics](TAG-169.md)
+- ⬜ Not started [Content Field to VHDL Emission](TAG-170.md)
+- ⬜ Not started [Nested sub-definition name collisions](TAG-171.md)
+- ⬜ Not started [VHDL Numeric table emission](TAG-172.md)
 - ⬜ Not started [Return a Content to Place of Invocation](TAG-32.md)
 - ⬜ Not started [Single Return to Place of Invocation](TAG-33.md)
 - ⬜ Not started [The Conditional Invocation Name](TAG-35.md)

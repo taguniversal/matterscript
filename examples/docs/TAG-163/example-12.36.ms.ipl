@@ -15,4 +15,4 @@ logicaland[(a<> b<>) $a$b() :  FALSEFALSE[FALSE]
 
                                 TRUETRUE[TRUE]  ]
 
-logicalnot[(a<>) $a() TRUE[FALSE] FALSE[TRUE]  ]
+logicalnot[(a<>) $a() : TRUE[FALSE] FALSE[TRUE]  ]

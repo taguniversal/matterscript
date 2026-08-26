@@ -549,6 +549,34 @@ const Parser = struct {
         return p.parsePlaceList(.source);
     }
 
+        /// Reads a name that may be split into comma-separated segments
+    /// (§12.4 — the comma is a general, freely-insertable separator).
+    /// Used for contained-definition names formed by composition,
+    /// where a segment boundary would otherwise be ambiguous (e.g.
+    /// "0,S0" rather than the unsplittable "0S0"). Returns the
+    /// segments joined with a single comma, e.g. "0,S0" — downstream
+    /// consumers should split on ',' and trim each segment, to
+    /// tolerate incidental whitespace like "0, S0".
+    fn readCommaSeparatedName(p: *Parser) ![]const u8 {
+        const start = p.pos;
+        _ = try p.readName();
+        while (true) {
+            const save = p.pos;
+            p.skipWhitespaceAndComments();
+            if (p.peek() != ',') {
+                p.pos = save;
+                break;
+            }
+            _ = p.advance(); // consume ','
+            p.skipWhitespaceAndComments();
+            _ = p.readName() catch {
+                p.pos = save;
+                break;
+            };
+        }
+        return p.src[start..p.pos];
+    }
+
     // ----------------------------------------------------------------
     // Resolution area
     // ----------------------------------------------------------------
@@ -674,7 +702,7 @@ const Parser = struct {
 
             if (std.ascii.isAlphanumeric(c) or c == '_') {
                 const save = p.pos;
-                _ = p.readName() catch {
+                _ = p.readCommaSeparatedName() catch {
                     p.pos = save;
                     break;
                 };
@@ -702,7 +730,7 @@ const Parser = struct {
     // Definition and entry invocation
     // ----------------------------------------------------------------
     fn parseDefinition(p: *Parser) anyerror!network.Definition {
-        const name = try p.readName();
+        const name = try p.readCommaSeparatedName();
         try p.expect('[');
 
         p.skipWhitespaceAndComments();

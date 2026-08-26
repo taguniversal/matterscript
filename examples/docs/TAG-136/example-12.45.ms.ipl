@@ -6,31 +6,31 @@ code[(currentstate< > newbit< >)($state $detect)
 
 $newbit$currentstate() :
 
-0S0[detect< no > state<S1>]
+0,S0[detect< no > state<S1>]
 
-0S1[detect< no > state<S2>]
+0,S1[detect< no > state<S2>]
 
-0S2[detect< no > state<S2>]
+0,S2[detect< no > state<S2>]
 
-0S3[detect< no > state<S4>]
+0,S3[detect< no > state<S4>]
 
-0S4[detect< no > state<S2>]
+0,S4[detect< no > state<S2>]
 
-0S5[detect< no > state<S1>]
+0,S5[detect< no > state<S1>]
 
-0S6[detect< no > state<S1>]
+0,S6[detect< no > state<S1>]
 
-1S0[detect< no > state<S0>]
+1,S0[detect< no > state<S0>]
 
-1S1[detect< no > state<S0>]
+1,S1[detect< no > state<S0>]
 
-1S2[detect< no > state<S3>]
+1,S2[detect< no > state<S3>]
 
-1S3[detect< no > state<S0>]
+1,S3[detect< no > state<S0>]
 
-1S4[detect< no > state<S5>]
+1,S4[detect< no > state<S5>]
 
-1S5[detect< no > state<S6>]
+1,S5[detect< no > state<S6>]
 
-1S6[detect< yes > state<S0>] 
+1,S6[detect< yes > state<S0>] 
 ] 
