@@ -88,6 +88,36 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
 
+    // ------------------------------------------------------------------------
+    // 4. mdBook Build & Doc-Test Pipeline
+    // ------------------------------------------------------------------------
+    const mdbook_step = b.step("mdbook", "Build the mdBook documentation site");
+    const run_mdbook = b.addSystemCommand(&.{ "mdbook", "build", "docs/mdbook" });
+    mdbook_step.dependOn(&run_mdbook.step);
+
+    // Doc-test executable: extracts and compiles code snippets inside docs/mdbook/src
+    const doctest_exe = b.addExecutable(.{
+        .name = "doctest",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/doctest.zig"),
+            .target = b.graph.host,
+            .optimize = .Debug,
+            .imports = &.{
+                .{ .name = "matterscript", .module = mod },
+            },
+        }),
+    });
+
+    const run_doctest = b.addRunArtifact(doctest_exe);
+    run_doctest.addArgs(&[_][]const u8{ "--book-dir", "docs/mdbook/src" });
+
+    const doctest_step = b.step("test-docs", "Compile and verify code blocks inside mdBook documentation");
+    doctest_step.dependOn(&run_doctest.step);
+
+    // Attach mdbook and doc-testing to the weave and test pipelines
+    weave_step.dependOn(&run_mdbook.step);
+    test_step.dependOn(&run_doctest.step);
+
     // ------------------------------------------------------------
     // Verify pipeline
     // ------------------------------------------------------------

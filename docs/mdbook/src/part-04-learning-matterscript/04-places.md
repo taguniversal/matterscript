@@ -1,0 +1,3 @@
+# Places
+
+*Drafting in progress...*
