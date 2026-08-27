@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1c105060.js";
+            window.path_to_searchindex_js = "../searchindex-5c183a89.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-fd20b4b2.js"></script>
@@ -177,13 +177,114 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="part-ii-the-computational-universe"><a class="header" href="#part-ii-the-computational-universe">Part II: The Computational Universe</a></h1>
-<h3 id="introduction"><a class="header" href="#introduction">Introduction</a></h3>
-<p>MatterScript begins from a simple observation:</p>
-<p>Information always exists somewhere.</p>
-<p>Signals occupy space.
-Energy takes time to move.
-Every computation is embedded in a physical substrate.</p>
-<p>This section introduces the conceptual model that unifies software with physical systems.</p>
+<p>MatterScript begins from a remarkably simple observation.</p>
+<p><strong>Information always exists somewhere.</strong></p>
+<p>Signals occupy space.</p>
+<p>Energy requires time to move.</p>
+<p>Every physical interaction is local.</p>
+<p>Every computation is embedded in a physical substrate.</p>
+<p>For most of the history of computing, these facts have been treated as implementation details. Software describes algorithms, while hardware is responsible for making those algorithms run efficiently. The physical organization of the machine is largely hidden from the programmer.</p>
+<p>MatterScript begins from the opposite assumption.</p>
+<p>The physical world is not merely where computation happens.</p>
+<p>The physical world <strong>is</strong> the computation.</p>
+<hr>
+<p>For centuries, science has sought to understand nature by describing it mathematically.</p>
+<p>A falling apple is described by Newton’s laws.</p>
+<p>A flowing river is described by the Navier-Stokes equations.</p>
+<p>Heat is described by Fourier’s equation.</p>
+<p>Light is described by Maxwell’s equations.</p>
+<p>These mathematical descriptions are among humanity’s greatest intellectual achievements. They allow us to predict the behavior of extraordinarily complex systems with remarkable accuracy.</p>
+<p>But they are not the systems themselves.</p>
+<p>They are <strong>abstractions</strong>.</p>
+<p>When we build software to model a physical process, we typically begin by extracting a handful of measurable properties, deriving equations that approximate their behavior, and then solving those equations numerically. Reality is first reduced to mathematics, and mathematics is then reduced to software.</p>
+<p>For many problems, this approach has been enormously successful.</p>
+<p>But it is not the only possible approach.</p>
+<hr>
+<p>In 2002, Stephen Wolfram proposed a different way of thinking.</p>
+<p>Rather than viewing complexity as something that requires increasingly sophisticated mathematics, <em>A New Kind of Science</em> suggested that extraordinary complexity can emerge from the repeated application of remarkably simple computational rules.</p>
+<p>The implications were profound.</p>
+<p>Perhaps nature is not solving equations at all.</p>
+<p>Perhaps nature is <strong>computing</strong>.</p>
+<p>A snowflake does not solve differential equations to determine how it should grow.</p>
+<p>A forest does not optimize a mathematical function before producing another branch.</p>
+<p>A hurricane does not integrate the Navier-Stokes equations before changing direction.</p>
+<p>Every component simply interacts with its immediate neighbors according to local rules.</p>
+<p>From those countless local interactions, global behavior emerges.</p>
+<hr>
+<p>MatterScript takes this idea one step further.</p>
+<p>If reality is fundamentally an unfolding computation, then perhaps our programming languages should describe computations directly rather than forcing every physical system through layers of mathematical abstraction.</p>
+<p>Instead of asking,</p>
+<p><em>“What equations govern this system?”</em></p>
+<p>we begin by asking,</p>
+<p><em>“What local interactions produce this behavior?”</em></p>
+<p>This is more than a philosophical distinction.</p>
+<p>It changes how we build software.</p>
+<p>One approach attempts to <strong>describe</strong> reality.</p>
+<p>The other attempts to <strong>recreate</strong> it.</p>
+<hr>
+<p>Consider weather prediction.</p>
+<p>A modern weather simulation divides the atmosphere into millions of cells. At every timestep, the simulation repeatedly reads enormous quantities of data from memory, computes pressure, temperature, humidity, momentum, turbulence, radiation, and dozens of other coupled physical effects, then writes the updated state back to memory before beginning the next iteration.</p>
+<p>The mathematics is elegant.</p>
+<p>The engineering is extraordinary.</p>
+<p>But much of the machine’s effort is not spent performing physics.</p>
+<p>It is spent moving data.</p>
+<p>The computational substrate bears almost no resemblance to the atmosphere it is attempting to simulate.</p>
+<hr>
+<p>Now imagine a different computational fabric.</p>
+<p>Suppose every programmable logic element in an FPGA represented one small parcel of atmosphere.</p>
+<p>Each logic cell stores its own temperature.</p>
+<p>Its own pressure.</p>
+<p>Its own humidity.</p>
+<p>Its own momentum.</p>
+<p>Each cell communicates only with its neighboring cells because neighboring parcels of air communicate only with neighboring parcels of air.</p>
+<p>When heat flows through the simulated atmosphere, information propagates through the computational fabric in exactly the same local manner.</p>
+<p>There is no processor repeatedly fetching state from memory.</p>
+<p>There is no cache hierarchy attempting to hide memory latency.</p>
+<p>There is no massive movement of data between storage and computation.</p>
+<p>The atmosphere simply evolves.</p>
+<p>The hardware itself becomes a computational analogue of the physical system.</p>
+<hr>
+<p>This is not an analog computer.</p>
+<p>Every value remains digital.</p>
+<p>Every interaction remains deterministic.</p>
+<p>Every computation remains reproducible.</p>
+<p>What changes is the <strong>organization</strong> of the machine.</p>
+<p>Instead of forcing a spatial process onto a sequential architecture, we construct a computational substrate whose geometry mirrors the geometry of the physical system itself.</p>
+<p>The computation unfolds for exactly the same reason the physical system unfolds:</p>
+<p>because neighboring elements continually influence one another.</p>
+<hr>
+<p>This idea extends far beyond weather.</p>
+<p>A heat exchanger.</p>
+<p>A bridge under load.</p>
+<p>A section of living tissue.</p>
+<p>An electrical power grid.</p>
+<p>A watershed.</p>
+<p>An ecosystem.</p>
+<p>A city.</p>
+<p>Each can be viewed not merely as an object to be described mathematically, but as a computational universe composed of countless local interactions whose collective behavior emerges over time.</p>
+<p>The programmer is no longer writing an algorithm that computes the state of the system.</p>
+<p>The programmer is defining the universe in which the system is allowed to evolve.</p>
+<hr>
+<p>This is why MatterScript is fundamentally different from conventional programming languages.</p>
+<p>Traditional languages describe <strong>algorithms</strong>.</p>
+<p>MatterScript describes <strong>computational universes</strong>.</p>
+<p>A MatterScript program does not simply specify what should happen.</p>
+<p>It defines the space in which computation exists.</p>
+<p>It defines the relationships between neighboring elements.</p>
+<p>It defines the local rules by which those elements interact.</p>
+<p>The global behavior is not explicitly programmed.</p>
+<p>It emerges.</p>
+<hr>
+<p>Once computation is viewed this way, many familiar distinctions begin to disappear.</p>
+<p>Simulation and execution become the same activity.</p>
+<p>Geometry and computation become inseparable.</p>
+<p>Data and structure become part of the same computational fabric.</p>
+<p>Hardware ceases to be merely a platform that executes software.</p>
+<p>It becomes the universe in which that software unfolds.</p>
+<p>This is the central shift in perspective that MatterScript asks the reader to make.</p>
+<p>Instead of viewing computation as a sequence of instructions acting upon data, we begin to view computation as the natural evolution of a structured universe governed by local relationships.</p>
+<p>Once that shift occurs, geometry is no longer an implementation detail.</p>
+<p>It becomes one of the fundamental building blocks of computation itself.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>
@@ -221,6 +322,22 @@ Every computation is embedded in a physical substrate.</p>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
