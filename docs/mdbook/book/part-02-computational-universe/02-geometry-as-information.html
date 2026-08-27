@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-8e5f4e95.js";
+            window.path_to_searchindex_js = "../searchindex-f2628ab3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-fd20b4b2.js"></script>
@@ -177,6 +177,131 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="geometry-as-information"><a class="header" href="#geometry-as-information">Geometry as Information</a></h1>
+<p>When programmers hear the word <em>geometry</em>, they usually think about graphics.</p>
+<p>Points.</p>
+<p>Lines.</p>
+<p>Triangles.</p>
+<p>Meshes.</p>
+<p>Three-dimensional models.</p>
+<p>These are certainly geometric objects, but they are not what makes geometry fundamentally important.</p>
+<p>Geometry is important because it encodes relationships.</p>
+<p>Distance.</p>
+<p>Adjacency.</p>
+<p>Containment.</p>
+<p>Orientation.</p>
+<p>Neighborhood.</p>
+<p>Accessibility.</p>
+<p>Before a single computation begins, a geometric arrangement already answers countless questions.</p>
+<p>Which objects are nearby?</p>
+<p>Which objects can interact?</p>
+<p>Which paths are shortest?</p>
+<p>Which regions share a boundary?</p>
+<p>Which elements can exchange energy?</p>
+<p>The answers exist simply because of the arrangement itself.</p>
+<p>No algorithm has yet executed.</p>
+<p>No search has begun.</p>
+<p>The information is already there.</p>
+<hr>
+<p>Imagine standing in a city.</p>
+<p>Without calculating anything, you already know certain facts.</p>
+<p>The building across the street is closer than the mountain on the horizon.</p>
+<p>The room next door is easier to reach than another building downtown.</p>
+<p>The sidewalk connects naturally to the intersection.</p>
+<p>The intersection connects to another street.</p>
+<p>None of these relationships need to be computed.</p>
+<p>The geometry itself contains the information.</p>
+<p>It is knowledge embedded in space.</p>
+<hr>
+<p>Engineers rely on this every day.</p>
+<p>A bridge transfers forces because its beams are arranged in particular ways.</p>
+<p>A river flows downhill because the landscape possesses a particular geometry.</p>
+<p>A neuron communicates only with neighboring neurons because biology arranged them that way.</p>
+<p>A crystal forms because atoms occupy energetically favorable positions.</p>
+<p>Nothing repeatedly computes these relationships.</p>
+<p>They simply exist.</p>
+<p>The structure itself determines what interactions are possible.</p>
+<hr>
+<p>Modern software often works very differently.</p>
+<p>Instead of allowing geometry to express relationships naturally, we store those relationships explicitly.</p>
+<p>Graphs.</p>
+<p>Adjacency matrices.</p>
+<p>Spatial indexes.</p>
+<p>Hash maps.</p>
+<p>Trees.</p>
+<p>Databases.</p>
+<p>These structures are enormously useful, but they all represent something curious.</p>
+<p>They are attempts to reconstruct information that geometry already contains.</p>
+<p>Consider a molecular simulation.</p>
+<p>A conventional program stores the position of every molecule in memory. During every simulation step it asks the same questions:</p>
+<p>Which molecules are near one another?</p>
+<p>Which molecules can collide?</p>
+<p>Which forces should be applied?</p>
+<p>Entire fields of computer science have been devoted to accelerating these searches.</p>
+<p>Spatial partitioning.</p>
+<p>KD-trees.</p>
+<p>Bounding volume hierarchies.</p>
+<p>Uniform grids.</p>
+<p>Octrees.</p>
+<p>These are elegant and sophisticated techniques.</p>
+<p>But they all solve the same underlying problem.</p>
+<p>The computation has forgotten the geometry.</p>
+<p>It must rediscover it over and over again.</p>
+<hr>
+<p>MatterScript proposes a different approach.</p>
+<p>Suppose neighboring molecules are already neighboring computations.</p>
+<p>Suppose adjacency is encoded directly into the computational fabric.</p>
+<p>Suppose communication paths mirror physical connectivity.</p>
+<p>Suppose propagation delays reflect physical distance.</p>
+<p>Now the machine no longer asks,</p>
+<p><em>“Who are my neighbors?”</em></p>
+<p>It already knows.</p>
+<p>The geometry answers the question before execution begins.</p>
+<hr>
+<p>This observation extends far beyond scientific simulation.</p>
+<p>A road network already describes transportation.</p>
+<p>A watershed already describes drainage.</p>
+<p>An electrical circuit already describes current flow.</p>
+<p>A biological tissue already describes cellular communication.</p>
+<p>A city’s layout already constrains traffic, commerce, and movement.</p>
+<p>Every physical arrangement contains information.</p>
+<p>The arrangement itself is part of the computation.</p>
+<hr>
+<p>This leads to an important observation.</p>
+<p><strong>Every search performed at runtime is evidence that some relationship was unknown at compile time.</strong></p>
+<p>When software traverses a graph, it is discovering connectivity.</p>
+<p>When software searches a spatial index, it is discovering neighborhood.</p>
+<p>When software consults a lookup table, it is discovering association.</p>
+<p>When software scans a simulation looking for the next element to update, it is discovering causality.</p>
+<p>Many of these searches are unavoidable because the relationships genuinely change over time.</p>
+<p>But many are not.</p>
+<p>They exist because our programming languages have no way to express those relationships as part of the program itself.</p>
+<p>MatterScript does.</p>
+<hr>
+<p>This is why geometry occupies such a central place in the language.</p>
+<p>It is not included to support graphics.</p>
+<p>It is not included merely to improve hardware placement.</p>
+<p>It is included because geometry is a remarkably efficient way to represent knowledge.</p>
+<p>When the compiler constructs a MatterScript program, it is doing more than arranging computations.</p>
+<p>It is embedding information.</p>
+<p>Distances become fixed.</p>
+<p>Neighborhoods become fixed.</p>
+<p>Communication paths become fixed.</p>
+<p>Possible interactions become fixed.</p>
+<p><strong>The placement itself is frozen knowledge.</strong></p>
+<p>Execution does not begin from an empty machine.</p>
+<p>It begins from a computational fabric whose structure already answers many of the questions the program would otherwise spend its time asking.</p>
+<hr>
+<p>This represents a fundamental shift in how we think about programming.</p>
+<p>Traditionally, geometry has been viewed as the place where computation happens.</p>
+<p>MatterScript treats geometry as part of the computation itself.</p>
+<p>A MatterScript program therefore consists of three complementary forms of information.</p>
+<p>The <strong>structure</strong> defines what can exist.</p>
+<p>The <strong>geometry</strong> defines what can interact.</p>
+<p>The <strong>propagation</strong> defines what actually happens.</p>
+<p>Together they describe more than a program.</p>
+<p>They describe a computational universe whose organization already contains part of its own solution.</p>
+<p>The programmer is no longer writing instructions that operate on an abstract machine.</p>
+<p>The programmer is designing a universe whose structure, geometry, and causal relationships allow computation to emerge naturally.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>
