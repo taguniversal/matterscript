@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-00aa3446.js";
+            window.path_to_searchindex_js = "../searchindex-1c105060.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-fd20b4b2.js"></script>
@@ -177,6 +177,111 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="hardware-already-knows-the-answer"><a class="header" href="#hardware-already-knows-the-answer">Hardware Already Knows the Answer</a></h1>
+<p>For decades, software has been built upon abstractions that deliberately erase the physical world.</p>
+<p>Variables have no location.</p>
+<p>Functions occupy no physical space.</p>
+<p>Messages travel as though distance does not exist.</p>
+<p>Memory appears equally close to every computation.</p>
+<p>These assumptions have served us remarkably well. They allowed programmers to think in terms of algorithms rather than transistors, making software vastly more portable and productive.</p>
+<p>But they have also created a disconnect.</p>
+<p>None of these assumptions are actually true inside the machine.</p>
+<p>A processor is not a list of instructions.</p>
+<p>An FPGA is not a collection of algorithms.</p>
+<p>A semiconductor is a physical object.</p>
+<p>Every transistor occupies a precise location.</p>
+<p>Every wire has measurable length.</p>
+<p>Every signal requires finite time to propagate.</p>
+<p>Every gate stores energy.</p>
+<p>Every computation is constrained by geometry.</p>
+<p>The remarkable thing is that hardware engineers have always known this.</p>
+<p>They have never had the luxury of pretending that space and time don’t matter.</p>
+<hr>
+<p>Consider the simplest logic gate.</p>
+<p>From the perspective of software, an AND gate computes a Boolean function.</p>
+<pre><code>A AND B → C
+</code></pre>
+<p>From the perspective of hardware, something quite different happens.</p>
+<p>Electrical signals propagate along conductors.</p>
+<p>Charge accumulates on transistors and interconnects.</p>
+<p>Threshold voltages are crossed.</p>
+<p>The circuit settles into a stable physical state.</p>
+<p>That state remains available until new information arrives.</p>
+<p>The gate is not continuously “executing” an AND operation.</p>
+<p>It simply <strong>exists</strong> in a configuration that represents the correct answer.</p>
+<p>This distinction may seem subtle, but it changes how we think about computation.</p>
+<p>Software encourages us to imagine that computation is something a processor <strong>does</strong>.</p>
+<p>Hardware reminds us that computation is often something a circuit <strong>is</strong>.</p>
+<p>Once the inputs stabilize, the circuit itself embodies the solution. No instruction stream is required to preserve that result. The physical arrangement of transistors, wires, capacitances, and feedback paths already contains the computation.</p>
+<hr>
+<p>This idea becomes even more striking when we consider asynchronous logic.</p>
+<p>A conventional processor repeatedly asks every register in the machine whether it should update on the next clock edge.</p>
+<p>An asynchronous circuit asks no such question.</p>
+<p>Information simply propagates.</p>
+<p>Each stage waits until enough information has arrived to determine its next stable state.</p>
+<p>Nothing happens until it can happen.</p>
+<p>Nothing happens sooner than physics allows.</p>
+<p>The computation unfolds through causality rather than scheduling.</p>
+<p>MatterScript embraces this same viewpoint.</p>
+<p>A definition does not execute because a program counter reaches it.</p>
+<p>It resolves because the required information exists.</p>
+<p>Names become complete.</p>
+<p>Relationships become satisfied.</p>
+<p>Information propagates.</p>
+<p>The computation emerges naturally from the network.</p>
+<hr>
+<p>There is another lesson hardware has been teaching us for years.</p>
+<p><strong>Placement is computation.</strong></p>
+<p>Every FPGA engineer knows that moving two connected logic blocks farther apart increases propagation delay.</p>
+<p>Every chip designer knows that wire length limits operating frequency.</p>
+<p>Every physical implementation tool spends enormous effort deciding <em>where</em> computations should exist because geometry directly influences behavior.</p>
+<p>Yet software has traditionally ignored all of this.</p>
+<p>A compiler receives an abstract program.</p>
+<p>Only after the program is complete does an entirely different class of software attempt to rediscover the geometry hidden within it. Place-and-route tools search for efficient layouts, balancing timing, congestion, power consumption, and routing resources.</p>
+<p>The programmer rarely participates in that conversation.</p>
+<p>The physical structure of the computation is treated as an optimization problem to be solved after the language has already discarded it.</p>
+<hr>
+<p>MatterScript proposes that geometry should no longer be an afterthought.</p>
+<p>If computation depends on placement, then placement belongs in the language.</p>
+<p>If propagation delay affects behavior, then propagation belongs in the language.</p>
+<p>If locality determines performance, then locality belongs in the language.</p>
+<p>The physical organization of a system is not merely an implementation detail.</p>
+<p>It is part of the computation itself.</p>
+<p>This is why MatterScript is not simply another hardware description language.</p>
+<p>Verilog and VHDL ultimately produce hardware that occupies physical space, but they still encourage programmers to think primarily in terms of signals, processes, and clock cycles. Geometry enters the picture only after synthesis begins.</p>
+<p>MatterScript starts one level earlier.</p>
+<p>It asks a different question:</p>
+<blockquote>
+<p><strong>What if the programmer could describe the geometry itself?</strong></p>
+</blockquote>
+<p>Not just the logic.</p>
+<p>Not just the timing.</p>
+<p>The geometry.</p>
+<hr>
+<p>Perhaps the most important lesson hardware has been teaching us is one that we have largely overlooked.</p>
+<p>A modern FPGA contains millions of programmable elements. After configuration, those elements do not merely wait for instructions to execute. Their spatial arrangement, their interconnections, and their stable electrical states collectively embody the computation. As new information arrives, the device responds continuously because its physical structure already represents the solution.</p>
+<p>In this sense, a configured FPGA is not simply a computer <em>running</em> a program.</p>
+<p>It is a physical object whose structure <em>is</em> the program.</p>
+<p>MatterScript extends this idea one step further.</p>
+<p>If we arrange computational elements so that their geometry mirrors the geometry of the physical system being modeled—a heat exchanger, a river, a bridge, a biological tissue, or an entire city—then part of the computation no longer needs to be rediscovered at runtime.</p>
+<p>It is already present in the structure of the machine.</p>
+<p>The hardware is no longer merely executing a model of reality.</p>
+<p>It becomes a computational analogue of that reality.</p>
+<hr>
+<p>This leads to a perspective that is fundamentally different from conventional software.</p>
+<p>When a MatterScript compiler places a computational mesh onto an FPGA, it is doing more than optimizing for timing. It is embedding knowledge about the physical world directly into the computational fabric.</p>
+<p>Neighborhood relationships are established before the program begins.</p>
+<p>Distances are already encoded.</p>
+<p>Communication paths already exist.</p>
+<p>Propagation delays already reflect the intended geometry.</p>
+<p>The computation does not begin from an empty canvas.</p>
+<p><strong>The placement itself is frozen knowledge.</strong></p>
+<p>Before the first token propagates, before the first sensor reading arrives, before the first physical equation is evaluated, part of the solution already exists. It exists not as data in memory or instructions in a program, but as the physical organization of the machine itself.</p>
+<p>Signals are no longer discovering the structure of the problem.</p>
+<p>They are moving through a structure that already understands it.</p>
+<p>That is the central idea behind MatterScript.</p>
+<p>Software should no longer pretend that geometry is somebody else’s problem.</p>
+<p>For the first time, we have the hardware, the compiler technology, and the language abstractions to treat space and time as first-class programming constructs.</p>
+<p>In doing so, we allow software to speak the same physical language that hardware has understood all along.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>
