@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-a02c5cd9.js";
+            window.path_to_searchindex_js = "../searchindex-b61367a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-fd20b4b2.js"></script>
@@ -271,7 +271,7 @@ res&lt;$A$B()&gt;
 <p>The lines following the colon are themselves constant definitions.</p>
 <p>Each key on the left represents a possible invocation name formed by concatenating the values arriving on <code>$A</code> and <code>$B</code>.</p>
 <p>When <code>$A</code> contains <code>1</code> and <code>$B</code> contains <code>0</code>, the composed name becomes <code>10</code>. The compiler locates the constant definition named <code>10</code> and returns its associated value—in this case <code>0</code>.</p>
-<p>While the formed symbols are the concatenaed values like 00 and 01, for correct compiler interpretation of separate symbols, you as the developer register your intent in the source code by separating the content values with the general separator comma ‘,’.</p>
+<p>While the formed symbols are the concatenaed values like 00 and 01, for correct compiler interpretation of separate component symbols, you as the developer register your intent in the source code by separating the content values with the general separator comma ‘,’.</p>
 <p>Rather than executing conditional logic, MatterScript performs a lookup. The incoming token values determine which constant definition is selected, and that definition immediately returns its contents to the invocation.</p>
 <p>Taken together, these constant definitions form the complete truth table of the AND gate.</p>
 <p>This idea extends far beyond Boolean logic. A constant definition doesn’t have to return a single integer. It can return an entire fragment of MatterScript that is inserted back into the network and resolved as if it had been written directly in place.</p>

@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a02c5cd9.js";
+            window.path_to_searchindex_js = "searchindex-b61367a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fd20b4b2.js"></script>
@@ -294,6 +294,252 @@ Time is merely an implementation detail managed by clocks.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="time-is-not-a-clock"><a class="header" href="#time-is-not-a-clock">Time is Not a Clock</a></h1>
+<p>Ask a programmer what time is, and they will probably reach for a datatype.</p>
+<p>Maybe it is a Unix timestamp. Maybe it is a <code>DateTime</code>. Maybe it is a floating-point number representing seconds since some epoch. Maybe it is a string containing a date, a time, and a time zone.</p>
+<p>This seems perfectly reasonable.</p>
+<p>Until you have to make the software work.</p>
+<p>Then time begins to reveal itself as one of the strangest and most treacherous abstractions in all of computing.</p>
+<p>We have built an enormous body of software whose job is, in one way or another, to answer questions about time. And the history of computing is littered with the wreckage.</p>
+<p>The first great warning was Y2K.</p>
+<p>For decades, computer systems commonly represented years using two digits:</p>
+<pre><code class="language-text">1967 → 67
+1984 → 84
+1999 → 99
+</code></pre>
+<p>It saved space. It was convenient. It was perfectly adequate for the immediate problem.</p>
+<p>Until the century changed.</p>
+<p>What was supposed to happen when:</p>
+<pre><code class="language-text">99 → 00
+</code></pre>
+<p>Was that 00 the year 2000?</p>
+<p>Or 1900?</p>
+<p>Or an invalid value?</p>
+<p>The computer did not know.</p>
+<p>The computer had never known.</p>
+<p>We had simply chosen an encoding and quietly forgotten that we had done so.</p>
+<p>The Y2K problem was therefore not really a problem with the year 2000. It was a problem with the assumption that <strong>a particular representation of time could stand in for time itself</strong>.</p>
+<p>And Y2K was only the beginning.</p>
+<h3 id="we-ran-out-of-bits"><a class="header" href="#we-ran-out-of-bits">We ran out of bits</a></h3>
+<p>Unix gave programmers a wonderfully simple temporal abstraction: count the number of seconds since January 1, 1970.</p>
+<p>It is hard to imagine anything more straightforward.</p>
+<p>Time becomes a number:</p>
+<pre><code class="language-text">0
+1
+2
+3
+4
+...
+</code></pre>
+<p>Every second, increment it.</p>
+<p>But the original Unix convention commonly stored that number in a signed 32-bit integer.</p>
+<p>There are only so many values that can fit in 32 bits.</p>
+<p>Eventually, the counter reaches:</p>
+<pre><code class="language-text">2147483647
+</code></pre>
+<p>At that point, there is nowhere else to go.</p>
+<p>On January 19, 2038, at 03:14:07 UTC, the classic 32-bit representation reaches its limit.</p>
+<p>The next second produces an overflow.</p>
+<p>A date in 2038 can suddenly become a date in 1901.</p>
+<p>The problem has acquired a name: <strong>the Year 2038 problem</strong>.</p>
+<p>Modern 64-bit systems have largely moved beyond this particular limitation, but the underlying lesson remains.</p>
+<p>Y2K was:</p>
+<blockquote>
+<p>We ran out of digits.</p>
+</blockquote>
+<p>Y2038 is:</p>
+<blockquote>
+<p>We ran out of bits.</p>
+</blockquote>
+<p>Neither problem was caused by time itself.</p>
+<p>We simply built a representation with a finite range and then discovered that the universe was not obligated to stop when the representation ran out.</p>
+<h3 id="we-run-out-of-precision"><a class="header" href="#we-run-out-of-precision">We run out of precision</a></h3>
+<p>Even when the range is large enough, numbers introduce another problem: precision.</p>
+<p>Computers routinely represent time using floating-point numbers.</p>
+<p>Suppose an application has a timestamp:</p>
+<pre><code class="language-text">1734567890.123456
+</code></pre>
+<p>It may look as though the number describes time with extraordinary precision.</p>
+<p>But floating-point representations do not provide arbitrary precision merely because we write many digits.</p>
+<p>As numbers become larger, the spacing between representable values changes. Eventually, sufficiently small differences can no longer be represented.</p>
+<p>Now a programmer who wants to ask:</p>
+<pre><code class="language-text">if (time &gt;= target)
+</code></pre>
+<p>may be relying simultaneously on:</p>
+<ul>
+<li>the precision of the numerical representation,</li>
+<li>the behavior of floating-point arithmetic,</li>
+<li>rounding,</li>
+<li>the resolution of the underlying clock,</li>
+<li>the accuracy of the oscillator,</li>
+<li>and the behavior of the operating system scheduler.</li>
+</ul>
+<p>The programmer thinks they are comparing two times.</p>
+<p>They are actually comparing two <strong>approximations of measurements of physical processes</strong>.</p>
+<p>That distinction is easy to miss.</p>
+<h3 id="we-cant-even-agree-what-a-time-means"><a class="header" href="#we-cant-even-agree-what-a-time-means">We can’t even agree what a time means</a></h3>
+<p>Then there are time zones.</p>
+<p>Consider:</p>
+<pre><code class="language-text">2026-11-01 01:30
+</code></pre>
+<p>What instant is that?</p>
+<p>In some places, there may be two different occurrences of 1:30 on that date because the local clock moves backward when daylight-saving time ends.</p>
+<p>So the value isn’t necessarily enough.</p>
+<p>We may also need:</p>
+<pre><code class="language-text">date
+time
+time zone
+calendar
+daylight-saving rules
+historical time-zone rules
+</code></pre>
+<p>And suddenly something that appeared to be a simple scalar value has become a complicated object whose meaning depends upon geography, legislation, historical convention, and the version of a database containing those rules.</p>
+<p>The computer isn’t confused.</p>
+<p><strong>Our representation is confused.</strong></p>
+<p>The machine has been given a collection of symbols and asked to infer a physical reality from them.</p>
+<h3 id="then-we-discover-that-clocks-disagree"><a class="header" href="#then-we-discover-that-clocks-disagree">Then we discover that clocks disagree</a></h3>
+<p>The problem becomes even more interesting when there is more than one computer.</p>
+<p>Suppose two machines each have a perfectly functioning clock.</p>
+<p>Machine A records:</p>
+<pre><code class="language-text">10:00:00.001
+</code></pre>
+<p>Machine B records:</p>
+<pre><code class="language-text">10:00:00.002
+</code></pre>
+<p>Did A’s event happen first?</p>
+<p>Probably.</p>
+<p>But perhaps A’s clock is slightly fast.</p>
+<p>Perhaps B’s is slightly slow.</p>
+<p>Perhaps the network introduced a delay.</p>
+<p>Perhaps the machines synchronized at different moments.</p>
+<p>Perhaps the event happened on one machine before the other but the messages describing those events arrived in the opposite order.</p>
+<p>Now we have entered the world of distributed systems.</p>
+<p>Computer science has developed increasingly sophisticated mechanisms for reasoning about time and causality:</p>
+<ul>
+<li>synchronized clocks,</li>
+<li>monotonic clocks,</li>
+<li>NTP,</li>
+<li>logical clocks,</li>
+<li>Lamport timestamps,</li>
+<li>vector clocks,</li>
+<li>causal ordering.</li>
+</ul>
+<p>All of these are useful.</p>
+<p>But notice what has happened.</p>
+<p>We began with a simple question:</p>
+<blockquote>
+<p>What time is it?</p>
+</blockquote>
+<p>And eventually arrived at:</p>
+<blockquote>
+<p>Which event happened first, given that no machine can necessarily observe the same clock, no clock is perfectly accurate, and messages take time to travel?</p>
+</blockquote>
+<p>Perhaps the problem isn’t that programmers are bad at handling time.</p>
+<p>Perhaps <strong>time was never the thing we were actually representing.</strong></p>
+<h3 id="a-clock-is-not-time"><a class="header" href="#a-clock-is-not-time">A clock is not time</a></h3>
+<p>This distinction is easy to lose because clocks are so useful.</p>
+<p>A clock is a physical mechanism.</p>
+<p>A quartz crystal oscillates.</p>
+<p>An electronic circuit counts those oscillations.</p>
+<p>A processor can count its cycles.</p>
+<p>An operating system can turn those counts into seconds.</p>
+<p>A calendar can turn seconds into dates.</p>
+<p>A time-zone database can turn dates into local civil time.</p>
+<p>At every step, we are transforming physical processes into increasingly convenient abstractions.</p>
+<p>But the abstraction is not the thing itself.</p>
+<p>A clock does not contain time.</p>
+<p>A clock contains a process whose behavior we use as a <strong>reference for ordering and measuring events</strong>.</p>
+<p>A timestamp does not contain an instant.</p>
+<p>It contains an <strong>encoding that we have agreed to interpret as an instant</strong>.</p>
+<p>A Unix timestamp is not time.</p>
+<p>It is a coordinate in a convention.</p>
+<p>A calendar is not time.</p>
+<p>It is a system for organizing human experience of recurring astronomical and social events.</p>
+<p>A time zone is not time.</p>
+<p>It is a rule for translating between a global reference and local civil convention.</p>
+<p>These things are extraordinarily useful.</p>
+<p>But they are not interchangeable with the physical phenomenon they describe.</p>
+<h3 id="we-have-mistaken-the-ruler-for-the-distance"><a class="header" href="#we-have-mistaken-the-ruler-for-the-distance">We have mistaken the ruler for the distance</a></h3>
+<p>There is a broader pattern here.</p>
+<p>A programmer can measure memory in bytes, but a byte is not memory.</p>
+<p>A programmer can measure a network in packets, but a packet is not communication.</p>
+<p>A programmer can represent an object with a pointer, but the pointer is not the object.</p>
+<p>And a programmer can represent time with a number, but the number is not time.</p>
+<p>The abstraction works because it hides almost everything we don’t need to know.</p>
+<p>Until suddenly we do need to know.</p>
+<p>Then all the hidden complexity comes rushing back.</p>
+<p>This is why time has produced such a remarkable collection of software disasters.</p>
+<p>We have built layers upon layers of abstractions around an assumption that seems innocuous:</p>
+<blockquote>
+<p><strong>Time is a number that advances.</strong></p>
+</blockquote>
+<p>But physical systems don’t necessarily behave like numbers.</p>
+<p>Events happen.</p>
+<p>Signals propagate.</p>
+<p>Oscillators oscillate.</p>
+<p>Matter changes state.</p>
+<p>Information arrives.</p>
+<p>Systems wait.</p>
+<p>Systems respond.</p>
+<p>Some events cause others.</p>
+<p>Some events happen independently.</p>
+<p>Some events cannot be ordered from the perspective of an observer.</p>
+<p>Some events are separated by measurable physical duration.</p>
+<p>Others are separated primarily by causality.</p>
+<p>These are all temporal relationships, but they are not the same thing.</p>
+<h3 id="what-happened-first"><a class="header" href="#what-happened-first">What happened first?</a></h3>
+<p>This question exposes the limitation particularly well.</p>
+<p>A timestamp attempts to answer:</p>
+<blockquote>
+<p>When did this happen?</p>
+</blockquote>
+<p>But sometimes the more useful question is:</p>
+<blockquote>
+<p>What caused what?</p>
+</blockquote>
+<p>And sometimes the answer is neither.</p>
+<p>Two events may be independent.</p>
+<p>Two machines may observe them in different orders.</p>
+<p>A signal may physically propagate from one location to another.</p>
+<p>A computation may proceed only because a previous computation has reached a stable state.</p>
+<p>These are different kinds of temporal relationships.</p>
+<p>Yet conventional programming languages tend to flatten them into a small collection of concepts:</p>
+<pre><code class="language-text">now
+before
+after
+sleep
+timeout
+timestamp
+</code></pre>
+<p>Useful, certainly.</p>
+<p>But impoverished.</p>
+<p>The physical world contains a much richer temporal vocabulary.</p>
+<h3 id="the-possibility-of-another-model"><a class="header" href="#the-possibility-of-another-model">The possibility of another model</a></h3>
+<p>This raises an uncomfortable possibility.</p>
+<p>What if we stopped treating the clock as the fundamental temporal primitive of computation?</p>
+<p>What if a computational system could reason about <strong>events, ordering, causality, propagation, and temporal coordinates directly</strong>?</p>
+<p>What if time could be represented not merely as a number, but as a relationship between physical states?</p>
+<p>What if a system could know that one piece of information follows another because the information itself propagated through the computational fabric?</p>
+<p>What if a distributed system could refer to a deterministic digital position in a sequence rather than continually asking whether its local clock agrees with another machine?</p>
+<p>What if hardware could be programmed to respond to a specific temporal state rather than repeatedly polling a clock until a numerical threshold had been crossed?</p>
+<p>These questions lead somewhere very different from the conventional timer API.</p>
+<p>They lead toward a model in which <strong>time is a property of computation rather than merely a service provided to computation</strong>.</p>
+<p><strong>MatterScript</strong> begins there.</p>
+<p>It does not discard clocks.</p>
+<p>Clocks remain useful physical references.</p>
+<p>It does not discard timestamps.</p>
+<p>Timestamps remain useful representations.</p>
+<p>It does not discard operating-system time services.</p>
+<p>They remain indispensable when software needs to interact with the world of calendars, schedules, and human time.</p>
+<p>The point is simply that none of these things needs to be the fundamental representation of time inside the computational model.</p>
+<p>A clock is one way of measuring temporal change.</p>
+<p>A timestamp is one way of naming a temporal position.</p>
+<p>A timer is one way of requesting that something happen later.</p>
+<p>None of them is time itself.</p>
+<p><strong>Time is not a clock.</strong></p>
+<p>And once that distinction is taken seriously, a rather strange possibility appears:</p>
+<p>perhaps computation does not need to wait for the clock to tell it when to move.</p>
+<p>Perhaps computation can move because <strong>something happened</strong>.</p>
+<p>And that is where the physical machine begins to become interesting again.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="the-cost-of-abstraction"><a class="header" href="#the-cost-of-abstraction">The Cost of Abstraction</a></h1>
@@ -339,6 +585,279 @@ Every computation is embedded in a physical substrate.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="why-clocks-are-artificial"><a class="header" href="#why-clocks-are-artificial">Why Clocks Are Artificial</a></h1>
+<p>We tend to think of time as one of the most fundamental things in computing.</p>
+<p>Every processor has a clock. Every operating system has a clock. Every programming language has some way to ask what time it is, wait for a period of time, schedule something for later, or measure how long an operation took.</p>
+<p>It seems almost impossible to imagine computation without clocks.</p>
+<p>But there is something strange about this picture.</p>
+<p>A clock is not time.</p>
+<p>A clock is a machine that imposes an ordering on physical events and gives us a convenient way to count them.</p>
+<p>That distinction matters.</p>
+<p>The conventional computer was built around the assumption that computation must happen in discrete steps, and that those steps must be coordinated by a common external metronome. The clock ticks. Logic changes state. The clock ticks again. Logic changes state again.</p>
+<p>This arrangement is extraordinarily useful. It is also an abstraction.</p>
+<p>The physical world does not actually operate this way.</p>
+<p>There is no universal clock ticking inside the universe, telling every atom, transistor, electron, and photon when it is permitted to change state. Physical events occur because physical conditions change. A wave propagates. A molecule collides. A transistor switches. A signal arrives. A system becomes stable. Another system responds.</p>
+<p>The clock is something we introduced to make the behavior of machines easier to organize.</p>
+<p>MatterScript asks a different question:</p>
+<p><strong>What if time did not have to be imposed on computation from the outside?</strong></p>
+<h2 id="the-clock-as-a-computational-crutch"><a class="header" href="#the-clock-as-a-computational-crutch">The clock as a computational crutch</a></h2>
+<p>The conventional processor is fundamentally clock-centric.</p>
+<p>A typical program is conceived as a sequence:</p>
+<pre><code class="language-text">fetch
+→ decode
+→ execute
+→ store
+→ wait
+→ repeat
+</code></pre>
+<p>The clock provides the cadence that keeps everything moving.</p>
+<p>This gives us an extraordinarily simple mental model. At one instant, the machine has one state. At the next clock cycle, it has another.</p>
+<p>But this simplicity comes at a price.</p>
+<p>The clock must run fast enough for the slowest operation that needs to complete within a cycle. Logic that could have completed much earlier must wait. Logic that could operate independently is often forced into a common rhythm. Increasing performance frequently means increasing clock frequency, adding pipelines, adding synchronization machinery, adding prediction, or adding increasingly sophisticated mechanisms for working around the limitations of the global clock.</p>
+<p>The clock solves the coordination problem by making everything agree to move together.</p>
+<p>That is not the only possible solution.</p>
+<p><strong>Null Convention Logic</strong> begins from almost the opposite premise.</p>
+<p>Instead of asking:</p>
+<blockquote>
+<p>What time is it?</p>
+</blockquote>
+<p>it asks:</p>
+<blockquote>
+<p>Has the information required for this operation arrived?</p>
+</blockquote>
+<p>That is a profound difference.</p>
+<h2 id="time-can-emerge-from-information"><a class="header" href="#time-can-emerge-from-information">Time can emerge from information</a></h2>
+<p>In Null Convention Logic, a computational element does not necessarily need a clock to tell it when its inputs are valid.</p>
+<p>The system can distinguish between <strong>DATA</strong> and <strong>NULL</strong>.</p>
+<p>A collection of signals reaches a valid DATA state. The logic responds. The resulting information propagates forward. Eventually the system returns to NULL, making the computational fabric ready for the next wave of information.</p>
+<p>The computation therefore has a temporal character without requiring an external clock to impose that temporal sequence.</p>
+<p>The information itself moves.</p>
+<p>The state transition itself creates the ordering.</p>
+<p>A new symbol arriving behind an existing symbol can displace it. DATA becomes NULL. NULL becomes DATA. The transitions propagate through the geometry of the circuit.</p>
+<p>What emerges is a <strong>wavefront</strong>.</p>
+<p>And a wavefront is a temporal phenomenon without requiring a clock in the conventional sense.</p>
+<p>Consider the difference.</p>
+<p>A conventional digital system might say:</p>
+<pre><code class="language-text">clock 1 → compute
+clock 2 → compute
+clock 3 → compute
+clock 4 → compute
+</code></pre>
+<p>An NCL system can instead behave more like:</p>
+<pre><code class="language-text">symbol → symbol → symbol → symbol
+       →        →        →
+    propagation through space
+</code></pre>
+<p>The temporal ordering is carried by the movement of information through the fabric.</p>
+<p>This is important because it reconnects computation with physical reality.</p>
+<p>The circuit has geometry.</p>
+<p>The signals have position.</p>
+<p>Propagation has duration.</p>
+<p>Causality has direction.</p>
+<p>Time is no longer merely a number attached to an event. It is part of the behavior of the physical system.</p>
+<h2 id="from-clocks-to-wavefronts"><a class="header" href="#from-clocks-to-wavefronts">From clocks to wavefronts</a></h2>
+<p>This suggests that there are at least two fundamentally different ways to understand computational time.</p>
+<p>The first is <strong>imposed time</strong>.</p>
+<p>A clock says:</p>
+<blockquote>
+<p>You may change state now.</p>
+</blockquote>
+<p>The second is <strong>emergent time</strong>.</p>
+<p>The physical state of the system says:</p>
+<blockquote>
+<p>The conditions required for this transition now exist.</p>
+</blockquote>
+<p>The distinction is easy to overlook because conventional digital computers have made clocked computation so familiar that we mistake the implementation technique for a fundamental law.</p>
+<p>It isn’t.</p>
+<p>A clock is one way of coordinating events.</p>
+<p>It is not the definition of computation.</p>
+<p>MatterScript is therefore interested in a richer temporal vocabulary.</p>
+<p>A programmer should eventually be able to describe relationships such as:</p>
+<pre><code class="language-text">when this arrives
+when this becomes valid
+after this transition
+when this wave reaches here
+at this digital time
+at this physical time
+</code></pre>
+<p>These statements describe temporal relationships without necessarily prescribing the mechanism by which those relationships are achieved.</p>
+<p>That mechanism might be an operating-system scheduler.</p>
+<p>It might be a hardware timer.</p>
+<p>It might be an interrupt.</p>
+<p>It might be propagation through an NCL circuit.</p>
+<p>Or it might be something that conventional software has never had a convenient way to express at all.</p>
+<h2 id="digital-time"><a class="header" href="#digital-time">Digital time</a></h2>
+<p>This is where MatterScript’s digital blockchain technology introduces another possibility.</p>
+<p>MKRAND produces a deterministic sequence of 128-bit digital blocks.</p>
+<p>A block might look like:</p>
+<pre><code class="language-text">[&lt;:d9ca177b669ab95b6fef270657dff32c:&gt;]
+</code></pre>
+<p>The important property is not simply that the value is large or apparently random.</p>
+<p>It is that the sequence is <strong>ordered and reproducible</strong>.</p>
+<p>If we have:</p>
+<pre><code class="language-text">B₀
+B₁
+B₂
+B₃
+B₄
+...
+</code></pre>
+<p>then <code>B₄</code> is not merely an arbitrary value that happens to occur after <code>B₃</code>.</p>
+<p>It is a specific, addressable point in the sequence.</p>
+<p>This gives us something unusual:</p>
+<p><strong>time can have an address.</strong></p>
+<p>A MatterScript program can conceptually refer to a future temporal state rather than merely waiting for an elapsed duration.</p>
+<p>If the current block is <code>B</code>, the programmer can ask for:</p>
+<pre><code class="language-text">B + 5
+</code></pre>
+<p>The MKRAND subsystem can deterministically generate the intervening blocks and identify the fifth subsequent state.</p>
+<p>Hardware can then be configured to respond when that state occurs.</p>
+<p>No polling is required.</p>
+<p>No process has to repeatedly ask whether the time has arrived.</p>
+<p>The hardware can simply wait for the digital condition corresponding to that temporal coordinate.</p>
+<p>This is a fundamentally different abstraction from:</p>
+<pre><code class="language-text">sleep(5)
+</code></pre>
+<p>A sleep operation says:</p>
+<blockquote>
+<p>Stop doing things for some approximate duration.</p>
+</blockquote>
+<p>A digital temporal reference says:</p>
+<blockquote>
+<p>This event belongs to this specific position in an ordered sequence of time.</p>
+</blockquote>
+<p>That distinction becomes particularly important when computation is distributed.</p>
+<h2 id="time-without-a-central-clock"><a class="header" href="#time-without-a-central-clock">Time without a central clock</a></h2>
+<p>Imagine two pieces of hardware separated by a large physical distance.</p>
+<p>They each possess the same deterministic temporal sequence.</p>
+<p>Neither needs to continuously ask the other:</p>
+<blockquote>
+<p>Where are you in time?</p>
+</blockquote>
+<p>Both can independently derive the same future temporal state.</p>
+<p>If both are programmed to respond to <code>B₁₀₀₀</code>, then both know what event they are waiting for.</p>
+<p>They do not have to share the event itself.</p>
+<p>They share its <strong>coordinate in digital time</strong>.</p>
+<p>This does not make physical simultaneity magically perfect. Real oscillators drift. Propagation takes time. Components have tolerances. Temperature changes physical behavior.</p>
+<p>But it does provide something extremely valuable:</p>
+<p><strong>a common, deterministic ordering of events.</strong></p>
+<p>The distinction is important.</p>
+<p>Digital time can provide exact ordering even when physical time can only be synchronized within the accuracy of the underlying physical timebase.</p>
+<p>That gives distributed hardware a new kind of temporal reference.</p>
+<p>Instead of continually synchronizing clocks, systems can synchronize around a deterministic sequence of digital states.</p>
+<p>The blockchain, in this sense, is not merely a ledger.</p>
+<p>It becomes a <strong>coordinate system for computation through time</strong>.</p>
+<h2 id="connecting-digital-time-to-physical-time"><a class="header" href="#connecting-digital-time-to-physical-time">Connecting digital time to physical time</a></h2>
+<p>Of course, computers ultimately inhabit the physical universe.</p>
+<p>A digital sequence has to correspond to something physical if we want to use it to trigger real events.</p>
+<p>This is where the relationship between MKRAND and a crystal oscillator becomes important.</p>
+<p>If the hardware can establish, with sufficient accuracy, how many clock cycles are required to generate or advance through a block, then the digital sequence can be associated with a physical timebase.</p>
+<p>We can establish a relationship between:</p>
+<pre><code class="language-text">MKRAND block
+      ↓
+hardware cycles
+      ↓
+crystal oscillator
+      ↓
+physical time
+      ↓
+wall-clock time
+</code></pre>
+<p>Now the digital coordinate does not exist in isolation.</p>
+<p>It is anchored to physics.</p>
+<p>The result is a hierarchy of time rather than a single notion of time.</p>
+<p>At the highest level, a MatterScript programmer might care about wall-clock time:</p>
+<blockquote>
+<p>Tuesday at 14:30.</p>
+</blockquote>
+<p>At another level, the program may care about physical time:</p>
+<blockquote>
+<p>17.25 microseconds from the reference event.</p>
+</blockquote>
+<p>At another level, they may care about digital time:</p>
+<blockquote>
+<p>block B₁₂₃₄₅.</p>
+</blockquote>
+<p>And at the lowest level, they may care about a physical propagation event:</p>
+<blockquote>
+<p>when the wavefront reaches this gate.</p>
+</blockquote>
+<p>These are not competing definitions of time.</p>
+<p>They are different representations of temporal relationships at different levels of the machine.</p>
+<h2 id="time-becomes-a-first-class-domain"><a class="header" href="#time-becomes-a-first-class-domain">Time becomes a first-class domain</a></h2>
+<p>This is where MatterScript begins to depart most clearly from conventional programming languages.</p>
+<p>Traditional programming languages tend to expose time through functions.</p>
+<p>You call a function to get the current time.</p>
+<p>You call another function to sleep.</p>
+<p>You register a callback.</p>
+<p>You configure a timer.</p>
+<p>You wait for an interrupt.</p>
+<p>Time exists outside the language, and the language provides mechanisms for asking the operating system or hardware about it.</p>
+<p>MatterScript can treat time differently.</p>
+<p>Time can become a <strong>domain of computation</strong>.</p>
+<p>The programmer describes a temporal relationship, and the system determines how that relationship can be realized by the underlying physical substrate.</p>
+<p>At one level:</p>
+<pre><code class="language-text">at 14:30:
+    activate pump
+</code></pre>
+<p>At another:</p>
+<pre><code class="language-text">after 500 microseconds:
+    trigger sensor
+</code></pre>
+<p>At another:</p>
+<pre><code class="language-text">at B + 5:
+    emit signal
+</code></pre>
+<p>And at another:</p>
+<pre><code class="language-text">when wavefront reaches node:
+    transform symbol
+</code></pre>
+<p>These statements appear superficially similar.</p>
+<p>But they represent very different temporal mechanisms.</p>
+<p>The first may require an operating-system service.</p>
+<p>The second may use a hardware timer or interrupt.</p>
+<p>The third may use the MKRAND temporal sequence.</p>
+<p>The fourth may require no clock at all.</p>
+<p>The language should not force the programmer to pretend that these are all the same thing.</p>
+<p>They aren’t.</p>
+<h2 id="space-and-time-return-together"><a class="header" href="#space-and-time-return-together">Space and time return together</a></h2>
+<p>There is a deeper connection here to geometry.</p>
+<p>When software forgot geometry, it also forgot something about time.</p>
+<p>Conventional software treats computation as an abstract sequence of instructions. The instructions have an order, but they have little inherent spatial meaning. Memory is an address. A processor is a generic execution engine. A program is a sequence.</p>
+<p>MatterScript begins with a different premise.</p>
+<p>A computation can occupy space.</p>
+<p>Signals can have position.</p>
+<p>Logic can have topology.</p>
+<p>Information can propagate.</p>
+<p>And once computation has physical extent, time becomes inseparable from that geometry.</p>
+<p>A signal arriving at one gate before another gate is not merely a difference between two timestamps.</p>
+<p>It is a physical relationship.</p>
+<p>The distance, topology, propagation characteristics, and state of the computational fabric all participate in determining what happens next.</p>
+<p>This is why geometry and time belong together in MatterScript.</p>
+<p>Space describes <strong>where</strong> computation exists.</p>
+<p>Time describes <strong>when relationships propagate through it</strong>.</p>
+<p>The conventional computer separated these concepts so thoroughly that we came to think of them as separate abstractions.</p>
+<p>Physical computation never did.</p>
+<h2 id="the-machine-that-inhabits-time"><a class="header" href="#the-machine-that-inhabits-time">The machine that inhabits time</a></h2>
+<p>The ultimate goal is not to eliminate clocks.</p>
+<p>Clocks remain useful. They provide a stable reference. They allow us to measure physical processes and coordinate systems when that is the appropriate mechanism.</p>
+<p>The mistake is treating the clock as the only meaningful representation of computational time.</p>
+<p>MatterScript can have clocks without being imprisoned by them.</p>
+<p>It can use an operating-system clock when wall time matters.</p>
+<p>It can use a crystal oscillator when physical precision matters.</p>
+<p>It can use hardware interrupts when deterministic triggering matters.</p>
+<p>It can use MKRAND when a reproducible digital temporal coordinate matters.</p>
+<p>And it can use NCL propagation when the computation itself can provide its own temporal ordering.</p>
+<p>These mechanisms do not have to compete.</p>
+<p>They can form a hierarchy.</p>
+<p>The programmer can describe relationships.</p>
+<p>The compiler and hardware can choose the appropriate temporal substrate.</p>
+<p>That is the larger idea.</p>
+<p>A conventional program executes <strong>according to a clock</strong>.</p>
+<p>A MatterScript system can execute <strong>according to relationships in space and time</strong>.</p>
+<p>The difference may sound subtle.</p>
+<p>It isn’t.</p>
+<p>Once time becomes something that computation can represent, address, propagate, synchronize, and inhabit—not merely something it can measure—the boundary between software and physical process begins to disappear.</p>
+<p>And that is precisely where MatterScript wants to operate.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="null-convention-logic"><a class="header" href="#null-convention-logic">Null Convention Logic</a></h1>
@@ -455,7 +974,7 @@ res&lt;$A$B()&gt;
 <p>The lines following the colon are themselves constant definitions.</p>
 <p>Each key on the left represents a possible invocation name formed by concatenating the values arriving on <code>$A</code> and <code>$B</code>.</p>
 <p>When <code>$A</code> contains <code>1</code> and <code>$B</code> contains <code>0</code>, the composed name becomes <code>10</code>. The compiler locates the constant definition named <code>10</code> and returns its associated value—in this case <code>0</code>.</p>
-<p>While the formed symbols are the concatenaed values like 00 and 01, for correct compiler interpretation of separate symbols, you as the developer register your intent in the source code by separating the content values with the general separator comma ‘,’.</p>
+<p>While the formed symbols are the concatenaed values like 00 and 01, for correct compiler interpretation of separate component symbols, you as the developer register your intent in the source code by separating the content values with the general separator comma ‘,’.</p>
 <p>Rather than executing conditional logic, MatterScript performs a lookup. The incoming token values determine which constant definition is selected, and that definition immediately returns its contents to the invocation.</p>
 <p>Taken together, these constant definitions form the complete truth table of the AND gate.</p>
 <p>This idea extends far beyond Boolean logic. A constant definition doesn’t have to return a single integer. It can return an entire fragment of MatterScript that is inserted back into the network and resolved as if it had been written directly in place.</p>

@@ -150,7 +150,7 @@ Each key on the left represents a possible invocation name formed by concatenati
 
 When `$A` contains `1` and `$B` contains `0`, the composed name becomes `10`. The compiler locates the constant definition named `10` and returns its associated value—in this case `0`.
 
-While the formed symbols are the concatenaed values like 00 and 01, for correct compiler interpretation of separate symbols, you as the developer register your intent in the source code by separating the content values with the general separator comma ','.
+While the formed symbols are the concatenaed values like 00 and 01, for correct compiler interpretation of separate component symbols, you as the developer register your intent in the source code by separating the content values with the general separator comma ','.
 
 Rather than executing conditional logic, MatterScript performs a lookup. The incoming token values determine which constant definition is selected, and that definition immediately returns its contents to the invocation.
 
