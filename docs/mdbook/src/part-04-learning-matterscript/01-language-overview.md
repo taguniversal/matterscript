@@ -106,11 +106,26 @@ OR($OP4 $OP3)(FIRSTSUM<>)
 AND($C $FIRSTSUM)(OP9<>)
 ```
 
-No explicit wiring statement is needed. The compiler recognizes that both names refer to the same place and connects them together.
+No explicit wiring statement is needed. The compiler recognizes that both names refer to the same place and connects them together automatically.
 
 Throughout a MatterScript program, names define **connectivity**, not variable storage.
 
-This is one of the language's defining ideas. Rather than describing how values are copied from one location to another, you describe the relationships between computations, and the compiler constructs the network automatically.
+But connectivity is only part of the story.
+
+By describing which computations produce information and which computations consume it, a MatterScript program also defines **causality**. Every connection identifies not only where information flows, but **what can cause something else to happen**. The compiler therefore constructs more than a network of wires—it constructs a network of cause-and-effect relationships.
+
+This distinction becomes increasingly important as systems grow larger.
+
+In conventional software, a simulation often advances by repeatedly scanning every element in the model to determine whether anything has changed. Whether simulating molecules, ecosystems, electrical grids, or weather systems, the processor continually revisits enormous amounts of state simply to discover where the next computation should occur.
+
+MatterScript approaches the problem differently.
+
+Because the causal relationships are known at compile time, the compiler already knows which computations are affected by each result. When information propagates, only those computations whose inputs have changed become active. The computation follows the structure of the problem itself rather than repeatedly searching for work to do.
+
+This idea extends far beyond digital logic. In later chapters, we'll use the same language constructs to describe chemical reactions, physical simulations, biological systems, and large-scale computational models. Although these systems appear very different, they share the same underlying principle: **local causes produce local effects, and global behavior emerges from the propagation of those effects through a connected network.**
+
+Rather than describing how values are copied from one location to another, MatterScript describes the relationships that govern both **connectivity** and **causality**, allowing the compiler to construct a computational fabric that mirrors the structure of the problem itself.
+
 
 ---
 
