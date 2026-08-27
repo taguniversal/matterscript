@@ -124,7 +124,7 @@
 - ⬜ Not started [Nested sub-definition name collisions](TAG-171.md)
 - ⬜ Not started [VHDL Numeric table emission](TAG-172.md)
 - ⬜ Not started [Domain Layers](TAG-174.md)
-- ⬜ Not started [Anonymous Single Return to VHDL](TAG-175.md)
+- ⬜ Not started [VHDL emission produces invalid syntax for unnamed/abbreviated destination places](TAG-175.md)
 - ⬜ Not started [Return a Content to Place of Invocation](TAG-32.md)
 - ⬜ Not started [Single Return to Place of Invocation](TAG-33.md)
 - ⬜ Not started [The Conditional Invocation Name](TAG-35.md)
