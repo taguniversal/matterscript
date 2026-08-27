@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b61367a7.js";
+            window.path_to_searchindex_js = "searchindex-00aa3446.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fd20b4b2.js"></script>
@@ -543,6 +543,367 @@ timestamp
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="the-cost-of-abstraction"><a class="header" href="#the-cost-of-abstraction">The Cost of Abstraction</a></h1>
+<p>Abstraction is one of the great achievements of computer science.</p>
+<p>It is also one of the great hidden expenses of civilization.</p>
+<p>The modern programmer can write a few lines of code and cause an astonishing amount of physical machinery to act on their behalf. A programmer does not need to know the instruction set of the processor, the topology of the memory bus, the electrical characteristics of the transistors, the details of the storage controller, or the protocols by which packets move across a network.</p>
+<p>That is the point of abstraction.</p>
+<p>We hide the machine so that humans can work with ideas.</p>
+<p>And it works.</p>
+<p>The software industry has spent more than half a century building increasingly sophisticated layers between human intention and physical computation. Each layer makes the next layer easier to use.</p>
+<p>But there is a question we rarely ask:</p>
+<p><strong>What does all that abstraction cost?</strong></p>
+<p>Not merely in software complexity.</p>
+<p>In transistors.</p>
+<p>In memory.</p>
+<p>In electricity.</p>
+<p>In bandwidth.</p>
+<p>In heat.</p>
+<p>In silicon.</p>
+<p>In data centers.</p>
+<p>In factories.</p>
+<p>In power plants.</p>
+<p>And ultimately, in the physical resources of civilization.</p>
+<h3 id="the-machine-beneath-the-machine"><a class="header" href="#the-machine-beneath-the-machine">The machine beneath the machine</a></h3>
+<p>Consider the most trivial computation imaginable:</p>
+<pre><code class="language-python">2 + 2
+</code></pre>
+<p>At the level of human intention, almost nothing is happening.</p>
+<p>Two numbers are presented to a machine.</p>
+<p>They are added.</p>
+<p>The answer is four.</p>
+<p>The physical operation required to perform an addition can be extraordinarily small. Digital addition can be implemented with relatively simple logic. A handful of Boolean operations can produce the result.</p>
+<p>But that is not what happens when a programmer writes <code>2 + 2</code> in a high-level language.</p>
+<p>The expression first exists as text.</p>
+<p>That text must be interpreted according to the grammar of the language. It must be tokenized. Parsed. Represented internally. Compiled or interpreted. Perhaps transformed into bytecode. Perhaps passed through a virtual machine. Perhaps dispatched through a runtime. Perhaps represented as dynamically typed objects. Perhaps allocated in memory. Eventually, some sequence of machine instructions must reach a processor.</p>
+<p>The processor itself contains instruction decoders, registers, caches, branch predictors, memory-management machinery, execution units, interconnects, and enormous amounts of control logic.</p>
+<p>And somewhere down toward the bottom of all of this machinery, a relatively tiny collection of digital gates performs the arithmetic.</p>
+<p>The result is:</p>
+<pre><code class="language-text">2 + 2 = 4
+</code></pre>
+<p>The important point is not that the computer did something wrong.</p>
+<p>It did exactly what we asked.</p>
+<p>The question is how much machinery had to participate in order to make such a simple expression convenient for a human being.</p>
+<h3 id="abstraction-does-not-eliminate-complexity"><a class="header" href="#abstraction-does-not-eliminate-complexity">Abstraction does not eliminate complexity</a></h3>
+<p>It <strong>moves</strong> complexity.</p>
+<p>That is the great trick of abstraction.</p>
+<p>A Python programmer does not need to understand the processor.</p>
+<p>The processor does not need to understand Python.</p>
+<p>Something in between has to translate.</p>
+<p>And then something has to translate the translation.</p>
+<p>And then something has to execute the result.</p>
+<p>We can visualize the descent:</p>
+<pre><code class="language-text">human intention
+      ↓
+source code
+      ↓
+language grammar
+      ↓
+parser
+      ↓
+intermediate representation
+      ↓
+compiler / interpreter
+      ↓
+runtime
+      ↓
+operating system
+      ↓
+process
+      ↓
+machine instructions
+      ↓
+processor
+      ↓
+instruction decoder
+      ↓
+registers / execution units
+      ↓
+digital logic
+      ↓
+transistors
+      ↓
+electrical state
+</code></pre>
+<p>Every layer is useful.</p>
+<p>Every layer solves a real problem.</p>
+<p>But every layer is also another transformation.</p>
+<p>The information has to be represented.</p>
+<p>The representation has to be interpreted.</p>
+<p>The interpretation has to be transformed.</p>
+<p>The transformation has to be executed.</p>
+<p>Abstraction doesn’t make this machinery disappear.</p>
+<p><strong>It makes the machinery invisible to the person using it.</strong></p>
+<p>That distinction matters.</p>
+<h3 id="the-abstraction-tax"><a class="header" href="#the-abstraction-tax">The abstraction tax</a></h3>
+<p>We can think of this as an <strong>abstraction tax</strong>.</p>
+<p>The abstraction tax is the physical cost incurred by representing a simple intention through a more general computational system.</p>
+<p>It is tempting to define this as a simple ratio:</p>
+<blockquote>
+<p>useful computation divided by total computation.</p>
+</blockquote>
+<p>But the problem is that “useful” is not always easy to define.</p>
+<p>A general-purpose processor does not exist merely to perform one addition. Its enormous complexity provides flexibility. The operating system provides isolation, security, multitasking, portability, device management, and thousands of other capabilities. A programming language provides expressiveness and productivity.</p>
+<p>Those things have enormous value.</p>
+<p>So the question is not:</p>
+<blockquote>
+<p>Why don’t we eliminate all abstraction?</p>
+</blockquote>
+<p>That would be absurd.</p>
+<p>The better question is:</p>
+<blockquote>
+<p><strong>How much physical machinery are we willing to deploy to obtain a particular level of abstraction?</strong></p>
+</blockquote>
+<p>And once we ask the question that way, the answer becomes measurable in principle.</p>
+<h3 id="the-blockchain-as-an-abstraction-tax"><a class="header" href="#the-blockchain-as-an-abstraction-tax">The blockchain as an abstraction tax</a></h3>
+<p>Consider distributed agreement.</p>
+<p>Suppose we want a collection of machines that do not trust one another to agree on a common sequence of events.</p>
+<p>This is not a trivial problem.</p>
+<p>We need some mechanism for determining which event came first, which history is authoritative, and how participants can agree without a central authority.</p>
+<p>Bitcoin’s proof-of-work mechanism solves part of this problem by making computational work—and therefore physical energy—part of the cost of participating in the consensus process.</p>
+<p>That cost is not theoretical.</p>
+<p>The Cambridge Centre for Alternative Finance estimated Bitcoin’s annualized electricity consumption at about <strong>138 TWh in June 2024</strong>, with its model extending to approximately <strong>183 TWh annualized by December 2024</strong> as network hashrate increased.</p>
+<p>That is a civilization-scale expenditure of energy to maintain a particular computational mechanism for distributed consensus.</p>
+<p>And it is important to be precise here.</p>
+<p>Bitcoin’s proof-of-work does not exist merely to put transactions in order. It also provides Sybil resistance and makes rewriting history economically expensive. The enormous energy expenditure is part of the security model.</p>
+<p>That is precisely why the example is useful.</p>
+<p>The physical cost is not an accidental implementation detail.</p>
+<p><strong>The physical cost is part of the abstraction.</strong></p>
+<p>Ethereum provides an extraordinary counterexample.</p>
+<p>Ethereum once used proof-of-work as well. Shortly before its transition to proof-of-stake, Ethereum’s annual electricity consumption was estimated at approximately 78 TWh. After the transition, Ethereum estimates its current annual electricity consumption at roughly <strong>0.0026 TWh</strong>, with the Merge reducing electricity expenditure by more than <strong>99.98%</strong>.</p>
+<p>The underlying lesson is much larger than cryptocurrency.</p>
+<p><strong>Change the computational mechanism, and the physical cost of the abstraction can change by orders of magnitude.</strong></p>
+<p>The problem was never “blockchains are inherently expensive.”</p>
+<p>The problem was that one particular mechanism for establishing distributed agreement was extremely expensive.</p>
+<p>And this is precisely the sort of question MatterScript asks.</p>
+<p>What if a problem that currently requires enormous computational machinery could instead be represented directly in the physical structure of the computation?</p>
+<p>What if ordering could be established without repeatedly performing enormous amounts of unrelated work?</p>
+<p>What if time itself could become a deterministic digital coordinate?</p>
+<p>What if the hardware could recognize that coordinate directly?</p>
+<p>The question is not whether computation should be distributed.</p>
+<p>The question is whether <strong>we are paying an unnecessary physical price for the way we have chosen to represent distribution and agreement.</strong></p>
+<h3 id="the-abstraction-tax-is-everywhere"><a class="header" href="#the-abstraction-tax-is-everywhere">The abstraction tax is everywhere</a></h3>
+<p>Blockchain is an unusually visible example because its energy consumption is easy to isolate.</p>
+<p>Most abstraction costs are not.</p>
+<p>They are distributed throughout the computing ecosystem.</p>
+<p>A database query passes through layers of software.</p>
+<p>A filesystem request passes through layers of software.</p>
+<p>A network packet passes through layers of software and hardware.</p>
+<p>A graphical operation passes through layers of software and hardware.</p>
+<p>A web page passes through an extraordinary chain of representations before a human sees a collection of pixels.</p>
+<p>Each layer is reasonable.</p>
+<p>The complete stack can be enormous.</p>
+<p>This is why the question of efficiency cannot be reduced to:</p>
+<blockquote>
+<p>How many CPU instructions does this program execute?</p>
+</blockquote>
+<p>The physical cost of computation includes everything required to make the computation possible.</p>
+<p>Memory movement.</p>
+<p>Cache activity.</p>
+<p>Instruction fetching.</p>
+<p>Branch prediction.</p>
+<p>Operating-system scheduling.</p>
+<p>Virtualization.</p>
+<p>Network transport.</p>
+<p>Storage.</p>
+<p>Cooling.</p>
+<p>Power conversion.</p>
+<p>Redundant infrastructure.</p>
+<p>All of these exist somewhere below the programmer’s abstraction.</p>
+<h3 id="civilizations-computer"><a class="header" href="#civilizations-computer">Civilization’s computer</a></h3>
+<p>This matters because computing is no longer a small industrial activity.</p>
+<p>It is <strong>infrastructure</strong>.</p>
+<p>The International Energy Agency estimated that data centers consumed approximately <strong>415 TWh of electricity in 2024</strong>, about 1.5% of global electricity consumption. Its base-case projection puts data-center electricity consumption at approximately <strong>945 TWh by 2030</strong>.</p>
+<p>These numbers cannot simply be labeled “waste.”</p>
+<p>Data centers provide enormous value.</p>
+<p>They run financial systems, scientific computing, communications, entertainment, logistics, medical systems, businesses, government services, and increasingly artificial intelligence.</p>
+<p>But the scale changes the question.</p>
+<p>When computing consumes hundreds of terawatt-hours of electricity, even a small improvement in the amount of physical computation required to produce a unit of useful work becomes economically and environmentally significant.</p>
+<p>At civilization scale, <strong>efficiency is architecture</strong>.</p>
+<h3 id="how-much-of-the-machine-is-doing-useful-work"><a class="header" href="#how-much-of-the-machine-is-doing-useful-work">How much of the machine is doing useful work?</a></h3>
+<p>This leads to a question that is difficult to answer precisely but impossible to ignore:</p>
+<blockquote>
+<p><strong>How much of the world’s computational machinery is performing useful transformations of information, and how much is translating information between abstractions?</strong></p>
+</blockquote>
+<p>We should be careful here.</p>
+<p>There is no defensible universal number that says “X percent of computing is abstraction overhead.”</p>
+<p>Different workloads have radically different requirements.</p>
+<p>An operating system may appear to be overhead when viewed from the perspective of a single arithmetic operation, but it is providing security, isolation, scheduling, hardware management, and services that are themselves useful.</p>
+<p>A runtime may perform work that seems unnecessary for a particular calculation but enormously increases programmer productivity.</p>
+<p>A compiler may produce millions of intermediate operations so that a human does not have to think about the physical machine.</p>
+<p>The abstraction is buying something.</p>
+<p>The question is:</p>
+<p><strong>How much?</strong></p>
+<p>And perhaps more importantly:</p>
+<p><strong>Could we buy the same capability with less physical machinery?</strong></p>
+<h3 id="from-instructions-to-useful-work"><a class="header" href="#from-instructions-to-useful-work">From instructions to useful work</a></h3>
+<p>Consider two machines that both produce:</p>
+<pre><code class="language-text">4
+</code></pre>
+<p>One machine might perform the operation through a tiny dedicated circuit.</p>
+<p>Another might execute it through a general-purpose processor running an operating system and a high-level runtime.</p>
+<p>Another might execute the operation as part of a much larger computation on a GPU.</p>
+<p>All three produce the same answer.</p>
+<p>Their physical costs can be radically different.</p>
+<p>This suggests a more interesting metric than raw performance:</p>
+<blockquote>
+<p><strong>physical computation per unit of useful result.</strong></p>
+</blockquote>
+<p>How many transistor transitions?</p>
+<p>How much energy?</p>
+<p>How much memory movement?</p>
+<p>How much bandwidth?</p>
+<p>How much silicon?</p>
+<p>How much cooling?</p>
+<p>How much infrastructure?</p>
+<p>For a particular useful result?</p>
+<p>The answer will vary enormously depending on the abstraction and the workload.</p>
+<p>But that is precisely the point.</p>
+<p>We have become accustomed to measuring computers primarily in terms of abstract performance:</p>
+<pre><code class="language-text">gigahertz
+gigaflops
+terabytes
+transactions per second
+tokens per second
+</code></pre>
+<p>Perhaps we should also ask:</p>
+<blockquote>
+<p><strong>How much physical reality does one unit of useful computation require?</strong></p>
+</blockquote>
+<h3 id="the-strange-economics-of-generality"><a class="header" href="#the-strange-economics-of-generality">The strange economics of generality</a></h3>
+<p>There is a reason general-purpose computers became dominant.</p>
+<p>Generality is extraordinarily valuable.</p>
+<p>A specialized circuit might perform one operation extremely efficiently.</p>
+<p>A general-purpose processor can perform millions of different operations.</p>
+<p>A programming language can express almost anything.</p>
+<p>An operating system can run almost anything.</p>
+<p>A cloud platform can host almost anything.</p>
+<p>This is the economic bargain of abstraction:</p>
+<blockquote>
+<p>Give up physical efficiency in exchange for flexibility.</p>
+</blockquote>
+<p>For much of computing history, that was an excellent bargain.</p>
+<p>Transistors became cheap.</p>
+<p>Memory became cheap.</p>
+<p>Storage became cheap.</p>
+<p>Processors became faster.</p>
+<p>So we spent the surplus on abstraction.</p>
+<p>Instead of optimizing every computation for the physical machine, we optimized the machine for the convenience of the programmer.</p>
+<p>And that worked spectacularly well.</p>
+<p>But the bargain is changing.</p>
+<p>Energy is not free.</p>
+<p>Data movement is not free.</p>
+<p>Cooling is not free.</p>
+<p>Semiconductors are not free.</p>
+<p>Data centers require land, transformers, transmission capacity, generators, cooling systems, construction, maintenance, and enormous amounts of capital.</p>
+<p>The abstraction stack may be invisible to the programmer, but its physical consequences are not invisible to civilization.</p>
+<h3 id="the-opportunity-hiding-underneath-the-abstraction"><a class="header" href="#the-opportunity-hiding-underneath-the-abstraction">The opportunity hiding underneath the abstraction</a></h3>
+<p>This is where MatterScript takes a different position.</p>
+<p>The objective is not to eliminate abstraction.</p>
+<p>It is to <strong>move the abstraction boundary closer to the physical computation</strong>.</p>
+<p>Instead of describing everything as instructions for a generic processor, MatterScript can describe things in terms of the structures that actually perform them.</p>
+<p>A geometric relationship can become geometry.</p>
+<p>A temporal relationship can become a temporal primitive.</p>
+<p>A digital state can become a physical configuration.</p>
+<p>A dataflow relationship can become a spatial arrangement of logic.</p>
+<p>A deterministic sequence can become a hardware-recognizable temporal coordinate.</p>
+<p>The programmer does not necessarily need to descend into transistor-level design.</p>
+<p>But the language can preserve more information about the programmer’s intention as it descends toward the machine.</p>
+<p>That is the critical distinction.</p>
+<p>Conventional abstraction often looks like:</p>
+<pre><code class="language-text">intention
+   ↓
+general representation
+   ↓
+more general representation
+   ↓
+more general representation
+   ↓
+generic machine
+</code></pre>
+<p>MatterScript aims for something more like:</p>
+<pre><code class="language-text">intention
+   ↓
+physical relationship
+   ↓
+computational structure
+   ↓
+physical implementation
+</code></pre>
+<p>The difference is not that MatterScript has fewer abstractions.</p>
+<p>It is that the abstractions are intended to <strong>preserve physical meaning</strong>.</p>
+<h3 id="semantic-compression"><a class="header" href="#semantic-compression">Semantic compression</a></h3>
+<p>There is a useful way to think about this.</p>
+<p>Suppose a programmer says:</p>
+<pre><code class="language-text">2 + 2
+</code></pre>
+<p>The semantic content of the statement is tiny.</p>
+<p>If the physical system requires a vast amount of machinery to interpret and execute that statement, then most of the machinery is not creating new semantic information.</p>
+<p>It is translating.</p>
+<p>MatterScript seeks a form of <strong>semantic compression</strong>:</p>
+<blockquote>
+<p>Preserve as much of the programmer’s intention as possible as the computation moves toward physical realization.</p>
+</blockquote>
+<p>The closer the representation remains to the thing being computed, the less translation may be required.</p>
+<p>This does not mean that every computation should become a custom circuit.</p>
+<p>It means that the language should make it possible to express when that distinction matters.</p>
+<p>If the programmer wants a general-purpose computation, use a general-purpose processor.</p>
+<p>If the programmer wants a geometric object, represent geometry.</p>
+<p>If the programmer wants a deterministic hardware event, represent the temporal relationship directly.</p>
+<p>If the programmer wants a massive numerical operation, use the appropriate accelerator.</p>
+<p>The abstraction should match the thing.</p>
+<h3 id="the-cost-of-forgetting-the-machine"><a class="header" href="#the-cost-of-forgetting-the-machine">The cost of forgetting the machine</a></h3>
+<p>There is a paradox at the heart of modern computing.</p>
+<p>We became extraordinarily successful at making programmers forget that computers are physical machines.</p>
+<p>That success allowed software to become vastly more sophisticated.</p>
+<p>But it also created a generation of software systems in which the physical consequences of an abstraction are often invisible until they become enormous.</p>
+<p>A programmer can allocate another object without thinking about the memory hierarchy.</p>
+<p>A developer can make another network request without thinking about the physical infrastructure.</p>
+<p>A service can replicate another database without thinking about the energy and hardware involved.</p>
+<p>A distributed protocol can perform another round of consensus without thinking about the computation occurring across thousands of machines.</p>
+<p>The abstractions are doing their job.</p>
+<p>That is exactly why the physical cost is so easy to forget.</p>
+<h3 id="the-question-matterscript-asks"><a class="header" href="#the-question-matterscript-asks">The question MatterScript asks</a></h3>
+<p>MatterScript does not claim that abstraction is bad.</p>
+<p>Abstraction is one of the reasons civilization has computers at all.</p>
+<p>The question is more uncomfortable:</p>
+<blockquote>
+<p><strong>What if some of our abstractions are costing us far more physical reality than the problems they solve require?</strong></p>
+</blockquote>
+<p>What if billions of gates are being activated to accomplish work that a much smaller physical structure could perform?</p>
+<p>What if enormous quantities of memory are being moved because the representation of a problem is disconnected from the structure of the computation?</p>
+<p>What if terawatt-hours of electricity are being consumed because we chose a computational mechanism that was convenient to general-purpose software rather than appropriate to the underlying physical problem?</p>
+<p>What if the distance between human intention and physical realization has become unnecessarily large?</p>
+<p>These are not merely questions of optimization.</p>
+<p>They are questions about the architecture of computation.</p>
+<p>Civilization has spent decades making computers easier to program.</p>
+<p>We succeeded.</p>
+<p>We built abstractions upon abstractions until almost no programmer needs to think about the physical machine anymore.</p>
+<p>That achievement was extraordinary.</p>
+<p>But abstraction has a physical cost.</p>
+<p>Every representation requires storage.</p>
+<p>Every translation requires computation.</p>
+<p>Every computation requires matter and energy.</p>
+<p>Every layer between intention and physical action has to exist somewhere.</p>
+<p>The machine has not disappeared.</p>
+<p><strong>We have simply hidden it.</strong></p>
+<p>MatterScript begins with the proposition that perhaps we should make the machine visible again—not so that every programmer has to learn how to design transistors, but so that the language itself can preserve the physical structure of what the programmer means.</p>
+<p>The goal is not less abstraction.</p>
+<p>It is <strong>better abstraction</strong>.</p>
+<p>Abstraction that understands geometry.</p>
+<p>Abstraction that understands time.</p>
+<p>Abstraction that understands causality.</p>
+<p>Abstraction that understands the physical structure of computation.</p>
+<p>And ultimately, abstraction that does not require civilization to build an enormous machine merely to hide the much smaller machine underneath it.</p>
+<p>The question is no longer simply:</p>
+<blockquote>
+<p>How fast can we make computers?</p>
+</blockquote>
+<p>It is:</p>
+<blockquote>
+<p><strong>How much physical reality should a computation require to express an idea?</strong></p>
+</blockquote>
+<p>That is a question software has rarely been forced to answer.</p>
+<p>MatterScript intends to ask it.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="hardware-already-knows-the-answer"><a class="header" href="#hardware-already-knows-the-answer">Hardware Already Knows the Answer</a></h1>
