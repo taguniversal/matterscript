@@ -138,24 +138,40 @@ fn classify(expected: ?[]const u8, parse_ok: bool, ghdl_ok: bool) ExampleResult 
 fn runGhdlSyntaxCheck(allocator: std.mem.Allocator, io: std.Io, vhd_path: []const u8) bool {
     const package_result = std.process.run(allocator, io, .{
         .argv = &.{ "ghdl", "-a", "--std=08", "src/stdlib/ncl/matterscript_ncl.vhd" },
-    }) catch return false;
+    }) catch |err| {
+        std.debug.print("  [{s}] failed to spawn ghdl for package analysis: {s}\n", .{ vhd_path, @errorName(err) });
+        return false;
+    };
     defer allocator.free(package_result.stdout);
     defer allocator.free(package_result.stderr);
     switch (package_result.term) {
-        .exited => |code| if (code != 0) return false,
-        else => return false,
+        .exited => |code| if (code != 0) {
+            std.debug.print("  [{s}] ncl package analysis failed:\n{s}\n", .{ vhd_path, package_result.stderr });
+            return false;
+        },
+        else => {
+            std.debug.print("  [{s}] ncl package analysis did not exit normally\n", .{vhd_path});
+            return false;
+        },
     }
 
     const result = std.process.run(allocator, io, .{
         .argv = &.{ "ghdl", "-s", "--std=08", vhd_path },
-    }) catch return false;
+    }) catch |err| {
+        std.debug.print("  [{s}] failed to spawn ghdl for syntax check: {s}\n", .{ vhd_path, @errorName(err) });
+        return false;
+    };
     defer allocator.free(result.stdout);
     defer allocator.free(result.stderr);
 
-    return switch (result.term) {
+    const ok = switch (result.term) {
         .exited => |code| code == 0,
         else => false,
     };
+    if (!ok) {
+        std.debug.print("  [{s}] ghdl syntax check failed:\n{s}\n", .{ vhd_path, result.stderr });
+    }
+    return ok;
 }
 
 fn readStatusManifest(
