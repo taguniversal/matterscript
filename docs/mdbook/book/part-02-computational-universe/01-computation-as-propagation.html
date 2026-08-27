@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-5c183a89.js";
+            window.path_to_searchindex_js = "../searchindex-143e2a01.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-fd20b4b2.js"></script>
@@ -177,6 +177,171 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="computation-as-propagation"><a class="header" href="#computation-as-propagation">Computation as Propagation</a></h1>
+<p>Most programmers learn to think of computation as a sequence of instructions.</p>
+<p>Read a value.</p>
+<p>Execute an operation.</p>
+<p>Store the result.</p>
+<p>Repeat.</p>
+<p>Whether the language is C, Python, Java, or Rust, this mental model rarely changes. Even when multiple processors are involved, we still imagine computation as many instruction streams executing simultaneously.</p>
+<p>MatterScript begins from a different premise.</p>
+<p><strong>Computation is not the execution of instructions.</strong></p>
+<p><strong>Computation is the propagation of information through a network of relationships.</strong></p>
+<p>This may sound like a subtle distinction, but it changes almost everything about how a program is written, understood, and ultimately executed.</p>
+<hr>
+<p>Consider the simplest useful MatterScript definition.</p>
+<pre><code class="language-matterscript">NOT[(A&lt;&gt;)($Q)
+
+    Q&lt;$A()&gt;
+
+    :0[1]
+     1[0]
+]
+</code></pre>
+<p>If you’ve never seen MatterScript before, don’t worry about every symbol just yet.</p>
+<p>Instead, ask a single question.</p>
+<p><strong>How does information move?</strong></p>
+<p>The definition declares one input place, <code>A&lt;&gt;</code>, and one output place, <code>$Q</code>.</p>
+<p>Between them is a single expression:</p>
+<pre><code class="language-matterscript">Q&lt;$A()&gt;
+</code></pre>
+<p>This statement does not perform a computation.</p>
+<p>It creates a relationship.</p>
+<p>It says that whatever value eventually arrives at <code>$A</code> will be used to form the name of another definition. That definition will return its contents, and the returned value will propagate to <code>Q</code>.</p>
+<p>The two constant definitions at the end describe the behavior of the gate.</p>
+<pre><code class="language-matterscript">:0[1]
+ 1[0]
+</code></pre>
+<p>If the incoming value is <code>0</code>, return <code>1</code>.</p>
+<p>If the incoming value is <code>1</code>, return <code>0</code>.</p>
+<p>That is the complete definition of logical inversion.</p>
+<hr>
+<p>Now imagine that the input contains the value <code>1</code>.</p>
+<p>The flow of computation looks like this:</p>
+<pre><code class="language-text">1
+│
+▼
+A&lt;&gt;
+│
+▼
+$A()
+│
+▼
+Q&lt;1()&gt;
+│
+▼
+1[0]
+│
+▼
+0
+│
+▼
+Q&lt;&gt;
+</code></pre>
+<p>Nothing executes.</p>
+<p>Nothing is assigned.</p>
+<p>Nothing is overwritten.</p>
+<p>The value simply propagates through an existing network until it reaches a stable destination.</p>
+<p>The computation is the movement itself.</p>
+<hr>
+<p>This may feel unfamiliar because conventional programming languages hide nearly every physical aspect of computation.</p>
+<p>Consider the equivalent statement in C.</p>
+<pre><code class="language-c">q = !a;
+</code></pre>
+<p>The syntax is wonderfully concise.</p>
+<p>But it leaves many important questions unanswered.</p>
+<p>Where is <code>a</code> physically located?</p>
+<p>Where is <code>q</code>?</p>
+<p>How far apart are they?</p>
+<p>How long does the operation take?</p>
+<p>How does the result travel from one location to the other?</p>
+<p>The language doesn’t know.</p>
+<p>Those questions belong to the compiler, the processor, the cache hierarchy, and ultimately the hardware itself.</p>
+<p>MatterScript does not separate these concerns so completely.</p>
+<p>Information always exists somewhere.</p>
+<p>Propagation always requires time.</p>
+<p>Every relationship has a physical interpretation.</p>
+<hr>
+<p>Now consider a slightly larger example.</p>
+<pre><code class="language-matterscript">NOT($A)(OP&lt;&gt;)
+
+NOT($OP)(Q&lt;&gt;)
+</code></pre>
+<p>A programmer raised on imperative languages naturally asks:</p>
+<p><em>“Which NOT executes first?”</em></p>
+<p>The answer is surprisingly simple.</p>
+<p>Neither.</p>
+<p>There is no first instruction.</p>
+<p>The first NOT gate resolves only because information reaches <code>$A</code>.</p>
+<p>The second NOT gate resolves only because information later reaches <code>$OP</code>.</p>
+<p>The apparent ordering is not imposed by the programmer.</p>
+<p>It is imposed by causality.</p>
+<p>The second computation literally cannot occur until the first has produced information.</p>
+<p>The order emerges naturally from the dependencies within the network.</p>
+<p>MatterScript does not schedule computation.</p>
+<p>It allows computation to unfold.</p>
+<hr>
+<p>Once we begin thinking in terms of propagation rather than execution, time acquires a very different meaning.</p>
+<p>Suppose each NOT gate requires two nanoseconds to settle.</p>
+<p>The first inversion occurs.</p>
+<p>Two nanoseconds later, its output becomes available.</p>
+<p>Only then can the second gate begin resolving.</p>
+<p>Two nanoseconds later, the final result appears.</p>
+<p>The total propagation delay is four nanoseconds.</p>
+<p>No clock was consulted.</p>
+<p>No scheduler advanced to the next instruction.</p>
+<p>Time emerges naturally from the physical behavior of the network.</p>
+<hr>
+<p>Geometry becomes equally important.</p>
+<p>Suppose the two NOT gates are adjacent on an FPGA.</p>
+<p>The signal travels only a very short distance.</p>
+<p>Now imagine placing them on opposite sides of the device.</p>
+<p>The logical behavior is identical.</p>
+<p>The Boolean function has not changed.</p>
+<p>Yet the computation now requires additional propagation time because the signal must travel farther.</p>
+<p>Nothing about the algorithm changed.</p>
+<p>Only the geometry.</p>
+<p>This is why MatterScript treats placement as part of the computation rather than an optimization to be discovered later.</p>
+<p>The physical arrangement of the network directly influences its behavior.</p>
+<hr>
+<p>There is another important idea hidden within this simple example.</p>
+<p>Before the input ever arrives, the entire network already exists.</p>
+<p>Every place has been created.</p>
+<p>Every connection has been established.</p>
+<p>Every propagation path has already been determined.</p>
+<p>The program is complete before a single value enters the system.</p>
+<p>The computation is <strong>latent</strong>.</p>
+<p>The arrival of information does not create the computation.</p>
+<p>It merely activates part of an existing computational structure.</p>
+<p><strong>This is a profound departure from the conventional view of software.</strong></p>
+<p>Imperative languages encourage us to think that a program comes to life one instruction at a time.</p>
+<p>MatterScript encourages us to think of a program as a structured universe waiting for information to propagate through it.</p>
+<p>Execution is not the creation of computation.</p>
+<p>It is the unfolding of computation that already exists.</p>
+<hr>
+<p>This idea should sound familiar.</p>
+<p>In the previous chapter, we argued that a placed computational fabric already contains knowledge about the problem it is intended to solve.</p>
+<p>Neighborhoods have already been established.</p>
+<p>Distances have already been encoded.</p>
+<p>Communication paths already exist.</p>
+<p><strong>The placement itself is frozen knowledge.</strong></p>
+<p>Propagation is the dynamic counterpart to that idea.</p>
+<p>The structure represents potential.</p>
+<p>Information reveals that potential.</p>
+<p>One is static.</p>
+<p>The other is dynamic.</p>
+<p>Together they describe a completely different model of computation.</p>
+<p>A MatterScript program is not a sequence of instructions waiting to be executed.</p>
+<p>It is a latent computational structure waiting for information to propagate through it.</p>
+<hr>
+<p>As programs grow larger, nothing fundamentally changes.</p>
+<p>A full adder is built the same way.</p>
+<p>A processor is built the same way.</p>
+<p>A weather simulation is built the same way.</p>
+<p>Each consists of places connected by relationships through which information naturally propagates according to local rules.</p>
+<p>The scale changes.</p>
+<p>The principle does not.</p>
+<p>Once you begin thinking in terms of propagation rather than execution, MatterScript stops looking like an unusual programming language.</p>
+<p>It begins to look remarkably similar to the way computation occurs in the physical world itself.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>

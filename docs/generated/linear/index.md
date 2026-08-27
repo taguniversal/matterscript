@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 2  |  🟡 Partial: 5  |  ⬛ Spec only: 5  |  ⬜ Not started: 118  |  Total: 130
+✅ Implemented: 2  |  🟡 Partial: 5  |  ⬛ Spec only: 5  |  ⬜ Not started: 119  |  Total: 131
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [7. Composing Boundaries](TAG-167.md)
@@ -124,6 +124,7 @@
 - ⬜ Not started [Nested sub-definition name collisions](TAG-171.md)
 - ⬜ Not started [VHDL Numeric table emission](TAG-172.md)
 - ⬜ Not started [Domain Layers](TAG-174.md)
+- ⬜ Not started [Anonymous Single Return to VHDL](TAG-175.md)
 - ⬜ Not started [Return a Content to Place of Invocation](TAG-32.md)
 - ⬜ Not started [Single Return to Place of Invocation](TAG-33.md)
 - ⬜ Not started [The Conditional Invocation Name](TAG-35.md)
