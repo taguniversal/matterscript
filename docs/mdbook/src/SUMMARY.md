@@ -16,7 +16,7 @@
 - [Computation as Propagation](part-02-computational-universe/01-computation-as-propagation.md)
 - [Geometry as Information](part-02-computational-universe/02-geometry-as-information.md)
 - [Tokens Instead of Variables](part-02-computational-universe/03-tokens-instead-of-variables.md)
-- [Events Instead of Instructions](part-02-computational-universe/04-events-instead-of-instructions.md)
+- [Events Instead of Execution](part-02-computational-universe/04-events-instead-of-execution.md)
 - [Locality as a Programming Primitive](part-02-computational-universe/05-locality-as-a-programming-primitive.md)
 
 # Part III: Asynchronous Thinking

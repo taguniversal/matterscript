@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Events Instead of Instructions - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
+        <title>Events Instead of Execution - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
 
 
         <!-- Custom HTML head -->
@@ -37,10 +37,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-e942ad34.js";
+            window.path_to_searchindex_js = "../searchindex-791de912.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-fd20b4b2.js"></script>
+        <script src="../toc-a6f994c9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,7 +176,142 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="events-instead-of-instructions"><a class="header" href="#events-instead-of-instructions">Events Instead of Instructions</a></h1>
+                        <h1 id="events-instead-of-execution"><a class="header" href="#events-instead-of-execution">Events Instead of Execution</a></h1>
+<p>For more than seventy years, programming languages have encouraged us to think of computation as the execution of instructions.</p>
+<p>Fetch the next instruction.</p>
+<p>Decode it.</p>
+<p>Execute it.</p>
+<p>Advance the program counter.</p>
+<p>Repeat.</p>
+<p>Whether the processor executes one instruction at a time or billions of them in parallel, the underlying question remains the same:</p>
+<p><strong>What instruction should execute next?</strong></p>
+<p>MatterScript asks a fundamentally different question.</p>
+<p><strong>What new information has arrived?</strong></p>
+<p>That single change in perspective transforms the entire model of computation.</p>
+<hr>
+<p>Consider a familiar fragment of conventional software.</p>
+<pre><code class="language-c">if(sensor &gt; threshold)
+    alarm = 1;
+</code></pre>
+<p>It appears straightforward.</p>
+<p>Yet hidden beneath this simple statement is an assumption that has shaped almost every programming language ever created.</p>
+<p>The processor must continually execute code to discover whether anything has changed.</p>
+<p>Read the sensor.</p>
+<p>Compare it with the threshold.</p>
+<p>Nothing changed.</p>
+<p>Read it again.</p>
+<p>Compare it again.</p>
+<p>Still nothing.</p>
+<p>Repeat millions of times every second.</p>
+<p>The machine spends much of its life asking the same question over and over:</p>
+<p><em>“Has anything happened yet?”</em></p>
+<hr>
+<p>Now consider the same relationship expressed in MatterScript.</p>
+<pre><code class="language-matterscript">GREATER($sensor $threshold)(TRIGGER&lt;&gt;)
+
+ALARM($TRIGGER)(SIREN&lt;&gt;)
+</code></pre>
+<p>Notice what is missing.</p>
+<p>There is no loop.</p>
+<p>There is no scheduler.</p>
+<p>There is no polling.</p>
+<p>Nothing executes simply because time has passed.</p>
+<p>The network remains completely still until new information arrives.</p>
+<p>When the sensor changes, the comparison resolves.</p>
+<p>A token propagates to <code>TRIGGER</code>.</p>
+<p>That propagation immediately becomes the cause for the next computation.</p>
+<p><code>ALARM</code> resolves.</p>
+<p>A new token propagates to <code>SIREN</code>.</p>
+<p>The event itself initiates the computation.</p>
+<p>There was never an instruction repeatedly checking whether it should begin.</p>
+<hr>
+<p>This way of thinking is much closer to the behavior of the physical world.</p>
+<p>Nature does not poll.</p>
+<p>A neuron does not repeatedly ask whether one of its neighbors has fired.</p>
+<p>The electrical impulse arrives.</p>
+<p>The membrane responds.</p>
+<p>A new impulse propagates.</p>
+<p>A chemical reaction does not continually check whether another molecule has entered the solution.</p>
+<p>The molecules collide.</p>
+<p>The reaction occurs.</p>
+<p>The products continue propagating through the system.</p>
+<p>A tree does not wake up every millisecond to ask whether spring has arrived.</p>
+<p>Temperature changes.</p>
+<p>Hormones propagate.</p>
+<p>Growth begins.</p>
+<p>Across physics, chemistry, and biology, systems respond to events.</p>
+<p>They do not spend their existence searching for them.</p>
+<hr>
+<p>MatterScript adopts this same model.</p>
+<p>Computation occurs because something happened.</p>
+<p>Not because a processor reached the next instruction.</p>
+<p>Every propagation event may enable additional computations.</p>
+<p>Those computations produce additional events.</p>
+<p>Those events continue propagating through the network.</p>
+<p>The program unfolds naturally through chains of cause and effect.</p>
+<p>Execution becomes the visible consequence of propagation.</p>
+<hr>
+<p>This idea builds directly upon one of MatterScript’s central principles.</p>
+<p>Earlier we saw that names define more than connectivity.</p>
+<p>They define causality.</p>
+<p>Every connection identifies not only where information can flow, but <strong>what can cause something else to happen</strong>.</p>
+<p>Once the compiler has constructed this causal network, it already knows every possible propagation path before the program ever begins.</p>
+<p>When an event occurs, the compiler does not need to search for work.</p>
+<p>It already knows which computations are affected.</p>
+<p>The event simply activates a portion of the network that already exists.</p>
+<hr>
+<p>The consequences become dramatic as systems grow larger.</p>
+<p>Imagine simulating ten billion interacting particles.</p>
+<p>A conventional simulation often proceeds by examining every particle during every timestep.</p>
+<p>Has anything changed?</p>
+<p>Should this particle move?</p>
+<p>Has this molecule reacted?</p>
+<p>Has this cell divided?</p>
+<p>Most of the computational effort is spent discovering where the next interesting event might occur.</p>
+<p>MatterScript approaches the problem differently.</p>
+<p>If a collision occurs, only the particles involved become active.</p>
+<p>If a chemical reaction occurs, only the neighboring molecules affected by that reaction continue propagating information.</p>
+<p>If a neuron fires, only the neurons connected to it become candidates for further computation.</p>
+<p>Everything else remains exactly as it was.</p>
+<p>The computation follows the causal structure of the system rather than repeatedly searching for places where computation might be needed.</p>
+<hr>
+<p>This idea extends far beyond scientific simulation.</p>
+<p>A financial transaction affects only the accounts connected to it.</p>
+<p>A traffic accident affects only the roads connected to it.</p>
+<p>A power outage affects only the portions of the electrical grid connected to it.</p>
+<p>A disease spreads only through existing patterns of contact.</p>
+<p>The world itself is organized as networks of local events producing local consequences.</p>
+<p>MatterScript simply gives us a language capable of expressing those same relationships directly.</p>
+<hr>
+<p>There is another consequence of this model that is easy to overlook.</p>
+<p>When nothing changes, nothing happens.</p>
+<p>The computational fabric remains in equilibrium.</p>
+<p>Information continues to exist.</p>
+<p>Stable states continue to exist.</p>
+<p>The causal relationships continue to exist.</p>
+<p>But no unnecessary computation occurs simply to verify that the world is unchanged.</p>
+<p>The possibility of computation is always present.</p>
+<p>Actual computation occurs only because an event has made it necessary.</p>
+<hr>
+<p>This represents one of the deepest differences between MatterScript and conventional programming.</p>
+<p>Traditional software spends much of its time asking whether anything has changed.</p>
+<p>MatterScript already knows what <strong>can</strong> change.</p>
+<p>The causal relationships were established when the program was compiled.</p>
+<p>The geometry was established when the computational fabric was constructed.</p>
+<p>The placement already embodies knowledge about the problem.</p>
+<p>Events simply reveal which portion of that latent structure should become active next.</p>
+<hr>
+<p>The result is a model of computation that feels remarkably familiar once we recognize it.</p>
+<p>It is the model used by electrical circuits.</p>
+<p>By chemical reactions.</p>
+<p>By ecosystems.</p>
+<p>By weather systems.</p>
+<p>By living cells.</p>
+<p>By the physical universe itself.</p>
+<p>Computation is no longer a sequence of instructions advancing through memory.</p>
+<p>It is a sequence of events propagating through a connected world.</p>
+<p>MatterScript does not invent this model.</p>
+<p>It simply allows software to participate in it.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>
@@ -214,22 +349,6 @@
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>
