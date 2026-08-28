@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 2  |  🟡 Partial: 5  |  ⬛ Spec only: 5  |  ⬜ Not started: 120  |  Total: 132
+✅ Implemented: 2  |  🟡 Partial: 5  |  ⬛ Spec only: 5  |  ⬜ Not started: 121  |  Total: 133
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2.4.2 Logically Recognizing Data Flow Boundaries](TAG-176.md)
@@ -126,6 +126,7 @@
 - ⬜ Not started [VHDL Numeric table emission](TAG-172.md)
 - ⬜ Not started [Domain Layers](TAG-174.md)
 - ⬜ Not started [VHDL emission produces invalid syntax for unnamed/abbreviated destination places](TAG-175.md)
+- ⬜ Not started [Example 12.26 Pure Value Expression of Boolean Full Adder](TAG-177.md)
 - ⬜ Not started [Return a Content to Place of Invocation](TAG-32.md)
 - ⬜ Not started [Single Return to Place of Invocation](TAG-33.md)
 - ⬜ Not started [The Conditional Invocation Name](TAG-35.md)

@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-05c97e24.js";
+            window.path_to_searchindex_js = "../searchindex-15e456da.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-fb6f20ab.js"></script>
@@ -176,7 +176,154 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="invocation-language"><a class="header" href="#invocation-language">Invocation Language</a></h1>
+                        <h1 id="the-invocation-language"><a class="header" href="#the-invocation-language">The Invocation Language</a></h1>
+<p>Everything we have discussed so far—propagation, geometry, locality, completeness, causality, and tokens—needs a language capable of expressing those ideas.</p>
+<p>MatterScript is that language.</p>
+<p>Unlike most programming languages, MatterScript does not describe a sequence of instructions to execute. It describes a network of relationships through which information propagates.</p>
+<p>Its syntax is intentionally small.</p>
+<p>At its core, the language contains only four fundamental concepts:</p>
+<ul>
+<li>Places</li>
+<li>Invocations</li>
+<li>Definitions</li>
+<li>Name correspondence</li>
+</ul>
+<p>Everything else emerges from these four ideas.</p>
+<hr>
+<h2 id="places"><a class="header" href="#places">Places</a></h2>
+<p>The smallest unit of a MatterScript program is not a variable.</p>
+<p>It is a <strong>place</strong>.</p>
+<p>A place represents a location where information may exist.</p>
+<p>Places come in two forms.</p>
+<p><strong>Destination places</strong> receive incoming information that will participate in a computation.</p>
+<pre><code class="language-matterscript">$SUM
+</code></pre>
+<p><strong>Source places</strong> produce completed information after a computation has resolved.</p>
+<pre><code class="language-matterscript">SUM&lt;&gt;
+</code></pre>
+<p>Unlike variables, places do not own state.</p>
+<p>They define the points through which information flows.</p>
+<p>A destination place answers the question,</p>
+<p><em>“Where is information flowing to?”</em></p>
+<p>A source place answers,</p>
+<p><em>“Where does resolved information flow from?”</em></p>
+<p>This distinction may seem subtle at first, but it eliminates one of the oldest ambiguities in programming languages. A variable simultaneously represents storage, identity, value, and destination. MatterScript separates these ideas into explicit relationships.</p>
+<hr>
+<h2 id="invocations"><a class="header" href="#invocations">Invocations</a></h2>
+<p>Places become useful only when they are connected.</p>
+<p>An <strong>invocation</strong> establishes one of those connections.</p>
+<pre><code class="language-matterscript">ADD($A $B)(SUM&lt;&gt;)
+</code></pre>
+<p>Read this almost like a sentence.</p>
+<blockquote>
+<p>Invoke the definition named <code>ADD</code>, using the information arriving at destination places <code>$A</code> and <code>$B</code>, and allow the completed result to emerge from the source place <code>SUM&lt;&gt;</code>.</p>
+</blockquote>
+<p>Nothing executes here.</p>
+<p>Nothing is assigned.</p>
+<p>No function is “called” in the conventional sense.</p>
+<p>The invocation simply declares a boundary through which information may propagate.</p>
+<p>One side receives information.</p>
+<p>The other side produces completed information.</p>
+<p>The computation itself exists inside the associated definition.</p>
+<hr>
+<h2 id="definitions"><a class="header" href="#definitions">Definitions</a></h2>
+<p>A definition describes how one set of relationships gives rise to another.</p>
+<pre><code class="language-matterscript">ADD[(A&lt;&gt; B&lt;&gt;)( $SUM )
+
+    ...
+
+]
+</code></pre>
+<p>Every invocation associates with a definition of the same name.</p>
+<p>The correspondence is entirely symbolic.</p>
+<p>An invocation named <code>ADD</code> resolves against the definition named <code>ADD</code>.</p>
+<p>No addresses.</p>
+<p>No pointers.</p>
+<p>No jump tables.</p>
+<p>Just names.</p>
+<p>The interface between an invocation and its definition is beautifully symmetrical.</p>
+<p>The <strong>destination places</strong> of the invocation associate, by position, with the <strong>source places</strong> of the definition.</p>
+<p>The <strong>source places</strong> of the invocation associate, by position, with the <strong>destination places</strong> of the definition.</p>
+<p>In other words, information enters through the invocation, flows into the definition, is resolved by the internal network, and then returns through the invocation back into the surrounding expression.</p>
+<p>From there, the definition constructs an internal network of additional invocations, each connected through names.</p>
+<p>Because every definition establishes its own naming domain, internal names never collide with names outside the definition.</p>
+<p>A definition is therefore more than a reusable function.</p>
+<p>It is an isolated computational universe.</p>
+<hr>
+<h2 id="name-correspondence"><a class="header" href="#name-correspondence">Name Correspondence</a></h2>
+<p>The fourth concept is the one that surprises almost everyone.</p>
+<p>MatterScript has no explicit wiring syntax.</p>
+<p>Connections arise through <strong>name correspondence</strong>.</p>
+<pre><code class="language-matterscript">OR($LEFT $RIGHT)(SUM&lt;&gt;)
+
+...
+
+AND($SUM $ENABLE)(RESULT&lt;&gt;)
+</code></pre>
+<p>The compiler recognizes that both references describe the same place.</p>
+<p>The connection is created automatically.</p>
+<p>Nothing else is required.</p>
+<p>Name correspondence is therefore doing much more than replacing variables.</p>
+<p>It expresses connectivity.</p>
+<p>It expresses causality.</p>
+<p>And, as we saw in earlier chapters, it expresses locality.</p>
+<p>The names do not identify storage.</p>
+<p>They identify relationships.</p>
+<hr>
+<h2 id="a-language-of-relationships"><a class="header" href="#a-language-of-relationships">A Language of Relationships</a></h2>
+<p>Readers familiar with procedural languages often ask what MatterScript does <em>not</em> contain.</p>
+<p>The answer is almost as revealing as what it does.</p>
+<p>There are no primitive data types.</p>
+<p>No predefined operators.</p>
+<p>No built-in control structures.</p>
+<p>No loops.</p>
+<p>No <code>if</code> statements.</p>
+<p>No memory addresses.</p>
+<p>No variables.</p>
+<p>No global state.</p>
+<p>No sequence of execution.</p>
+<p>No program counter.</p>
+<p>No notion of “the next instruction.”</p>
+<p>Those concepts are absent because the language is not describing execution.</p>
+<p>It is describing a network.</p>
+<p>Everything that appears dynamic in a conventional language emerges naturally from propagation through that network.</p>
+<hr>
+<h2 id="from-one-dimension-to-many"><a class="header" href="#from-one-dimension-to-many">From One Dimension to Many</a></h2>
+<p>There is another remarkable property hidden beneath this deceptively simple syntax.</p>
+<p>A MatterScript program is written as a one-dimensional stream of text.</p>
+<p>Reality is not.</p>
+<p>Electronic circuits occupy three-dimensional space.</p>
+<p>Biological systems occupy three-dimensional space.</p>
+<p>Chemical reactions unfold throughout physical space.</p>
+<p>Weather develops across an entire atmosphere.</p>
+<p>The purpose of the language is therefore not to imitate the geometry of the system directly.</p>
+<p>Its purpose is to <strong>refer</strong> to that geometry.</p>
+<p>Names identify relationships that cannot be expressed by adjacency in a line of text.</p>
+<p>The compiler reconstructs those higher-dimensional relationships during compilation, assembling the computational fabric implied by the source code.</p>
+<p>The program is not the computation.</p>
+<p>It is a compact description of the computation.</p>
+<hr>
+<h2 id="a-different-kind-of-programming-language"><a class="header" href="#a-different-kind-of-programming-language">A Different Kind of Programming Language</a></h2>
+<p>Most programming languages answer a familiar question.</p>
+<p><em>“What should the processor do next?”</em></p>
+<p>MatterScript answers a different one.</p>
+<p><em>“How is information related?”</em></p>
+<p>From that single question emerge propagation.</p>
+<p>Locality.</p>
+<p>Geometry.</p>
+<p>Completeness.</p>
+<p>Events.</p>
+<p>Concurrency.</p>
+<p>And even hardware itself.</p>
+<p>The syntax is intentionally small because its purpose is not to describe every possible operation.</p>
+<p>Its purpose is to describe the relationships from which every operation emerges.</p>
+<p>Once you begin reading MatterScript this way, the language becomes surprisingly regular.</p>
+<p>Every program is built from the same small vocabulary repeated over and over again.</p>
+<p>Places.</p>
+<p>Invocations.</p>
+<p>Definitions.</p>
+<p>And the names that bind them together.</p>
+<p>Those four ideas are enough to describe computations ranging from Boolean logic to biological metabolism, from digital circuits to planetary simulations, because they describe not <em>what</em> a machine should do, but <em>how</em> information exists and propagates through the computational universe.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>
