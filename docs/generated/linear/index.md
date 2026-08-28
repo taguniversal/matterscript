@@ -4,9 +4,10 @@
 
 ## Progress
 
-✅ Implemented: 2  |  🟡 Partial: 5  |  ⬛ Spec only: 5  |  ⬜ Not started: 119  |  Total: 131
+✅ Implemented: 2  |  🟡 Partial: 5  |  ⬛ Spec only: 5  |  ⬜ Not started: 120  |  Total: 132
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
+- ⬜ Not started [2.4.2 Logically Recognizing Data Flow Boundaries](TAG-176.md)
 - ⬜ Not started [7. Composing Boundaries](TAG-167.md)
 - ⬜ Not started [7.1.1 Association Boundaries](TAG-168.md)
 - ⬜ Not started [8.2.3 The Feedback Ring](TAG-166.md)

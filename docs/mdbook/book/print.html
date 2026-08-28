@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5942b720.js";
+            window.path_to_searchindex_js = "searchindex-cd9e5911.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-a6f994c9.js"></script>
+        <script src="toc-fb6f20ab.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -1786,11 +1786,10 @@ ALARM($TRIGGER)(SIREN&lt;&gt;)
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-iii-asynchronous-thinking"><a class="header" href="#part-iii-asynchronous-thinking">Part III: Asynchronous Thinking</a></h1>
-<h3 id="introduction-1"><a class="header" href="#introduction-1">Introduction</a></h3>
 <p>Most programmers think in clocks.</p>
 <p>MatterScript thinks in causality.</p>
 <p>Instead of asking “What happens every cycle?” we ask “What happens when the required information exists?”</p>
-<p>This section introduces Null Convention Logic and Karl Fant’s Invocation Language as the mathematical foundation of MatterScript.</p>
+<p>This section introduces Null Convention Logic and Karl Fant’s Invocation Language as the conceptual foundation of MatterScript.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="why-clocks-are-artificial"><a class="header" href="#why-clocks-are-artificial">Why Clocks Are Artificial</a></h1>
@@ -2069,7 +2068,140 @@ wall-clock time
 <p>And that is precisely where MatterScript wants to operate.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="null-convention-logic"><a class="header" href="#null-convention-logic">Null Convention Logic</a></h1>
+<h1 id="when-absence-becomes-information"><a class="header" href="#when-absence-becomes-information">When Absence Becomes Information</a></h1>
+<p>Every programmer has encountered some version of the same problem.</p>
+<p>A value hasn’t arrived yet.</p>
+<p>A pointer hasn’t been initialized.</p>
+<p>A message is still in transit.</p>
+<p>A thread must wait for another thread to finish.</p>
+<p>A computation cannot continue because the required information does not yet exist.</p>
+<p>Entire programming languages and software frameworks have been built around solving this problem.</p>
+<p>Null pointer checks.</p>
+<p>Optional types.</p>
+<p><code>Maybe&lt;T&gt;</code>.</p>
+<p><code>Option&lt;T&gt;</code>.</p>
+<p>Promises.</p>
+<p>Futures.</p>
+<p>Queues.</p>
+<p>Mutexes.</p>
+<p>Semaphores.</p>
+<p>Condition variables.</p>
+<p>Reactive streams.</p>
+<p>Although they appear very different, they all answer the same fundamental question:</p>
+<p><strong>Is there valid information here yet?</strong></p>
+<p>For decades, we have treated this as a software problem.</p>
+<p>It isn’t.</p>
+<p>It is a hardware problem that software has spent half a century compensating for.</p>
+<hr>
+<p>Traditional digital logic understands only two values.</p>
+<p>Zero.</p>
+<p>One.</p>
+<p>A logic gate cannot distinguish between a valid piece of information and the absence of information.</p>
+<p>It simply responds whenever its inputs change.</p>
+<p>As a result, conventional digital systems require an external mechanism to decide when a computation has finished.</p>
+<p>That mechanism is usually a clock.</p>
+<p>The clock does not know whether every computation has completed.</p>
+<p>It merely assumes that enough time has passed.</p>
+<p>Every clock cycle is, in effect, an educated guess that the data has arrived.</p>
+<hr>
+<p>Karl Fant’s <strong>NULL Convention Logic (NCL)</strong> begins with a remarkably simple observation.</p>
+<p>What if a logic gate could recognize not only the value being presented to it, but whether valid information had been presented at all?</p>
+<p>Instead of two logical states, the computational fabric now recognizes three conditions.</p>
+<p>True.</p>
+<p>False.</p>
+<p>And <strong>NULL</strong>.</p>
+<p>NULL does not mean zero.</p>
+<p>It does not mean false.</p>
+<p>It does not represent an error.</p>
+<p>It means something much more fundamental.</p>
+<p><strong>There is presently no valid information here.</strong></p>
+<p>That single distinction changes the behavior of the entire computational system.</p>
+<hr>
+<p>Rather than relying on a clock, every gate now recognizes the boundaries between valid data and the absence of data.</p>
+<p>Computation proceeds as alternating wavefronts.</p>
+<p>A wave of valid information propagates through the network.</p>
+<p>When every participating gate has completed its computation, a wave of NULL propagates behind it, returning the network to a neutral state and preparing it for the next computation.</p>
+<p>The network breathes.</p>
+<p><strong>NULL → DATA → NULL → DATA</strong></p>
+<p>Each wavefront communicates not only values, but the state of the computation itself.</p>
+<p>Synchronization is no longer imposed from outside the circuit.</p>
+<p>It emerges naturally from the propagation of information.</p>
+<hr>
+<p>This behavior is captured by what Fant called the <strong>completeness criterion</strong>.</p>
+<p>A gate no longer reacts simply because one of its inputs changes.</p>
+<p>Instead, it waits.</p>
+<p>If all of its inputs contain valid data, the gate resolves its logical function and produces valid data at its output.</p>
+<p>If all of its inputs have returned to NULL, the gate returns its output to NULL.</p>
+<p>If neither condition has been satisfied, the gate does nothing.</p>
+<p>Its current output is preserved through a small amount of hysteresis, or state-holding behavior, until the computation is genuinely complete.</p>
+<p>The gate itself understands readiness.</p>
+<p>It knows when to compute.</p>
+<p>It knows when to wait.</p>
+<p>No scheduler is required.</p>
+<p>No polling loop is required.</p>
+<p>No speculative execution is required.</p>
+<p>The hardware already possesses the information needed to make the correct decision.</p>
+<hr>
+<p>This is a profound departure from conventional Boolean logic.</p>
+<p>Traditional logic gates are purely mathematical functions.</p>
+<p>Given a set of inputs, they immediately produce an output.</p>
+<p>NULL Convention Logic transforms them into participants in a larger computational conversation.</p>
+<p>Every gate now understands not only <strong>what</strong> information it has received, but <strong>whether</strong> the information is complete.</p>
+<p>Validity becomes part of the computation itself.</p>
+<hr>
+<p>Viewed from this perspective, many familiar software abstractions begin to look surprisingly similar.</p>
+<p>A mutex tells another thread that information is not yet available.</p>
+<p>A queue tells a consumer that new information has arrived.</p>
+<p>A future represents information that will exist later.</p>
+<p>An <code>Option&lt;T&gt;</code> distinguishes between the existence and nonexistence of a value.</p>
+<p>A <code>Maybe&lt;T&gt;</code> expresses the same idea.</p>
+<p>Even the infamous null pointer exception exists because software attempted to use information that was never actually present.</p>
+<p>These mechanisms are extraordinarily useful.</p>
+<p>But they all compensate for the same missing capability.</p>
+<p>The hardware itself cannot naturally express the difference between <strong>valid information</strong> and <strong>no information</strong>.</p>
+<p>Software has spent decades rebuilding that distinction one abstraction at a time.</p>
+<hr>
+<p>MatterScript fits naturally into this model.</p>
+<p>Throughout this book we have described computation as the propagation of information.</p>
+<p>We have replaced variables with tokens.</p>
+<p>Instructions with events.</p>
+<p>Connectivity with causality.</p>
+<p>NULL Convention Logic contributes the final ingredient.</p>
+<p><strong>Validity.</strong></p>
+<p>A propagating token no longer carries only a value.</p>
+<p>It also carries the knowledge that it exists.</p>
+<p>Every computation knows when its inputs are complete.</p>
+<p>Every downstream computation knows when it may begin.</p>
+<p>Propagation becomes self-synchronizing.</p>
+<p>The computational fabric no longer needs an external heartbeat to coordinate its behavior.</p>
+<p>The information coordinates itself.</p>
+<hr>
+<p>This idea also sheds new light on a concept we introduced earlier.</p>
+<p><strong>Information at rest is still part of the computation.</strong></p>
+<p>A gate holding valid data is not idle.</p>
+<p>It is preserving the resolved state of a completed computation, ready to participate in whatever causal event comes next.</p>
+<p>Likewise, a gate holding NULL is not empty.</p>
+<p>It is communicating something equally important.</p>
+<p>The previous computation has completed.</p>
+<p>No valid information is presently available.</p>
+<p>The network is ready for the next propagation.</p>
+<p>Even absence has meaning.</p>
+<hr>
+<p>This chapter began with a question that software has been asking for generations:</p>
+<p><strong>Is there valid information here yet?</strong></p>
+<p>NULL Convention Logic answers that question where it belongs.</p>
+<p>In the computational fabric itself.</p>
+<p>Once the hardware understands the difference between information and the absence of information, software no longer has to spend its life reconstructing that knowledge.</p>
+<p>NULL is no longer merely the absence of a value.</p>
+<p>It is information.</p>
+<p>It tells the computational universe that one propagation has ended, another has not yet begun, and the fabric is prepared for whatever causal event arrives next.</p>
+<p>In MatterScript, that idea completes a philosophy that has been building throughout this book.</p>
+<p>Geometry carries information.</p>
+<p>Placement carries information.</p>
+<p>Causality carries information.</p>
+<p>Tokens carry information.</p>
+<p>And now we discover that <strong>even the absence of a token carries information.</strong></p>
+<p>Once every part of the computational fabric is allowed to express what it knows, computation begins to resemble something much closer to the physical universe itself—not a machine blindly executing instructions, but a connected world whose own structure tells it exactly when to act, and exactly when to wait.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="completeness-and-tokens"><a class="header" href="#completeness-and-tokens">Completeness and Tokens</a></h1>
@@ -2082,7 +2214,7 @@ wall-clock time
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-iv-learning-matterscript"><a class="header" href="#part-iv-learning-matterscript">Part IV: Learning MatterScript</a></h1>
-<h3 id="introduction-2"><a class="header" href="#introduction-2">Introduction</a></h3>
+<h3 id="introduction-1"><a class="header" href="#introduction-1">Introduction</a></h3>
 <p>This is the language tutorial.</p>
 <p>Rather than teaching isolated syntax rules, each chapter builds progressively larger systems while explaining the design decisions behind every feature.</p>
 <p>By the end of this section readers can comfortably write MatterScript programs from scratch.</p>
@@ -2275,7 +2407,7 @@ NOT[...]
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-v-building-physical-systems"><a class="header" href="#part-v-building-physical-systems">Part V: Building Physical Systems</a></h1>
-<h3 id="introduction-3"><a class="header" href="#introduction-3">Introduction</a></h3>
+<h3 id="introduction-2"><a class="header" href="#introduction-2">Introduction</a></h3>
 <p>MatterScript is unique because programs describe physical systems rather than abstract algorithms.</p>
 <p>This section demonstrates how to construct simulations directly from engineering knowledge instead of numerical approximation.</p>
 <p><em>Drafting in progress…</em></p>
@@ -2302,7 +2434,7 @@ NOT[...]
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-vi-geometry-becomes-code"><a class="header" href="#part-vi-geometry-becomes-code">Part VI: Geometry Becomes Code</a></h1>
-<h3 id="introduction-4"><a class="header" href="#introduction-4">Introduction</a></h3>
+<h3 id="introduction-3"><a class="header" href="#introduction-3">Introduction</a></h3>
 <p>Traditional languages separate computation from geometry.</p>
 <p>MatterScript unifies them.</p>
 <p>Meshes become executable.
@@ -2334,7 +2466,7 @@ LIDAR scans become computational substrates.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-vii-programming-space-time"><a class="header" href="#part-vii-programming-space-time">Part VII: Programming Space-Time</a></h1>
 <h2 id="programming-space-time"><a class="header" href="#programming-space-time">Programming Space-Time</a></h2>
-<h3 id="introduction-5"><a class="header" href="#introduction-5">Introduction</a></h3>
+<h3 id="introduction-4"><a class="header" href="#introduction-4">Introduction</a></h3>
 <p>This is the conceptual heart of the book.</p>
 <p>Most languages program only state.</p>
 <p>MatterScript programs spacetime.</p>
@@ -2361,7 +2493,7 @@ LIDAR scans become computational substrates.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-viii-compilers"><a class="header" href="#part-viii-compilers">Part VIII: Compilers</a></h1>
 <h2 id="compilers"><a class="header" href="#compilers">Compilers</a></h2>
-<h3 id="introduction-6"><a class="header" href="#introduction-6">Introduction</a></h3>
+<h3 id="introduction-5"><a class="header" href="#introduction-5">Introduction</a></h3>
 <p>MatterScript’s compiler is unusual because it performs two different jobs simultaneously.</p>
 <p>It translates programs into executable logic while also solving a geometric placement problem.</p>
 <p>Readers will see every stage of the compiler pipeline, from parser through placement and VHDL generation.</p>
@@ -2392,7 +2524,7 @@ LIDAR scans become computational substrates.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-ix-world-modeling"><a class="header" href="#part-ix-world-modeling">Part IX: World Modeling</a></h1>
-<h3 id="introduction-7"><a class="header" href="#introduction-7">Introduction</a></h3>
+<h3 id="introduction-6"><a class="header" href="#introduction-6">Introduction</a></h3>
 <p>MatterScript is ultimately not about FPGAs.</p>
 <p>It is about building executable models of reality.</p>
 <p>Instead of creating increasingly larger neural networks that implicitly approximate the world, MatterScript encodes engineering knowledge into hardware-verifiable executable models developed collaboratively by engineers and AI systems.</p>
@@ -2417,7 +2549,7 @@ LIDAR scans become computational substrates.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-x-distributed-space-time-systems"><a class="header" href="#part-x-distributed-space-time-systems">Part X: Distributed Space-Time Systems</a></h1>
-<h3 id="introduction-8"><a class="header" href="#introduction-8">Introduction</a></h3>
+<h3 id="introduction-7"><a class="header" href="#introduction-7">Introduction</a></h3>
 <p>Once computation has explicit geometry and explicit time, it naturally extends beyond a single FPGA.</p>
 <p>MatterScript can interoperate with deterministic temporal fabrics in which every computation shares a common notion of identity, time, and location. This complements architectures such as MKSTORM, which provide deterministic time-space addressing and synchronization across distributed systems.</p>
 <p><em>Drafting in progress…</em></p>
@@ -2444,7 +2576,7 @@ LIDAR scans become computational substrates.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-xi-complete-projects"><a class="header" href="#part-xi-complete-projects">Part XI: Complete Projects</a></h1>
-<h3 id="introduction-9"><a class="header" href="#introduction-9">Introduction</a></h3>
+<h3 id="introduction-8"><a class="header" href="#introduction-8">Introduction</a></h3>
 <p>The best way to learn MatterScript is to build increasingly ambitious systems.</p>
 <p>Each project integrates every concept introduced earlier.</p>
 <p><em>Drafting in progress…</em></p>
@@ -2526,22 +2658,6 @@ LIDAR scans become computational substrates.</p>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>
