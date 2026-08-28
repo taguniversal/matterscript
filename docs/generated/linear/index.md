@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 2  |  🟡 Partial: 5  |  ⬛ Spec only: 5  |  ⬜ Not started: 125  |  Total: 137
+✅ Implemented: 4  |  🟡 Partial: 4  |  ⬛ Spec only: 5  |  ⬜ Not started: 124  |  Total: 137
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
@@ -46,7 +46,7 @@
 - ⬜ Not started [12.8.6 More Available Content Values](TAG-62.md)
 - ⬜ Not started [12.8.7 Pure Value Expression](TAG-63.md)
 - ⬜ Not started [12.8.8 Another Pure Association Full Adder](TAG-67.md)
-- ⬜ Not started [12.8.9 Pure Association Expression](TAG-66.md)
+- ⬜ Not started [12.8.9 Pure Association Expression](TAG-182.md)
 - ⬜ Not started [12.9 Greater Composition: Four-Bit Adder](TAG-68.md)
 - ⬜ Not started [12.9.1 Associated Invocations](TAG-69.md)
 - ⬜ Not started [12.9.2 Nested Invocations](TAG-70.md)
@@ -111,7 +111,7 @@
 - ⬜ Not started [Null Convention Library and ABI Spec](TAG-150.md)
 - 🟡 Partial [Example 12.17 Bundling mutually exclusive path into a single path](TAG-151.md)
 - ⬜ Not started [Make TAG-147 Shell VHDL Emission Valid and GHDL-Checkable](TAG-152.md)
-- 🟡 Partial [Example 12.8 Comma Delimited destination places](TAG-153.md)
+- ✅ Implemented [Example 12.8 Comma Delimited destination places](TAG-153.md)
 - ⬜ Not started [A real NCL register/storage primitive](TAG-154.md)
 - ⬜ Not started [Cycle detection](TAG-155.md)
 - ⬜ Not started [A deliberate design decision (register)](TAG-156.md)
@@ -128,7 +128,7 @@
 - ⬜ Not started [VHDL Numeric table emission](TAG-172.md)
 - ⬜ Not started [Domain Layers](TAG-174.md)
 - ⬜ Not started [VHDL emission produces invalid syntax for unnamed/abbreviated destination places](TAG-175.md)
-- ⬜ Not started [Example 12.26 Pure Value Expression of Boolean Full Adder](TAG-177.md)
+- ✅ Implemented [Example 12.26 Pure Value Expression of Boolean Full Adder](TAG-177.md)
 - ⬜ Not started [Example 12.10 Conditional Input Expression](TAG-180.md)
 - ⬜ Not started [Example 12.11 Controlled Fan-out Expression](TAG-181.md)
 - ⬜ Not started [Return a Content to Place of Invocation](TAG-32.md)

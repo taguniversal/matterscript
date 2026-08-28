@@ -549,7 +549,7 @@ const Parser = struct {
         return p.parsePlaceList(.source);
     }
 
-        /// Reads a name that may be split into comma-separated segments
+    /// Reads a name that may be split into comma-separated segments
     /// (§12.4 — the comma is a general, freely-insertable separator).
     /// Used for contained-definition names formed by composition,
     /// where a segment boundary would otherwise be ambiguous (e.g.
@@ -633,6 +633,14 @@ const Parser = struct {
                 try stmts.append(p.allocator, try p.parseSourceFill(name));
             } else if (next == '(') {
                 try stmts.append(p.allocator, try p.parseInvocation(name));
+            } else if (next == ',') {
+                // A comma-separated fan-out alias list (Fig 12.1b's
+                // ordinary name-correspondence fan-out, written
+                // compactly) — e.g. "g,k,o" in "A[g,k,o]". Rewind and
+                // let readCommaSeparatedName consume the whole list.
+                p.pos = tok_start;
+                const full = try p.readCommaSeparatedName();
+                try stmts.append(p.allocator, .{ .pure_value = full });
             } else if (next == ':' or next == ']') {
                 // What we read wasn't a statement name at all — it was
                 // a bare literal with nothing following it (§12.3.4's
