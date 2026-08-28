@@ -1,16 +1,16 @@
 FULLADD($A,$B,$C)(<> CARRYOUT<>)
 FULLADD[(X<>Y<>CI<>)( $SUM $CARRY)$X $Y$CI:
-"fan-out input symbols"
+// fan-out input symbols
 A[g,k,o] B[h,l,p] C[G,K,O] D[H,L,P] E[I,M,Q] F[J,N,R]
-"define combinational resolution stages"
+//"define combinational resolution stages"
 GI[S] GJ[T] HI[S] HJ[S]
 KM[U] KN[U] LM[V] LN[U]
 OQ[W] OR[W] PQ[W] PR[X]
-SU[a,c,e] SV[b,d,f] TU[b,d,f] TV[b,d,f] "fan out input to second half-adder"
+SU[a,c,e] SV[b,d,f] TU[b,d,f] TV[b,d,f] // fan out input to second half-adder
 ga[i] gb[j] ha[i] hb[i]
 kc[m] kd[m] lc[n] ld[m]
 oe[q] of[q] pe[q] pf[r]
-im[s ] in[ t ] jm[ t ] jn[ t ] "sum"
-qW[u ] qX[ v ] rW[v ] rX[ v ] "carry"
-s[SUM] t[SUM] u[CARRY] v[CARRY] "output"
+im[s ] in[ t ] jm[ t ] jn[ t ] //"sum"
+qW[u ] qX[ v ] rW[v ] rX[ v ] //"carry"
+s[SUM] t[SUM] u[CARRY] v[CARRY] //"output"
 ]
