@@ -24,7 +24,7 @@
 - [Why Clocks Are Artificial](part-03-asynchronous-thinking/01-why-clocks-are-artificial.md)
 - [When Absence Becomes Information](part-03-asynchronous-thinking/02-when-absence-becomes-information.md)
 - [Completeness and Tokens](part-03-asynchronous-thinking/03-completeness-and-tokens.md)
-- [Invocation Language](part-03-asynchronous-thinking/04-invocation-language.md)
+- [Invocation Programming Language](part-03-asynchronous-thinking/04-invocation-programming-language.md)
 - [Sequential Programs as Special Cases](part-03-asynchronous-thinking/05-sequential-programs-as-special-cases.md)
 
 # Part IV: Learning MatterScript
