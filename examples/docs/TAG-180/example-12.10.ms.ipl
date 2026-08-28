@@ -1,9 +1,7 @@
-// linear: TAG-146 Serial bus
-fanin($selin {$in1 $in2})(serialmid<>)
+// Linear: TAG-180 Example 12.10 Conditional Input Expression
 
-fanout($selout $serialmid)({out1<> out2<> out3<> out4<>})
+fanin($select {$input1 $input2 $input3 $input4})(output< >)
 
-// TODO Link to TAG-180 Example 12.10
 fanin[(select< > {in1< > in2< > in3< > in4< >})($out)
 
     $select( ) : A[out< $in1 >]
@@ -11,5 +9,3 @@ fanin[(select< > {in1< > in2< > in3< > in4< >})($out)
                  C[out< $in3 >]
                  D[out< $in4>] 
     ]
-
-
