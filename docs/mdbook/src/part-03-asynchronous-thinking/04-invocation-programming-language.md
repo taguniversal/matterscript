@@ -127,7 +127,7 @@ Because every definition establishes its own naming domain, internal names never
 
 A definition is therefore more than a reusable function.
 
-It is an isolated computational universe.
+It is an isolated and replicatable computational universe.
 
 ---
 
@@ -142,14 +142,12 @@ Connections arise through **name correspondence**.
 ```matterscript
 OR($LEFT $RIGHT)(SUM<>)
 
-...
+NOT($SUM)(INVERTED<>)
 
 AND($SUM $ENABLE)(RESULT<>)
 ```
 
-The compiler recognizes that both references describe the same place.
-
-The connection is created automatically.
+The compiler recognizes that the source place ```SUM<>``` and every destination place named ```$SUM``` refer to the same point in the computational network. The connection is created automatically. If multiple destination places share the same correspondence name, the information naturally propagates to each of them without requiring explicit wiring.
 
 Nothing else is required.
 
@@ -274,5 +272,105 @@ Definitions.
 And the names that bind them together.
 
 Those four ideas are enough to describe computations ranging from Boolean logic to biological metabolism, from digital circuits to planetary simulations, because they describe not *what* a machine should do, but *how* information exists and propagates through the computational universe.
+
+## Numbers as Symbols
+
+One aspect of MatterScript that often surprises programmers is its treatment of numbers.
+
+Most programming languages inherit their notion of numbers directly from mathematics. An integer is understood to occupy a position on an infinite number line. Arithmetic operates by manipulating place-value representations—binary, decimal, hexadecimal, or some other radix.
+
+MatterScript begins from a different premise.
+
+A value is first and foremost a symbol.
+
+Whether that symbol happens to represent the number 7, the amino acid lysine, the state of a traffic light, or the identifier of a chemical species is entirely determined by the relationships in which it participates.
+
+There is nothing fundamentally special about numbers.
+
+They are simply another kind of token.
+
+## Values Are Not Encodings
+
+In conventional computing, the number 42 is represented as a sequence of bits.
+
+Those bits are decoded, manipulated by arithmetic hardware, and then encoded again into another sequence of bits.
+
+MatterScript does not require every value to be expressed as a place-value number.
+
+Instead, a value may be represented directly as one member of a finite set of possible symbols.
+
+If a computation distinguishes between fifty possible values, then there are simply fifty possible symbolic states.
+
+Each state participates directly in the relationships that define the computation.
+
+There is no requirement that every value first be embedded within a universal numeric encoding.
+
+## Direct Relationships
+
+This seemingly small distinction has important consequences.
+
+Traditional arithmetic gains tremendous flexibility by representing every number using a common structure.
+
+The same adder can add one or one million because every value ultimately reduces to the same binary representation.
+
+That generality comes at a cost.
+
+Every computation must continually encode, decode, compare, and manipulate place-value numbers.
+
+MatterScript allows a different approach.
+
+When a computation naturally consists of a finite collection of states, those states can interact directly.
+
+There is no number line.
+
+There is no implicit ordering.
+
+There is no requirement that neighboring symbols possess any mathematical relationship at all.
+
+Only the relationships that matter to the computation need to exist.
+
+## Computation Without Arithmetic
+
+Many real-world systems are not fundamentally arithmetic.
+
+A protein may exist in one of several conformational states.
+
+A traffic controller may distinguish among signal phases.
+
+A biological cell may transition among metabolic conditions.
+
+A packet on a network may occupy one of several protocol states.
+
+These systems are typically forced into numeric representations because conventional computers fundamentally manipulate numbers.
+
+MatterScript removes that assumption.
+
+If the computation is symbolic, the representation can remain symbolic.
+
+The compiler constructs the relationships directly, without first translating them into arithmetic.
+
+## Choosing the Right Representation
+
+This does not mean that MatterScript abandons conventional numbers.
+
+Arithmetic remains an important and efficient way to express many classes of computation.
+
+Addition, multiplication, floating-point operations, and signal processing all continue to have natural representations.
+
+The difference is that arithmetic is no longer the foundation upon which every other computation must be built.
+
+It becomes one representation among many.
+
+MatterScript allows the programmer to choose the representation that most naturally matches the problem being solved.
+
+Sometimes that representation is a binary integer.
+
+Sometimes it is a floating-point value.
+
+And sometimes it is simply a collection of named symbols participating in a network of relationships.
+
+In MatterScript, numbers are no longer privileged simply because conventional computers happen to perform arithmetic well.
+
+They are treated as one kind of information among many, each represented in the form that most directly expresses the computation.
 
 *Drafting in progress...*

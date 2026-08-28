@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-49ca1afd.js";
+            window.path_to_searchindex_js = "../searchindex-e773f672.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-f80959e9.js"></script>
@@ -176,7 +176,140 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="sequential-programs-as-special-cases"><a class="header" href="#sequential-programs-as-special-cases">Sequential Programs as Special Cases</a></h1>
+                        <h1 id="sequential-programs-are-special-cases"><a class="header" href="#sequential-programs-are-special-cases">Sequential Programs Are Special Cases</a></h1>
+<p>One of the oldest assumptions in computer science is so deeply embedded that most programmers never question it.</p>
+<p>Programs execute one instruction after another.</p>
+<p>If we wish to perform two things at once, we begin with sequential execution and then add mechanisms for concurrency.</p>
+<p>Threads.</p>
+<p>Processes.</p>
+<p>Locks.</p>
+<p>Queues.</p>
+<p>Message passing.</p>
+<p>Actors.</p>
+<p>Coroutines.</p>
+<p>Async runtimes.</p>
+<p>From this perspective, concurrency appears to be an advanced feature layered on top of a fundamentally sequential world.</p>
+<p>MatterScript begins from the opposite assumption.</p>
+<p><strong>Concurrency is the natural state of computation.</strong></p>
+<p>Sequential execution is simply one particular arrangement of causal relationships.</p>
+<hr>
+<p>At first this sounds backwards.</p>
+<p>Surely one thing at a time must be simpler than many things happening simultaneously.</p>
+<p>After all, a sequential program has only one execution path.</p>
+<p>A concurrent system may have thousands.</p>
+<p>How could concurrency possibly be the simpler model?</p>
+<p>The answer lies in a subtle confusion that has followed computer science since its mathematical beginnings.</p>
+<hr>
+<p>When mathematicians describe an algorithm, they describe a sequence of symbolic transformations.</p>
+<p>One step follows another.</p>
+<p>The ordering itself is part of the definition.</p>
+<p>That model is perfectly suited to proving theorems.</p>
+<p>It is far less suited to describing physical systems.</p>
+<p>The physical universe does not execute one event at a time.</p>
+<p>Stars form while rivers flow.</p>
+<p>Trees grow while clouds move.</p>
+<p>Your heart beats while neurons fire.</p>
+<p>Reality has never contained a program counter.</p>
+<p>It contains countless independent processes interacting through local causal relationships.</p>
+<p>Nature is concurrent by default.</p>
+<hr>
+<p>The same is true inside every computer.</p>
+<p>Billions of transistors switch simultaneously.</p>
+<p>Signals propagate continuously through wires.</p>
+<p>Memory arrays, caches, buses, and functional units all operate concurrently.</p>
+<p>The familiar illusion of sequential execution exists because the hardware carefully coordinates these activities so they appear to produce one ordered stream of instructions.</p>
+<p>Sequential software is therefore not the absence of concurrency.</p>
+<p>It is a particular organization of concurrency.</p>
+<hr>
+<p>This distinction becomes clearer when we consider a simple example.</p>
+<p>Imagine two independent computations.</p>
+<pre><code class="language-text">Measure temperature.
+
+Update the display.
+</code></pre>
+<p>Nothing about these activities requires one to happen before the other.</p>
+<p>They may proceed simultaneously.</p>
+<p>Now imagine introducing a new requirement.</p>
+<pre><code class="language-text">Measure temperature.
+
+Only after the measurement completes,
+
+update the display.
+</code></pre>
+<p>We have not changed the computations themselves.</p>
+<p>We have merely introduced a causal relationship.</p>
+<p>One event must now wait for another.</p>
+<p>Sequentiality has emerged naturally from an additional constraint.</p>
+<hr>
+<p>This observation generalizes remarkably well.</p>
+<p>Every sequential program can be viewed as a network in which each computation depends upon the completion of the previous one.</p>
+<pre><code class="language-text">A → B → C → D → E
+</code></pre>
+<p>Nothing mysterious has happened.</p>
+<p>We have simply constructed the narrowest possible causal graph.</p>
+<p>Every node has exactly one predecessor and one successor.</p>
+<p>It is still a propagation network.</p>
+<p>It simply contains no independent branches.</p>
+<p>Sequential execution is therefore a special case of concurrent computation whose dependency graph happens to collapse into a single chain.</p>
+<hr>
+<p>Seen from this perspective, many of the traditional difficulties of concurrency begin to look different.</p>
+<p>Programmers often speak of race conditions, deadlocks, livelocks, and nondeterminism as though they are unavoidable consequences of allowing multiple computations to occur simultaneously.</p>
+<p>In reality, these problems arise because we have described <strong>insufficient causal relationships</strong>.</p>
+<p>If two computations may produce different outcomes depending upon which one happens first, then the computation has failed to specify what must happen before what.</p>
+<p>The ambiguity is not in the hardware.</p>
+<p>It is in the description.</p>
+<hr>
+<p>MatterScript eliminates much of this uncertainty by making causality explicit.</p>
+<p>Names establish relationships.</p>
+<p>Tokens propagate only when computations are complete.</p>
+<p>Events occur because their causes have been satisfied.</p>
+<p>The compiler constructs a network whose dependencies are already known before execution begins.</p>
+<p>There is no need to recover ordering through locks, polling, or carefully timed delays.</p>
+<p>The ordering already exists wherever it is logically necessary.</p>
+<p>Everywhere else, the computation proceeds independently.</p>
+<hr>
+<p>This dramatically changes the way we think about parallelism.</p>
+<p>In conventional software, programmers often begin with a sequential algorithm and then search for opportunities to parallelize it.</p>
+<p>MatterScript reverses the process.</p>
+<p>The programmer describes the causal structure of the problem.</p>
+<p>The compiler discovers which portions are inherently independent.</p>
+<p>Parallelism is no longer something added to a sequential program.</p>
+<p>It is simply the natural consequence of relationships that do not depend upon one another.</p>
+<hr>
+<p>This is exactly how the physical world behaves.</p>
+<p>A chemical reaction does not pause while another reaction occurs elsewhere in the solution.</p>
+<p>A neuron does not wait for every neuron in the brain before producing a signal.</p>
+<p>A weather system does not compute one cloud at a time.</p>
+<p>Independent events proceed independently.</p>
+<p>Only genuine causal relationships impose ordering.</p>
+<p>MatterScript expresses computation in precisely the same way.</p>
+<hr>
+<p>Perhaps the greatest misconception surrounding concurrency is the belief that it is inherently nondeterministic.</p>
+<p>What is actually nondeterministic is <strong>an incompletely specified system</strong>.</p>
+<p>When the necessary causal relationships are absent, multiple orderings become possible, and different orderings may produce different results.</p>
+<p>The solution is not to force everything into a single sequential stream.</p>
+<p>The solution is to describe the missing relationships.</p>
+<p>Once those relationships exist, the computation becomes deterministic regardless of the relative speeds of its individual parts.</p>
+<p>The hardware is free to propagate information as quickly or as slowly as physics allows.</p>
+<p>The outcome remains the same because causality—not timing—determines the result.</p>
+<hr>
+<p>This is one of the central ideas behind MatterScript.</p>
+<p>Programs are not fundamentally sequences of instructions.</p>
+<p>They are networks of causes and effects.</p>
+<p>Some portions of those networks naturally execute one after another.</p>
+<p>Others naturally proceed simultaneously.</p>
+<p>Neither behavior is privileged.</p>
+<p>Both emerge from exactly the same language.</p>
+<p>Sequentiality is no longer the primitive from which concurrency must be constructed.</p>
+<p>It is simply one possible shape that a causal network may take.</p>
+<hr>
+<p>For decades we have taught programmers to begin with sequence and cautiously introduce parallelism where it appears safe.</p>
+<p>MatterScript invites us to reverse that perspective.</p>
+<p>Begin with the relationships.</p>
+<p>Allow every independent computation to exist independently.</p>
+<p>Introduce ordering only where the problem itself requires it.</p>
+<p>Seen this way, sequential programs are not the foundation of computation.</p>
+<p>They are its simplest special case.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>

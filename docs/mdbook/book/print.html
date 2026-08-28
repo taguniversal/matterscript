@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-49ca1afd.js";
+            window.path_to_searchindex_js = "searchindex-e773f672.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f80959e9.js"></script>
@@ -2406,7 +2406,7 @@ wall-clock time
 <p>From there, the definition constructs an internal network of additional invocations, each connected through names.</p>
 <p>Because every definition establishes its own naming domain, internal names never collide with names outside the definition.</p>
 <p>A definition is therefore more than a reusable function.</p>
-<p>It is an isolated computational universe.</p>
+<p>It is an isolated and replicatable computational universe.</p>
 <hr>
 <h2 id="name-correspondence"><a class="header" href="#name-correspondence">Name Correspondence</a></h2>
 <p>The fourth concept is the one that surprises almost everyone.</p>
@@ -2414,12 +2414,11 @@ wall-clock time
 <p>Connections arise through <strong>name correspondence</strong>.</p>
 <pre><code class="language-matterscript">OR($LEFT $RIGHT)(SUM&lt;&gt;)
 
-...
+NOT($SUM)(INVERTED&lt;&gt;)
 
 AND($SUM $ENABLE)(RESULT&lt;&gt;)
 </code></pre>
-<p>The compiler recognizes that both references describe the same place.</p>
-<p>The connection is created automatically.</p>
+<p>The compiler recognizes that the source place <code>SUM&lt;&gt;</code> and every destination place named <code>$SUM</code> refer to the same point in the computational network. The connection is created automatically. If multiple destination places share the same correspondence name, the information naturally propagates to each of them without requiring explicit wiring.</p>
 <p>Nothing else is required.</p>
 <p>Name correspondence is therefore doing much more than replacing variables.</p>
 <p>It expresses connectivity.</p>
@@ -2482,9 +2481,192 @@ AND($SUM $ENABLE)(RESULT&lt;&gt;)
 <p>Definitions.</p>
 <p>And the names that bind them together.</p>
 <p>Those four ideas are enough to describe computations ranging from Boolean logic to biological metabolism, from digital circuits to planetary simulations, because they describe not <em>what</em> a machine should do, but <em>how</em> information exists and propagates through the computational universe.</p>
+<h2 id="numbers-as-symbols"><a class="header" href="#numbers-as-symbols">Numbers as Symbols</a></h2>
+<p>One aspect of MatterScript that often surprises programmers is its treatment of numbers.</p>
+<p>Most programming languages inherit their notion of numbers directly from mathematics. An integer is understood to occupy a position on an infinite number line. Arithmetic operates by manipulating place-value representations—binary, decimal, hexadecimal, or some other radix.</p>
+<p>MatterScript begins from a different premise.</p>
+<p>A value is first and foremost a symbol.</p>
+<p>Whether that symbol happens to represent the number 7, the amino acid lysine, the state of a traffic light, or the identifier of a chemical species is entirely determined by the relationships in which it participates.</p>
+<p>There is nothing fundamentally special about numbers.</p>
+<p>They are simply another kind of token.</p>
+<h2 id="values-are-not-encodings"><a class="header" href="#values-are-not-encodings">Values Are Not Encodings</a></h2>
+<p>In conventional computing, the number 42 is represented as a sequence of bits.</p>
+<p>Those bits are decoded, manipulated by arithmetic hardware, and then encoded again into another sequence of bits.</p>
+<p>MatterScript does not require every value to be expressed as a place-value number.</p>
+<p>Instead, a value may be represented directly as one member of a finite set of possible symbols.</p>
+<p>If a computation distinguishes between fifty possible values, then there are simply fifty possible symbolic states.</p>
+<p>Each state participates directly in the relationships that define the computation.</p>
+<p>There is no requirement that every value first be embedded within a universal numeric encoding.</p>
+<h2 id="direct-relationships"><a class="header" href="#direct-relationships">Direct Relationships</a></h2>
+<p>This seemingly small distinction has important consequences.</p>
+<p>Traditional arithmetic gains tremendous flexibility by representing every number using a common structure.</p>
+<p>The same adder can add one or one million because every value ultimately reduces to the same binary representation.</p>
+<p>That generality comes at a cost.</p>
+<p>Every computation must continually encode, decode, compare, and manipulate place-value numbers.</p>
+<p>MatterScript allows a different approach.</p>
+<p>When a computation naturally consists of a finite collection of states, those states can interact directly.</p>
+<p>There is no number line.</p>
+<p>There is no implicit ordering.</p>
+<p>There is no requirement that neighboring symbols possess any mathematical relationship at all.</p>
+<p>Only the relationships that matter to the computation need to exist.</p>
+<h2 id="computation-without-arithmetic"><a class="header" href="#computation-without-arithmetic">Computation Without Arithmetic</a></h2>
+<p>Many real-world systems are not fundamentally arithmetic.</p>
+<p>A protein may exist in one of several conformational states.</p>
+<p>A traffic controller may distinguish among signal phases.</p>
+<p>A biological cell may transition among metabolic conditions.</p>
+<p>A packet on a network may occupy one of several protocol states.</p>
+<p>These systems are typically forced into numeric representations because conventional computers fundamentally manipulate numbers.</p>
+<p>MatterScript removes that assumption.</p>
+<p>If the computation is symbolic, the representation can remain symbolic.</p>
+<p>The compiler constructs the relationships directly, without first translating them into arithmetic.</p>
+<h2 id="choosing-the-right-representation"><a class="header" href="#choosing-the-right-representation">Choosing the Right Representation</a></h2>
+<p>This does not mean that MatterScript abandons conventional numbers.</p>
+<p>Arithmetic remains an important and efficient way to express many classes of computation.</p>
+<p>Addition, multiplication, floating-point operations, and signal processing all continue to have natural representations.</p>
+<p>The difference is that arithmetic is no longer the foundation upon which every other computation must be built.</p>
+<p>It becomes one representation among many.</p>
+<p>MatterScript allows the programmer to choose the representation that most naturally matches the problem being solved.</p>
+<p>Sometimes that representation is a binary integer.</p>
+<p>Sometimes it is a floating-point value.</p>
+<p>And sometimes it is simply a collection of named symbols participating in a network of relationships.</p>
+<p>In MatterScript, numbers are no longer privileged simply because conventional computers happen to perform arithmetic well.</p>
+<p>They are treated as one kind of information among many, each represented in the form that most directly expresses the computation.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="sequential-programs-as-special-cases"><a class="header" href="#sequential-programs-as-special-cases">Sequential Programs as Special Cases</a></h1>
+<h1 id="sequential-programs-are-special-cases"><a class="header" href="#sequential-programs-are-special-cases">Sequential Programs Are Special Cases</a></h1>
+<p>One of the oldest assumptions in computer science is so deeply embedded that most programmers never question it.</p>
+<p>Programs execute one instruction after another.</p>
+<p>If we wish to perform two things at once, we begin with sequential execution and then add mechanisms for concurrency.</p>
+<p>Threads.</p>
+<p>Processes.</p>
+<p>Locks.</p>
+<p>Queues.</p>
+<p>Message passing.</p>
+<p>Actors.</p>
+<p>Coroutines.</p>
+<p>Async runtimes.</p>
+<p>From this perspective, concurrency appears to be an advanced feature layered on top of a fundamentally sequential world.</p>
+<p>MatterScript begins from the opposite assumption.</p>
+<p><strong>Concurrency is the natural state of computation.</strong></p>
+<p>Sequential execution is simply one particular arrangement of causal relationships.</p>
+<hr>
+<p>At first this sounds backwards.</p>
+<p>Surely one thing at a time must be simpler than many things happening simultaneously.</p>
+<p>After all, a sequential program has only one execution path.</p>
+<p>A concurrent system may have thousands.</p>
+<p>How could concurrency possibly be the simpler model?</p>
+<p>The answer lies in a subtle confusion that has followed computer science since its mathematical beginnings.</p>
+<hr>
+<p>When mathematicians describe an algorithm, they describe a sequence of symbolic transformations.</p>
+<p>One step follows another.</p>
+<p>The ordering itself is part of the definition.</p>
+<p>That model is perfectly suited to proving theorems.</p>
+<p>It is far less suited to describing physical systems.</p>
+<p>The physical universe does not execute one event at a time.</p>
+<p>Stars form while rivers flow.</p>
+<p>Trees grow while clouds move.</p>
+<p>Your heart beats while neurons fire.</p>
+<p>Reality has never contained a program counter.</p>
+<p>It contains countless independent processes interacting through local causal relationships.</p>
+<p>Nature is concurrent by default.</p>
+<hr>
+<p>The same is true inside every computer.</p>
+<p>Billions of transistors switch simultaneously.</p>
+<p>Signals propagate continuously through wires.</p>
+<p>Memory arrays, caches, buses, and functional units all operate concurrently.</p>
+<p>The familiar illusion of sequential execution exists because the hardware carefully coordinates these activities so they appear to produce one ordered stream of instructions.</p>
+<p>Sequential software is therefore not the absence of concurrency.</p>
+<p>It is a particular organization of concurrency.</p>
+<hr>
+<p>This distinction becomes clearer when we consider a simple example.</p>
+<p>Imagine two independent computations.</p>
+<pre><code class="language-text">Measure temperature.
+
+Update the display.
+</code></pre>
+<p>Nothing about these activities requires one to happen before the other.</p>
+<p>They may proceed simultaneously.</p>
+<p>Now imagine introducing a new requirement.</p>
+<pre><code class="language-text">Measure temperature.
+
+Only after the measurement completes,
+
+update the display.
+</code></pre>
+<p>We have not changed the computations themselves.</p>
+<p>We have merely introduced a causal relationship.</p>
+<p>One event must now wait for another.</p>
+<p>Sequentiality has emerged naturally from an additional constraint.</p>
+<hr>
+<p>This observation generalizes remarkably well.</p>
+<p>Every sequential program can be viewed as a network in which each computation depends upon the completion of the previous one.</p>
+<pre><code class="language-text">A → B → C → D → E
+</code></pre>
+<p>Nothing mysterious has happened.</p>
+<p>We have simply constructed the narrowest possible causal graph.</p>
+<p>Every node has exactly one predecessor and one successor.</p>
+<p>It is still a propagation network.</p>
+<p>It simply contains no independent branches.</p>
+<p>Sequential execution is therefore a special case of concurrent computation whose dependency graph happens to collapse into a single chain.</p>
+<hr>
+<p>Seen from this perspective, many of the traditional difficulties of concurrency begin to look different.</p>
+<p>Programmers often speak of race conditions, deadlocks, livelocks, and nondeterminism as though they are unavoidable consequences of allowing multiple computations to occur simultaneously.</p>
+<p>In reality, these problems arise because we have described <strong>insufficient causal relationships</strong>.</p>
+<p>If two computations may produce different outcomes depending upon which one happens first, then the computation has failed to specify what must happen before what.</p>
+<p>The ambiguity is not in the hardware.</p>
+<p>It is in the description.</p>
+<hr>
+<p>MatterScript eliminates much of this uncertainty by making causality explicit.</p>
+<p>Names establish relationships.</p>
+<p>Tokens propagate only when computations are complete.</p>
+<p>Events occur because their causes have been satisfied.</p>
+<p>The compiler constructs a network whose dependencies are already known before execution begins.</p>
+<p>There is no need to recover ordering through locks, polling, or carefully timed delays.</p>
+<p>The ordering already exists wherever it is logically necessary.</p>
+<p>Everywhere else, the computation proceeds independently.</p>
+<hr>
+<p>This dramatically changes the way we think about parallelism.</p>
+<p>In conventional software, programmers often begin with a sequential algorithm and then search for opportunities to parallelize it.</p>
+<p>MatterScript reverses the process.</p>
+<p>The programmer describes the causal structure of the problem.</p>
+<p>The compiler discovers which portions are inherently independent.</p>
+<p>Parallelism is no longer something added to a sequential program.</p>
+<p>It is simply the natural consequence of relationships that do not depend upon one another.</p>
+<hr>
+<p>This is exactly how the physical world behaves.</p>
+<p>A chemical reaction does not pause while another reaction occurs elsewhere in the solution.</p>
+<p>A neuron does not wait for every neuron in the brain before producing a signal.</p>
+<p>A weather system does not compute one cloud at a time.</p>
+<p>Independent events proceed independently.</p>
+<p>Only genuine causal relationships impose ordering.</p>
+<p>MatterScript expresses computation in precisely the same way.</p>
+<hr>
+<p>Perhaps the greatest misconception surrounding concurrency is the belief that it is inherently nondeterministic.</p>
+<p>What is actually nondeterministic is <strong>an incompletely specified system</strong>.</p>
+<p>When the necessary causal relationships are absent, multiple orderings become possible, and different orderings may produce different results.</p>
+<p>The solution is not to force everything into a single sequential stream.</p>
+<p>The solution is to describe the missing relationships.</p>
+<p>Once those relationships exist, the computation becomes deterministic regardless of the relative speeds of its individual parts.</p>
+<p>The hardware is free to propagate information as quickly or as slowly as physics allows.</p>
+<p>The outcome remains the same because causality—not timing—determines the result.</p>
+<hr>
+<p>This is one of the central ideas behind MatterScript.</p>
+<p>Programs are not fundamentally sequences of instructions.</p>
+<p>They are networks of causes and effects.</p>
+<p>Some portions of those networks naturally execute one after another.</p>
+<p>Others naturally proceed simultaneously.</p>
+<p>Neither behavior is privileged.</p>
+<p>Both emerge from exactly the same language.</p>
+<p>Sequentiality is no longer the primitive from which concurrency must be constructed.</p>
+<p>It is simply one possible shape that a causal network may take.</p>
+<hr>
+<p>For decades we have taught programmers to begin with sequence and cautiously introduce parallelism where it appears safe.</p>
+<p>MatterScript invites us to reverse that perspective.</p>
+<p>Begin with the relationships.</p>
+<p>Allow every independent computation to exist independently.</p>
+<p>Introduce ordering only where the problem itself requires it.</p>
+<p>Seen this way, sequential programs are not the foundation of computation.</p>
+<p>They are its simplest special case.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-iv-learning-matterscript"><a class="header" href="#part-iv-learning-matterscript">Part IV: Learning MatterScript</a></h1>
