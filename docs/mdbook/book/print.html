@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-cd9e5911.js";
+            window.path_to_searchindex_js = "searchindex-05c97e24.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-fb6f20ab.js"></script>
@@ -2205,6 +2205,133 @@ wall-clock time
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="completeness-and-tokens"><a class="header" href="#completeness-and-tokens">Completeness and Tokens</a></h1>
+<p>Earlier we introduced the idea that MatterScript does not manipulate variables.</p>
+<p>It propagates <strong>tokens</strong>.</p>
+<p>At first glance, a token may appear to be nothing more than a value moving through a computational network.</p>
+<p>In reality, it is much more than that.</p>
+<p>A token represents a <strong>complete assertion</strong>.</p>
+<p>This idea lies at the heart of MatterScript’s computational model.</p>
+<hr>
+<p>Most programming languages allow information to exist in partially completed states.</p>
+<p>Consider a simple data structure.</p>
+<pre><code class="language-cpp">struct Person {
+    string firstName;
+    string lastName;
+    int age;
+};
+</code></pre>
+<p>At any moment during execution, one field may have been initialized while the others remain empty.</p>
+<p>The object exists.</p>
+<p>But is the information complete?</p>
+<p>Can another computation safely depend upon it?</p>
+<p>Software spends enormous amounts of effort answering these questions.</p>
+<p>Constructors establish initialization.</p>
+<p>Flags indicate readiness.</p>
+<p>Validation routines verify consistency.</p>
+<p>Optional fields express uncertainty.</p>
+<p>Throughout the software stack we repeatedly ask the same question:</p>
+<p><strong>Can this information be trusted yet?</strong></p>
+<hr>
+<p>MatterScript approaches the problem differently.</p>
+<p>Information does not propagate simply because part of it has arrived.</p>
+<p>It propagates only when it is complete.</p>
+<p>Consider a simple invocation.</p>
+<pre><code class="language-matterscript">ADD($A $B)(SUM&lt;&gt;)
+</code></pre>
+<p>Suppose the value for <code>$A</code> arrives first.</p>
+<p>Nothing happens.</p>
+<p>The computation waits.</p>
+<p>When the value for <code>$B</code> arrives, the situation changes.</p>
+<p>Now every required input has been presented.</p>
+<p>The invocation resolves.</p>
+<p>A new token emerges.</p>
+<p>That token is itself complete.</p>
+<p>Completeness propagates through the network just as naturally as the values themselves.</p>
+<hr>
+<p>This is precisely the idea embodied by the <strong>completeness criterion</strong> introduced in the previous chapter.</p>
+<p>A computation does not begin because one input changed.</p>
+<p>It begins because every required cause has been satisfied.</p>
+<p>Likewise, a downstream computation does not need to ask whether its inputs are ready.</p>
+<p>The arrival of a token already answers that question.</p>
+<p>Validity is no longer reconstructed in software.</p>
+<p>It is carried by the computation itself.</p>
+<hr>
+<p>This changes what we mean by the word <em>token</em>.</p>
+<p>A token is not simply a bit.</p>
+<p>It is not merely a collection of bits.</p>
+<p>It is not even just a value.</p>
+<p>A token is a <strong>complete causal assertion</strong>.</p>
+<p>It represents information whose originating computation has fully resolved.</p>
+<p>When a token propagates, it carries two inseparable pieces of knowledge.</p>
+<p>The value itself.</p>
+<p>And the fact that the value is complete.</p>
+<hr>
+<p>Engineers already rely on this idea in many other domains.</p>
+<p>A network packet is not useful because it contains bytes.</p>
+<p>It is useful because the receiver knows where the packet begins, where it ends, and whether it arrived intact.</p>
+<p>A partially received packet is not treated as valid information.</p>
+<p>It waits until the transmission is complete.</p>
+<p>Only then does it become meaningful.</p>
+<p>MatterScript extends this same principle beyond communication.</p>
+<p>Every computation operates on complete information rather than fragments of an unfinished process.</p>
+<hr>
+<p>The physical world behaves in much the same way.</p>
+<p>A neuron does not fire because a single sodium ion crossed its membrane.</p>
+<p>It fires when the membrane reaches a threshold.</p>
+<p>A chemical reaction does not occur because one reactant has appeared.</p>
+<p>It occurs when the necessary reactants are simultaneously present.</p>
+<p>A seed does not become a tree because one condition has changed.</p>
+<p>Growth begins when countless local conditions together make development possible.</p>
+<p>Nature waits for completeness.</p>
+<p>MatterScript does as well.</p>
+<hr>
+<p>This has profound implications for causality.</p>
+<p>Incomplete information cannot trigger downstream computation.</p>
+<p>It cannot become the cause of another event because the conditions that produced it have not yet been satisfied.</p>
+<p>Only complete tokens propagate.</p>
+<p>Only complete tokens participate in the next causal relationship.</p>
+<p>The compiler therefore gains an extraordinarily powerful guarantee.</p>
+<p>Every propagation event represents a completed computation.</p>
+<p>Every downstream computation begins with information that is already known to be valid.</p>
+<hr>
+<p>Viewed from this perspective, conventional software and MatterScript describe very different worlds.</p>
+<p>Traditional software propagates values.</p>
+<p>MatterScript propagates completed facts.</p>
+<p>Not simply,</p>
+<p><em>“The temperature is 37 degrees.”</em></p>
+<p>But,</p>
+<p><em>“The temperature has been measured.”</em></p>
+<p>Not merely,</p>
+<p><em>“Collision equals true.”</em></p>
+<p>But,</p>
+<p><em>“A collision has occurred.”</em></p>
+<p>Not simply,</p>
+<p><em>“The account balance is 120 dollars.”</em></p>
+<p>But,</p>
+<p><em>“The account has been reconciled.”</em></p>
+<p>The distinction may seem subtle.</p>
+<p>It is not.</p>
+<p>The first describes data.</p>
+<p>The second describes completed events.</p>
+<p>MatterScript is fundamentally a language of completed events propagating through a causal network.</p>
+<hr>
+<p>This perspective also explains why MatterScript scales so naturally.</p>
+<p>Every token represents the completion of one causal chain and the beginning of another.</p>
+<p>Large computations therefore become compositions of complete assertions rather than collections of partially updated state.</p>
+<p>There is no need for downstream computations to guess whether upstream work has finished.</p>
+<p>The token itself provides that guarantee.</p>
+<p>Synchronization is not layered on top of the computation.</p>
+<p>It is inherent in the computation.</p>
+<hr>
+<p>Information is valuable only when it can be trusted.</p>
+<p>A token therefore represents more than a value.</p>
+<p>It represents the completion of whatever process produced that value.</p>
+<p>Every token is both <strong>data</strong> and <strong>evidence</strong> that the computation which created it has finished.</p>
+<p>That simple observation changes the role of programming itself.</p>
+<p>Programs are no longer systems that continually verify whether information is ready.</p>
+<p>They become networks through which completed knowledge naturally propagates from one resolved computation to the next.</p>
+<p>In MatterScript, information does not become complete because the programmer declares it to be complete.</p>
+<p>It becomes complete because the computational fabric itself recognizes that every cause required to produce it has been satisfied.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="invocation-language"><a class="header" href="#invocation-language">Invocation Language</a></h1>
