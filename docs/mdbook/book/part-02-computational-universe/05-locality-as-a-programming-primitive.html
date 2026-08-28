@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-791de912.js";
+            window.path_to_searchindex_js = "../searchindex-5942b720.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-a6f994c9.js"></script>
@@ -177,6 +177,105 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="locality-as-a-programming-primitive"><a class="header" href="#locality-as-a-programming-primitive">Locality as a Programming Primitive</a></h1>
+<p>One of the deepest assumptions in modern software is that everything is, in principle, equally accessible.</p>
+<p>A variable stored in memory can be read from anywhere.</p>
+<p>An object may invoke methods on another object across the program.</p>
+<p>A database query may retrieve information from anywhere in the world.</p>
+<p>The programmer is free to describe relationships without regard for physical distance.</p>
+<p>The machine worries about locality later.</p>
+<p>Caches are introduced.</p>
+<p>Memory hierarchies are optimized.</p>
+<p>Distributed systems attempt to recover proximity after the fact.</p>
+<p>In other words, locality is usually treated as an optimization.</p>
+<p>MatterScript begins from the opposite assumption.</p>
+<p><strong>Locality is not an optimization. It is a programming primitive.</strong></p>
+<hr>
+<p>This idea has its roots in Karl Fant’s <em>Computer Science Reconsidered</em>, where he introduced the concept of the <strong>theng</strong>.</p>
+<p>A theng is not simply a variable, nor is it an object in the object-oriented sense.</p>
+<p>A variable has identity, but no place.</p>
+<p>An object has identity and behavior, but still no inherent physical location.</p>
+<p>A <strong>theng</strong> possesses identity, persistence, locality, and relationships.</p>
+<p>It exists somewhere.</p>
+<p>Its location matters.</p>
+<p>Its neighbors matter.</p>
+<p>Its interactions arise because of that neighborhood.</p>
+<p>Fant described a theng as a persistence whose value may change over time.</p>
+<p>Persistence belongs to the theng itself.</p>
+<p>Values belong to the moment.</p>
+<p>Different thengs become associated because they are sufficiently close for their values to interact.</p>
+<p>The asserted values of neighboring thengs form names, and those names invoke value transformation rules.</p>
+<p>In this way, behavior emerges naturally from local relationships rather than from globally executed procedures.</p>
+<hr>
+<p>This distinction is fundamental.</p>
+<p>MatterScript does not ask, <em>“What should this computation do?”</em></p>
+<p>It first asks,</p>
+<p><strong>“What can this computation interact with?”</strong></p>
+<p>Once locality is established, the possible interactions become known.</p>
+<p>Those interactions define causality.</p>
+<p>Causality determines propagation.</p>
+<p>Propagation produces computation.</p>
+<p>The geometry of the system is therefore not merely a representation of the computation.</p>
+<p>It is one of its defining components.</p>
+<hr>
+<p>This perspective appears repeatedly throughout the natural world.</p>
+<p>A molecule does not interact with every other molecule in the universe.</p>
+<p>It interacts with neighboring molecules.</p>
+<p>A neuron communicates only with neurons connected to it.</p>
+<p>A tree exchanges water and nutrients with the soil surrounding its roots.</p>
+<p>A parcel of air exchanges heat, pressure, moisture, and momentum with the parcels immediately around it.</p>
+<p>None of these systems continually search the world for possible interactions.</p>
+<p>Their neighborhoods already define what interactions are possible.</p>
+<p>The geometry itself constrains the computation.</p>
+<hr>
+<p>This observation also lies at the heart of <em>A New Kind of Science</em>.</p>
+<p>One of Stephen Wolfram’s central insights is that remarkably complex behavior can emerge from extraordinarily simple local rules.</p>
+<p>A cellular automaton does not require a global controller.</p>
+<p>Each cell examines only its immediate neighbors.</p>
+<p>From those local interactions emerge structures that move, reproduce, stabilize, collide, and evolve.</p>
+<p>Complexity arises not because individual rules are complicated, but because simple interactions are repeated across enormous collections of locally connected elements.</p>
+<p>MatterScript provides a language capable of expressing this same principle directly.</p>
+<p>Local interaction is not simulated on top of an imperative machine.</p>
+<p>It is the native computational model.</p>
+<hr>
+<p>Consider a weather simulation.</p>
+<p>Traditional software often stores millions of atmospheric cells in memory.</p>
+<p>During every timestep, the program repeatedly determines which neighboring cells exchange heat, pressure, moisture, and momentum.</p>
+<p>Even highly optimized implementations spend considerable effort rediscovering relationships that are already implied by the geometry of the atmosphere.</p>
+<p>MatterScript approaches the problem differently.</p>
+<p>Each atmospheric cell already knows its neighborhood.</p>
+<p>Propagation naturally occurs only between adjacent cells.</p>
+<p>The simulation no longer spends its time searching for interactions.</p>
+<p>It spends its time resolving them.</p>
+<p>The same idea applies equally well to fluid dynamics, biological growth, electrical networks, ecosystems, and chemical reactions.</p>
+<hr>
+<p>Chemistry provides perhaps the clearest example.</p>
+<p>Atoms do not continually ask whether another compatible atom exists somewhere in the universe.</p>
+<p>They interact with the atoms nearby.</p>
+<p>Those local interactions produce molecules.</p>
+<p>Those molecules interact with neighboring molecules.</p>
+<p>Larger structures emerge from countless local events.</p>
+<p>The universe never pauses to solve the global problem.</p>
+<p>Global behavior emerges from local interactions.</p>
+<p>MatterScript embraces this same philosophy.</p>
+<p>Rather than describing an all-knowing program directing every step of the computation, it describes neighborhoods whose local interactions allow larger behavior to emerge naturally.</p>
+<hr>
+<p>This changes the role of the compiler in a profound way.</p>
+<p>The compiler is no longer arranging computations simply to improve performance.</p>
+<p>It is constructing <strong>neighborhoods</strong>.</p>
+<p>Those neighborhoods define which computations may interact.</p>
+<p>Those interactions define causality.</p>
+<p>Those causal relationships define propagation.</p>
+<p>And propagation gives rise to the computation itself.</p>
+<p>The resulting computational fabric mirrors the structure of the system it represents.</p>
+<p>Whether that system is a digital circuit, a chemical reactor, a biological organism, or an evolving planetary climate, the underlying principle remains unchanged.</p>
+<hr>
+<p>This represents another departure from conventional software.</p>
+<p>Programming has traditionally been the art of describing behavior.</p>
+<p>MatterScript is the art of describing neighborhoods.</p>
+<p>Once those neighborhoods exist, behavior is no longer written one instruction at a time.</p>
+<p>It emerges through local interactions unfolding across the computational fabric.</p>
+<p>In MatterScript, locality is not an implementation detail.</p>
+<p>It is the language in which reality writes its algorithms.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>
@@ -214,6 +313,22 @@
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
