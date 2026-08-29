@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-eebaf574.js";
+            window.path_to_searchindex_js = "searchindex-a0a5c43e.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f80959e9.js"></script>
@@ -3042,6 +3042,96 @@ OR($FIRSTSUM $ENABLE)(...)
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="tokens"><a class="header" href="#tokens">Tokens</a></h1>
+<p>In recent years, the word <strong>token</strong> has become part of every programmer’s vocabulary.</p>
+<p>Large language models consume streams of tokens representing words, punctuation, and fragments of language. Those tokens move through billions of parameters, gradually transforming into new tokens that become the model’s response.</p>
+<p>MatterScript uses the same word, but in a much broader sense.</p>
+<p>A token is simply a unit of information.</p>
+<p>It may represent a number.</p>
+<p>A symbol.</p>
+<p>A Boolean value.</p>
+<p>A chemical species.</p>
+<p>A network packet.</p>
+<p>A state in a finite-state machine.</p>
+<p>Or even another fragment of computation.</p>
+<p>Language is only one possible kind of token.</p>
+<hr>
+<h2 id="information-in-motion"><a class="header" href="#information-in-motion">Information in Motion</a></h2>
+<p>Earlier we introduced the idea that computation is propagation.</p>
+<p>Tokens are the things that propagate.</p>
+<p>A place does not “contain a variable.”</p>
+<p>It temporarily presents a token.</p>
+<p>That token moves through the network according to the causal relationships expressed by the program.</p>
+<pre><code class="language-matterscript">SUM&lt;1&gt;
+
+...
+
+AND($SUM $ENABLE)(RESULT&lt;&gt;)
+</code></pre>
+<p>Here the token <code>1</code> emerges from the source place <code>SUM&lt;&gt;</code>, propagates to every destination place named <code>$SUM</code>, and participates in the next computation.</p>
+<p>Nothing has been assigned.</p>
+<p>Nothing has been copied.</p>
+<p>The information has simply propagated through the network.</p>
+<hr>
+<h2 id="tokens-have-meaning-because-of-relationships"><a class="header" href="#tokens-have-meaning-because-of-relationships">Tokens Have Meaning Because of Relationships</a></h2>
+<p>One of the most important differences between MatterScript and conventional programming is that a token has no intrinsic meaning.</p>
+<p>The symbol</p>
+<pre><code class="language-text">ACTIVE
+</code></pre>
+<p>is not inherently more significant than</p>
+<pre><code class="language-text">7
+</code></pre>
+<p>or</p>
+<pre><code class="language-text">GLYCINE
+</code></pre>
+<p>Its meaning comes entirely from the relationships in which it participates.</p>
+<p>If a definition recognizes <code>ACTIVE</code>, then it becomes part of that computation.</p>
+<p>If another definition recognizes <code>GLYCINE</code>, then it becomes part of an entirely different one.</p>
+<p>MatterScript does not privilege numbers over symbols.</p>
+<p>Every token is simply information participating in a network of relationships.</p>
+<hr>
+<h2 id="tokens-are-not-objects"><a class="header" href="#tokens-are-not-objects">Tokens Are Not Objects</a></h2>
+<p>Object-oriented programmers may be tempted to think of tokens as tiny objects moving through the program.</p>
+<p>That is not quite right.</p>
+<p>Objects combine identity, storage, behavior, and often lifetime into a single construct.</p>
+<p>Tokens do none of those things.</p>
+<p>A token is simply information.</p>
+<p>The network provides the behavior.</p>
+<p>Places provide the locations.</p>
+<p>Definitions provide the transformations.</p>
+<p>The token merely carries information from one relationship to the next.</p>
+<hr>
+<h2 id="tokens-carry-potential"><a class="header" href="#tokens-carry-potential">Tokens Carry Potential</a></h2>
+<p>One of the recurring themes of this book is that computation exists not only in motion, but also in possibility.</p>
+<p>A token resting at a place is not inactive.</p>
+<p>It represents a computation waiting for its remaining causes.</p>
+<p>Once every required token has arrived, the definition resolves, produces new tokens, and propagation continues.</p>
+<p>This idea should feel familiar.</p>
+<p>A transistor waiting for its inputs is still part of a computation.</p>
+<p>A molecule waiting for another reactant is still part of a chemical reaction.</p>
+<p>A neuron waiting for enough excitation is still participating in thought.</p>
+<p>The token represents the information currently present.</p>
+<p>The relationships determine what may happen next.</p>
+<hr>
+<h2 id="tokens-beyond-software"><a class="header" href="#tokens-beyond-software">Tokens Beyond Software</a></h2>
+<p>Because tokens are simply information, MatterScript naturally extends beyond conventional software.</p>
+<p>In a biological simulation, a token might represent the concentration of a signaling molecule.</p>
+<p>In a traffic simulation, it might represent the state of an intersection.</p>
+<p>In a manufacturing model, it could represent the presence of a component on an assembly line.</p>
+<p>In an AI system, it may literally represent a language token.</p>
+<p>The language itself does not distinguish among these cases.</p>
+<p>Each is simply information flowing through a network of places.</p>
+<hr>
+<h2 id="the-atoms-of-computation"><a class="header" href="#the-atoms-of-computation">The Atoms of Computation</a></h2>
+<p>If places define the geometry of the computational universe, then tokens are its atoms.</p>
+<p>They occupy places.</p>
+<p>They propagate through relationships.</p>
+<p>They trigger events.</p>
+<p>They participate in transformations.</p>
+<p>Everything that changes within a MatterScript program ultimately changes because tokens move.</p>
+<p>The language does not begin with variables or instructions.</p>
+<p>It begins with information itself.</p>
+<p><strong>Variables store information. Tokens <em>are</em> information.</strong></p>
+<p>In imperative languages, information is trapped inside mutable containers. In MatterScript, information is the thing that moves, and the computation emerges from its movement through a network of relationships.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="resolution-areas"><a class="header" href="#resolution-areas">Resolution Areas</a></h1>
