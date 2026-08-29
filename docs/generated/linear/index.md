@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 8  |  🟡 Partial: 9  |  ⬛ Spec only: 4  |  ⬜ Not started: 111  |  Total: 132
+✅ Implemented: 8  |  🟡 Partial: 10  |  ⬛ Spec only: 4  |  ⬜ Not started: 111  |  Total: 133
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
@@ -89,7 +89,7 @@
 - ⬜ Not started [Round-trip validation: mesh-driven network compiles and passes topology checks](TAG-121.md)
 - ⬜ Not started [Language to Mesh map stability](TAG-122.md)
 - ✅ Implemented [Example 12.19 Imperative form of expression](TAG-129.md)
-- ✅ Implemented [Example 12.1 Unnamed source place in an invocation](TAG-130.md)
+- 🟡 Partial [Example 12.1 Unnamed source place in an invocation](TAG-130.md)
 - ⬜ Not started [Example 12.16 Occasional Source Place](TAG-133.md)
 - ⬜ Not started [Example 12.46 A Streetlight control program](TAG-134.md)
 - ⬜ Not started [Example 12.47 Linear Feedback Shift Register](TAG-135.md)
@@ -131,6 +131,7 @@
 - 🟡 Partial [Example 12.11 Controlled Fan-out Expression](TAG-181.md)
 - ⬜ Not started [IPL Generate keyword](TAG-183.md)
 - ✅ Implemented [Example 12.24 Pure Value Place of Resolution](TAG-184.md)
+- ✅ Implemented [Preserve case-sensitive IPL identifiers when emitting VHD](TAG-185.md)
 - ⬜ Not started [Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [The Completeness Dialogue](TAG-80.md)

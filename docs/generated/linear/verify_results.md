@@ -5,7 +5,7 @@
 | Issue | Example | Expected | Parse | GHDL | Result |
 | --- | --- | --- | --- | --- | --- |
 | TAG-129 | example-12.19.ms.ipl | Implemented | ok | ok | PASS |
-| TAG-130 | example-12.1.ms.ipl | Implemented | ok | ok | PASS |
+| TAG-130 | example-12.1.ms.ipl | Partial | ok | ok | unexpected pass |
 | TAG-136 | example-12.45.ms.ipl | Implemented | ok | ok | PASS |
 | TAG-137 | example-12.41.ms.ipl | Implemented | ok | ok | PASS |
 | TAG-138 | example-12.40.ms.ipl | Partial | ok | FAIL | expected fail |
@@ -23,4 +23,4 @@
 | TAG-180 | example-12.10.ms.ipl | Partial | ok | FAIL | expected fail |
 | TAG-181 | example-12.11.ms.ipl | Partial | ok | FAIL | expected fail |
 | TAG-184 | example-12.24.ms.ipl | Implemented | ok | ok | PASS |
-| TAG-185 | case-unique-signals.ms.ipl | - | ok | ok | unexpected pass |
+| TAG-185 | case-unique-signals.ms.ipl | Implemented | ok | ok | PASS |
