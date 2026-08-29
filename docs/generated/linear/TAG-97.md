@@ -12,7 +12,7 @@ _(not yet written)_
 
 The invocation and definition express the boundaries of both lateral and hierarchical composition. 
 
-## The Invocation 
+### The Invocation
 
 The invocation associates destination places to form an input boundary and associates source places to form an output boundary. The behavior model is that the boundaries are completeness boundaries and that the invocation expresses completeness criterion behavior between its input and output boundaries. When the content at the output boundary is complete, the content presented to the input is complete, and the output is the correct resolution of the content presented to the input boundary. Invocation boundaries are the boundaries of the expression. They are composition boundaries, coordination boundaries, and partition boundaries. An invocation is a named syntax structure of two parenthesized lists. Invocationname is the correspondence name of the invocation. The destination list is the input boundary for the invocation, in which the content to be resolved is received, and the source list is the output boundary for the invocation, through which the result content is distributed.
 
@@ -22,7 +22,7 @@ Invocation invocationname(destination list)(source list)
 
 --figure 
 
-## The Definition 
+### The Definition 
 
 The definition expresses the network of associations between the boundaries of the associated invocation. A definition is a named syntax structure delimited by brackets containing a source list delimited by parenthesis, a destination list delimited by parenthesis, a place of resolution terminated by a colon followed by a place of contained definitions. Definitionname is the correspondence name of the definition. The source list is the input for the definition through which a formed name is received, and the destination list is the output for the definition through which the results are delivered. The place of resolution is best understood as a bounded pure value expression that can contain association expressions. 
 

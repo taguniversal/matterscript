@@ -118,20 +118,7 @@ fn writeDefinition(
     var intermediate_names: std.ArrayListUnmanaged([]const u8) = .empty;
     for (def.resolution) |stmt| {
         switch (stmt) {
-            .fill => |raw_f| {
-                var f = raw_f;
-                if (f.dest_name.len == 0) f.dest_name = "result";
-                const literal = std.fmt.parseInt(u64, std.mem.trim(u8, f.expr, " \t\r\n"), 10) catch null;
-                if (literal) |value| {
-                    const dest_id = try sanitizeName(allocator, f.dest_name);
-                    defer allocator.free(dest_id);
-                    try writer.print("  {s} <= data_value({d});\n", .{ dest_id, value });
-                } else if (!try writeExpressionFill(allocator, writer, f)) {
-                    const dest_id = try sanitizeName(allocator, f.dest_name);
-                    defer allocator.free(dest_id);
-                    try writer.print("  {s} <= null_value;\n", .{dest_id});
-                }
-            },
+            .fill => {}, // handled later, after 'begin' — no declaration needed here
             .invoke => |inv| {
                 for (inv.outputs) |output| {
                     try writeIntermediatePlaceSignal(allocator, writer, def, &intermediate_names, output);
