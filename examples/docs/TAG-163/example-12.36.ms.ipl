@@ -1,4 +1,5 @@
 // Linear - TAG-163 Set of definitions establishing correspondence name connvention
+
 binaryequal[(a<> b<>) $a$b() 
    : 0,0[TRUE] 
      0,1[FALSE] 

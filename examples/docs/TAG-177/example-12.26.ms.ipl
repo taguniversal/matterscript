@@ -1,3 +1,5 @@
+// Linear: TAG-177 Example 12.26 Pure Value Expression of Boolean Full Adder
+
 FULLADD($A,$B,$C)(<> CARRYOUT<>)
 FULLADD[(X<>Y<>CI<>)( $SUM $CARRY)$X $Y$CI:
   // fan-out input symbols

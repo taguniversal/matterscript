@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 6  |  🟡 Partial: 9  |  ⬛ Spec only: 5  |  ⬜ Not started: 117  |  Total: 137
+✅ Implemented: 6  |  🟡 Partial: 9  |  ⬛ Spec only: 5  |  ⬜ Not started: 119  |  Total: 139
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
@@ -131,6 +131,8 @@
 - ⬛ Spec only [Example 12.26 Pure Value Expression of Boolean Full Adder](TAG-177.md)
 - 🟡 Partial [Example 12.10 Conditional Input Expression](TAG-180.md)
 - 🟡 Partial [Example 12.11 Controlled Fan-out Expression](TAG-181.md)
+- ⬜ Not started [IPL Generate keyword](TAG-183.md)
+- ⬜ Not started [Example 12.24 Pure Value Place of Resolution](TAG-184.md)
 - ⬜ Not started [Return a Content to Place of Invocation](TAG-32.md)
 - ⬜ Not started [Single Return to Place of Invocation](TAG-33.md)
 - ⬜ Not started [The Conditional Invocation Name](TAG-35.md)

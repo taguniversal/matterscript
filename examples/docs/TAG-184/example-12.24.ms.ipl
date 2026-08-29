@@ -1,0 +1,16 @@
+// Linear: TAG-184 Pure Value Place of Resolution
+
+FULLADD($A,$B,$C)(<> CARRYOUT<>)
+
+FULLADD[(A<> B<> CI<> )(SUMCO)
+
+$A$B$CI :
+
+S,U,W[SUM<S> CO<W>] 
+S,U,X[SUM<T> CO<W>]
+S,V,W[SUM<T> CO<W>] 
+S,V,X[SUM<S> CO<X>]
+T,U,W[SUM<T> CO<W>] 
+T,U,X[SUM<S> CO<X>]
+T,V,W[SUM<S> CO<X>] 
+T,V,X[SUM<T> CO<X>] ]
