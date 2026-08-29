@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-62b36407.js";
+            window.path_to_searchindex_js = "searchindex-eb609030.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-886bc232.js"></script>
@@ -3419,6 +3419,193 @@ OR($OP4 $OP3)(FIRSTSUM&lt;&gt;)
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="name-composition"><a class="header" href="#name-composition">Name Composition</a></h1>
+<p>Names are one of MatterScript’s most powerful concepts.</p>
+<p>Throughout this book we’ve seen names connecting places, selecting transform rules, and establishing causality between independent parts of a computation.</p>
+<p>But names are not limited to simple identifiers.</p>
+<p>They can also be <strong>constructed dynamically</strong> from the information flowing through the network.</p>
+<p>This process is called <strong>name composition</strong>.</p>
+<hr>
+<h2 id="building-a-name"><a class="header" href="#building-a-name">Building a Name</a></h2>
+<p>Consider the definition of an OR gate.</p>
+<pre><code class="language-matterscript">OR[(A&lt;&gt; B&lt;&gt;)($result)
+
+    $A$B()
+
+    :0,0[0]
+     0,1[1]
+     1,0[1]
+     1,1[1]
+]
+</code></pre>
+<p>As tokens arrive at <code>A&lt;&gt;</code> and <code>B&lt;&gt;</code>, they are combined to form a single correspondence name.</p>
+<p>If the arriving tokens are <code>0</code> and <code>1</code>, the composed name becomes:</p>
+<pre><code class="language-text">01
+</code></pre>
+<p>That composed name is then used to select the matching transform rule.</p>
+<p>The computation is not performing a comparison.</p>
+<p>It is forming a name and allowing the language’s correspondence mechanism to resolve it.</p>
+<hr>
+<h2 id="names-are-structures"><a class="header" href="#names-are-structures">Names Are Structures</a></h2>
+<p>It is tempting to think of a composed name as a string.</p>
+<p>That would miss the larger idea.</p>
+<p>MatterScript treats names as <strong>structured relationships</strong>.</p>
+<p>Each component contributes part of the completed correspondence.</p>
+<p>The resulting name represents the combined state of all participating inputs.</p>
+<p>This is why transform rules feel so natural.</p>
+<p>Rather than asking,</p>
+<blockquote>
+<p>“If A equals 0 and B equals 1…”</p>
+</blockquote>
+<p>the language simply forms the name represented by those arriving tokens.</p>
+<p>That name either corresponds to a rule or it does not.</p>
+<hr>
+<h2 id="helping-the-parser"><a class="header" href="#helping-the-parser">Helping the Parser</a></h2>
+<p>You may have noticed that the transform rules include commas.</p>
+<pre><code class="language-matterscript">:0,0[0]
+ 0,1[1]
+ 1,0[1]
+ 1,1[1]
+</code></pre>
+<p>Internally, the correspondence name is simply the combination of the arriving tokens.</p>
+<p>The commas are <strong>not part of the name itself</strong>.</p>
+<p>Instead, they exist for the benefit of the programmer and the parser.</p>
+<p>Without separators, a rule such as</p>
+<pre><code class="language-text">011
+</code></pre>
+<p>could represent several different structures depending on how the incoming tokens are partitioned.</p>
+<p>Did it come from:</p>
+<pre><code class="language-text">0 11
+</code></pre>
+<p>or</p>
+<pre><code class="language-text">01 1
+</code></pre>
+<p>or three independent tokens?</p>
+<p>The commas remove that ambiguity.</p>
+<p>They tell the parser exactly which portion of the composed name corresponds to each incoming place.</p>
+<p>They do <strong>not</strong> change the meaning of the composed name.</p>
+<p>They simply make the programmer’s intent explicit.</p>
+<hr>
+<h2 id="syntax-that-expresses-intent"><a class="header" href="#syntax-that-expresses-intent">Syntax That Expresses Intent</a></h2>
+<p>This is a recurring design principle throughout MatterScript.</p>
+<p>Whenever possible, the syntax is designed to communicate intent rather than introduce additional semantics.</p>
+<p>The commas do not alter the computation.</p>
+<p>They do not change the internal representation.</p>
+<p>They do not create a different correspondence relationship.</p>
+<p>They simply record how the programmer intended the name to be composed.</p>
+<p>The language remains simple.</p>
+<p>The source code becomes clearer.</p>
+<p>The parser receives an unambiguous description of the intended structure.</p>
+<hr>
+<h2 id="beyond-boolean-logic"><a class="header" href="#beyond-boolean-logic">Beyond Boolean Logic</a></h2>
+<p>The examples in this chapter use Boolean values because they are easy to visualize.</p>
+<p>The idea is far more general.</p>
+<p>Names can be composed from arbitrary tokens.</p>
+<p>A biochemical simulation might compose the names of interacting molecules.</p>
+<p>A routing engine might compose geometric regions.</p>
+<p>A protocol stack might compose message types and state identifiers.</p>
+<p>Wherever information can be combined to express a relationship, MatterScript can compose a correspondence name.</p>
+<p>The mechanism never changes.</p>
+<p>Only the participating tokens do.</p>
+<hr>
+<h2 id="example-forming-water"><a class="header" href="#example-forming-water">Example: Forming Water</a></h2>
+<p>Imagine a tiny region of space filled with tokens.</p>
+<p>Initially it contains nothing more than individual atoms.</p>
+<pre><code class="language-text">H   H   O
+</code></pre>
+<p>Each atom is simply a token occupying a place.</p>
+<p>No central program scans the region asking,</p>
+<blockquote>
+<p>“Can I make water yet?”</p>
+</blockquote>
+<p>Instead, local transform rules describe what happens when compatible neighbors exist.</p>
+<p>A simplified rule might be written conceptually as:</p>
+<pre><code class="language-matterscript">H,O,H -&gt; H₂O
+</code></pre>
+<p>or in MatterScript style,</p>
+<pre><code class="language-matterscript">:H,O,H[H2O]
+</code></pre>
+<p>The exact syntax isn’t important here.</p>
+<p>The important point is that the three neighboring tokens form a correspondence name.</p>
+<p>When the relationship</p>
+<pre><code>H,O,H
+</code></pre>
+<p>exists locally, the transform rule matches.</p>
+<p>The three individual tokens disappear.</p>
+<p>A new token appears.</p>
+<pre><code>H₂O
+</code></pre>
+<p>No search occurred.</p>
+<p>No iteration occurred.</p>
+<p>No scheduler was involved.</p>
+<p>The relationship itself caused the transformation.</p>
+<hr>
+<h2 id="building-larger-structures"><a class="header" href="#building-larger-structures">Building Larger Structures</a></h2>
+<p>Now imagine the region contains thousands of atoms.</p>
+<pre><code>H H H O C N O H H ...
+</code></pre>
+<p>Most neighboring groups never satisfy any transform rule.</p>
+<p>They simply remain unchanged.</p>
+<p>Whenever a valid neighborhood forms, however, it immediately transforms into a larger structure.</p>
+<p>Those larger structures become tokens themselves.</p>
+<p>Now new rules become possible.</p>
+<pre><code>H
+O
+H
+↓
+
+H₂O
+</code></pre>
+<p>Later,</p>
+<pre><code>Protein Fragment
++
+H₂O
+↓
+
+Hydrated Protein
+</code></pre>
+<p>The process continues naturally.</p>
+<p>Simple tokens become molecules.</p>
+<p>Molecules become complexes.</p>
+<p>Complexes become organelles.</p>
+<p>Every level is expressed using exactly the same mechanism:</p>
+<blockquote>
+<p>local relationships produce new local relationships.</p>
+</blockquote>
+<hr>
+<h2 id="reaching-stability"><a class="header" href="#reaching-stability">Reaching Stability</a></h2>
+<p>Eventually the region reaches a point where no transform rules apply.</p>
+<p>Nothing is waiting.</p>
+<p>Nothing is looping.</p>
+<p>Nothing is consuming CPU cycles.</p>
+<p>The computation has simply reached equilibrium.</p>
+<p>At that point, the completed structure may propagate naturally to another region of the system, much like a finished protein being transported to a cell membrane.</p>
+<p>The computation has not terminated because an instruction pointer reached the end of a program.</p>
+<p>It has terminated because there are no remaining causal relationships capable of producing change.</p>
+<hr>
+<h2 id="why-this-matters"><a class="header" href="#why-this-matters">Why This Matters</a></h2>
+<p>This example hints at something much larger than chemistry.</p>
+<p>Weather systems.</p>
+<p>Crystal growth.</p>
+<p>Traffic flow.</p>
+<p>Biological development.</p>
+<p>Galactic formation.</p>
+<p>All of these systems evolve because local interactions continually produce new local interactions.</p>
+<p>Today’s computers simulate them by repeatedly scanning enormous arrays to ask whether anything has changed.</p>
+<p>MatterScript describes the relationships directly.</p>
+<p>When a valid relationship exists, it transforms.</p>
+<p>When none exist, nothing happens.</p>
+<p>The computation is driven by causality rather than inspection.</p>
+<h2 id="relationships-become-names"><a class="header" href="#relationships-become-names">Relationships Become Names</a></h2>
+<p>Name composition illustrates one of the central ideas of MatterScript.</p>
+<p>Relationships are not discovered by searching memory.</p>
+<p>They are not computed through chains of conditional statements.</p>
+<p>They are expressed directly as correspondence.</p>
+<p>Individual tokens arrive.</p>
+<p>Their relationship forms a name.</p>
+<p>That name identifies the next transformation.</p>
+<p>From the programmer’s perspective, this is a remarkably natural way to describe computation.</p>
+<p>Rather than writing logic that asks <em>what should happen?</em>, you simply describe the relationships that exist.</p>
+<p>The language allows those relationships to resolve themselves.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="generate-blocks"><a class="header" href="#generate-blocks">Generate Blocks</a></h1>

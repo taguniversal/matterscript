@@ -1,7 +1,6 @@
 // Linear: TAG-160 Conditional invocationname
+// Invocation without destination list
 OR[(A<>B<>)<$A$B()>: 
-   0[0] 
-   1[1] 
    0,0[0] 
    0,1[1] 
    1,0[1] 
