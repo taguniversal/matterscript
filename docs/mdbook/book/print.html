@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a0a5c43e.js";
+            window.path_to_searchindex_js = "searchindex-82953c31.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f80959e9.js"></script>
+        <script src="toc-acde4d6b.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -3134,7 +3134,91 @@ AND($SUM $ENABLE)(RESULT&lt;&gt;)
 <p>In imperative languages, information is trapped inside mutable containers. In MatterScript, information is the thing that moves, and the computation emerges from its movement through a network of relationships.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="resolution-areas"><a class="header" href="#resolution-areas">Resolution Areas</a></h1>
+<h1 id="field-of-resolution"><a class="header" href="#field-of-resolution">Field of Resolution</a></h1>
+<p>At the heart of every definition is a <strong>field of resolution</strong>.</p>
+<p>This is where computation happens.</p>
+<p>Not by executing instructions one after another, but by allowing tokens to propagate through a bounded network of relationships until every possible consequence has been expressed.</p>
+<p>A field of resolution is the computational interior of a definition.</p>
+<p>The interface describes what enters and what leaves.</p>
+<p>The field of resolution describes what happens in between.</p>
+<pre><code class="language-matterscript">FULLADD[(X&lt;&gt; Y&lt;&gt; C&lt;&gt;)( $SUM $CARRY )
+
+    NOT($X)(OP1&lt;&gt;)
+    AND($OP1 $Y)(OP4&lt;&gt;)
+    OR($OP4 $OP3)(FIRSTSUM&lt;&gt;)
+
+    ...
+
+]
+</code></pre>
+<p>Everything between the interface and the contained definitions belongs to the field of resolution.</p>
+<hr>
+<h2 id="a-local-universe"><a class="header" href="#a-local-universe">A Local Universe</a></h2>
+<p>One useful way to think about a field of resolution is as a small universe with its own internal laws.</p>
+<p>Tokens enter through the definition’s source places.</p>
+<p>They propagate through local relationships.</p>
+<p>New tokens are produced.</p>
+<p>Eventually the completed results appear at the definition’s destination places.</p>
+<p>Nothing outside the definition needs to know how that process unfolds.</p>
+<p>The internal network is completely encapsulated.</p>
+<p>This is not merely an organizational convenience.</p>
+<p>It is what allows MatterScript to compose arbitrarily large systems from small, understandable pieces.</p>
+<hr>
+<h2 id="resolution-is-local"><a class="header" href="#resolution-is-local">Resolution Is Local</a></h2>
+<p>One of the recurring themes of this book is <strong>locality</strong>.</p>
+<p>Every interaction occurs because information has arrived at a particular place.</p>
+<p>Fields of resolution apply the same principle to entire computations.</p>
+<p>A definition never scans the rest of the program looking for work.</p>
+<p>It never asks whether another computation has finished.</p>
+<p>It never waits for a scheduler to grant permission to execute.</p>
+<p>It simply responds to the arrival of complete information at its own boundary.</p>
+<p>Everything it needs to know already exists within its local neighborhood.</p>
+<p>This is one of the reasons MatterScript scales naturally from tiny logic gates to systems containing billions of interacting elements.</p>
+<hr>
+<h2 id="boundaries-matter"><a class="header" href="#boundaries-matter">Boundaries Matter</a></h2>
+<p>The boundary of a field of resolution is more than syntax.</p>
+<p>It defines where causality begins and ends.</p>
+<p>Outside the boundary, the definition is simply a named component.</p>
+<p>Inside the boundary, the compiler can freely analyze propagation, construct dependency graphs, optimize placement, and ultimately generate hardware or software that preserves the expressed relationships.</p>
+<p>Because the internal implementation is isolated, a definition can be rewritten, optimized, or even mapped onto an entirely different execution substrate without changing its external behavior.</p>
+<p>Only the relationships at the boundary matter.</p>
+<hr>
+<h2 id="a-reaction-chamber"><a class="header" href="#a-reaction-chamber">A Reaction Chamber</a></h2>
+<p>The word <em>resolution</em> was chosen deliberately.</p>
+<p>The goal is not to execute code.</p>
+<p>The goal is to resolve relationships.</p>
+<p>A useful analogy is a chemical reaction vessel.</p>
+<p>Reactants enter.</p>
+<p>Local interactions occur according to the laws governing that system.</p>
+<p>Products leave.</p>
+<p>The vessel itself does not orchestrate the reaction.</p>
+<p>It simply provides the environment in which the reaction can occur.</p>
+<p>A resolution area serves the same purpose.</p>
+<p>It defines the space within which information is allowed to interact.</p>
+<hr>
+<h2 id="resolution-before-execution"><a class="header" href="#resolution-before-execution">Resolution Before Execution</a></h2>
+<p>Most programming languages ask a familiar question:</p>
+<blockquote>
+<p><em>What instruction executes next?</em></p>
+</blockquote>
+<p>MatterScript asks a different one:</p>
+<blockquote>
+<p><em>What relationships can now be resolved?</em></p>
+</blockquote>
+<p>That difference may seem subtle, but it changes the entire computational model.</p>
+<p>The compiler is no longer concerned with constructing an execution order.</p>
+<p>Instead, it constructs a network in which every local relationship resolves as soon as its required information is complete.</p>
+<p>Execution becomes an implementation detail.</p>
+<p>Resolution is the language itself.</p>
+<hr>
+<h2 id="computation-happens-inside-relationships"><a class="header" href="#computation-happens-inside-relationships">Computation Happens Inside Relationships</a></h2>
+<p>As we’ve progressed through this chapter, a pattern has begun to emerge.</p>
+<p>Places define where information exists.</p>
+<p>Tokens define the information itself.</p>
+<p>Invocations connect one computation to another.</p>
+<p>Definitions establish local boundaries.</p>
+<p>Fields of resolution are where those relationships come alive.</p>
+<p>The language is gradually revealing itself not as a sequence of operations, but as a landscape of interacting regions, each resolving its own local relationships while contributing to the behavior of the larger system.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="tables"><a class="header" href="#tables">Tables</a></h1>

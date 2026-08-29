@@ -34,7 +34,7 @@
 - [Definitions](part-04-learning-matterscript/03-definitions.md)
 - [Places](part-04-learning-matterscript/04-places.md)
 - [Tokens](part-04-learning-matterscript/05-tokens.md)
-- [Resolution Areas](part-04-learning-matterscript/06-resolution-areas.md)
+- [Fields of Resolution](part-04-learning-matterscript/06-fields-of-resolution.md)
 - [Tables](part-04-learning-matterscript/07-tables.md)
 - [Invocation](part-04-learning-matterscript/08-invocation.md)
 - [Name Composition](part-04-learning-matterscript/09-name-composition.md)
