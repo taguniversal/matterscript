@@ -22,10 +22,12 @@ Geometry
 Matter
 ```
 
----
-[Linear Documentation](docs/generated/linear/index.md)
-
 # Current Status
+---
+[Linear Issue Documentation](docs/generated/linear/index.md)
+
+
+[Test Results](docs/generated/linear/verify_results.md)
 
 Implemented:
 
