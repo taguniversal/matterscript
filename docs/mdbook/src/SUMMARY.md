@@ -35,7 +35,7 @@
 - [Places](part-04-learning-matterscript/04-places.md)
 - [Tokens](part-04-learning-matterscript/05-tokens.md)
 - [Fields of Resolution](part-04-learning-matterscript/06-fields-of-resolution.md)
-- [Tables](part-04-learning-matterscript/07-tables.md)
+- [Transform Rules](part-04-learning-matterscript/07-transform-rules.md)
 - [Invocation](part-04-learning-matterscript/08-invocation.md)
 - [Name Composition](part-04-learning-matterscript/09-name-composition.md)
 - [Generate Blocks](part-04-learning-matterscript/10-generate-blocks.md)

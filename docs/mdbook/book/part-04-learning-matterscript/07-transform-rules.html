@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Tables - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
+        <title>Transform Rules - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
 
 
         <!-- Custom HTML head -->
@@ -37,10 +37,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-82953c31.js";
+            window.path_to_searchindex_js = "../searchindex-76d1635e.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-acde4d6b.js"></script>
+        <script src="../toc-886bc232.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,7 +176,88 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="tables"><a class="header" href="#tables">Tables</a></h1>
+                        <h2 id="transform-rules"><a class="header" href="#transform-rules">Transform Rules</a></h2>
+<p>As we have seen throughout this book, MatterScript builds complex behavior by composing definitions into increasingly larger networks. A full adder is built from logic gates. A processor is built from arithmetic units. A simulation is built from thousands or millions of interacting definitions.</p>
+<p>Eventually, however, every hierarchy reaches a point where there is nothing left to decompose.</p>
+<p>That is where <strong>transform rules</strong> come in.</p>
+<p>Transform rules describe behavior directly. Rather than expressing a computation by invoking other definitions, they specify the relationship between an input and its corresponding output.</p>
+<pre><code class="language-matterscript">AND[(A&lt;&gt; B&lt;&gt;)($res)
+
+    res&lt;$A$B()&gt;
+
+    :0,0[0]
+     0,1[0]
+     1,0[0]
+     1,1[1]
+]
+</code></pre>
+<p>Here, the place of resolution forms the correspondence name <code>00</code>, <code>01</code>, <code>10</code>, or <code>11</code> from the arriving input tokens. That name selects one of the contained constant definitions, whose value is immediately returned as the result.</p>
+<p>Nothing is executed.</p>
+<p>Nothing is searched.</p>
+<p>The behavior is simply declared.</p>
+<hr>
+<h2 id="computation-as-transformation"><a class="header" href="#computation-as-transformation">Computation as Transformation</a></h2>
+<p>In most programming languages, we think of computation as a sequence of operations.</p>
+<p>An input is loaded into memory.</p>
+<p>Instructions execute.</p>
+<p>Intermediate values are produced.</p>
+<p>Eventually a result is returned.</p>
+<p>MatterScript approaches the problem from a different direction.</p>
+<p>Every definition answers a single question:</p>
+<blockquote>
+<p><em>Given these input tokens, what should this relationship produce?</em></p>
+</blockquote>
+<p>Sometimes that answer requires an entire network of interacting definitions.</p>
+<p>Sometimes the answer is already known.</p>
+<p>Transform rules express those known relationships directly.</p>
+<p>Rather than describing <em>how</em> to compute a result, they declare <em>what</em> the result is.</p>
+<hr>
+<h2 id="the-leaves-of-the-network"><a class="header" href="#the-leaves-of-the-network">The Leaves of the Network</a></h2>
+<p>A useful way to think about transform rules is as the leaves of the computational tree.</p>
+<p>Higher-level definitions are composed from smaller definitions.</p>
+<p>Those definitions are composed from still smaller ones.</p>
+<p>Eventually the hierarchy terminates in a set of transform rules that require no further decomposition.</p>
+<p>The language itself makes no distinction between these levels.</p>
+<p>A full adder and an AND gate are both definitions.</p>
+<p>One happens to be implemented by composing other definitions.</p>
+<p>The other happens to terminate in transform rules.</p>
+<p>Composition, not special language primitives, is what gives the language its expressive power.</p>
+<hr>
+<h2 id="more-than-lookup-tables"><a class="header" href="#more-than-lookup-tables">More Than Lookup Tables</a></h2>
+<p>It is tempting to think of transform rules as lookup tables.</p>
+<p>While the compiler may ultimately implement them that way, the language is expressing something more fundamental.</p>
+<p>Each rule defines a relationship between information entering the definition and information leaving it.</p>
+<pre><code class="language-matterscript">:0,0[0]
+ 0,1[0]
+ 1,0[0]
+ 1,1[1]
+</code></pre>
+<p>These are not rows in a database.</p>
+<p>They are declarations of causality.</p>
+<p>When the incoming tokens form the name <code>11</code>, the relationship produces the token <code>1</code>.</p>
+<p>When they form <code>00</code>, the relationship produces <code>0</code>.</p>
+<p>The emphasis is not on storage, but on transformation.</p>
+<hr>
+<h2 id="building-without-built-ins"><a class="header" href="#building-without-built-ins">Building Without Built-ins</a></h2>
+<p>One of MatterScript’s design principles is that there are no privileged language primitives.</p>
+<p><code>AND</code>, <code>OR</code>, and <code>NOT</code> are not keywords.</p>
+<p>They are ordinary definitions.</p>
+<p>The only difference is that they happen to terminate in transform rules rather than invoking additional definitions.</p>
+<p>This uniformity makes the language remarkably scalable.</p>
+<p>Whether you are describing a two-input logic gate, a cryptographic accelerator, a biological pathway, or a distributed simulation, every component is expressed using the same vocabulary of places, definitions, invocations, and transformations.</p>
+<p>The language never changes.</p>
+<p>Only the size of the network does.</p>
+<hr>
+<h2 id="a-foundation-for-higher-level-systems"><a class="header" href="#a-foundation-for-higher-level-systems">A Foundation for Higher-Level Systems</a></h2>
+<p>As MatterScript evolves, most transform rules will never be written by hand.</p>
+<p>Compilers will synthesize them from Boolean minimization.</p>
+<p>Geometry engines will generate them from spatial relationships.</p>
+<p>Domain-specific libraries may derive them from physical laws, chemical reactions, or mathematical models.</p>
+<p>To the language, however, they are all the same.</p>
+<p>Every transform rule is simply a definition whose behavior is expressed directly rather than composed from smaller parts.</p>
+<p>That uniformity is one of MatterScript’s greatest strengths.</p>
+<p>At every level of abstraction, from a single logic gate to a planetary simulation, computation is described using the same fundamental idea:</p>
+<p><strong>Information arrives. Relationships resolve. New information emerges.</strong></p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>

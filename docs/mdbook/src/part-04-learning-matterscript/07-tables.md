@@ -1,3 +1,1 @@
 # Tables
-
-*Drafting in progress...*
