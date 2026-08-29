@@ -1,0 +1,8 @@
+// TAG-185 Preserve case-sensitive IPL identifiers when emitting VHD
+
+test[(a<> A<> b<> B<>)($result)
+    $a$A$b$B()
+:
+    0,0,0,0[0]
+    1,1,1,1[1]
+]

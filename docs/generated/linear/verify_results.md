@@ -1,6 +1,6 @@
 # Example verification results
 
-14 expected outcomes, 5 unexpected outcomes.
+14 expected outcomes, 6 unexpected outcomes.
 
 | Issue | Example | Expected | Parse | GHDL | Result |
 | --- | --- | --- | --- | --- | --- |
@@ -23,3 +23,4 @@
 | TAG-180 | example-12.10.ms.ipl | Partial | ok | FAIL | expected fail |
 | TAG-181 | example-12.11.ms.ipl | Partial | ok | FAIL | expected fail |
 | TAG-184 | example-12.24.ms.ipl | Implemented | ok | ok | PASS |
+| TAG-185 | case-unique-signals.ms.ipl | - | ok | ok | unexpected pass |

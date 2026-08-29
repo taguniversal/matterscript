@@ -88,6 +88,14 @@ fn writeDefinition(
         }
     }
 
+    // IPL names are case-sensitive, whereas VHDL identifiers are not.  Give
+    // every exact IPL spelling a stable, lowercase VHDL spelling before any
+    // declaration or reference is emitted.  This is deliberately done to the
+    // whole definition, rather than only to ports: `a` and `A` must remain
+    // distinct in assignments, expression references, and intermediate
+    // signals as well as in the entity interface.
+    def = try normalizeDefinitionIdentifiers(allocator, def);
+
     const def_id = try scopedDefinitionName(allocator, scope, def.name);
     defer allocator.free(def_id);
     try writer.print(
@@ -918,11 +926,149 @@ fn evalExpr(
 // Helpers
 // ----------------------------------------------------------------
 
+const IdentifierEntry = struct {
+    raw: []const u8,
+    emitted: []const u8,
+};
+
+/// Maps IPL identifiers to identifiers that are legal and unique in one VHDL
+/// definition scope.  IPL compares spellings exactly; VHDL does not compare
+/// case, so `a` and `A` must receive different generated names.
+const IdentifierMap = struct {
+    allocator: std.mem.Allocator,
+    entries: std.ArrayListUnmanaged(IdentifierEntry) = .empty,
+
+    fn resolve(map: *IdentifierMap, raw: []const u8) ![]const u8 {
+        for (map.entries.items) |entry| {
+            if (std.mem.eql(u8, entry.raw, raw)) return entry.emitted;
+        }
+
+        const base = try sanitizeName(map.allocator, raw);
+        defer map.allocator.free(base);
+        var suffix: usize = 0;
+        while (true) : (suffix += 1) {
+            const candidate = if (suffix == 0)
+                try map.allocator.dupe(u8, base)
+            else
+                try std.fmt.allocPrint(map.allocator, "{s}_{d}", .{ base, suffix });
+            var used = false;
+            for (map.entries.items) |entry| {
+                if (std.mem.eql(u8, entry.emitted, candidate)) {
+                    used = true;
+                    break;
+                }
+            }
+            if (!used) {
+                const raw_copy = try map.allocator.dupe(u8, raw);
+                try map.entries.append(map.allocator, .{ .raw = raw_copy, .emitted = candidate });
+                return candidate;
+            }
+            map.allocator.free(candidate);
+        }
+    }
+};
+
+fn normalizeDefinitionIdentifiers(allocator: std.mem.Allocator, raw_def: network.Definition) !network.Definition {
+    var names = IdentifierMap{ .allocator = allocator };
+    var def = raw_def;
+    def.sources = try normalizePlaces(allocator, &names, raw_def.sources);
+    def.destinations = try normalizePlaces(allocator, &names, raw_def.destinations);
+    def.resolution = try normalizeStatements(allocator, &names, raw_def.resolution);
+    def.constants = try normalizeConstants(allocator, &names, raw_def.constants);
+    return def;
+}
+
+fn normalizePlaces(
+    allocator: std.mem.Allocator,
+    names: *IdentifierMap,
+    places: []const network.Place,
+) ![]const network.Place {
+    var normalized: std.ArrayListUnmanaged(network.Place) = .empty;
+    for (places) |raw_place| {
+        var place = raw_place;
+        if (place.name.len != 0) place.name = try names.resolve(place.name);
+        if (raw_place.group) |raw_group| {
+            const group = try allocator.create(network.PlaceGroup);
+            group.* = .{
+                .kind = raw_group.kind,
+                .places = try normalizePlaces(allocator, names, raw_group.places),
+            };
+            place.group = group;
+        }
+        try normalized.append(allocator, place);
+    }
+    return normalized.toOwnedSlice(allocator);
+}
+
+fn normalizeStatements(
+    allocator: std.mem.Allocator,
+    names: *IdentifierMap,
+    statements: []const network.Statement,
+) ![]const network.Statement {
+    var normalized: std.ArrayListUnmanaged(network.Statement) = .empty;
+    for (statements) |statement| {
+        switch (statement) {
+            .fill => |raw_fill| {
+                var fill = raw_fill;
+                if (fill.dest_name.len != 0) fill.dest_name = try names.resolve(fill.dest_name);
+                fill.expr = try rewriteDollarReferences(allocator, names, fill.expr);
+                try normalized.append(allocator, .{ .fill = fill });
+            },
+            .invoke => |raw_invocation| {
+                var invocation = raw_invocation;
+                var args: std.ArrayListUnmanaged([]const u8) = .empty;
+                for (raw_invocation.args) |arg| try args.append(allocator, try rewriteDollarReferences(allocator, names, arg));
+                invocation.args = try args.toOwnedSlice(allocator);
+                invocation.outputs = try normalizePlaces(allocator, names, raw_invocation.outputs);
+                try normalized.append(allocator, .{ .invoke = invocation });
+            },
+            .pure_value => |expression| try normalized.append(allocator, .{ .pure_value = try rewriteDollarReferences(allocator, names, expression) }),
+        }
+    }
+    return normalized.toOwnedSlice(allocator);
+}
+
+fn normalizeConstants(
+    allocator: std.mem.Allocator,
+    names: *IdentifierMap,
+    constants: []const network.TableDef,
+) ![]const network.TableDef {
+    var normalized: std.ArrayListUnmanaged(network.TableDef) = .empty;
+    for (constants) |raw_table| {
+        var table = raw_table;
+        table.composed_name = try rewriteDollarReferences(allocator, names, raw_table.composed_name);
+        try normalized.append(allocator, table);
+    }
+    return normalized.toOwnedSlice(allocator);
+}
+
+/// Rewrites only `$identifier` segments; literal values and punctuation keep
+/// their source spelling.  This covers source fills, invocation arguments,
+/// lookup keys, and pure value expressions without changing IPL semantics.
+fn rewriteDollarReferences(allocator: std.mem.Allocator, names: *IdentifierMap, text: []const u8) ![]const u8 {
+    var out: std.ArrayListUnmanaged(u8) = .empty;
+    var i: usize = 0;
+    while (i < text.len) {
+        if (text[i] != '$') {
+            try out.append(allocator, text[i]);
+            i += 1;
+            continue;
+        }
+        try out.append(allocator, '$');
+        i += 1;
+        const start = i;
+        while (i < text.len and (std.ascii.isAlphanumeric(text[i]) or text[i] == '_')) i += 1;
+        if (i == start) continue;
+        try out.appendSlice(allocator, try names.resolve(text[start..i]));
+    }
+    return out.toOwnedSlice(allocator);
+}
+
 fn sanitizeName(allocator: std.mem.Allocator, composed: []const u8) ![]u8 {
     var buf: std.ArrayListUnmanaged(u8) = .empty;
     for (composed) |c| {
         if (std.ascii.isAlphanumeric(c) or c == '_')
-            try buf.append(allocator, c);
+            try buf.append(allocator, std.ascii.toLower(c));
     }
     const needs_prefix = isVhdlReserved(buf.items) or
         (buf.items.len > 0 and std.ascii.isDigit(buf.items[0]));
