@@ -115,7 +115,7 @@ pub fn build(b: *std.Build) void {
     doctest_step.dependOn(&run_doctest.step);
 
     // Attach mdbook and doc-testing to the weave and test pipelines
-    weave_step.dependOn(&run_mdbook.step);
+    //weave_step.dependOn(&run_mdbook.step);
     test_step.dependOn(&run_doctest.step);
 
     // ------------------------------------------------------------
