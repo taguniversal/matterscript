@@ -46,9 +46,48 @@ pub fn write(allocator: std.mem.Allocator, writer: anytype, net: network.Network
 fn writeDefinition(
     allocator: std.mem.Allocator,
     writer: anytype,
-    def: network.Definition,
+    raw_def: network.Definition,
     scope: []const u8,
 ) !void {
+    // §12.3.4 "Single Return to Place of Invocation" — if this
+    // definition has no destination list at all, its resolution's
+    // top-level fill(s) express the implicit return(s) instead,
+    // whether unnamed (synthesize "result") or already named (e.g.
+    // "out1" in "A[out1< $in >]"). Normalized ONCE here, into a
+    // corrected copy of `def`, so every downstream use — component
+    // declarations, intermediate signals, lookup tables, fill
+    // emission — sees consistent data, instead of patching each call
+    // site individually and risking missing one.
+    var def = raw_def;
+    if (def.destinations.len == 0) {
+        var names: std.ArrayListUnmanaged([]const u8) = .empty;
+        var normalized: std.ArrayListUnmanaged(network.Statement) = .empty;
+        for (def.resolution) |stmt| {
+            switch (stmt) {
+                .fill => |raw_f| {
+                    var f = raw_f;
+                    if (f.dest_name.len == 0) f.dest_name = "result";
+                    var have = false;
+                    for (names.items) |n| {
+                        if (std.mem.eql(u8, n, f.dest_name)) {
+                            have = true;
+                            break;
+                        }
+                    }
+                    if (!have) try names.append(allocator, f.dest_name);
+                    try normalized.append(allocator, .{ .fill = f });
+                },
+                else => try normalized.append(allocator, stmt),
+            }
+        }
+        if (names.items.len > 0) {
+            var dests: std.ArrayListUnmanaged(network.Place) = .empty;
+            for (names.items) |n| try dests.append(allocator, .{ .name = n, .kind = .destination });
+            def.destinations = try dests.toOwnedSlice(allocator);
+            def.resolution = try normalized.toOwnedSlice(allocator);
+        }
+    }
+
     const def_id = try scopedDefinitionName(allocator, scope, def.name);
     defer allocator.free(def_id);
     try writer.print(
@@ -62,25 +101,10 @@ fn writeDefinition(
         \\
     , .{def.name});
 
-    // §12.3.4 "Single Return to Place of Invocation" — if this
-    // definition has no destination list at all, but its resolution
-    // contains an unnamed fill (the abbreviated single-return form),
-    // synthesize one destination port named "result" to carry it.
-    // Without this the entity has no output port for that value at
-    // all, and the assignment targets a blank identifier — invalid
-    // VHDL.
-    var has_unnamed_fill = false;
-    for (def.resolution) |stmt| {
-        if (stmt == .fill and stmt.fill.dest_name.len == 0) has_unnamed_fill = true;
-    }
-    const synthetic_dest = [_]network.Place{.{ .name = "result", .kind = .destination }};
-    const effective_destinations: []const network.Place =
-        if (def.destinations.len == 0 and has_unnamed_fill) &synthetic_dest else def.destinations;
-
     // entity
     try writer.print("entity {s} is\n  port(\n", .{def_id});
     try writer.print("    clk : in  std_logic;\n", .{});
-    const boundary_count = boundaryCount(def.sources) + boundaryCount(effective_destinations);
+    const boundary_count = boundaryCount(def.sources) + boundaryCount(def.destinations);
     try writer.print("    rst : in  std_logic{s}\n", .{if (boundary_count == 0) "" else ";"});
 
     // sources → inputs (tokens flow IN to the definition)
@@ -91,7 +115,7 @@ fn writeDefinition(
     }
 
     // destinations → outputs (tokens flow OUT of the definition)
-    for (effective_destinations) |dest| {
+    for (def.destinations) |dest| {
         try writeBoundaryPorts(allocator, writer, dest, "out", &port_index, boundary_count, &port_names);
     }
     try writer.print("  );\nend {s};\n\n", .{def_id});

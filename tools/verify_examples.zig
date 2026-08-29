@@ -33,6 +33,11 @@ fn expectedStatus(map: std.StringHashMap(?[]const u8), tag: []const u8) ?[]const
     return (map.get(tag) orelse null);
 }
 
+
+fn lessThanByTag(_: void, a: ExampleRow, b: ExampleRow) bool {
+    return std.mem.lessThan(u8, a.tag, b.tag);
+}
+
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
     const args = try init.minimal.args.toSlice(arena);
@@ -123,7 +128,7 @@ pub fn main(init: std.process.Init) !void {
             .result = classify(expectedStatus(status_map, ex.tag), true, ghdl_ok),
         });
     }
-
+    std.mem.sort(ExampleRow, rows.items, {}, lessThanByTag);
     printTable(rows.items);
 }
 
