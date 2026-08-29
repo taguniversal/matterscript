@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-f774979f.js";
+            window.path_to_searchindex_js = "../searchindex-eebaf574.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-f80959e9.js"></script>
@@ -177,6 +177,131 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="places"><a class="header" href="#places">Places</a></h1>
+<p>Every programming language has a fundamental unit of expression.</p>
+<p>In C, it is the variable.</p>
+<p>In Lisp, it is the list.</p>
+<p>In SQL, it is the relation.</p>
+<p>In MatterScript, it is the <strong>place</strong>.</p>
+<p>A place is where information exists.</p>
+<p>Not memory.</p>
+<p>Not storage.</p>
+<p>Not a variable.</p>
+<p><strong>A place</strong>.</p>
+<p>This may seem like a small difference in terminology, but it reflects a fundamentally different way of thinking about computation.</p>
+<p>Variables are containers whose contents change over time.</p>
+<p>Places are locations through which information flows.</p>
+<hr>
+<h2 id="information-exists-somewhere"><a class="header" href="#information-exists-somewhere">Information Exists Somewhere</a></h2>
+<p>Earlier in this book we introduced one of MatterScript’s guiding principles:</p>
+<blockquote>
+<p>Information always exists somewhere.</p>
+</blockquote>
+<p>Places are how the language expresses that idea.</p>
+<p>Every token occupies a place.</p>
+<p>Every computation consumes information from places and produces information into other places.</p>
+<p>Every causal relationship in a MatterScript program is ultimately expressed as a relationship between places.</p>
+<p>If you understand places, you understand the foundation of the language.</p>
+<hr>
+<h2 id="two-kinds-of-places"><a class="header" href="#two-kinds-of-places">Two Kinds of Places</a></h2>
+<p>MatterScript distinguishes between two kinds of places.</p>
+<p>A <strong>source place</strong> is where information emerges after a computation has completed.</p>
+<pre><code class="language-matterscript">SUM&lt;&gt;
+</code></pre>
+<p>A <strong>destination place</strong> is where information arrives to participate in another computation.</p>
+<pre><code class="language-matterscript">$SUM
+</code></pre>
+<p>Although the syntax differs by only two characters, the distinction is important.</p>
+<p>A source place represents the origin of a completed result.</p>
+<p>A destination place represents the destination of information that will be resolved.</p>
+<p>Every propagation in MatterScript begins at a source place and ends at one or more destination places.</p>
+<hr>
+<h2 id="names-create-association"><a class="header" href="#names-create-association">Names Create Association</a></h2>
+<p>Unlike a schematic, MatterScript never draws wires.</p>
+<p>Instead, places associate through <strong>correspondence names</strong>.</p>
+<pre><code class="language-matterscript">OR($A $B)(SUM&lt;&gt;)
+
+NOT($SUM)(INVERTED&lt;&gt;)
+
+AND($SUM $ENABLE)(RESULT&lt;&gt;)
+</code></pre>
+<p>Here, the source place <code>SUM&lt;&gt;</code> associates automatically with every destination place named <code>$SUM</code>.</p>
+<p>The compiler constructs the connections.</p>
+<p>Nothing else is required.</p>
+<p>One source place may associate with many destination places.</p>
+<p>This is the language’s natural form of fan-out.</p>
+<p>Information propagates simultaneously to every associated destination without requiring explicit duplication or copying.</p>
+<hr>
+<h2 id="places-are-not-variables"><a class="header" href="#places-are-not-variables">Places Are Not Variables</a></h2>
+<p>It is tempting to think of a place as another name for a variable.</p>
+<p>It is not.</p>
+<p>A variable represents mutable storage.</p>
+<p>A place represents a point of association.</p>
+<p>The distinction matters.</p>
+<p>Variables are updated.</p>
+<p>Places are connected.</p>
+<p>Variables emphasize ownership.</p>
+<p>Places emphasize relationships.</p>
+<p>Variables encourage us to ask,</p>
+<p><em>“What value does this object contain?”</em></p>
+<p>Places encourage us to ask,</p>
+<p><em>“What computations are related?”</em></p>
+<p>This shift in perspective is one of the most important conceptual transitions in learning MatterScript.</p>
+<hr>
+<h2 id="one-source-many-destinations"><a class="header" href="#one-source-many-destinations">One Source, Many Destinations</a></h2>
+<p>Every correspondence name identifies exactly one source place.</p>
+<p>There cannot be two source places with the same name within the same correspondence domain.</p>
+<p>If there were, the compiler could not determine which source should provide the information.</p>
+<p>Destination places, however, may appear as many times as needed.</p>
+<pre><code class="language-matterscript">FIRSTSUM&lt;&gt;
+
+...
+
+AND($FIRSTSUM $C)(...)
+
+...
+
+NOT($FIRSTSUM)(...)
+
+...
+
+OR($FIRSTSUM $ENABLE)(...)
+</code></pre>
+<p>Each destination named <code>$FIRSTSUM</code> receives the same propagated token.</p>
+<p>No explicit fan-out operator is necessary.</p>
+<p>The correspondence itself defines the connectivity.</p>
+<hr>
+<h2 id="places-define-the-network"><a class="header" href="#places-define-the-network">Places Define the Network</a></h2>
+<p>As a MatterScript program grows, it becomes tempting to think that invocations are the primary objects.</p>
+<p>In reality, the opposite is true.</p>
+<p>Invocations exist because they connect places.</p>
+<p>Definitions exist because they organize places.</p>
+<p>Propagation occurs because places are associated.</p>
+<p>Completeness is evaluated at places.</p>
+<p>Tokens reside in places.</p>
+<p>Geometry, as we will see later, gives places physical location.</p>
+<p>Everything else in the language is built around them.</p>
+<hr>
+<h2 id="from-names-to-geometry"><a class="header" href="#from-names-to-geometry">From Names to Geometry</a></h2>
+<p>In this chapter, a place is identified by its correspondence name.</p>
+<p>That is enough to express logical connectivity.</p>
+<p>Later in the book, we will extend this idea.</p>
+<p>A place may have not only a name, but also a position in physical space.</p>
+<p>When that happens, the language begins to describe not merely <em>what</em> is connected, but <em>where</em> those relationships exist.</p>
+<p>Names establish logical structure.</p>
+<p>Geometry will establish physical structure.</p>
+<p>Together they allow MatterScript to describe computational systems with the same fidelity that semiconductor manufacturing describes physical ones.</p>
+<hr>
+<h2 id="a-computational-location"><a class="header" href="#a-computational-location">A Computational Location</a></h2>
+<p>Perhaps the simplest way to think about a place is this:</p>
+<p>A place is not a piece of memory.</p>
+<p>It is not a variable.</p>
+<p>It is not an address.</p>
+<p>A place is a location in the computational universe.</p>
+<p>Information appears there.</p>
+<p>Relationships connect there.</p>
+<p>Causes arrive there.</p>
+<p>Effects depart from there.</p>
+<p>Everything else in MatterScript exists to describe how information moves from one place to another.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>
