@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-eb609030.js";
+            window.path_to_searchindex_js = "searchindex-06e12a54.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-886bc232.js"></script>
@@ -3609,6 +3609,88 @@ Hydrated Protein
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="generate-blocks"><a class="header" href="#generate-blocks">Generate Blocks</a></h1>
+<p>One of MatterScript’s goals is to make large computational networks as easy to describe as small ones.</p>
+<p>That creates an obvious challenge.</p>
+<p>Many real systems consist of thousands—or millions—of nearly identical relationships.</p>
+<p>A memory array contains thousands of repeated cells.</p>
+<p>A systolic array repeats the same processing element over and over.</p>
+<p>A cellular automaton may contain millions of identical neighborhoods.</p>
+<p>Writing these structures by hand would add no information to the program. It would merely repeat the same pattern over and over.</p>
+<p>The <code>generate</code> block exists to solve that problem.</p>
+<p>Rather than describing computation, it describes <strong>how to construct computation</strong>.</p>
+<hr>
+<h2 id="generating-relationships"><a class="header" href="#generating-relationships">Generating Relationships</a></h2>
+<p>A generate block contains a generator expression followed by the ranges over which that expression should be expanded.</p>
+<pre><code class="language-matterscript">generate {
+
+    clamp($x + $y) * 2
+
+    inputs $x[0..255], $y[0..255]
+
+    output [0..512]
+
+    const MAX_LIMIT = 512
+    const OFFSET = 4
+
+}
+</code></pre>
+<p>Instead of manually writing hundreds or thousands of nearly identical association expressions, the programmer describes the pattern once.</p>
+<p>The compiler expands that pattern into the corresponding MatterScript network.</p>
+<p>The generated result is exactly the same as if the programmer had written every relationship by hand.</p>
+<hr>
+<h2 id="source-generation-not-runtime-execution"><a class="header" href="#source-generation-not-runtime-execution">Source Generation, Not Runtime Execution</a></h2>
+<p>The most important thing to understand is that <code>generate</code> is <strong>not</strong> part of the running computation.</p>
+<p>Nothing is generated while the program executes.</p>
+<p>The generate block exists only during compilation.</p>
+<p>Its purpose is to produce ordinary MatterScript definitions, places, invocations, and transform rules.</p>
+<p>Once expansion is complete, the generated code behaves exactly like handwritten MatterScript.</p>
+<p>This keeps the language remarkably simple.</p>
+<p>The computational model never changes.</p>
+<p>The compiler merely helps construct larger expressions.</p>
+<hr>
+<h2 id="declaring-the-input-space"><a class="header" href="#declaring-the-input-space">Declaring the Input Space</a></h2>
+<p>The <code>inputs</code> section specifies the variables that participate in generation.</p>
+<pre><code class="language-matterscript">inputs $x[0..255], $y[0..255]
+</code></pre>
+<p>Each variable defines a finite range over which the generator expression will be expanded.</p>
+<p>Rather than describing individual values, these declarations describe an entire space of possible relationships.</p>
+<p>The generator expression can then refer to those variables symbolically.</p>
+<hr>
+<h2 id="describing-the-output-space"><a class="header" href="#describing-the-output-space">Describing the Output Space</a></h2>
+<p>The <code>output</code> declaration specifies the range of values that the generated relationships may produce.</p>
+<pre><code class="language-matterscript">output [0..512]
+</code></pre>
+<p>This gives the compiler enough information to construct the resulting association network while preserving the same correspondence model used throughout the language.</p>
+<hr>
+<h2 id="compile-time-constants"><a class="header" href="#compile-time-constants">Compile-Time Constants</a></h2>
+<p>Large generated structures often depend on parameters.</p>
+<p>The optional <code>const</code> declarations allow those parameters to be named.</p>
+<pre><code class="language-matterscript">const MAX_LIMIT = 512
+const OFFSET = 4
+</code></pre>
+<p>These constants exist only while the generator is expanding the network.</p>
+<p>They are not runtime variables.</p>
+<p>Like the rest of the generate block, they disappear once generation is complete.</p>
+<hr>
+<h2 id="scaling-without-changing-the-language"><a class="header" href="#scaling-without-changing-the-language">Scaling Without Changing the Language</a></h2>
+<p>One of the remarkable aspects of MatterScript is that the generated result uses exactly the same language as everything else.</p>
+<p>The compiler does not introduce a hidden runtime.</p>
+<p>It does not create a new execution model.</p>
+<p>It simply writes more MatterScript.</p>
+<p>Whether a definition contains ten relationships or ten million, the underlying computational model remains identical.</p>
+<p>Generation changes the size of the description.</p>
+<p>It does not change the nature of the computation.</p>
+<hr>
+<h2 id="from-patterns-to-computational-fabric"><a class="header" href="#from-patterns-to-computational-fabric">From Patterns to Computational Fabric</a></h2>
+<p>Today, <code>generate</code> provides a concise way to construct large regular networks.</p>
+<p>In the future, it may become the foundation for much richer forms of synthesis.</p>
+<p>A geometry engine could generate millions of spatial relationships from a compact geometric description.</p>
+<p>A compiler could synthesize entire arithmetic units from algebraic specifications.</p>
+<p>A simulation framework could construct vast lattices of interacting cells from a single neighborhood rule.</p>
+<p>In every case, the principle remains the same.</p>
+<p>The programmer describes the pattern.</p>
+<p>The compiler expands the pattern into explicit relationships.</p>
+<p>Those relationships become part of the computational fabric, indistinguishable from code written by hand.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="integer-quantization"><a class="header" href="#integer-quantization">Integer Quantization</a></h1>
