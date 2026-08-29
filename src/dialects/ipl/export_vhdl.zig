@@ -62,10 +62,25 @@ fn writeDefinition(
         \\
     , .{def.name});
 
+    // §12.3.4 "Single Return to Place of Invocation" — if this
+    // definition has no destination list at all, but its resolution
+    // contains an unnamed fill (the abbreviated single-return form),
+    // synthesize one destination port named "result" to carry it.
+    // Without this the entity has no output port for that value at
+    // all, and the assignment targets a blank identifier — invalid
+    // VHDL.
+    var has_unnamed_fill = false;
+    for (def.resolution) |stmt| {
+        if (stmt == .fill and stmt.fill.dest_name.len == 0) has_unnamed_fill = true;
+    }
+    const synthetic_dest = [_]network.Place{.{ .name = "result", .kind = .destination }};
+    const effective_destinations: []const network.Place =
+        if (def.destinations.len == 0 and has_unnamed_fill) &synthetic_dest else def.destinations;
+
     // entity
     try writer.print("entity {s} is\n  port(\n", .{def_id});
     try writer.print("    clk : in  std_logic;\n", .{});
-    const boundary_count = boundaryCount(def.sources) + boundaryCount(def.destinations);
+    const boundary_count = boundaryCount(def.sources) + boundaryCount(effective_destinations);
     try writer.print("    rst : in  std_logic{s}\n", .{if (boundary_count == 0) "" else ";"});
 
     // sources → inputs (tokens flow IN to the definition)
@@ -76,11 +91,10 @@ fn writeDefinition(
     }
 
     // destinations → outputs (tokens flow OUT of the definition)
-    for (def.destinations) |dest| {
+    for (effective_destinations) |dest| {
         try writeBoundaryPorts(allocator, writer, dest, "out", &port_index, boundary_count, &port_names);
     }
     try writer.print("  );\nend {s};\n\n", .{def_id});
-
     // architecture
     try writer.print("architecture rtl of {s} is\n", .{def_id});
 
@@ -104,9 +118,19 @@ fn writeDefinition(
     var intermediate_names: std.ArrayListUnmanaged([]const u8) = .empty;
     for (def.resolution) |stmt| {
         switch (stmt) {
-            .fill => |fill| {
-                try writeIntermediateSignal(allocator, writer, def, &intermediate_names, fill.dest_name);
-                try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, fill.expr);
+            .fill => |raw_f| {
+                var f = raw_f;
+                if (f.dest_name.len == 0) f.dest_name = "result";
+                const literal = std.fmt.parseInt(u64, std.mem.trim(u8, f.expr, " \t\r\n"), 10) catch null;
+                if (literal) |value| {
+                    const dest_id = try sanitizeName(allocator, f.dest_name);
+                    defer allocator.free(dest_id);
+                    try writer.print("  {s} <= data_value({d});\n", .{ dest_id, value });
+                } else if (!try writeExpressionFill(allocator, writer, f)) {
+                    const dest_id = try sanitizeName(allocator, f.dest_name);
+                    defer allocator.free(dest_id);
+                    try writer.print("  {s} <= null_value;\n", .{dest_id});
+                }
             },
             .invoke => |inv| {
                 for (inv.outputs) |output| {
@@ -286,7 +310,7 @@ fn writeDefinition(
             }
         }
     }
-    
+
     try writer.print("\nend rtl;\n", .{});
 
     for (def.contained) |contained| {
@@ -784,7 +808,6 @@ fn internSymbol(list: *std.ArrayListUnmanaged([]const u8), allocator: std.mem.Al
     return @intCast(list.items.len - 1);
 }
 
-
 // ----------------------------------------------------------------
 // Generate block evaluator
 // ----------------------------------------------------------------
@@ -890,7 +913,9 @@ fn sanitizeName(allocator: std.mem.Allocator, composed: []const u8) ![]u8 {
         if (std.ascii.isAlphanumeric(c) or c == '_')
             try buf.append(allocator, c);
     }
-    if (isVhdlReserved(buf.items)) {
+    const needs_prefix = isVhdlReserved(buf.items) or
+        (buf.items.len > 0 and std.ascii.isDigit(buf.items[0]));
+    if (needs_prefix) {
         var prefixed: std.ArrayListUnmanaged(u8) = .empty;
         try prefixed.appendSlice(allocator, "ms_");
         try prefixed.appendSlice(allocator, buf.items);
