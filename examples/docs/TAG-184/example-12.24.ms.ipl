@@ -2,7 +2,7 @@
 
 FULLADD($A,$B,$C)(<> CARRYOUT<>)
 
-FULLADD[(A<> B<> CI<> )(SUMCO)
+FULLADD[(A<> B<> CI<> )($SUM $CO)
 
 $A$B$CI :
 
