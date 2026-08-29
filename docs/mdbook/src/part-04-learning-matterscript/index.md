@@ -1,7 +1,5 @@
 # Part IV: Learning MatterScript
 
-### Introduction
-
 This is the language tutorial.
 
 Rather than teaching isolated syntax rules, each chapter builds progressively larger systems while explaining the design decisions behind every feature.

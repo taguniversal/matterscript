@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e773f672.js";
+            window.path_to_searchindex_js = "searchindex-f774979f.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f80959e9.js"></script>
@@ -2670,7 +2670,6 @@ update the display.
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-iv-learning-matterscript"><a class="header" href="#part-iv-learning-matterscript">Part IV: Learning MatterScript</a></h1>
-<h3 id="introduction-1"><a class="header" href="#introduction-1">Introduction</a></h3>
 <p>This is the language tutorial.</p>
 <p>Rather than teaching isolated syntax rules, each chapter builds progressively larger systems while explaining the design decisions behind every feature.</p>
 <p>By the end of this section readers can comfortably write MatterScript programs from scratch.</p>
@@ -2833,6 +2832,85 @@ NOT[...]
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="definitions-2"><a class="header" href="#definitions-2">Definitions</a></h1>
+<p>If invocations are the doorways through which information enters and leaves a computation, <strong>definitions</strong> are the computations themselves.</p>
+<p>Every definition describes a self-contained network of relationships. It receives information through its input boundary, transforms that information by connecting together other definitions, and presents the completed result through its output boundary.</p>
+<p>A definition always begins with a name.</p>
+<pre><code class="language-matterscript">FULLADD[(X&lt;&gt; Y&lt;&gt; C&lt;&gt;)( $SUM $CARRY )
+
+    ...
+
+]
+</code></pre>
+<p>That name serves two purposes.</p>
+<p>First, it gives the definition an identity that other parts of the program can invoke.</p>
+<p>Second, it creates a completely independent naming domain. Every correspondence name declared inside the definition exists only within that definition. Internal names can be chosen for clarity without worrying about collisions elsewhere in the program.</p>
+<p>Like a function in other languages, a definition may be reused many times. Unlike a conventional function, however, a definition is not a sequence of instructions. It is a description of a network.</p>
+<hr>
+<h2 id="the-interface"><a class="header" href="#the-interface">The Interface</a></h2>
+<p>Every definition begins with two lists enclosed in parentheses.</p>
+<pre><code class="language-matterscript">(X&lt;&gt; Y&lt;&gt; C&lt;&gt;)( $SUM $CARRY )
+</code></pre>
+<p>The first list declares the <strong>source places</strong> through which information enters the definition.</p>
+<p>The second list declares the <strong>destination places</strong> through which completed results leave the definition.</p>
+<p>These two lists form the public interface of the definition.</p>
+<p>Everything inside the definition exists solely to transform the incoming relationships into the outgoing ones.</p>
+<p>One subtle aspect of MatterScript is that these interface lists are mirror images of an invocation.</p>
+<p>When an invocation supplies information through its destination places, those values appear at the corresponding source places of the definition.</p>
+<p>Likewise, when the definition produces results through its destination places, those results emerge from the corresponding source places of the invocation.</p>
+<p>This inversion often seems unusual at first, but it reflects the flow of information rather than the layout of the source code. Information enters one boundary, propagates through the internal network, and exits through the opposite boundary.</p>
+<p>Once you begin thinking in terms of propagation instead of parameter passing, the symmetry becomes surprisingly natural.</p>
+<hr>
+<h2 id="the-body-of-a-definition"><a class="header" href="#the-body-of-a-definition">The Body of a Definition</a></h2>
+<p>After the interface comes the body of the definition.</p>
+<p>This is where the computation is described.</p>
+<pre><code class="language-matterscript">NOT($X)(OP1&lt;&gt;)
+
+AND($OP1 $Y)(OP4&lt;&gt;)
+
+OR($OP4 $OP3)(FIRSTSUM&lt;&gt;)
+
+...
+</code></pre>
+<p>Notice what is missing.</p>
+<p>There are no assignments.</p>
+<p>No variables.</p>
+<p>No control flow.</p>
+<p>No sequence of execution.</p>
+<p>Each invocation simply introduces another relationship into the network.</p>
+<p>Together, these invocations form a graph of causes and effects that the compiler later transforms into an executable implementation.</p>
+<p>The source code is written linearly because humans read text one line at a time.</p>
+<p>The computation itself is not linear.</p>
+<hr>
+<h2 id="definitions-build-definitions"><a class="header" href="#definitions-build-definitions">Definitions Build Definitions</a></h2>
+<p>One of the most elegant aspects of MatterScript is that every definition is built exactly the same way.</p>
+<p>A full adder is constructed by invoking AND, OR, and NOT.</p>
+<p>An arithmetic logic unit may be constructed by invoking full adders.</p>
+<p>A processor may be constructed by invoking arithmetic logic units.</p>
+<p>A computer may be constructed by invoking processors, memories, and communication fabrics.</p>
+<p>At every level, the language remains unchanged.</p>
+<p>There is no distinction between primitive expressions and large systems.</p>
+<p>The same syntax that describes a Boolean gate can also describe a distributed simulation, a robotic control system, or a biological pathway.</p>
+<p>Only the scale changes.</p>
+<hr>
+<h2 id="isolation-through-correspondence"><a class="header" href="#isolation-through-correspondence">Isolation Through Correspondence</a></h2>
+<p>Because every definition establishes its own correspondence domain, names are always interpreted locally.</p>
+<p>The name <code>SUM</code> inside a full adder has no relationship to a <code>SUM</code> inside another definition unless one is explicitly connected through an invocation.</p>
+<p>This isolation allows definitions to remain completely self-contained.</p>
+<p>You never need to invent globally unique names.</p>
+<p>You simply describe the relationships within the current definition, and the invocation boundary handles the correspondence with the outside world.</p>
+<p>In many languages, managing scope is largely about preventing accidental collisions.</p>
+<p>In MatterScript, the syntax naturally prevents them.</p>
+<hr>
+<h2 id="a-definition-is-a-small-universe"><a class="header" href="#a-definition-is-a-small-universe">A Definition Is a Small Universe</a></h2>
+<p>It is tempting to think of a definition as a function because the syntax appears familiar.</p>
+<p>A better analogy is a <strong>physical system</strong>.</p>
+<p>The interface defines the boundary of that system.</p>
+<p>Inside the boundary is a network of interacting components.</p>
+<p>Information enters, propagates according to local relationships, and eventually emerges in a transformed form.</p>
+<p>Nothing outside the boundary needs to know how the internal network is organized.</p>
+<p>Nothing inside the boundary needs to know where its inputs originated or where its outputs will ultimately go.</p>
+<p>The definition is a complete computational universe in miniature.</p>
+<p>It describes not a sequence of actions, but a set of relationships whose behavior emerges naturally from the propagation of information.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="places-1"><a class="header" href="#places-1">Places</a></h1>
@@ -2863,7 +2941,7 @@ NOT[...]
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-v-building-physical-systems"><a class="header" href="#part-v-building-physical-systems">Part V: Building Physical Systems</a></h1>
-<h3 id="introduction-2"><a class="header" href="#introduction-2">Introduction</a></h3>
+<h3 id="introduction-1"><a class="header" href="#introduction-1">Introduction</a></h3>
 <p>MatterScript is unique because programs describe physical systems rather than abstract algorithms.</p>
 <p>This section demonstrates how to construct simulations directly from engineering knowledge instead of numerical approximation.</p>
 <p><em>Drafting in progress…</em></p>
@@ -2890,7 +2968,7 @@ NOT[...]
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-vi-geometry-becomes-code"><a class="header" href="#part-vi-geometry-becomes-code">Part VI: Geometry Becomes Code</a></h1>
-<h3 id="introduction-3"><a class="header" href="#introduction-3">Introduction</a></h3>
+<h3 id="introduction-2"><a class="header" href="#introduction-2">Introduction</a></h3>
 <p>Traditional languages separate computation from geometry.</p>
 <p>MatterScript unifies them.</p>
 <p>Meshes become executable.
@@ -2922,7 +3000,7 @@ LIDAR scans become computational substrates.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-vii-programming-space-time"><a class="header" href="#part-vii-programming-space-time">Part VII: Programming Space-Time</a></h1>
 <h2 id="programming-space-time"><a class="header" href="#programming-space-time">Programming Space-Time</a></h2>
-<h3 id="introduction-4"><a class="header" href="#introduction-4">Introduction</a></h3>
+<h3 id="introduction-3"><a class="header" href="#introduction-3">Introduction</a></h3>
 <p>This is the conceptual heart of the book.</p>
 <p>Most languages program only state.</p>
 <p>MatterScript programs spacetime.</p>
@@ -2949,7 +3027,7 @@ LIDAR scans become computational substrates.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-viii-compilers"><a class="header" href="#part-viii-compilers">Part VIII: Compilers</a></h1>
 <h2 id="compilers"><a class="header" href="#compilers">Compilers</a></h2>
-<h3 id="introduction-5"><a class="header" href="#introduction-5">Introduction</a></h3>
+<h3 id="introduction-4"><a class="header" href="#introduction-4">Introduction</a></h3>
 <p>MatterScript’s compiler is unusual because it performs two different jobs simultaneously.</p>
 <p>It translates programs into executable logic while also solving a geometric placement problem.</p>
 <p>Readers will see every stage of the compiler pipeline, from parser through placement and VHDL generation.</p>
@@ -2980,7 +3058,7 @@ LIDAR scans become computational substrates.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-ix-world-modeling"><a class="header" href="#part-ix-world-modeling">Part IX: World Modeling</a></h1>
-<h3 id="introduction-6"><a class="header" href="#introduction-6">Introduction</a></h3>
+<h3 id="introduction-5"><a class="header" href="#introduction-5">Introduction</a></h3>
 <p>MatterScript is ultimately not about FPGAs.</p>
 <p>It is about building executable models of reality.</p>
 <p>Instead of creating increasingly larger neural networks that implicitly approximate the world, MatterScript encodes engineering knowledge into hardware-verifiable executable models developed collaboratively by engineers and AI systems.</p>
@@ -3005,7 +3083,7 @@ LIDAR scans become computational substrates.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-x-distributed-space-time-systems"><a class="header" href="#part-x-distributed-space-time-systems">Part X: Distributed Space-Time Systems</a></h1>
-<h3 id="introduction-7"><a class="header" href="#introduction-7">Introduction</a></h3>
+<h3 id="introduction-6"><a class="header" href="#introduction-6">Introduction</a></h3>
 <p>Once computation has explicit geometry and explicit time, it naturally extends beyond a single FPGA.</p>
 <p>MatterScript can interoperate with deterministic temporal fabrics in which every computation shares a common notion of identity, time, and location. This complements architectures such as MKSTORM, which provide deterministic time-space addressing and synchronization across distributed systems.</p>
 <p><em>Drafting in progress…</em></p>
@@ -3032,7 +3110,7 @@ LIDAR scans become computational substrates.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-xi-complete-projects"><a class="header" href="#part-xi-complete-projects">Part XI: Complete Projects</a></h1>
-<h3 id="introduction-8"><a class="header" href="#introduction-8">Introduction</a></h3>
+<h3 id="introduction-7"><a class="header" href="#introduction-7">Introduction</a></h3>
 <p>The best way to learn MatterScript is to build increasingly ambitious systems.</p>
 <p>Each project integrates every concept introduced earlier.</p>
 <p><em>Drafting in progress…</em></p>
@@ -3114,6 +3192,22 @@ LIDAR scans become computational substrates.</p>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
