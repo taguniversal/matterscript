@@ -165,10 +165,10 @@ fn writeMarkdownReport(io: std.Io, path: []const u8, rows: []const ExampleRow) !
         const parse = if (row.parse_ok) "ok" else "FAIL";
         const ghdl = if (!row.parse_ok) "-" else if (row.ghdl_ok) "ok" else "FAIL";
         const result = switch (row.result) {
-            .pass => "PASS",
-            .fail => "FAIL",
-            .expected_fail => "expected fail",
-            .unexpected_pass => "unexpected pass",
+            .pass => "✅ PASS",
+            .fail => "❌ FAIL",
+            .expected_fail => "⬛ expected fail",
+            .unexpected_pass => "🟡 unexpected pass",
         };
         try w.print("| {s} | {s} | {s} | {s} | {s} | {s} |\n", .{
             row.tag, std.fs.path.basename(row.path), expected, parse, ghdl, result,

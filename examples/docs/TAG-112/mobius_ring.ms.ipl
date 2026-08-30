@@ -1,0 +1,14 @@
+// Linear: TAG-112 Define mesh ingestion format and MeshLab interop boundary
+group mobius_ring {
+    p0 = point{ x: 1.0, y: 0.0, z: -0.2 }   p1 = point{ x: 1.0, y: 0.0, z: 0.2 }
+    p2 = point{ x: 0.0, y: 1.0, z: -0.2 }   p3 = point{ x: 0.0, y: 0.2, z: 0.0 }
+    p4 = point{ x: -1.0, y: 0.0, z: -0.2 }  p5 = point{ x: -1.0, y: 0.0, z: 0.2 }
+    p6 = point{ x: 0.0, y: -1.0, z: 0.0 }   p7 = point{ x: 0.0, y: -0.2, z: -0.2 }
+
+    f0 = face(loop(edge(p0,p1), edge(p1,p3), edge(p3,p2), edge(p2,p0)))
+    f1 = face(loop(edge(p2,p3), edge(p3,p5), edge(p5,p4), edge(p4,p2)))
+    f2 = face(loop(edge(p4,p5), edge(p5,p7), edge(p7,p6), edge(p6,p4)))
+    // The twist: reconnecting back to (p1, p0) inverted instead of (p0, p1)
+    f3 = face(loop(edge(p6,p7), edge(p7,p0), edge(p0,p1), edge(p1,p6)))
+}
+

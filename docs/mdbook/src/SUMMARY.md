@@ -43,25 +43,26 @@
 - [The Runtime Boundary](part-04-learning-matterscript/12-runtime-boundary.md)
 - [Standard Library](part-04-learning-matterscript/13-standard-library.md)
 
-# Part V: Building Physical Systems
-- [Introduction](part-05-building-physical-systems/index.md)
-- [Cellular Automata](part-05-building-physical-systems/01-cellular-automata.md)
-- [Heat Flow](part-05-building-physical-systems/02-heat-flow.md)
-- [Fluid Flow](part-05-building-physical-systems/03-fluid-flow.md)
-- [Elastic Materials](part-05-building-physical-systems/04-elastic-materials.md)
-- [Electromagnetic Fields](part-05-building-physical-systems/05-electromagnetic-fields.md)
-- [Biological Systems](part-05-building-physical-systems/06-biological-systems.md)
-- [Multi-Physics Coupling](part-05-building-physical-systems/07-multi-physics-coupling.md)
+# Part V: Geometry Becomes Code
+- [Introduction](part-05-geometry-becomes-code/index.md)
+- [Meshes](part-05-geometry-becomes-code/01-meshes.md)
+- [Vertices](part-05-geometry-becomes-code/02-vertices.md)
+- [Cell Placement](part-05-geometry-becomes-code/03-cell-placement.md)
+- [Conformal Projection](part-05-geometry-becomes-code/04-conformal-projection.md)
+- [Delay Synthesis](part-05-geometry-becomes-code/05-delay-synthesis.md)
+- [Sensor Placement](part-05-geometry-becomes-code/06-sensor-placement.md)
+- [Hardware Fidelity](part-05-geometry-becomes-code/07-hardware-fidelity.md)
 
-# Part VI: Geometry Becomes Code
-- [Introduction](part-06-geometry-becomes-code/index.md)
-- [Meshes](part-06-geometry-becomes-code/01-meshes.md)
-- [Vertices](part-06-geometry-becomes-code/02-vertices.md)
-- [Cell Placement](part-06-geometry-becomes-code/03-cell-placement.md)
-- [Conformal Projection](part-06-geometry-becomes-code/04-conformal-projection.md)
-- [Delay Synthesis](part-06-geometry-becomes-code/05-delay-synthesis.md)
-- [Sensor Placement](part-06-geometry-becomes-code/06-sensor-placement.md)
-- [Hardware Fidelity](part-06-geometry-becomes-code/07-hardware-fidelity.md)
+# Part VI: Building Physical Systems
+- [Introduction](part-06-building-physical-systems/index.md)
+- [Cellular Automata](part-06-building-physical-systems/01-cellular-automata.md)
+- [Heat Flow](part-06-building-physical-systems/02-heat-flow.md)
+- [Fluid Flow](part-06-building-physical-systems/03-fluid-flow.md)
+- [Elastic Materials](part-06-building-physical-systems/04-elastic-materials.md)
+- [Electromagnetic Fields](part-06-building-physical-systems/05-electromagnetic-fields.md)
+- [Biological Systems](part-06-building-physical-systems/06-biological-systems.md)
+- [Multi-Physics Coupling](part-06-building-physical-systems/07-multi-physics-coupling.md)
+
 
 # Part VII: Programming Space-Time
 - [Introduction](part-07-programming-space-time/index.md)
