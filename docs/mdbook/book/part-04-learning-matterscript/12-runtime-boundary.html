@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Standard Library - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
+        <title>The Runtime Boundary - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
 
 
         <!-- Custom HTML head -->
@@ -37,10 +37,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-342e3d74.js";
+            window.path_to_searchindex_js = "../searchindex-2e994902.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-886bc232.js"></script>
+        <script src="../toc-ee4abee5.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,8 +176,139 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h1>
-<p><em>Drafting in progress…</em></p>
+                        <h1 id="the-runtime-boundary"><a class="header" href="#the-runtime-boundary">The Runtime Boundary</a></h1>
+<p>One of the central ideas behind MatterScript is that a program should describe <strong>what</strong> a computation is, not <strong>how</strong> it executes.</p>
+<p>Most programming languages blur these two concerns together. The language describes the computation, but it also implicitly assumes a particular execution environment: a processor with an instruction pointer, a stack, a heap, and a runtime responsible for coordinating them all.</p>
+<p>MatterScript makes a different distinction.</p>
+<p>The language ends where the relationships have been fully described.</p>
+<p>Everything beyond that point belongs to the compiler.</p>
+<hr>
+<h2 id="programs-describe-relationships"><a class="header" href="#programs-describe-relationships">Programs Describe Relationships</a></h2>
+<p>When you write a MatterScript definition, you are not writing instructions for a processor.</p>
+<p>You are describing a network of causal relationships.</p>
+<pre><code class="language-matterscript">FULLADD($A $B $C)(SUM&lt;&gt; CARRY&lt;&gt;)
+</code></pre>
+<p>The definition says nothing about clocks.</p>
+<p>Nothing about memory.</p>
+<p>Nothing about registers.</p>
+<p>Nothing about threads.</p>
+<p>Nothing about instruction order.</p>
+<p>It simply declares that when the appropriate information arrives, these relationships exist.</p>
+<p>That description is complete in itself.</p>
+<hr>
+<h2 id="from-source-to-association-graph"><a class="header" href="#from-source-to-association-graph">From Source to Association Graph</a></h2>
+<p>The compiler’s first responsibility is not to generate machine code.</p>
+<p>It is to recover the computational fabric described by the program.</p>
+<p>Conceptually, every MatterScript program is transformed into an <strong>association graph</strong>.</p>
+<pre><code class="language-text">MatterScript Source
+        │
+        ▼
+Association Graph
+</code></pre>
+<p>This graph contains every place, every invocation, every correspondence relationship, and every causal dependency expressed by the source.</p>
+<p>At this point the computation has already been defined.</p>
+<p>Nothing about processors or hardware has entered the picture.</p>
+<p>The graph is simply a faithful representation of the relationships described by the programmer.</p>
+<hr>
+<h2 id="the-runtime-boundary-1"><a class="header" href="#the-runtime-boundary-1">The Runtime Boundary</a></h2>
+<p>The association graph forms the boundary between the language and its implementation.</p>
+<p>Everything above this boundary belongs to MatterScript.</p>
+<p>Everything below it belongs to the compiler.</p>
+<pre><code class="language-text">MatterScript Source
+        │
+        ▼
+Association Graph
+        │
+────────┼────────  Runtime Boundary
+        │
+        ▼
+Backend Mapping
+        │
+ ┌──────┼──────────────┐
+ ▼      ▼              ▼
+FPGA   POSIX         GPU
+VHDL   C/Pthreads    CUDA
+</code></pre>
+<p>The language never specifies how those relationships should be realized.</p>
+<p>That decision belongs entirely to the backend.</p>
+<hr>
+<h2 id="one-program-many-realizations"><a class="header" href="#one-program-many-realizations">One Program, Many Realizations</a></h2>
+<p>This separation allows the same MatterScript program to target radically different computational substrates.</p>
+<p>One backend may generate VHDL, mapping every relationship onto lookup tables, routing resources, and asynchronous logic.</p>
+<p>Another may generate a POSIX application, where independent regions of the graph execute as cooperating threads.</p>
+<p>A GPU backend may map repeated structures onto thousands of parallel execution units.</p>
+<p>Future backends might target custom ASICs, distributed systems, neuromorphic hardware, or architectures that have not yet been invented.</p>
+<p>The program itself does not change.</p>
+<p>Only its realization changes.</p>
+<hr>
+<h2 id="the-runtime-is-an-implementation-detail"><a class="header" href="#the-runtime-is-an-implementation-detail">The Runtime Is an Implementation Detail</a></h2>
+<p>Traditional software is usually thought of in three layers:</p>
+<pre><code class="language-text">Program
+    │
+    ▼
+Runtime
+    │
+    ▼
+Hardware
+</code></pre>
+<p>The runtime is responsible for scheduling execution, managing memory, coordinating threads, and providing operating-system services.</p>
+<p>MatterScript shifts that boundary.</p>
+<pre><code class="language-text">Program
+    │
+    ▼
+Association Graph
+    │
+    ▼
+Physical Realization
+</code></pre>
+<p>There is no mandatory runtime.</p>
+<p>There is no required virtual machine.</p>
+<p>No required scheduler.</p>
+<p>No required heap.</p>
+<p>No required stack.</p>
+<p>A particular backend may choose to implement some or all of these mechanisms, but they are no longer properties of the language itself.</p>
+<p>They are engineering decisions made during realization.</p>
+<hr>
+<h2 id="computation-becomes-portable"><a class="header" href="#computation-becomes-portable">Computation Becomes Portable</a></h2>
+<p>This separation has another consequence that is unlike anything possible in traditional software.</p>
+<p>Today’s computers routinely transmit data across networks.</p>
+<p>Sometimes they transmit executable programs.</p>
+<p>But those programs are still written for a particular processor architecture and operating system. They assume the receiving machine will execute instructions using its own runtime.</p>
+<p>MatterScript can transmit something much more fundamental.</p>
+<p><strong>It can transmit the computation itself.</strong></p>
+<p>Imagine a running MatterScript system that constructs a new computational network dynamically—a signal-processing pipeline, a robotic controller, a physics simulation, or a specialized accelerator. That generated network is simply another MatterScript description. It can be handed to the local backend for synthesis, becoming dedicated hardware inside an FPGA.</p>
+<p>Or it can be sent across the network to an entirely different machine.</p>
+<p>That receiving machine might have different processors.</p>
+<p>Different memory.</p>
+<p>Different accelerators.</p>
+<p>Different hardware capabilities.</p>
+<p>It compiles the received MatterScript into a realization appropriate for its own architecture while preserving exactly the same causal relationships.</p>
+<p>In effect, the computation has moved without carrying any assumptions about the machine on which it will execute.</p>
+<p>One computer has transmitted part of itself to another.</p>
+<p>Not merely its data.</p>
+<p>Not merely its executable binary.</p>
+<p>Its computational structure.</p>
+<p>It is, in a very real sense, <strong>the teleportation of machinery</strong>.</p>
+<hr>
+<h2 id="preserving-the-relationships"><a class="header" href="#preserving-the-relationships">Preserving the Relationships</a></h2>
+<p>The compiler’s job is not simply to translate syntax.</p>
+<p>Its responsibility is to preserve the causal structure expressed by the program.</p>
+<p>Whether that structure becomes a network of FPGA logic cells, a collection of POSIX threads, or a GPU kernel, the observable behavior must remain identical.</p>
+<p>Only the implementation strategy changes.</p>
+<p>The relationships do not.</p>
+<p>This is the same principle that has guided the language from the beginning.</p>
+<p>MatterScript describes causality.</p>
+<p>The compiler determines how that causality is embodied in a physical system.</p>
+<hr>
+<h2 id="a-language-independent-of-its-machine"><a class="header" href="#a-language-independent-of-its-machine">A Language Independent of Its Machine</a></h2>
+<p>Perhaps the most significant consequence of the runtime boundary is philosophical rather than technical.</p>
+<p>For decades, programming languages have largely been descriptions of how to drive a processor.</p>
+<p>MatterScript is instead a description of a computation itself.</p>
+<p>The processor is no longer the center of the programming model.</p>
+<p>It is merely one possible realization of a deeper computational structure.</p>
+<p>That distinction opens possibilities that have scarcely existed before. Computational structures can be generated, evolved, synthesized into hardware, or transmitted to entirely different machines for realization. Computation becomes something that can inhabit whatever physical substrate is available without changing its identity.</p>
+<p>The language ends when the relationships have been described.</p>
+<p>Everything beyond that point is an implementation choice.</p>
 
                     </main>
 
@@ -187,7 +318,7 @@
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../part-05-building-physical-systems/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../part-04-learning-matterscript/13-standard-library.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -201,7 +332,7 @@
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../part-05-building-physical-systems/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../part-04-learning-matterscript/13-standard-library.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -214,6 +345,22 @@
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

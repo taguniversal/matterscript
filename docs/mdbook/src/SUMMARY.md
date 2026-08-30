@@ -40,7 +40,8 @@
 - [Name Composition](part-04-learning-matterscript/09-name-composition.md)
 - [Generate Blocks](part-04-learning-matterscript/10-generate-blocks.md)
 - [Integer Quantization](part-04-learning-matterscript/11-integer-quantization.md)
-- [Standard Library](part-04-learning-matterscript/12-standard-library.md)
+- [The Runtime Boundary](part-04-learning-matterscript/12-runtime-boundary.md)
+- [Standard Library](part-04-learning-matterscript/13-standard-library.md)
 
 # Part V: Building Physical Systems
 - [Introduction](part-05-building-physical-systems/index.md)
