@@ -196,6 +196,8 @@ const Parser = struct {
 
     fn parseILCallArgument(p: *Parser) !*network.Expr {
         p.skipWhitespaceAndComments();
+
+        // 1. Variable references ($var)
         if (p.peek() == '$') {
             _ = p.advance();
             const name = try p.readName();
@@ -203,6 +205,21 @@ const Parser = struct {
             node.* = .{ .kind = .variable, .name = name };
             return node;
         }
+
+        // 2. Numeric literals (integers, floats, negative values)
+        const start = p.pos;
+        if (p.peek() == '-') _ = p.advance();
+        if (p.pos < p.src.len and (std.ascii.isDigit(p.src[p.pos]) or p.src[p.pos] == '.')) {
+            while (p.pos < p.src.len and (std.ascii.isDigit(p.src[p.pos]) or p.src[p.pos] == '.')) {
+                p.pos += 1;
+            }
+            const val_str = p.src[start..p.pos];
+            const node = try p.allocator.create(network.Expr);
+            node.* = .{ .kind = .constant, .name = val_str };
+            return node;
+        }
+
+        // 3. Standard identifiers
         const name = try p.readName();
         const node = try p.allocator.create(network.Expr);
         node.* = .{ .kind = .constant, .name = name };
@@ -607,12 +624,28 @@ const Parser = struct {
         } };
     }
 
-    fn parseResolution(p: *Parser) ![]const network.Statement {
+       fn parseResolution(p: *Parser) ![]const network.Statement {
         var stmts: std.ArrayListUnmanaged(network.Statement) = .empty;
+
         while (true) {
             p.skipWhitespaceAndComments();
             const c = p.peek() orelse break;
             if (c == ':' or c == ']') break;
+
+            // Only speculative-read a domain label if the token starts
+            // with an ASCII letter/underscore
+            if (std.ascii.isAlphabetic(c) or c == '_') {
+                const save_pos = p.pos;
+                if (p.readName() catch null) |_| {
+                    p.skipWhitespaceAndComments();
+                    if (p.peek() == ':') {
+                        _ = p.advance(); // consume ':'
+                        p.skipWhitespaceAndComments();
+                        continue; // Domain label consumed; proceed to resolution contents
+                    }
+                }
+                p.pos = save_pos; // Rewind if it wasn't a "domain:" pattern
+            }
 
             if (c == '<') {
                 try stmts.append(p.allocator, try p.parseSourceFill(""));
@@ -634,17 +667,10 @@ const Parser = struct {
             } else if (next == '(') {
                 try stmts.append(p.allocator, try p.parseInvocation(name));
             } else if (next == ',') {
-                // A comma-separated fan-out alias list (Fig 12.1b's
-                // ordinary name-correspondence fan-out, written
-                // compactly) — e.g. "g,k,o" in "A[g,k,o]". Rewind and
-                // let readCommaSeparatedName consume the whole list.
                 p.pos = tok_start;
                 const full = try p.readCommaSeparatedName();
                 try stmts.append(p.allocator, .{ .pure_value = full });
             } else if (next == ':' or next == ']') {
-                // What we read wasn't a statement name at all — it was
-                // a bare literal with nothing following it (§12.3.4's
-                // simplest Constant Definition, e.g. the "1" in "0[1]").
                 try stmts.append(p.allocator, .{ .pure_value = p.src[tok_start..p.pos] });
             } else return ParseError.UnexpectedChar;
         }

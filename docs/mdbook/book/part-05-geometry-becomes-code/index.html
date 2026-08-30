@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-d7e744d7.js";
+            window.path_to_searchindex_js = "../searchindex-93da1d50.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-1192e150.js"></script>
@@ -179,37 +179,121 @@
                         <h1 id="part-vi-geometry-becomes-code"><a class="header" href="#part-vi-geometry-becomes-code">Part VI: Geometry Becomes Code</a></h1>
 <p>Traditional languages separate computation from geometry.</p>
 <p>MatterScript unifies them.</p>
-<p>Meshes become executable.
-CAD models become programs.
-LIDAR scans become computational substrates.</p>
+<p>Meshes become executable.</p>
+<p>CAD models become programs.</p>
+<p>LIDAR scans become computational substrates.</p>
 <p>This is where MatterScript begins to differ fundamentally from every previous programming language. The language’s geometry-aware placement model projects physical domains onto FPGA fabrics while preserving neighborhood relationships and compensating projection distortion with synthesized delays.</p>
-<p>To achieve this, the MatterScript geometry dialect avoids treating shapes as dead collections of triangles. Instead, space is defined through six foundational primitives that capture spatial and causal relationships directly inside the association graph:</p>
+<p>To achieve this, the Invocation Language utilizes domain selectors to activate domain-specific extensions directly within the structural graph. Introducing the <code>spatial3d</code> domain selector exposes a specialized set of topological primitives, geometric constructors, spatial predicates, and transformation operators tailored for 3D computational domains.</p>
+<p>Below is the updated and expanded list of structural keywords and functions available under the <code>spatial3d</code> domain:</p>
 <ul>
-<li><strong>Point (<code>point</code>):</strong> Not merely a 3D coordinate vector, but a discrete physical location within space.</li>
-<li><strong>Edge (<code>edge</code>):</strong> A directional, causal connection established between two points.</li>
-<li><strong>Loop (<code>loop</code>):</strong> An ordered, closed sequence of connected edges defining a spatial boundary.</li>
-<li><strong>Face (<code>face</code>):</strong> A surface domain created by enclosing one or more loops.</li>
-<li><strong>Volume (<code>volume</code>):</strong> Enclosed, three-dimensional spatial regions bounded by defined faces.</li>
-<li><strong>Group (<code>group</code>):</strong> A hierarchical composition that organizes geometric relationships into nested, modular definitions.</li>
+<li><strong>Point (<code>point</code>)</strong>: Not merely a 3D coordinate vector, but a discrete physical location within space defined via <code>point(x, y, z)</code>.</li>
+<li><strong>Edge (<code>edge</code>)</strong>: A directional, causal connection established between two points using <code>edge(pointA, pointB)</code>.</li>
+<li><strong>Loop (<code>loop</code>)</strong>: An ordered, closed sequence of connected edges defining a spatial boundary via <code>loop(edges)</code>.</li>
+<li><strong>Face (<code>face</code>)</strong>: A surface domain created by enclosing one or more loops via <code>face([edge])</code>.</li>
+<li><strong>Volume (<code>volume</code>)</strong>: Enclosed, three-dimensional spatial regions bounded by defined faces.</li>
+<li><strong>Group (<code>group</code>)</strong>: A hierarchical composition that organizes geometric relationships into nested, modular definitions.</li>
+</ul>
+<h3 id="spatial-predicates--proximity"><a class="header" href="#spatial-predicates--proximity">Spatial Predicates &amp; Proximity</a></h3>
+<ul>
+<li><strong><code>near(faceA, faceB)</code></strong>: Evaluates spatial proximity between surface domains.</li>
+<li><strong><code>adjacent(edgeA, edgeB)</code></strong>: Asserts boundary connectivity between neighboring edges.</li>
+<li><strong><code>contains(point)</code></strong>: Determines enclosure of a point within a spatial volume or boundary.</li>
+<li><strong><code>intersects()</code></strong>: Computes structural overlap between spatial elements.</li>
+<li><strong><code>touches()</code></strong>: Checks boundary contact without volumetric overlap.</li>
+<li><strong><code>within(distance)</code></strong>: Evaluates whether elements fall within a specified metric radius.</li>
+</ul>
+<h3 id="constructive--swept-geometry"><a class="header" href="#constructive--swept-geometry">Constructive &amp; Swept Geometry</a></h3>
+<ul>
+<li><strong><code>extrude(face, height)</code></strong>: Projects a planar face along a normal vector to form a 3D volume.</li>
+<li><strong><code>sweep(profile, path)</code></strong>: Sweeps a closed profile along a continuous path.</li>
+<li><strong><code>loft(loop1, loop2)</code></strong>: Interpolates a continuous topological surface between disparate boundary loops.</li>
+<li><strong><code>revolve(profile, axis)</code></strong>: Rotates a 2D profile around an axis of rotation.</li>
+</ul>
+<h3 id="csg--boolean-operations"><a class="header" href="#csg--boolean-operations">CSG &amp; Boolean Operations</a></h3>
+<ul>
+<li><strong><code>union()</code></strong>: Combines multiple spatial regions into a unified domain.</li>
+<li><strong><code>difference()</code></strong>: Subtracts one spatial boundary from another.</li>
+<li><strong><code>intersection()</code></strong>: Resolves the common volumetric domain shared between shapes.</li>
+</ul>
+<h3 id="spatial-transformations--meshing"><a class="header" href="#spatial-transformations--meshing">Spatial Transformations &amp; Meshing</a></h3>
+<ul>
+<li><strong><code>subdivide()</code></strong>: Refines topological density across a domain.</li>
+<li><strong><code>mirror()</code></strong>: Reflects geometry across a specified plane.</li>
+<li><strong><code>translate()</code></strong>: Shifts spatial entities across coordinate axes.</li>
+<li><strong><code>rotate()</code></strong>: Applies rotational transformations around a specified axis.</li>
+<li><strong><code>scale()</code></strong>: Uniformly or non-uniformly resizes spatial geometries.</li>
 </ul>
 <p>By expressing physical domains using these topological building blocks rather than static polygon meshes, spatial proximity directly dictates computational interaction. Spatial relationships compile into the exact same propagation graph as time, turning geometric boundary conditions directly into executable hardware and software realizations.</p>
 <p>Consider how this relationship graph handles non-orientable 3D manifolds without requiring mathematical matrix transformations inside the AST. A Möbius ribbon can be expressed by defining four quad faces where the topological boundary of the final face twists its edge bindings:</p>
-<pre><code class="language-matterscript">group mobius_ring {
-    p0 = point{ x: 1.0, y: 0.0, z: -0.2 }   p1 = point{ x: 1.0, y: 0.0, z: 0.2 }
-    p2 = point{ x: 0.0, y: 1.0, z: -0.2 }   p3 = point{ x: 0.0, y: 0.2, z: 0.0 }
-    p4 = point{ x: -1.0, y: 0.0, z: -0.2 }  p5 = point{ x: -1.0, y: 0.0, z: 0.2 }
-    p6 = point{ x: 0.0, y: -1.0, z: 0.0 }   p7 = point{ x: 0.0, y: -0.2, z: -0.2 }
+<pre><code class="language-ipl">// Definition of the topological domain in local coordinate space
+mobius_strip[()($f0, $f1, $f2, $f3) 
+    spatial3d :
+    // 1. Instantiating internal point sources (p0..p7)
+    p0&lt; point(1.0, 0.0, -0.2) &gt;
+    p1&lt; point(1.0, 0.0, 0.2) &gt;
+    p2&lt; point(0.0, 1.0, -0.2) &gt;
+    p3&lt; point(0.0, 0.2, 0.0) &gt;
+    p4&lt; point(-1.0, 0.0, -0.2) &gt;
+    p5&lt; point(-1.0, 0.0, 0.2) &gt;
+    p6&lt; point(0.0, -1.0, 0.0) &gt;
+    p7&lt; point(0.0, -0.2, -0.2) &gt;
 
-    f0 = face(loop(edge(p0,p1), edge(p1,p3), edge(p3,p2), edge(p2,p0)))
-    f1 = face(loop(edge(p2,p3), edge(p3,p5), edge(p5,p4), edge(p4,p2)))
-    f2 = face(loop(edge(p4,p5), edge(p5,p7), edge(p7,p6), edge(p6,p4)))
-    // The twist: reconnecting back to (p1, p0) inverted instead of (p0, p1)
-    f3 = face(loop(edge(p6,p7), edge(p7,p0), edge(p0,p1), edge(p1,p6)))
-}
+    // 2. Consuming point destinations ($pX) to drive exported face destinations ($fX)
+    $f0 face(loop(edge($p0, $p1), edge($p1, $p3), edge($p3, $p2), edge($p2, $p0)))
+    $f1 face(loop(edge($p2, $p3), edge($p3, $p5), edge($p5, $p4), edge($p4, $p2)))
+    $f2 face(loop(edge($p4, $p5), edge($p5, $p7), edge($p7, $p6), edge($p6, $p4)))
+    $f3 face(loop(edge($p6, $p7), edge($p7, $p0), edge($p0, $p1), edge($p1, $p6)))
+]
 
 </code></pre>
-<p>The twist does not emerge from a continuous rotation matrix or an imperative sweep command. It exists because the causal connectivity graph swaps its terminal bindings (<code>edge(p0,p1)</code> versus <code>edge(p1,p0)</code>). The geometric surface is a direct consequence of topological declaration.
-<em>Drafting in progress…</em></p>
+<p>The twist does not emerge from a continuous rotation matrix or an imperative sweep command. It exists because the causal connectivity graph swaps its terminal bindings (<code>edge(p0,p1)</code> versus <code>edge(p1,p0)</code>). The geometric surface is a direct consequence of topological declaration.</p>
+<p>In IPL, an invocation targeting a geometric definition operates by binding dynamic execution/dataflow to the spatial boundary and providing a <strong>spatial placement vector</strong> (translation, orientation, scaling) to ground that definition within a coordinate system.</p>
+<p>Because the geometric definition specifies relative topological adjacencies (the local manifold), the invocation supplies the transform that projects those local spatial registers into global compute space or hardware coordinates.</p>
+<hr>
+<h3 id="invocation-syntax--mechanics"><a class="header" href="#invocation-syntax--mechanics">Invocation Syntax &amp; Mechanics</a></h3>
+<p>Following the canonical IPL invocation model:</p>
+<p>$$\text{invocationName}[(\text{destination_bindings})(\text{source_bindings}) \quad \text{spatial_domain} @ \text{placement_vector} : \text{execution_rules}]$$</p>
+<ul>
+<li><strong>Domain Target (<code>spatial_domain</code>):</strong> Specifies which spatial definition acts as the physical/topological substrate.</li>
+<li><strong>Placement Vector (<code>@ placement_vector</code>):</strong> Supplies the origin offset, orientation frame, or scale parameters to position the domain in 3D coordinate space.</li>
+<li><strong>Stream/Data Bindings (<code>(destinations)(sources)</code>):</strong> Feeds real-time computational inputs and extracts output streams across the placed geometry.</li>
+</ul>
+<hr>
+<h3 id="conceptual-syntax-example"><a class="header" href="#conceptual-syntax-example">Conceptual Syntax Example</a></h3>
+<pre><code class="language-ipl">// Invocation instantiating computation inside the declared 3D domain at explicit coordinates
+field_solver[(output_mesh)(sensor_stream) mobius_strip @ transform3d{ pos: [10.0, 0.0, 5.0], rot: [0.0, 45.0, 0.0], scale: 1.0 } :
+    // Execution rules evaluated across the placed topological domain
+    output_mesh = compute_wave_propagation(sensor_stream)
+]
+
+</code></pre>
+<hr>
+<h3 id="how-the-compiler-resolves-the-invocation"><a class="header" href="#how-the-compiler-resolves-the-invocation">How the Compiler Resolves the Invocation</a></h3>
+<ol>
+<li><strong>Coordinate Transformation at AST Lowering:</strong> The compiler applies the invocation’s <code>@ transform3d</code> vector to the definition’s local point set (<code>p0</code>…<code>p7</code>), transforming local anchors into global physical/virtual 3D coordinates.</li>
+<li><strong>Channel Delay Re-Synthesis:</strong> If the placement transformation stretches, scales, or skews the domain, the compiler recalculates edge physical lengths and re-synthesizes latency-compensation delays along the graph channels.</li>
+<li><strong>Execution Domain Allocation:</strong></li>
+</ol>
+<ul>
+<li><strong>For Hardware (FPGA/ASIC):</strong> The global coordinates directly map the graph node placement onto corresponding physical tiles or logic sectors.</li>
+<li><strong>For Software (SPIR-V/CPU):</strong> Global coordinates determine spatial partitioning, workgroup dispatch dimensions, and thread routing.</li>
+</ul>
+<h3 id="manufacturing-outputs-and-hardware-realization"><a class="header" href="#manufacturing-outputs-and-hardware-realization">Manufacturing Outputs and Hardware Realization</a></h3>
+<p>Because a Möbius strip is a valid 2D manifold embedded in 3D space without self-intersection, it serves as a powerful bridge between abstract topology, physical manufacturing, and silicon compilation.</p>
+<p><strong>1. Physical Manufacturability</strong>
+Traditional 3D models often suffer from manifold errors, unclosed shells, or self-intersecting meshes when sent to CAD/CAM software or 3D printers. Because MatterScript defines geometry via explicit topological adjacencies (<code>point</code>, <code>edge</code>, <code>loop</code>, <code>face</code>), the output guarantees surface continuity. The resulting AST compiles cleanly into:</p>
+<ul>
+<li><strong>Toolpath Generation:</strong> Continuous CNC milling paths and 3D printer G-code without surface singularities.</li>
+<li><strong>Unfolded Flat Patterns:</strong> Direct projection into 2D sheet metal cutting profiles or flexible PCB layouts.</li>
+</ul>
+<p><strong>2. Flattening 3D Topologies to 2D FPGA Fabrics</strong>
+Mapping non-orientable 3D compute domains onto a flat 2D FPGA logic grid traditionally causes severe routing congestion. The IPL compiler resolves this via graph channel routing rather than geometric projection:</p>
+<ul>
+<li><strong>Topological Decoupling:</strong> The compiler treats the 3D twist purely as a boundary redirection in the connectivity graph (e.g., binding <code>edge(p6, p7)</code> to <code>edge(p0, p1)</code> in reverse order).</li>
+<li><strong>Planar Placement Algorithms:</strong> Spectral and force-directed graph algorithms lay out the topological nodes across the 2D Configurable Logic Block (CLB) array.</li>
+<li><strong>Synthesized Delay Equalization:</strong> When topological connections cross physical distances on the chip, the compiler automatically inserts target delay buffers along the graph channels to ensure synchronized signal propagation.</li>
+</ul>
+<p>Through this unified model, physical geometry, manufacturable toolpaths, and silicon place-and-route are treated as equivalent graph reduction passes.</p>
 
                     </main>
 
