@@ -70,7 +70,7 @@ mobius_strip[()($f0, $f1, $f2, $f3)
     p6< point(0.0, -1.0, 0.0) >
     p7< point(0.0, -0.2, -0.2) >
 
-    // 2. Consuming point destinations ($pX) to drive exported face destinations (fX<>)
+    // 2. Consuming point destinations ($pX) to drive exported faces (fX<>)
     f0<face(loop(edge($p0, $p1), edge($p1, $p3), edge($p3, $p2), edge($p2, $p0)))>
     f1<face(loop(edge($p2, $p3), edge($p3, $p5), edge($p5, $p4), edge($p4, $p2)))>
     f2<face(loop(edge($p4, $p5), edge($p5, $p7), edge($p7, $p6), edge($p6, $p4)))>
@@ -137,4 +137,7 @@ Mapping non-orientable 3D compute domains onto a flat 2D FPGA logic grid traditi
 * **Synthesized Delay Equalization:** When topological connections cross physical distances on the chip, the compiler automatically inserts target delay buffers along the graph channels to ensure synchronized signal propagation.
 
 Through this unified model, physical geometry, manufacturable toolpaths, and silicon place-and-route are treated as equivalent graph reduction passes.
+
+*Drafting in progress...*
+
 

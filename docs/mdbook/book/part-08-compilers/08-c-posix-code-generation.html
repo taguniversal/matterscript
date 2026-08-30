@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Deterministic Physical Computing - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
+        <title>C &amp; POSIX Code Generation - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
 
 
         <!-- Custom HTML head -->
@@ -176,18 +176,51 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="deterministic-physical-computing"><a class="header" href="#deterministic-physical-computing">Deterministic Physical Computing</a></h1>
+                        <h1 id="c--posix-code-generation"><a class="header" href="#c--posix-code-generation">C &amp; POSIX Code Generation</a></h1>
+<p>While VHDL generation targets spatial execution on reconfigurable hardware, the <strong>C &amp; POSIX Code Generation</strong> backend lowers Invocation Language AST nodes into portable, deterministic ANSI C/POSIX software constructs. This allows space-time graph definitions to execute on conventional host operating systems and embedded processors.</p>
+<h2 id="architectural-mapping"><a class="header" href="#architectural-mapping">Architectural Mapping</a></h2>
+<p>The software backend translates spatial-temporal graph semantics into low-overhead POSIX primitives without modifying the core IPL syntax:</p>
+<ul>
+<li><strong>Resolutions → Threads / Tasks:</strong> Top-level resolutions map directly to POSIX threads (<code>pthread_create</code>) or task routines.</li>
+<li><strong>Streams &amp; Places → File Descriptors &amp; Pipes:</strong> Data paths between processing nodes are emitted as POSIX byte streams, non-blocking FIFOs (<code>mkfifo</code>), or Unix domain sockets.</li>
+<li><strong>Tokens &amp; Signals → POSIX Synchronization:</strong> Token passage across graph edges lowers to POSIX semaphores (<code>sem_t</code>), mutexes, or <code>poll</code>/<code>select</code> readiness checks to enforce deterministic signal flow.</li>
+</ul>
+<pre><code>+------------------------+        +---------------------------+
+|    IPL AST Node        |        |    C / POSIX Target       |
++------------------------+        +---------------------------+
+|  Resolution Node       |  ---&gt;  |  void* task_thread(void*) |
+|  Stream / Data Place   |  ---&gt;  |  int pipe_fd[2]           |
+|  Token / Signal Edge   |  ---&gt;  |  sem_t token_sem          |
++------------------------+        +---------------------------+
+
+</code></pre>
+<h2 id="compilation-pipeline-steps"><a class="header" href="#compilation-pipeline-steps">Compilation Pipeline Steps</a></h2>
+<ol>
+<li><strong>AST lowering:</strong> Flatten resolution graphs into explicit execution frames and state transitions.</li>
+<li><strong>Buffer Allocation:</strong> Bind data channels to fixed-size ring buffers or file descriptor handles to prevent runtime dynamic memory allocations (<code>malloc</code>).</li>
+<li><strong>Thread Instantiation:</strong> Synthesize main entry loops and initialize POSIX synchronization primitives (<code>pthread_mutex_init</code>, <code>sem_init</code>).</li>
+<li><strong>Target Emission:</strong> Output clean, dependency-free ANSI C code suitable for compilation via <code>gcc</code>, <code>clang</code>, or target cross-compilers.</li>
+</ol>
+<h2 id="target-attributes--configuration"><a class="header" href="#target-attributes--configuration">Target Attributes &amp; Configuration</a></h2>
+<p>Low-level OS parameters that fall outside core language logic are specified directly via target attributes attached to nodes:</p>
+<pre><code class="language-ipl">$sensor_node() : [
+    @target(posix, path="/dev/ttyS0", priority=100)
+    dev&lt; stream_in &gt;
+]
+
+</code></pre>
+<p>This ensures full portability across environments while allowing explicit control over OS resources, scheduling priorities, and file paths when compiling for standard Linux or embedded POSIX runtimes.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../part-07-programming-space-time/04-global-emergence.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../part-08-compilers/07-fpga-synthesis.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../part-07-programming-space-time/06-software-meets-semiconductor-physics.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../part-08-compilers/09-nuttx-rtos-embedded.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -197,11 +230,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../part-07-programming-space-time/04-global-emergence.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../part-08-compilers/07-fpga-synthesis.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../part-07-programming-space-time/06-software-meets-semiconductor-physics.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../part-08-compilers/09-nuttx-rtos-embedded.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

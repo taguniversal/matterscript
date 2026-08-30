@@ -82,7 +82,12 @@
 - [Delay Insertion](part-08-compilers/05-delay-insertion.md)
 - [VHDL Generation](part-08-compilers/06-vhdl-generation.md)
 - [FPGA Synthesis](part-08-compilers/07-fpga-synthesis.md)
-- [Verification](part-08-compilers/08-verification.md)
+- [C & POSIX Code Generation](part-08-compilers/08-c-posix-code-generation.md)
+- [POSIX Runtimes](part-08-compilers/09-nuttx-rtos-embedded.md)
+- [Verification](part-08-compilers/10-verification.md)
+
+
+
 
 # Part IX: World Modeling
 - [Introduction](part-09-world-modeling/index.md)

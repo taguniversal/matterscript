@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e185c019.js";
+            window.path_to_searchindex_js = "searchindex-e3bf3481.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-1192e150.js"></script>
+        <script src="toc-4b2784bd.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -4057,7 +4057,7 @@ Physical Realization
     p6&lt; point(0.0, -1.0, 0.0) &gt;
     p7&lt; point(0.0, -0.2, -0.2) &gt;
 
-    // 2. Consuming point destinations ($pX) to drive exported face destinations (fX&lt;&gt;)
+    // 2. Consuming point destinations ($pX) to drive exported faces (fX&lt;&gt;)
     f0&lt;face(loop(edge($p0, $p1), edge($p1, $p3), edge($p3, $p2), edge($p2, $p0)))&gt;
     f1&lt;face(loop(edge($p2, $p3), edge($p3, $p5), edge($p5, $p4), edge($p4, $p2)))&gt;
     f2&lt;face(loop(edge($p4, $p5), edge($p5, $p7), edge($p7, $p6), edge($p6, $p4)))&gt;
@@ -4113,6 +4113,7 @@ Mapping non-orientable 3D compute domains onto a flat 2D FPGA logic grid traditi
 <li><strong>Synthesized Delay Equalization:</strong> When topological connections cross physical distances on the chip, the compiler automatically inserts target delay buffers along the graph channels to ensure synchronized signal propagation.</li>
 </ul>
 <p>Through this unified model, physical geometry, manufacturable toolpaths, and silicon place-and-route are treated as equivalent graph reduction passes.</p>
+<p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="meshes"><a class="header" href="#meshes">Meshes</a></h1>
 <p><em>Drafting in progress…</em></p>
@@ -4216,6 +4217,97 @@ Mapping non-orientable 3D compute domains onto a flat 2D FPGA logic grid traditi
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="fpga-synthesis"><a class="header" href="#fpga-synthesis">FPGA Synthesis</a></h1>
+<p><em>Drafting in progress…</em></p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="c--posix-code-generation"><a class="header" href="#c--posix-code-generation">C &amp; POSIX Code Generation</a></h1>
+<p>While VHDL generation targets spatial execution on reconfigurable hardware, the <strong>C &amp; POSIX Code Generation</strong> backend lowers Invocation Language AST nodes into portable, deterministic ANSI C/POSIX software constructs. This allows space-time graph definitions to execute on conventional host operating systems and embedded processors.</p>
+<h2 id="architectural-mapping"><a class="header" href="#architectural-mapping">Architectural Mapping</a></h2>
+<p>The software backend translates spatial-temporal graph semantics into low-overhead POSIX primitives without modifying the core IPL syntax:</p>
+<ul>
+<li><strong>Resolutions → Threads / Tasks:</strong> Top-level resolutions map directly to POSIX threads (<code>pthread_create</code>) or task routines.</li>
+<li><strong>Streams &amp; Places → File Descriptors &amp; Pipes:</strong> Data paths between processing nodes are emitted as POSIX byte streams, non-blocking FIFOs (<code>mkfifo</code>), or Unix domain sockets.</li>
+<li><strong>Tokens &amp; Signals → POSIX Synchronization:</strong> Token passage across graph edges lowers to POSIX semaphores (<code>sem_t</code>), mutexes, or <code>poll</code>/<code>select</code> readiness checks to enforce deterministic signal flow.</li>
+</ul>
+<pre><code>+------------------------+        +---------------------------+
+|    IPL AST Node        |        |    C / POSIX Target       |
++------------------------+        +---------------------------+
+|  Resolution Node       |  ---&gt;  |  void* task_thread(void*) |
+|  Stream / Data Place   |  ---&gt;  |  int pipe_fd[2]           |
+|  Token / Signal Edge   |  ---&gt;  |  sem_t token_sem          |
++------------------------+        +---------------------------+
+
+</code></pre>
+<h2 id="compilation-pipeline-steps"><a class="header" href="#compilation-pipeline-steps">Compilation Pipeline Steps</a></h2>
+<ol>
+<li><strong>AST lowering:</strong> Flatten resolution graphs into explicit execution frames and state transitions.</li>
+<li><strong>Buffer Allocation:</strong> Bind data channels to fixed-size ring buffers or file descriptor handles to prevent runtime dynamic memory allocations (<code>malloc</code>).</li>
+<li><strong>Thread Instantiation:</strong> Synthesize main entry loops and initialize POSIX synchronization primitives (<code>pthread_mutex_init</code>, <code>sem_init</code>).</li>
+<li><strong>Target Emission:</strong> Output clean, dependency-free ANSI C code suitable for compilation via <code>gcc</code>, <code>clang</code>, or target cross-compilers.</li>
+</ol>
+<h2 id="target-attributes--configuration"><a class="header" href="#target-attributes--configuration">Target Attributes &amp; Configuration</a></h2>
+<p>Low-level OS parameters that fall outside core language logic are specified directly via target attributes attached to nodes:</p>
+<pre><code class="language-ipl">$sensor_node() : [
+    @target(posix, path="/dev/ttyS0", priority=100)
+    dev&lt; stream_in &gt;
+]
+
+</code></pre>
+<p>This ensures full portability across environments while allowing explicit control over OS resources, scheduling priorities, and file paths when compiling for standard Linux or embedded POSIX runtimes.</p>
+<p><em>Drafting in progress…</em></p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="embedded-posix-runtimes--apache-nuttx"><a class="header" href="#embedded-posix-runtimes--apache-nuttx">Embedded POSIX Runtimes &amp; Apache NuttX</a></h1>
+<p>While general POSIX targets rely on full Linux or BSD operating system abstractions, embedded microkernels enforce strict resource bounds and zero-dynamic-memory constraints. <strong>Apache NuttX</strong> serves as a primary embedded target for Invocation Language (IPL), offering standard POSIX API compliance with low memory footprints and real-time execution guarantees across microcontrollers and RISC-V/ARM architectures.</p>
+<h2 id="architecture--system-layering"><a class="header" href="#architecture--system-layering">Architecture &amp; System Layering</a></h2>
+<p>The NuttX backend lowers IPL graphs into bare-metal POSIX C modules compiled directly into NuttX task images or Flat/Protected mode ELF binaries.</p>
+<pre><code>+-------------------------------------------------------+
+|                IPL Execution Graph                    |
++-------------------------------------------------------+
+                           |
+                           v
++-------------------------------------------------------+
+|          C / POSIX AST Code Generation                |
++-------------------------------------------------------+
+                           |
+                           v
++-------------------------------------------------------+
+|            NuttX RTOS Adaptor Layer                   |
+|  - POSIX Pthreads (`pthread_create`, `pthread_yield`) |
+|  - Message Queues (`mq_open`, `mq_send`, `mq_receive`)|
+|  - Character Driver Endpoints (`/dev/ttyS0`, `/dev/spi`)|
++-------------------------------------------------------+
+                           |
+                           v
++-------------------------------------------------------+
+|     Bare-Metal Hardware / Embedded Substrate          |
+|    (ESP32, HiFive RISC-V, ARM Cortex-M, STM32)        |
++-------------------------------------------------------+
+
+</code></pre>
+<h2 id="semantics-mapping"><a class="header" href="#semantics-mapping">Semantics Mapping</a></h2>
+<p>NuttX provides standard POSIX primitives, allowing IPL graph structures to map directly to RTOS constructs without requiring heavy OS abstraction layers:</p>
+<ul>
+<li><strong>Resolutions → NuttX Tasks / Pthreads:</strong> Top-level space-time resolutions instantiate as lightweight <code>pthread</code> nodes configured with fixed thread stack sizes and static priority levels.</li>
+<li><strong>Streams → POSIX Message Queues (<code>mqd_t</code>) / FIFOs:</strong> Token streams between processing nodes lower to POSIX message queues (<code>mq_send</code>/<code>mq_receive</code>) or native NuttX driver endpoints (<code>/dev/chanN</code>), bypassing user/kernel context switches in flat-build environments.</li>
+<li><strong>Token Placement → Named Semaphores (<code>sem_t</code>):</strong> Deterministic token passage along graph edges maps directly to POSIX counting semaphores (<code>sem_wait</code>/<code>sem_post</code>), ensuring strict real-time ordering.</li>
+</ul>
+<h2 id="memory--resource-allocation-strategy"><a class="header" href="#memory--resource-allocation-strategy">Memory &amp; Resource Allocation Strategy</a></h2>
+<p>Unlike desktop POSIX runtimes, the NuttX code generator enforces deterministic resource bounds to meet embedded real-time requirements:</p>
+<ol>
+<li><strong>Zero Dynamic Allocation (<code>malloc</code>-free):</strong> All message queue buffers, task stacks, and token state structs are statically allocated at compile time in <code>.bss</code> or specialized RAM regions.</li>
+<li><strong>Fixed Task Priorities:</strong> Execution nodes declare priority levels through target attributes to prevent priority inversion under the NuttX FIFO scheduler.</li>
+<li><strong>Hardware Device Binding:</strong> IPL input/output nodes interface directly with NuttX device paths (<code>/dev/sensor0</code>, <code>/dev/can0</code>) via standard <code>open()</code>, <code>read()</code>, <code>write()</code>, and <code>ioctl()</code> POSIX calls.</li>
+</ol>
+<h2 id="example-ipl-domain-attribute-binding"><a class="header" href="#example-ipl-domain-attribute-binding">Example IPL Domain Attribute Binding</a></h2>
+<p>NuttX-specific execution attributes are declared directly on IPL nodes using standard target annotations:</p>
+<pre><code class="language-ipl">$motor_control_loop() : [
+    @target(nuttx, stack_bytes=4096, priority=200, sched="fifo")
+    ctrl&lt; stream_in &gt;
+    
+    @target(posix, path="/dev/pwm0")
+    actuator&lt; stream_out &gt;
+]
+
+</code></pre>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="verification"><a class="header" href="#verification">Verification</a></h1>
@@ -4356,22 +4448,6 @@ Mapping non-orientable 3D compute domains onto a flat 2D FPGA logic grid traditi
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>
