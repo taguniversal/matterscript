@@ -12,9 +12,9 @@ LIDAR scans become computational substrates.
 
 This is where MatterScript begins to differ fundamentally from every previous programming language. The language's geometry-aware placement model projects physical domains onto FPGA fabrics while preserving neighborhood relationships and compensating projection distortion with synthesized delays.
 
-To achieve this, the Invocation Language utilizes domain selectors to activate domain-specific extensions directly within the structural graph. Introducing the `spatial3d` domain selector exposes a specialized set of topological primitives, geometric constructors, spatial predicates, and transformation operators tailored for 3D computational domains.
+To achieve this, MatterScript utilizes domain selectors to activate domain-specific extensions directly within the structural graph. Introducing the `spatial3d` domain selector exposes a specialized set of topological primitives, geometric constructors, spatial predicates, and transformation operators tailored for 3D computational domains.
 
-Below is the updated and expanded list of structural keywords and functions available under the `spatial3d` domain:
+Below is the list of structural keywords and functions available under the `spatial3d` domain:
 
 * **Point (`point`)**: Not merely a 3D coordinate vector, but a discrete physical location within space defined via `point(x, y, z)`.
 * **Edge (`edge`)**: A directional, causal connection established between two points using `edge(pointA, pointB)`.
@@ -58,7 +58,6 @@ By expressing physical domains using these topological building blocks rather th
 Consider how this relationship graph handles non-orientable 3D manifolds without requiring mathematical matrix transformations inside the AST. A Möbius ribbon can be expressed by defining four quad faces where the topological boundary of the final face twists its edge bindings:
 
 ```ipl
-// Definition of the topological domain in local coordinate space
 mobius_strip[()($f0, $f1, $f2, $f3) 
     spatial3d :
     // 1. Instantiating internal point sources (p0..p7)
@@ -72,10 +71,10 @@ mobius_strip[()($f0, $f1, $f2, $f3)
     p7< point(0.0, -0.2, -0.2) >
 
     // 2. Consuming point destinations ($pX) to drive exported face destinations ($fX)
-    $f0 face(loop(edge($p0, $p1), edge($p1, $p3), edge($p3, $p2), edge($p2, $p0)))
-    $f1 face(loop(edge($p2, $p3), edge($p3, $p5), edge($p5, $p4), edge($p4, $p2)))
-    $f2 face(loop(edge($p4, $p5), edge($p5, $p7), edge($p7, $p6), edge($p6, $p4)))
-    $f3 face(loop(edge($p6, $p7), edge($p7, $p0), edge($p0, $p1), edge($p1, $p6)))
+    f0<face(loop(edge($p0, $p1), edge($p1, $p3), edge($p3, $p2), edge($p2, $p0)))>
+    f1<face(loop(edge($p2, $p3), edge($p3, $p5), edge($p5, $p4), edge($p4, $p2)))>
+    f2<face(loop(edge($p4, $p5), edge($p5, $p7), edge($p7, $p6), edge($p6, $p4)))>
+    f3<face(loop(edge($p6, $p7), edge($p7, $p0), edge($p0, $p1), edge($p1, $p6)))>
 ]
 
 ```
