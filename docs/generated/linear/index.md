@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 8  |  🟡 Partial: 10  |  ⬛ Spec only: 4  |  ⬜ Not started: 111  |  Total: 133
+✅ Implemented: 8  |  🟡 Partial: 10  |  ⬛ Spec only: 4  |  ⬜ Not started: 110  |  Total: 132
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
@@ -21,7 +21,6 @@
 - ⬜ Not started [12.3.2 Hierarchical Composition: The Invocation and Definition](TAG-97.md)
 - ⬜ Not started [12.3.2 Hierarchical Composition: The Invocation and Definition](TAG-27.md)
 - ⬜ Not started [12.3.3 The Association of Invocation and Definition](TAG-98.md)
-- ⬜ Not started [12.3.3 The Association of Invocation and Definition](TAG-28.md)
 - ⬜ Not started [12.3.4 Abbreviated Forms of the Invocation and Definition](TAG-110.md)
 - ⬜ Not started [12.4 The Comma](TAG-111.md)
 - ⬜ Not started [12.5 Completeness Relations](TAG-40.md)

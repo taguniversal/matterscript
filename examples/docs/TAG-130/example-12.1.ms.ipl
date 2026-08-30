@@ -1,4 +1,21 @@
-// linear: TAG-130
+// linear: TAG-130 Example 12.1 Unnamed source place in an invocation
 
-FULLADD(0,1,0)(<> CARRYOUT<>)  $CARRYOUT
-FULLADD[(X<>Y<>C<>)($SUM $CARRY)]
+// Self-contained full-adder lookup example.
+// The top-level invocation supplies X=0, Y=1, C=0; its two source-place
+// outputs are an unnamed source place and CARRYOUT.
+FULLADD(0,1,0)(<> CARRYOUT<>)
+// Each contained constant definition supplies both output destinations for
+// one three-bit input combination.  SUM is X xor Y xor C; CARRY is the
+// majority of X, Y, and C.
+FULLADD[(X<> Y<> C<>)($SUM $CARRY)
+    $X$Y$C()
+:
+    0,0,0[SUM<0> CARRY<0>]
+    0,0,1[SUM<1> CARRY<0>]
+    0,1,0[SUM<1> CARRY<0>]
+    0,1,1[SUM<0> CARRY<1>]
+    1,0,0[SUM<1> CARRY<0>]
+    1,0,1[SUM<0> CARRY<1>]
+    1,1,0[SUM<0> CARRY<1>]
+    1,1,1[SUM<1> CARRY<1>]
+]

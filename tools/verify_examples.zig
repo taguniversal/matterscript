@@ -23,6 +23,7 @@ const ExampleRow = struct {
     expected_status: ?[]const u8,
     parse_ok: bool,
     ghdl_ok: bool,
+    simulation_ok: bool,
     result: ExampleResult,
 };
 

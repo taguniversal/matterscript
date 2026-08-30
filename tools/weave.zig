@@ -498,9 +498,10 @@ fn cleanOrphanedIssuePages(io: std.Io, allocator: std.mem.Allocator, issues: []c
 
 /// Write docs/generated/linear/status.json — a committed manifest mapping
 /// each issue to its implementation status (from the Implemented/Partial/
-/// Spec Only labels) and Linear's native workflow state. The example
-/// runner reads this file rather than querying Linear directly, keeping
-/// example verification offline and deterministic like the rest of weave.
+/// Spec Only labels), simulation request state, and Linear's native workflow
+/// state. The example runner reads this file rather than querying Linear
+/// directly, keeping example verification offline and deterministic like the
+/// rest of weave.
 ///
 /// Hand-written JSON rather than std.json.Stringify — that API has moved
 /// under us before on this toolchain, and this shape is simple enough
@@ -516,6 +517,7 @@ fn writeStatusManifest(io: std.Io, issues: []const LinearIssue) !void {
     try w.writeAll("{\n");
     for (issues, 0..) |issue, i| {
         const impl_status = resolveStatus(issue.labels);
+        const simulation_requested = hasLabel(issue.labels, "Simulation Requested");
 
         try w.print("  \"{s}\": {{\n", .{issue.identifier});
         try w.writeAll("    \"implementation_status\": ");
@@ -524,6 +526,7 @@ fn writeStatusManifest(io: std.Io, issues: []const LinearIssue) !void {
         } else {
             try w.writeAll("null");
         }
+        try w.print(",\n    \"simulation_requested\": {s}", .{if (simulation_requested) "true" else "false"});
         try w.print(",\n    \"workflow_state\": \"{s}\"\n", .{issue.workflow_state});
         try w.writeAll(if (i + 1 < issues.len) "  },\n" else "  }\n");
     }
