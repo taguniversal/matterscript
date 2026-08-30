@@ -87,8 +87,6 @@
 - [Verification](part-08-compilers/10-verification.md)
 
 
-
-
 # Part IX: World Modeling
 - [Introduction](part-09-world-modeling/index.md)
 - [Engineering Knowledge as Software](part-09-world-modeling/01-engineering-knowledge-as-software.md)

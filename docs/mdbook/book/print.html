@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e3bf3481.js";
+            window.path_to_searchindex_js = "searchindex-d2709e9c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-4b2784bd.js"></script>
@@ -4402,6 +4402,87 @@ Mapping non-orientable 3D compute domains onto a flat 2D FPGA logic grid traditi
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="appendix-a-language-reference"><a class="header" href="#appendix-a-language-reference">Appendix A: Language Reference</a></h1>
+<h2 id="1-top-level-structure--definitions"><a class="header" href="#1-top-level-structure--definitions">1. Top-Level Structure &amp; Definitions</a></h2>
+<h3 id="definition-declarations"><a class="header" href="#definition-declarations">Definition Declarations</a></h3>
+<p>Definitions are declared using a name followed immediately by square brackets <code>[...]</code>. The brackets enclose the definition’s body, including its sources, destinations, field of resolution, domain specifier, and transform rules.</p>
+<ul>
+<li><strong>Syntax:</strong> <code>NAME[(sources)(destinations) domain_specifier : body]</code></li>
+<li><strong>Identifier Identifier:</strong> Any standard alphanumeric identifier preceding <code>[</code> is classified as a definition name (<code>entity.name.type.definition</code>).</li>
+</ul>
+<h3 id="domain-specifier"><a class="header" href="#domain-specifier">Domain Specifier</a></h3>
+<p>The resolution/domain specifier section defines the operational domain or spatial context of the definition.</p>
+<ul>
+<li><strong>Domain Keywords:</strong> Currently, the set includes:</li>
+<li><code>spatial3d</code></li>
+</ul>
+<hr>
+<h2 id="2-invocations--place-references"><a class="header" href="#2-invocations--place-references">2. Invocations &amp; Place References</a></h2>
+<h3 id="invocations-2"><a class="header" href="#invocations-2">Invocations</a></h3>
+<p>Invocations execute/instantiate named relationships or functions.</p>
+<ul>
+<li><strong>Syntax:</strong> <code>NAME($dest1 $dest2)(source1&lt;&gt; source2&lt;&gt;)</code></li>
+<li><strong>Identifier:</strong> Any identifier preceding <code>(</code> is classified as an invocation (<code>entity.name.function.invocation</code>).</li>
+</ul>
+<h3 id="destination-places"><a class="header" href="#destination-places">Destination Places</a></h3>
+<p>Destination places or dynamic name compositions are prefixed with a dollar sign <code>$</code>.</p>
+<ul>
+<li><strong>Syntax:</strong> <code>$identifier</code></li>
+<li><strong>Token Classification:</strong> <code>variable.parameter.destination</code></li>
+<li><strong>Pattern:</strong> <code>\$[A-Za-z_][A-Za-z0-9_]*</code></li>
+</ul>
+<h3 id="source-places"><a class="header" href="#source-places">Source Places</a></h3>
+<p>Source places represent incoming causal signals or inputs and are denoted by trailing angle brackets <code>&lt;&gt;</code>.</p>
+<ul>
+<li><strong>Syntax:</strong> <code>name&lt;&gt;</code> or <code>name&lt;content&gt;</code></li>
+<li><strong>Token Classification:</strong> <code>entity.name.function.place</code></li>
+<li><strong>Pattern:</strong> <code>NAME(?=\s*&lt;)</code></li>
+</ul>
+<hr>
+<h2 id="3-control-keywords--built-in-functions"><a class="header" href="#3-control-keywords--built-in-functions">3. Control Keywords &amp; Built-in Functions</a></h2>
+<h3 id="procedural--code-generation-keywords"><a class="header" href="#procedural--code-generation-keywords">Procedural / Code Generation Keywords</a></h3>
+<ul>
+<li><strong><code>generate</code></strong>: Declares code-generation blocks (<code>keyword.control</code>).</li>
+</ul>
+<h3 id="structure-field-labels"><a class="header" href="#structure-field-labels">Structure Field Labels</a></h3>
+<p>Key-value declarations preceding a colon <code>:</code>:</p>
+<ul>
+<li><code>inputs:</code></li>
+<li><code>output:</code></li>
+<li><code>const:</code></li>
+</ul>
+<h3 id="built-in-support-functions"><a class="header" href="#built-in-support-functions">Built-in Support Functions</a></h3>
+<p>Functions expecting argument lists in parentheses:</p>
+<ul>
+<li><code>clamp(...)</code></li>
+<li><code>avg(...)</code></li>
+</ul>
+<hr>
+<h2 id="4-lexical-tokens--punctuation"><a class="header" href="#4-lexical-tokens--punctuation">4. Lexical Tokens &amp; Punctuation</a></h2>
+<h3 id="comments"><a class="header" href="#comments">Comments</a></h3>
+<ul>
+<li><strong>Line Comment:</strong> Double slashes <code>//</code> ignore all remaining text on the line.</li>
+</ul>
+<h3 id="literals--arithmetic"><a class="header" href="#literals--arithmetic">Literals &amp; Arithmetic</a></h3>
+<ul>
+<li><strong>Numeric Constants:</strong> Unsigned integer literals (<code>\b[0-9]+\b</code>).</li>
+<li><strong>Arithmetic Operators:</strong> Standard mathematical operations: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>.</li>
+</ul>
+<h3 id="structural-delimiters--delimiting-groups"><a class="header" href="#structural-delimiters--delimiting-groups">Structural Delimiters &amp; Delimiting Groups</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Delimiter</th><th>Token Name</th><th>Structural Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>{</code> <code>}</code></td><td><code>punctuation.definition.group.mutex</code></td><td>Encloses mutex or conditional completeness groups.</td></tr>
+<tr><td><code>[</code> <code>]</code></td><td><code>punctuation.definition.bracket</code></td><td>Encloses bundle brackets or definition outer bodies.</td></tr>
+<tr><td><code>(</code> <code>)</code></td><td><code>punctuation.definition.paren</code></td><td>Encloses parameter lists and source/destination bindings.</td></tr>
+<tr><td><code>&lt;</code> <code>&gt;</code></td><td><code>punctuation.definition.place</code></td><td>Denotes place boundaries.</td></tr>
+<tr><td><code>:</code></td><td><code>punctuation.separator.colon</code></td><td>Separates domain specifiers from bodies, or key-value entries.</td></tr>
+<tr><td><code>,</code></td><td><code>punctuation.separator.comma</code></td><td>Separates itemized arguments or entries.</td></tr>
+</tbody>
+</table>
+</div>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="appendix-b-grammar-specification"><a class="header" href="#appendix-b-grammar-specification">Appendix B: Grammar Specification</a></h1>
