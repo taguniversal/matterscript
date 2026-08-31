@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d2709e9c.js";
+            window.path_to_searchindex_js = "searchindex-cc1b03bd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-4b2784bd.js"></script>
@@ -4199,9 +4199,94 @@ Mapping non-orientable 3D compute domains onto a flat 2D FPGA logic grid traditi
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="parsing"><a class="header" href="#parsing">Parsing</a></h1>
+<h2 id="compiler-directives"><a class="header" href="#compiler-directives">Compiler Directives</a></h2>
+<p>Up to this point, every construct we’ve introduced has described the computation itself. Definitions, places, invocations, and transform rules all become part of the association graph that ultimately realizes the computation.</p>
+<p>Sometimes, however, we need to communicate with the compiler rather than with the computation.</p>
+<p>MatterScript uses <strong>compiler directives</strong> for this purpose. Directives begin with the <code>@</code> character and provide information about how a program should be interpreted, analyzed, or realized. Unlike definitions or invocations, directives do not become part of the computational network. They exist only during compilation.</p>
+<p>For example, a program may request a particular backend:</p>
+<pre><code class="language-matterscript">@target(posix, path="/dev/ttyS0", priority=100)
+</code></pre>
+<p>This directive tells the compiler that the resulting program should be realized using the POSIX backend and provides backend-specific configuration options. Another backend might instead target an FPGA, a GPU, or another execution environment without requiring any changes to the computational description itself.</p>
+<p>Directives also establish the domain in which a program operates.</p>
+<pre><code class="language-matterscript">@domain(spatial3d)
+</code></pre>
+<p>A domain extends the language with concepts appropriate to a particular problem space. The <code>spatial3d</code> domain, introduced elsewhere in this book, provides geometric primitives and operations for constructing three-dimensional models while remaining fully integrated with MatterScript’s computational model.</p>
+<p>Because domains are selected explicitly, the core language remains intentionally small. New domains can introduce specialized vocabularies for geometry, signal processing, chemistry, biology, or other disciplines without complicating the language that every programmer must learn.</p>
+<p>Compiler directives therefore separate <strong>the description of the computation</strong> from <strong>the configuration of the toolchain</strong>. The computation remains portable and backend-independent, while the directives provide the compiler with the context needed to realize that computation efficiently on a particular platform or within a particular domain.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="abstract-syntax-trees"><a class="header" href="#abstract-syntax-trees">Abstract Syntax Trees</a></h1>
+<p>Every MatterScript program begins life as text.</p>
+<pre><code class="language-matterscript">FULLADD($A $B $C)(SUM&lt;&gt; CARRY&lt;&gt;)
+</code></pre>
+<p>To a human, this is a readable description of a computation.</p>
+<p>To a compiler, it is only a sequence of characters.</p>
+<p>Before the compiler can reason about the program, it must recover its structure.</p>
+<p>That structure is represented internally as an <strong>Abstract Syntax Tree</strong>, or AST.</p>
+<hr>
+<h2 id="the-program-beneath-the-text"><a class="header" href="#the-program-beneath-the-text">The Program Beneath the Text</a></h2>
+<p>An AST ignores formatting and punctuation that exist only to help humans read the language.</p>
+<p>For example,</p>
+<pre><code class="language-matterscript">AND($A $B)(RESULT&lt;&gt;)
+</code></pre>
+<p>might be represented internally as something conceptually similar to</p>
+<pre><code class="language-text">Invocation
+ ├── Name: AND
+ ├── Destination List
+ │     ├── $A
+ │     └── $B
+ └── Source List
+       └── RESULT&lt;&gt;
+</code></pre>
+<p>This tree captures the meaning of the program without preserving its exact textual representation.</p>
+<p>Whitespace disappears.</p>
+<p>Comments disappear.</p>
+<p>Formatting disappears.</p>
+<p>Only structure remains.</p>
+<hr>
+<h2 id="the-ast-is-not-the-computation"><a class="header" href="#the-ast-is-not-the-computation">The AST Is Not the Computation</a></h2>
+<p>One of the easiest mistakes to make when thinking about compilers is to imagine that the AST somehow <em>is</em> the program.</p>
+<p>It isn’t.</p>
+<p>The AST is simply the compiler’s understanding of the source text.</p>
+<p>It exists only long enough for the compiler to analyze the language.</p>
+<p>The computational model appears later.</p>
+<pre><code class="language-text">Source Code
+        │
+        ▼
+Abstract Syntax Tree
+        │
+        ▼
+Association Graph
+        │
+        ▼
+Backend Realization
+</code></pre>
+<p>This distinction is important.</p>
+<p>The AST understands syntax.</p>
+<p>The association graph understands computation.</p>
+<hr>
+<h2 id="a-stable-foundation"><a class="header" href="#a-stable-foundation">A Stable Foundation</a></h2>
+<p>Almost every later stage of the compiler builds upon the AST.</p>
+<p>Semantic analysis verifies that names are valid.</p>
+<p>Definitions are connected to invocations.</p>
+<p>Domains introduce additional syntax.</p>
+<p>Compiler directives are interpreted.</p>
+<p>Geometry expressions are recognized.</p>
+<p>Errors are reported against the original source.</p>
+<p>Because every feature is represented in a common tree structure, the compiler can grow without constantly rewriting its earlier stages.</p>
+<hr>
+<h2 id="trees-give-way-to-graphs"><a class="header" href="#trees-give-way-to-graphs">Trees Give Way to Graphs</a></h2>
+<p>MatterScript begins as a tree because people write text one line at a time.</p>
+<p>But computation is not a tree.</p>
+<p>It is a graph.</p>
+<p>One invocation may feed many others.</p>
+<p>Names connect distant parts of a program.</p>
+<p>Definitions reference other definitions.</p>
+<p>Causal relationships span the entire design.</p>
+<p>The compiler therefore performs a fundamental transformation.</p>
+<p>It converts the tree describing the <strong>syntax</strong> into a graph describing the <strong>computation</strong>.</p>
+<p>This is where MatterScript begins to diverge from conventional programming languages. In many compilers, the AST remains the central representation throughout optimization and code generation. In MatterScript, it is only a stepping stone. Once the association graph has been constructed, the compiler has recovered the true structure of the program, and from that point onward every optimization, transformation, and backend operates on relationships rather than on source code.</p>
+<p>In later chapters, when we introduce the <code>spatial3d</code> domain, we will discover that geometry is parsed into the same abstract syntax tree as every other MatterScript construct. The compiler makes no fundamental distinction between a logic gate, a chemical transform rule, or a geometric primitive. They are all simply structured descriptions waiting to be transformed into a common association graph.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="table-generation"><a class="header" href="#table-generation">Table Generation</a></h1>
@@ -4431,7 +4516,7 @@ Mapping non-orientable 3D compute domains onto a flat 2D FPGA logic grid traditi
 <li><strong>Pattern:</strong> <code>\$[A-Za-z_][A-Za-z0-9_]*</code></li>
 </ul>
 <h3 id="source-places"><a class="header" href="#source-places">Source Places</a></h3>
-<p>Source places represent incoming causal signals or inputs and are denoted by trailing angle brackets <code>&lt;&gt;</code>.</p>
+<p>Source places represent incoming causal signals or inputs and are denoted by trailing angle brackets that enclose the content or reference to connect to that signal <code>&lt;&gt;</code>.</p>
 <ul>
 <li><strong>Syntax:</strong> <code>name&lt;&gt;</code> or <code>name&lt;content&gt;</code></li>
 <li><strong>Token Classification:</strong> <code>entity.name.function.place</code></li>
@@ -4477,7 +4562,7 @@ Mapping non-orientable 3D compute domains onto a flat 2D FPGA logic grid traditi
 <tr><td><code>{</code> <code>}</code></td><td><code>punctuation.definition.group.mutex</code></td><td>Encloses mutex or conditional completeness groups.</td></tr>
 <tr><td><code>[</code> <code>]</code></td><td><code>punctuation.definition.bracket</code></td><td>Encloses bundle brackets or definition outer bodies.</td></tr>
 <tr><td><code>(</code> <code>)</code></td><td><code>punctuation.definition.paren</code></td><td>Encloses parameter lists and source/destination bindings.</td></tr>
-<tr><td><code>&lt;</code> <code>&gt;</code></td><td><code>punctuation.definition.place</code></td><td>Denotes place boundaries.</td></tr>
+<tr><td><code>&lt;</code> <code>&gt;</code></td><td><code>punctuation.definition.place</code></td><td>Enclose source place boundaries.</td></tr>
 <tr><td><code>:</code></td><td><code>punctuation.separator.colon</code></td><td>Separates domain specifiers from bodies, or key-value entries.</td></tr>
 <tr><td><code>,</code></td><td><code>punctuation.separator.comma</code></td><td>Separates itemized arguments or entries.</td></tr>
 </tbody>

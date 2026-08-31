@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-d2709e9c.js";
+            window.path_to_searchindex_js = "../searchindex-cc1b03bd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-4b2784bd.js"></script>
@@ -177,6 +177,20 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="parsing"><a class="header" href="#parsing">Parsing</a></h1>
+<h2 id="compiler-directives"><a class="header" href="#compiler-directives">Compiler Directives</a></h2>
+<p>Up to this point, every construct we’ve introduced has described the computation itself. Definitions, places, invocations, and transform rules all become part of the association graph that ultimately realizes the computation.</p>
+<p>Sometimes, however, we need to communicate with the compiler rather than with the computation.</p>
+<p>MatterScript uses <strong>compiler directives</strong> for this purpose. Directives begin with the <code>@</code> character and provide information about how a program should be interpreted, analyzed, or realized. Unlike definitions or invocations, directives do not become part of the computational network. They exist only during compilation.</p>
+<p>For example, a program may request a particular backend:</p>
+<pre><code class="language-matterscript">@target(posix, path="/dev/ttyS0", priority=100)
+</code></pre>
+<p>This directive tells the compiler that the resulting program should be realized using the POSIX backend and provides backend-specific configuration options. Another backend might instead target an FPGA, a GPU, or another execution environment without requiring any changes to the computational description itself.</p>
+<p>Directives also establish the domain in which a program operates.</p>
+<pre><code class="language-matterscript">@domain(spatial3d)
+</code></pre>
+<p>A domain extends the language with concepts appropriate to a particular problem space. The <code>spatial3d</code> domain, introduced elsewhere in this book, provides geometric primitives and operations for constructing three-dimensional models while remaining fully integrated with MatterScript’s computational model.</p>
+<p>Because domains are selected explicitly, the core language remains intentionally small. New domains can introduce specialized vocabularies for geometry, signal processing, chemistry, biology, or other disciplines without complicating the language that every programmer must learn.</p>
+<p>Compiler directives therefore separate <strong>the description of the computation</strong> from <strong>the configuration of the toolchain</strong>. The computation remains portable and backend-independent, while the directives provide the compiler with the context needed to realize that computation efficiently on a particular platform or within a particular domain.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>

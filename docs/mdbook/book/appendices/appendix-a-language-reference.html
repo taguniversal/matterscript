@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-d2709e9c.js";
+            window.path_to_searchindex_js = "../searchindex-cc1b03bd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-4b2784bd.js"></script>
@@ -206,7 +206,7 @@
 <li><strong>Pattern:</strong> <code>\$[A-Za-z_][A-Za-z0-9_]*</code></li>
 </ul>
 <h3 id="source-places"><a class="header" href="#source-places">Source Places</a></h3>
-<p>Source places represent incoming causal signals or inputs and are denoted by trailing angle brackets <code>&lt;&gt;</code>.</p>
+<p>Source places represent incoming causal signals or inputs and are denoted by trailing angle brackets that enclose the content or reference to connect to that signal <code>&lt;&gt;</code>.</p>
 <ul>
 <li><strong>Syntax:</strong> <code>name&lt;&gt;</code> or <code>name&lt;content&gt;</code></li>
 <li><strong>Token Classification:</strong> <code>entity.name.function.place</code></li>
@@ -252,7 +252,7 @@
 <tr><td><code>{</code> <code>}</code></td><td><code>punctuation.definition.group.mutex</code></td><td>Encloses mutex or conditional completeness groups.</td></tr>
 <tr><td><code>[</code> <code>]</code></td><td><code>punctuation.definition.bracket</code></td><td>Encloses bundle brackets or definition outer bodies.</td></tr>
 <tr><td><code>(</code> <code>)</code></td><td><code>punctuation.definition.paren</code></td><td>Encloses parameter lists and source/destination bindings.</td></tr>
-<tr><td><code>&lt;</code> <code>&gt;</code></td><td><code>punctuation.definition.place</code></td><td>Denotes place boundaries.</td></tr>
+<tr><td><code>&lt;</code> <code>&gt;</code></td><td><code>punctuation.definition.place</code></td><td>Enclose source place boundaries.</td></tr>
 <tr><td><code>:</code></td><td><code>punctuation.separator.colon</code></td><td>Separates domain specifiers from bodies, or key-value entries.</td></tr>
 <tr><td><code>,</code></td><td><code>punctuation.separator.comma</code></td><td>Separates itemized arguments or entries.</td></tr>
 </tbody>

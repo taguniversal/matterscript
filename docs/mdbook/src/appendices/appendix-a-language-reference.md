@@ -39,7 +39,7 @@ Destination places or dynamic name compositions are prefixed with a dollar sign 
 
 ### Source Places
 
-Source places represent incoming causal signals or inputs and are denoted by trailing angle brackets `<>`.
+Source places represent incoming causal signals or inputs and are denoted by trailing angle brackets that enclose the content or reference to connect to that signal `<>`.
 
 * **Syntax:** `name<>` or `name<content>`
 * **Token Classification:** `entity.name.function.place`
@@ -88,7 +88,7 @@ Functions expecting argument lists in parentheses:
 | `{` `}` | `punctuation.definition.group.mutex` | Encloses mutex or conditional completeness groups. |
 | `[` `]` | `punctuation.definition.bracket` | Encloses bundle brackets or definition outer bodies. |
 | `(` `)` | `punctuation.definition.paren` | Encloses parameter lists and source/destination bindings. |
-| `<` `>` | `punctuation.definition.place` | Denotes place boundaries. |
+| `<` `>` | `punctuation.definition.place` | Enclose source place boundaries. |
 | `:` | `punctuation.separator.colon` | Separates domain specifiers from bodies, or key-value entries. |
 | `,` | `punctuation.separator.comma` | Separates itemized arguments or entries. |
 
