@@ -285,6 +285,9 @@ fn writeDefinition(
                 }
             },
             .pure_value => |value| try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, value),
+            .directive => |d| {
+                try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
+            },
         }
     }
 
@@ -450,6 +453,9 @@ fn writeDefinition(
                 },
                 .pure_value => |v| {
                     try writer.print("  -- TODO: pure value expression {s} (not a recognized lookup-table shape)\n", .{v});
+                },
+                .directive => |d| {
+                    try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
                 },
             }
         }
@@ -787,6 +793,7 @@ fn buildSharedSymbolTable(
                 .pure_value => |v| v,
                 .fill => |f| f.expr,
                 .invoke => continue,
+                .directive => continue, // TODO
             };
             _ = try internSymbol(&symbols, allocator, std.mem.trim(u8, value_text, " \t\r\n"));
         }
@@ -1148,6 +1155,9 @@ fn normalizeStatements(
                 try normalized.append(allocator, .{ .invoke = invocation });
             },
             .pure_value => |expression| try normalized.append(allocator, .{ .pure_value = try rewriteDollarReferences(allocator, names, expression) }),
+            .directive => {
+                // TODO try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
+            },
         }
     }
     return normalized.toOwnedSlice(allocator);

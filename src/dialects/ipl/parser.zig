@@ -66,6 +66,21 @@ const Parser = struct {
         }
     }
 
+    fn parseDirective(p: *Parser) !network.Statement {
+        _ = p.advance(); // consume '@'
+        const name = try p.readName();
+        try p.expect('(');
+        const args_start = p.pos;
+        var depth: usize = 1;
+        while (depth > 0) {
+            const ch = p.advance() orelse return ParseError.UnexpectedEnd;
+            if (ch == '(') depth += 1;
+            if (ch == ')') depth -= 1;
+        }
+        const args = p.src[args_start .. p.pos - 1]; // exclude the closing ')'
+        return network.Statement{ .directive = .{ .name = name, .args = args } };
+    }
+
     fn expect(p: *Parser, ch: u8) !void {
         p.skipWhitespaceAndComments();
         if (p.peek() != ch) return ParseError.ExpectedToken;
@@ -624,7 +639,7 @@ const Parser = struct {
         } };
     }
 
-       fn parseResolution(p: *Parser) ![]const network.Statement {
+    fn parseResolution(p: *Parser) ![]const network.Statement {
         var stmts: std.ArrayListUnmanaged(network.Statement) = .empty;
 
         while (true) {
@@ -632,19 +647,9 @@ const Parser = struct {
             const c = p.peek() orelse break;
             if (c == ':' or c == ']') break;
 
-            // Only speculative-read a domain label if the token starts
-            // with an ASCII letter/underscore
-            if (std.ascii.isAlphabetic(c) or c == '_') {
-                const save_pos = p.pos;
-                if (p.readName() catch null) |_| {
-                    p.skipWhitespaceAndComments();
-                    if (p.peek() == ':') {
-                        _ = p.advance(); // consume ':'
-                        p.skipWhitespaceAndComments();
-                        continue; // Domain label consumed; proceed to resolution contents
-                    }
-                }
-                p.pos = save_pos; // Rewind if it wasn't a "domain:" pattern
+            if (c == '@') {
+                try stmts.append(p.allocator, try p.parseDirective());
+                continue;
             }
 
             if (c == '<') {

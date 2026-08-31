@@ -51,6 +51,11 @@ pub const PlaceGroup = struct {
     places: []const Place,
 };
 
+pub const Directive = struct {
+    name: []const u8, // e.g. "@domain", "@target"
+    args: []const u8, // raw, unparsed text between the parens
+};
+
 /// A single entry in an explicit key:value constant table.
 pub const TableEntry = struct {
     key: []const u8,
@@ -133,6 +138,7 @@ pub const Statement = union(enum) {
     // explicit fill/invocation syntax — Fant's "Pure Value
     // Expression" and the abbreviated "Constant Definition" form
     // (e.g. the "1" inside "0[1]"). Semantics/resolution deferred.
+    directive: Directive,
 };
 
 pub const Definition = struct {
