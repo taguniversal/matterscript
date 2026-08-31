@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2828f7f4.js";
+            window.path_to_searchindex_js = "searchindex-59bbe4be.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2684e975.js"></script>
@@ -4311,19 +4311,29 @@ Backend Realization
 <p>This idea is similar in spirit to the <code>generate</code> construct in VHDL, where a small fragment of source expands into large amounts of hardware. The difference is that MatterScript is not merely replicating circuitry—it is generating <strong>local computational behavior</strong>.</p>
 <hr>
 <h2 id="neighborhood-rules-1"><a class="header" href="#neighborhood-rules-1">Neighborhood Rules</a></h2>
-<p>A Neighborhood Rule describes how a local region of a computational fabric evolves.</p>
-<p>For example, let’s define three rules:</p>
-<pre><code class="language-text"> 1     2     4
-245   364   346
+<p>A Neighborhood Rule describes how a local region of a computational fabric evolves.
+For example, let’s define three rules:</p>
+<pre><code class="language-matterscript">// Bind to a 2D spatial domain with bounds
+@generate@domain(spatial2d)(size: [300, 500]) {
+  // Format: [ Left , Center , Right ] -&gt; New Center State
+  [2, 1, 5]:4
+  [3, 2, 4]:6
+  [4, 4, 6]:4
+}
 </code></pre>
-<p>the rule on the left can be interpreted as:</p>
-<ul>
-<li>if the cell under evaluation is currently in state <strong>1</strong></li>
-<li>and its local neighborhood matches the pattern <strong>215</strong></li>
-<li>then the rule transforms that neighborhood into <strong>245</strong></li>
-<li>causing the evaluated cell to enter state <strong>4</strong></li>
-</ul>
-<p>Similarly for the next rule, if the cell under evaluation is in state 2, and its left neighbor is in state 3 and its right neighbor in state 4, this rule is invoked and the cell’s state updates to state 6, leaving the neighborhood in the state 364.</p>
+<p>The first rule <code>[2, 1, 5]:4</code> can be interpreted as:</p>
+<p>The cell under evaluation is currently in state 1.</p>
+<p>Its local neighborhood matches the pattern <code>[2, 1, 5]</code> (left neighbor is <code>2</code>, right neighbor is <code>5</code>).</p>
+<p>The rule transforms the center cell into state 4, leaving the local neighborhood in state <code>[2, 4, 5]</code>.</p>
+<p>Similarly, for the second rule <code>[3, 2, 4]:6</code>, if the cell under evaluation is in state 2, its left neighbor is in state 3, and its right neighbor is in state 4, the rule triggers and updates the center cell to state 6 (resulting in neighborhood state <code>[3, 6, 4]</code>).</p>
+<p>The third rule <code>[4, 4, 6]:4</code> introduces a pattern for state <code>4</code>: if the center cell is <code>4</code>, its left neighbor is <code>4</code>, and its right neighbor is <code>6</code>, the cell remains in state <code>4</code>,resulting in neighborhood state <code>[4, 4, 6]</code>.</p>
+<p>With explicit domain declarations like <code>@domain(spatial2d)</code>, you decouple topology from extents. This allows the same neighborhood rules to compile across different grid sizes or dimensions without modifying the rule block syntax.</p>
+<p>Any number of transformations can be defined, and they are not restricted to numeric states. Numbers hold no arithmetic meaning in MatterScript; here is an example defining transformations using domain-specific tokens:</p>
+<pre><code class="language-matterscript">@generate@domain(spatial2d)(size: [300, 500]) {
+  // Format: [ Left , Center , Right ] -&gt; New Center State
+  [DE, AK, JD]:JC
+}
+</code></pre>
 <p>Nothing in this description refers to equations, variables, or arithmetic.</p>
 <p>Instead, the rule simply asks:</p>
 <blockquote>
