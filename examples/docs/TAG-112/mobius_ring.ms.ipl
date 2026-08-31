@@ -21,7 +21,7 @@
 // ================================================================================
 
 mobius_strip[()($f0, $f1, $f2, $f3) 
-    spatial3d :
+    @domain(spatial3d)
     // 1. Instantiating internal point sources (p0..p7)
     p0< point(1.0, 0.0, -0.2) >
     p1< point(1.0, 0.0, 0.2) >
@@ -37,4 +37,5 @@ mobius_strip[()($f0, $f1, $f2, $f3)
     f1<face(loop(edge($p2, $p3), edge($p3, $p5), edge($p5, $p4), edge($p4, $p2)))>
     f2<face(loop(edge($p4, $p5), edge($p5, $p7), edge($p7, $p6), edge($p6, $p4)))>
     f3<face(loop(edge($p6, $p7), edge($p7, $p0), edge($p0, $p1), edge($p1, $p6)))>
+    :
 ]
