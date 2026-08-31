@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Table Generation - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
+        <title>Neighborhood Rules - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
 
 
         <!-- Custom HTML head -->
@@ -37,10 +37,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-cc1b03bd.js";
+            window.path_to_searchindex_js = "../searchindex-2828f7f4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-4b2784bd.js"></script>
+        <script src="../toc-2684e975.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,7 +176,98 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="table-generation"><a class="header" href="#table-generation">Table Generation</a></h1>
+                        <h1 id="neighborhood-rules"><a class="header" href="#neighborhood-rules">Neighborhood Rules</a></h1>
+<p>Earlier in the book we introduced <strong>Transform Rules</strong> as one of the fundamental building blocks of MatterScript. A Transform Rule describes how one arrangement of tokens transforms into another. Small examples, such as Boolean logic gates, can be written by hand.</p>
+<pre><code class="language-matterscript">0,0[0]
+0,1[1]
+1,0[1]
+1,1[1]
+</code></pre>
+<p>For simple definitions, this is entirely practical.</p>
+<p>Real systems, however, rarely consist of four rules.</p>
+<p>A cellular simulation containing millions of cells—or a three-dimensional material spanning billions of interacting regions—would require an enormous number of nearly identical transformation rules. Writing those rules by hand would be impossible.</p>
+<p>MatterScript therefore provides the <code>@generate</code> directive, allowing large collections of neighborhood rules to be created automatically during compilation.</p>
+<hr>
+<h2 id="programs-that-generate-behavior"><a class="header" href="#programs-that-generate-behavior">Programs That Generate Behavior</a></h2>
+<p>The <code>@generate</code> directive allows the programmer to describe an entire family of transformation rules using a compact specification.</p>
+<pre><code class="language-matterscript">@generate {
+    ...
+}
+</code></pre>
+<p>Rather than writing thousands or millions of individual rules by hand, the programmer describes the pattern from which those rules are constructed. During compilation, the generator expands into a complete transformation table before the association graph is built.</p>
+<p>This idea is similar in spirit to the <code>generate</code> construct in VHDL, where a small fragment of source expands into large amounts of hardware. The difference is that MatterScript is not merely replicating circuitry—it is generating <strong>local computational behavior</strong>.</p>
+<hr>
+<h2 id="neighborhood-rules-1"><a class="header" href="#neighborhood-rules-1">Neighborhood Rules</a></h2>
+<p>A Neighborhood Rule describes how a local region of a computational fabric evolves.</p>
+<p>For example, let’s define three rules:</p>
+<pre><code class="language-text"> 1     2     4
+245   364   346
+</code></pre>
+<p>the rule on the left can be interpreted as:</p>
+<ul>
+<li>if the cell under evaluation is currently in state <strong>1</strong></li>
+<li>and its local neighborhood matches the pattern <strong>215</strong></li>
+<li>then the rule transforms that neighborhood into <strong>245</strong></li>
+<li>causing the evaluated cell to enter state <strong>4</strong></li>
+</ul>
+<p>Similarly for the next rule, if the cell under evaluation is in state 2, and its left neighbor is in state 3 and its right neighbor in state 4, this rule is invoked and the cell’s state updates to state 6, leaving the neighborhood in the state 364.</p>
+<p>Nothing in this description refers to equations, variables, or arithmetic.</p>
+<p>Instead, the rule simply asks:</p>
+<blockquote>
+<p><strong>Does this neighborhood exist?</strong></p>
+</blockquote>
+<p>If the answer is yes, the transformation occurs.</p>
+<p>Each rule is therefore nothing more than a description of one possible local interaction. Collectively, the rules define how an entire computational fabric evolves over time.</p>
+<p>All of the rules are then composed into a digital circuit that embodies all those transformations, in such a way that every cell in the generated field will exhibit identical behavior in accordance with that rule set. The field is now ready for state to start flowing into it, and all the cells, being independent digital circuits, react as soon as they receive their state and their neighbors are presenting their own state. The wiring between the cells extends as far as neccesary to allow a cell to read the state of all its neighbors, in this case the cell to the left and the cell to the right, in a 2D cellular automaton.</p>
+<hr>
+<h2 id="computation-as-local-transformation"><a class="header" href="#computation-as-local-transformation">Computation as Local Transformation</a></h2>
+<p>Readers familiar with <em>A New Kind of Science</em> will recognize this immediately.</p>
+<p>Instead of modeling reality by solving increasingly complex mathematical equations, we describe reality through collections of local transformation rules. Every cell interacts only with its immediate neighborhood, and the repeated application of these simple rules gives rise to remarkably rich global behavior.</p>
+<p>MatterScript adopts this philosophy directly.</p>
+<p>Neighborhood Rules are not lookup tables in the traditional programming sense. They are <strong>behavioral descriptions</strong>. Each entry specifies one possible local interaction, and together they describe the evolution of an entire computational system.</p>
+<p>The compiler does not interpret these rules mathematically.</p>
+<p>It compiles them into the association graph that realizes the specified behavior.</p>
+<hr>
+<h2 id="from-one-rule-to-billions"><a class="header" href="#from-one-rule-to-billions">From One Rule to Billions</a></h2>
+<p>The real power of <code>@generate</code> becomes apparent when these local rules are replicated across space.</p>
+<p>A two-dimensional cellular automaton containing one hundred million cells does not require one hundred million hand-written definitions.</p>
+<p>The programmer defines a single local neighborhood and specifies how that neighborhood should be replicated.</p>
+<p>The compiler manufactures the remaining computational fabric automatically.</p>
+<p>Each generated cell possesses the same local behavior while remaining connected to its own unique neighbors.</p>
+<p>The same principle naturally extends into three dimensions. Voxel simulations, reaction-diffusion systems, biological tissues, crystal growth, fluid dynamics, and many other spatial systems can all be expressed as collections of Neighborhood Rules distributed throughout a geometric structure.</p>
+<p>The programmer describes the <strong>behavior</strong>.</p>
+<p>The compiler constructs the <strong>fabric</strong>.</p>
+<hr>
+<h2 id="scaling-without-complexity"><a class="header" href="#scaling-without-complexity">Scaling Without Complexity</a></h2>
+<p>One of the central ideas of MatterScript is that source code should describe <em>patterns</em>, not instances.</p>
+<p>The amount of source code should not grow simply because the problem becomes larger.</p>
+<p>Instead, the programmer captures the behavior once, and the compiler expands that behavior into whatever scale is required.</p>
+<pre><code class="language-text">Neighborhood Rule
+        │
+        ▼
+@generate
+        │
+        ▼
+Millions or Billions
+of Generated Rules
+        │
+        ▼
+Association Graph
+        │
+        ▼
+Target Backend
+</code></pre>
+<p>This separation of concerns keeps programs remarkably compact. The programmer reasons about local interactions, while the compiler is responsible for constructing the enormous computational structures needed to realize them.</p>
+<hr>
+<h2 id="toward-computational-matter"><a class="header" href="#toward-computational-matter">Toward Computational Matter</a></h2>
+<p>Neighborhood Rules are where MatterScript begins to move beyond conventional software.</p>
+<p>Traditional programs execute instructions over collections of data.</p>
+<p>MatterScript constructs collections of interacting regions, each governed by the same simple local behavior.</p>
+<p>As we introduce domains such as <code>@domain(spatial3d)</code>, these neighborhoods no longer need to represent cells in a one-dimensional automaton. They can represent adjacent voxels, neighboring finite elements, atoms within a crystal lattice, interacting molecules, or regions within a simulated biological tissue.</p>
+<p>The same mechanism applies regardless of scale.</p>
+<p>A local interaction remains local.</p>
+<p>The compiler simply extends that interaction across whatever geometry the programmer has described.</p>
+<p>In this way, MatterScript unifies Karl Fant’s model of causal association with the rule-based evolution of <em>A New Kind of Science</em>. The programmer defines <strong>what interactions are possible</strong>. The compiler constructs the computational fabric in which those interactions unfold. From a handful of simple Neighborhood Rules, systems containing millions or even billions of autonomous interacting regions can be synthesized automatically, all while preserving the same elegant, local description from which they began.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>

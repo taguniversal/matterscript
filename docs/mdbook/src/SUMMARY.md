@@ -77,7 +77,7 @@
 - [Introduction](part-08-compilers/index.md)
 - [Parsing](part-08-compilers/01-parsing.md)
 - [Abstract Syntax Trees](part-08-compilers/02-abstract-syntax-trees.md)
-- [Table Generation](part-08-compilers/03-table-generation.md)
+- [Neighborhood Rules](part-08-compilers/03-neighborhood-rules.md)
 - [Placement Algorithms](part-08-compilers/04-placement-algorithms.md)
 - [Delay Insertion](part-08-compilers/05-delay-insertion.md)
 - [VHDL Generation](part-08-compilers/06-vhdl-generation.md)
