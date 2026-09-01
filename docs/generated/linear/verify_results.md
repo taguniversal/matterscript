@@ -25,4 +25,4 @@
 | TAG-181 | example-12.11.ms.ipl | Partial | ok | FAIL | ⬛ expected fail |
 | TAG-184 | example-12.24.ms.ipl | Implemented | ok | ok | ✅ PASS |
 | TAG-185 | case-unique-signals.ms.ipl | Implemented | ok | ok | ✅ PASS |
-| TAG-187 | generate_syntax.ms.ipl | - | FAIL | - | ⬛ expected fail |
+| TAG-187 | generate_syntax.ms.ipl | Implemented | ok | ok | ✅ PASS |

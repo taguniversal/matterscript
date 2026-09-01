@@ -52,10 +52,10 @@ pub const PlaceGroup = struct {
 };
 
 pub const Directive = struct {
-    name: []const u8, // e.g. "@domain", "@target"
-    args: []const u8, // raw, unparsed text between the parens
-};
-
+    name: []const u8,
+    args: []const u8, // raw text; empty if this directive used {} instead of ()
+    rules: []const NeighborhoodRule = &.{}, // populated only for @name { ... } blocks
+};  
 /// A single entry in an explicit key:value constant table.
 pub const TableEntry = struct {
     key: []const u8,
@@ -74,6 +74,12 @@ pub const ConstDecl = struct {
     name: []const u8,
     value: i64,
 };
+
+pub const NeighborhoodRule = struct {
+    pattern: []const []const u8, // e.g. ["*", "1", "5"] — "*" is wildcard
+    value: []const u8,
+};
+
 
 pub const BinaryOp = enum { add, sub, mul, div };
 

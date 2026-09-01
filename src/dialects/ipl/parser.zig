@@ -66,9 +66,22 @@ const Parser = struct {
         }
     }
 
-    fn parseDirective(p: *Parser) !network.Statement {
+        fn parseDirective(p: *Parser) !network.Statement {
         _ = p.advance(); // consume '@'
         const name = try p.readName();
+        p.skipWhitespaceAndComments();
+        const next = p.peek() orelse return ParseError.UnexpectedEnd;
+
+        if (next == '{') {
+            // A Neighborhood Rule block, e.g. @generate { [2,1,5]:4 ... } —
+            // a MatterScript-specific extension, not part of Fant's own
+            // grammar. Sparse-defaults-to-identity and wildcard matching
+            // are deliberately not interpreted here — this only captures
+            // the rule shape faithfully.
+            const rules = try p.parseNeighborhoodRuleBlock();
+            return network.Statement{ .directive = .{ .name = name, .args = "", .rules = rules } };
+        }
+
         try p.expect('(');
         const args_start = p.pos;
         var depth: usize = 1;
@@ -77,8 +90,48 @@ const Parser = struct {
             if (ch == '(') depth += 1;
             if (ch == ')') depth -= 1;
         }
-        const args = p.src[args_start .. p.pos - 1]; // exclude the closing ')'
+        const args = p.src[args_start .. p.pos - 1];
         return network.Statement{ .directive = .{ .name = name, .args = args } };
+    }
+
+    fn parseNeighborhoodRuleBlock(p: *Parser) ![]const network.NeighborhoodRule {
+        try p.expect('{');
+        var rules: std.ArrayListUnmanaged(network.NeighborhoodRule) = .empty;
+        while (true) {
+            p.skipWhitespaceAndComments();
+            const c = p.peek() orelse return ParseError.UnexpectedEnd;
+            if (c == '}') break;
+            if (c != '[') return ParseError.UnexpectedChar;
+            _ = p.advance(); // consume '['
+
+            var pattern: std.ArrayListUnmanaged([]const u8) = .empty;
+            while (true) {
+                p.skipWhitespaceAndComments();
+                const pc = p.peek() orelse return ParseError.UnexpectedEnd;
+                if (pc == '*') {
+                    _ = p.advance();
+                    try pattern.append(p.allocator, "*");
+                } else {
+                    const tok = try p.readName();
+                    try pattern.append(p.allocator, tok);
+                }
+                p.skipWhitespaceAndComments();
+                if (p.tryConsume(',')) continue;
+                break;
+            }
+            try p.expect(']');
+            try p.expect(':');
+            p.skipWhitespaceAndComments();
+            const value = try p.readName();
+            try rules.append(p.allocator, .{
+                .pattern = try pattern.toOwnedSlice(p.allocator),
+                .value = value,
+            });
+            p.skipWhitespaceAndComments();
+            _ = p.tryConsume(',');
+        }
+        try p.expect('}');
+        return rules.toOwnedSlice(p.allocator);
     }
 
     fn expect(p: *Parser, ch: u8) !void {

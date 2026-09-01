@@ -1,3 +1,6 @@
+// Lineaer: TAG-187 Generate Directive
+ca100[()()
+
 @domain(spatial2d, size: [300, 500])
 
 @generate {
@@ -11,3 +14,5 @@
   
   // Unmentioned permutations (e.g., [0, 0, 0]) automatically retain their center state.
 }
+  :
+]
