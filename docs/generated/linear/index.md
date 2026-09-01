@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 8  |  🟡 Partial: 10  |  ⬛ Spec only: 4  |  ⬜ Not started: 111  |  Total: 133
+✅ Implemented: 8  |  🟡 Partial: 10  |  ⬛ Spec only: 4  |  ⬜ Not started: 112  |  Total: 134
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
@@ -132,6 +132,7 @@
 - ✅ Implemented [Example 12.24 Pure Value Place of Resolution](TAG-184.md)
 - ✅ Implemented [Preserve case-sensitive IPL identifiers when emitting VHD](TAG-185.md)
 - ⬜ Not started [Spatial3D Domain Selector](TAG-186.md)
+- ⬜ Not started [Generate Directive](TAG-187.md)
 - ⬜ Not started [Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [The Completeness Dialogue](TAG-80.md)

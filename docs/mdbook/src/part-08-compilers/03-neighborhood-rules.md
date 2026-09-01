@@ -42,7 +42,9 @@ For example, let's define three rules:
 
 ```matterscript
 // Bind to a 2D spatial domain with bounds
-@generate@domain(spatial2d)(size: [300, 500]) {
+@domain(spatial2d, size: [300, 500])
+
+@generate {
   // Format: [ Left , Center , Right ] -> New Center State
   [2, 1, 5]:4
   [3, 2, 4]:6
@@ -52,25 +54,46 @@ For example, let's define three rules:
 
 The first rule ```[2, 1, 5]:4``` can be interpreted as:
 
-The cell under evaluation is currently in state 1.
+The cell under evaluation is currently in state `1`.
 
 Its local neighborhood matches the pattern ```[2, 1, 5]``` (left neighbor is `2`, right neighbor is `5`).
 
-The rule transforms the center cell into state 4, leaving the local neighborhood in state ```[2, 4, 5]```.
+The rule transforms the center cell into state `4`, leaving the local neighborhood in state ```[2, 4, 5]```.
 
-Similarly, for the second rule ```[3, 2, 4]:6```, if the cell under evaluation is in state 2, its left neighbor is in state 3, and its right neighbor is in state 4, the rule triggers and updates the center cell to state 6 (resulting in neighborhood state ```[3, 6, 4]```).
+Similarly, for the second rule ```[3, 2, 4]:6```, if the cell under evaluation is in state `2`, its left neighbor is in state `3`, and its right neighbor is in state `4`, the rule triggers and updates the center cell to state `6` (resulting in neighborhood state ```[3, 6, 4]```).
 
 The third rule ```[4, 4, 6]:4``` introduces a pattern for state `4`: if the center cell is `4`, its left neighbor is `4`, and its right neighbor is `6`, the cell remains in state `4`,resulting in neighborhood state ```[4, 4, 6]```.
 
-With explicit domain declarations like `@domain(spatial2d)`, you decouple topology from extents. This allows the same neighborhood rules to compile across different grid sizes or dimensions without modifying the rule block syntax.
+With explicit domain declarations like `@domain(spatial2d,  size: [300, 500])`, you decouple topology from extents. This allows the same neighborhood rules to compile across different grid sizes or dimensions without modifying the rule block syntax.
 
 Any number of transformations can be defined, and they are not restricted to numeric states. Numbers hold no arithmetic meaning in MatterScript; here is an example defining transformations using domain-specific tokens:
 
 ```matterscript
-@generate@domain(spatial2d)(size: [300, 500]) {
+@domain(spatial2d, size: [300, 500])
+
+@generate {
   // Format: [ Left , Center , Right ] -> New Center State
   [DE, AK, JD]:JC
 }
+```
+
+In MatterScript, Neighborhood Rules use **sparse notation**: you only declare explicit state transitions, and any unlisted neighborhood pattern automatically defaults to **Identity** (the center cell keeps its current state). You can also use the wildcard `*` to match any token or state in a given position.
+
+```matterscript
+@domain(spatial2d, size: [300, 500])
+
+@generate {
+  // Format: [ Left , Center , Right ] -> New Center State
+  
+  // Wildcard: Any left state, center state 1, right state 5 -> transition to 4
+  [*, 1, 5]: 4
+  
+  // Explicit rule
+  [3, 2, 4]: 6
+  
+  // Unmentioned permutations (e.g., [0, 0, 0]) automatically retain their center state.
+}
+
 ```
 
 Nothing in this description refers to equations, variables, or arithmetic.

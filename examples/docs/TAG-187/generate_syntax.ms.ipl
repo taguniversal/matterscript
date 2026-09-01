@@ -1,0 +1,13 @@
+@domain(spatial2d, size: [300, 500])
+
+@generate {
+  // Format: [ Left , Center , Right ] -> New Center State
+  
+  // Wildcard: Any left state, center state 1, right state 5 -> transition to 4
+  [*, 1, 5]: 4
+  
+  // Explicit rule
+  [3, 2, 4]: 6
+  
+  // Unmentioned permutations (e.g., [0, 0, 0]) automatically retain their center state.
+}

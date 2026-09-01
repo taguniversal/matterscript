@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-59bbe4be.js";
+            window.path_to_searchindex_js = "searchindex-5f849e28.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2684e975.js"></script>
@@ -4314,7 +4314,9 @@ Backend Realization
 <p>A Neighborhood Rule describes how a local region of a computational fabric evolves.
 For example, let’s define three rules:</p>
 <pre><code class="language-matterscript">// Bind to a 2D spatial domain with bounds
-@generate@domain(spatial2d)(size: [300, 500]) {
+@domain(spatial2d, size: [300, 500])
+
+@generate {
   // Format: [ Left , Center , Right ] -&gt; New Center State
   [2, 1, 5]:4
   [3, 2, 4]:6
@@ -4322,17 +4324,35 @@ For example, let’s define three rules:</p>
 }
 </code></pre>
 <p>The first rule <code>[2, 1, 5]:4</code> can be interpreted as:</p>
-<p>The cell under evaluation is currently in state 1.</p>
+<p>The cell under evaluation is currently in state <code>1</code>.</p>
 <p>Its local neighborhood matches the pattern <code>[2, 1, 5]</code> (left neighbor is <code>2</code>, right neighbor is <code>5</code>).</p>
-<p>The rule transforms the center cell into state 4, leaving the local neighborhood in state <code>[2, 4, 5]</code>.</p>
-<p>Similarly, for the second rule <code>[3, 2, 4]:6</code>, if the cell under evaluation is in state 2, its left neighbor is in state 3, and its right neighbor is in state 4, the rule triggers and updates the center cell to state 6 (resulting in neighborhood state <code>[3, 6, 4]</code>).</p>
+<p>The rule transforms the center cell into state <code>4</code>, leaving the local neighborhood in state <code>[2, 4, 5]</code>.</p>
+<p>Similarly, for the second rule <code>[3, 2, 4]:6</code>, if the cell under evaluation is in state <code>2</code>, its left neighbor is in state <code>3</code>, and its right neighbor is in state <code>4</code>, the rule triggers and updates the center cell to state <code>6</code> (resulting in neighborhood state <code>[3, 6, 4]</code>).</p>
 <p>The third rule <code>[4, 4, 6]:4</code> introduces a pattern for state <code>4</code>: if the center cell is <code>4</code>, its left neighbor is <code>4</code>, and its right neighbor is <code>6</code>, the cell remains in state <code>4</code>,resulting in neighborhood state <code>[4, 4, 6]</code>.</p>
-<p>With explicit domain declarations like <code>@domain(spatial2d)</code>, you decouple topology from extents. This allows the same neighborhood rules to compile across different grid sizes or dimensions without modifying the rule block syntax.</p>
+<p>With explicit domain declarations like <code>@domain(spatial2d,  size: [300, 500])</code>, you decouple topology from extents. This allows the same neighborhood rules to compile across different grid sizes or dimensions without modifying the rule block syntax.</p>
 <p>Any number of transformations can be defined, and they are not restricted to numeric states. Numbers hold no arithmetic meaning in MatterScript; here is an example defining transformations using domain-specific tokens:</p>
-<pre><code class="language-matterscript">@generate@domain(spatial2d)(size: [300, 500]) {
+<pre><code class="language-matterscript">@domain(spatial2d, size: [300, 500])
+
+@generate {
   // Format: [ Left , Center , Right ] -&gt; New Center State
   [DE, AK, JD]:JC
 }
+</code></pre>
+<p>In MatterScript, Neighborhood Rules use <strong>sparse notation</strong>: you only declare explicit state transitions, and any unlisted neighborhood pattern automatically defaults to <strong>Identity</strong> (the center cell keeps its current state). You can also use the wildcard <code>*</code> to match any token or state in a given position.</p>
+<pre><code class="language-matterscript">@domain(spatial2d, size: [300, 500])
+
+@generate {
+  // Format: [ Left , Center , Right ] -&gt; New Center State
+  
+  // Wildcard: Any left state, center state 1, right state 5 -&gt; transition to 4
+  [*, 1, 5]: 4
+  
+  // Explicit rule
+  [3, 2, 4]: 6
+  
+  // Unmentioned permutations (e.g., [0, 0, 0]) automatically retain their center state.
+}
+
 </code></pre>
 <p>Nothing in this description refers to equations, variables, or arithmetic.</p>
 <p>Instead, the rule simply asks:</p>

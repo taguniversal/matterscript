@@ -564,6 +564,9 @@ const Parser = struct {
             } else if (c == '$') {
                 const expr = try p.parseILExpr();
                 try args.append(p.allocator, expr);
+            } else if (std.ascii.isDigit(c) or c == '-') {
+                const lit = try p.readNumericLiteral();
+                try args.append(p.allocator, lit);
             } else {
                 const lit = try p.readName();
                 try args.append(p.allocator, lit);
@@ -579,6 +582,18 @@ const Parser = struct {
     /// Invocation second list: (name<> ...) — outputs returned to caller
     fn parseInvOutputList(p: *Parser) ![]const network.Place {
         return p.parsePlaceList(.source);
+    }
+
+    fn readNumericLiteral(p: *Parser) ![]const u8 {
+        const start = p.pos;
+        if (p.peek() == '-') _ = p.advance();
+        while (p.pos < p.src.len and std.ascii.isDigit(p.src[p.pos])) p.pos += 1;
+        if (p.peek() == '.') {
+            _ = p.advance();
+            while (p.pos < p.src.len and std.ascii.isDigit(p.src[p.pos])) p.pos += 1;
+        }
+        if (p.pos == start) return ParseError.ExpectedName;
+        return p.src[start..p.pos];
     }
 
     /// Reads a name that may be split into comma-separated segments
