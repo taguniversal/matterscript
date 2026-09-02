@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>The Runtime Boundary - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
+        <title>Integer Quantization - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
 
 
         <!-- Custom HTML head -->
@@ -37,10 +37,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-efce8a92.js";
+            window.path_to_searchindex_js = "../searchindex-8a6c068c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-a7b86394.js"></script>
+        <script src="../toc-94f21e3e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,17 +176,166 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="the-runtime-boundary"><a class="header" href="#the-runtime-boundary">The Runtime Boundary</a></h1>
+                        <h1 id="integer-quantization"><a class="header" href="#integer-quantization">Integer Quantization</a></h1>
+<p>Most programming languages begin with numbers.</p>
+<p>MatterScript begins with distinctions.</p>
+<p>That difference may seem subtle at first, but it changes the way we model problems.</p>
+<p>Traditional software assumes that every quantity is fundamentally a number.</p>
+<p>MatterScript asks a different question:</p>
+<blockquote>
+<p><strong>What are the meaningful states of this system?</strong></p>
+</blockquote>
+<p>The answer is often not a number at all.</p>
+<p>It is a finite set of distinguishable possibilities.</p>
+<p>Those possibilities become <strong>single-digit numbers</strong>.</p>
+<hr>
+<h2 id="single-digit-numbers"><a class="header" href="#single-digit-numbers">Single-Digit Numbers</a></h2>
+<p>When most programmers hear the word <em>digit</em>, they think of decimal notation.</p>
+<p>MatterScript uses the term differently.</p>
+<p>A single-digit number is a value represented by <strong>one symbol</strong>, regardless of how many possible values exist.</p>
+<p>If a quantity can take on fifty distinct values, then its number system simply contains fifty digits.</p>
+<p>There is no need to construct that value from multiple place-value digits.</p>
+<p>Instead, each possible state is represented directly.</p>
+<p>You can think of it as choosing a radix large enough that every value fits into a single position.</p>
+<hr>
+<h2 id="from-mathematics-to-tokens"><a class="header" href="#from-mathematics-to-tokens">From Mathematics to Tokens</a></h2>
+<p>This changes one of the programmer’s primary responsibilities.</p>
+<p>In conventional software, we begin by deciding how many bits are needed to store a number.</p>
+<p>In MatterScript, we begin by deciding what distinctions actually exist.</p>
+<p>Suppose we are modeling traffic lights.</p>
+<p>A traditional program might write:</p>
+<pre><code class="language-text">0 = Red
+1 = Yellow
+2 = Green
+</code></pre>
+<p>Those integers have no intrinsic meaning.</p>
+<p>They are merely encodings.</p>
+<p>MatterScript would instead treat the three possible states as the vocabulary of the system.</p>
+<pre><code class="language-text">RED
+YELLOW
+GREEN
+</code></pre>
+<p>Each is a single token.</p>
+<p>Each is equally fundamental.</p>
+<p>None is “greater” than another.</p>
+<hr>
+<h2 id="there-is-no-number-line"><a class="header" href="#there-is-no-number-line">There Is No Number Line</a></h2>
+<p>This is perhaps the hardest idea for programmers to internalize.</p>
+<p>Single-digit numbers do not necessarily possess numerical relationships.</p>
+<p>There is no requirement that one value be larger than another.</p>
+<p>There may be no meaningful notion of distance.</p>
+<p>No ordering.</p>
+<p>No arithmetic.</p>
+<p>Only distinction.</p>
+<p>For a traffic light, asking whether <strong>GREEN</strong> is larger than <strong>RED</strong> is meaningless.</p>
+<p>For a protein, asking whether <strong>Folded</strong> is greater than <strong>Unfolded</strong> is equally meaningless.</p>
+<p>The values simply represent different states.</p>
+<hr>
+<h2 id="quantizing-a-weather-system"><a class="header" href="#quantizing-a-weather-system">Quantizing a Weather System</a></h2>
+<p>Consider a simple weather simulation.</p>
+<p>Instead of assigning floating-point temperatures everywhere, we might decide that, for our model, only a small number of atmospheric states matter.</p>
+<pre><code class="language-text">COLD
+COOL
+WARM
+HOT
+</code></pre>
+<p>Humidity might become</p>
+<pre><code class="language-text">DRY
+NORMAL
+HUMID
+SATURATED
+</code></pre>
+<p>Wind might become</p>
+<pre><code class="language-text">NORTH
+SOUTH
+EAST
+WEST
+CALM
+</code></pre>
+<p>These are no longer numbers in the mathematical sense.</p>
+<p>They are tokens describing the current state of a region.</p>
+<p>Transform rules define how neighboring regions influence one another.</p>
+<p>Millions of cells evolve simultaneously through local interactions.</p>
+<p>The programmer has quantized the continuous world into a vocabulary appropriate for the simulation.</p>
+<hr>
+<h2 id="quantizing-chemistry"><a class="header" href="#quantizing-chemistry">Quantizing Chemistry</a></h2>
+<p>Chemistry provides another example.</p>
+<p>A conventional simulation often stores tables of atomic properties and repeatedly computes interactions numerically.</p>
+<p>MatterScript encourages a different perspective.</p>
+<p>The fundamental vocabulary might consist of tokens such as</p>
+<pre><code class="language-text">H
+O
+C
+N
+</code></pre>
+<p>along with bonding states</p>
+<pre><code class="language-text">FREE
+SINGLE_BOND
+DOUBLE_BOND
+</code></pre>
+<p>Transform rules describe how neighboring atoms interact.</p>
+<p>As relationships become satisfied, larger molecular structures emerge naturally from the network.</p>
+<p>The simulation evolves because local distinctions change, not because a processor repeatedly scans an array looking for work.</p>
+<hr>
+<h2 id="quantizing-digital-logic"><a class="header" href="#quantizing-digital-logic">Quantizing Digital Logic</a></h2>
+<p>Digital electronics has already been using this idea for decades.</p>
+<p>A logic signal is not an arbitrary integer.</p>
+<p>It has a very small vocabulary.</p>
+<pre><code class="language-text">NULL
+0
+1
+</code></pre>
+<p>Each state has a specific meaning.</p>
+<p>Transform rules describe how those states propagate through logic.</p>
+<p>This is precisely why MatterScript maps so naturally onto asynchronous hardware.</p>
+<p>The language speaks the same conceptual language as the underlying circuits.</p>
+<hr>
+<h2 id="choosing-the-vocabulary"><a class="header" href="#choosing-the-vocabulary">Choosing the Vocabulary</a></h2>
+<p>Viewed this way, quantization becomes one of the most important design decisions in a MatterScript program.</p>
+<p>Before writing transform rules, the programmer asks:</p>
+<blockquote>
+<p><strong>What distinctions matter?</strong></p>
+</blockquote>
+<p>Everything else is discarded.</p>
+<p>A weather model does not need nanometer precision.</p>
+<p>A biological model may not care about floating-point voltages.</p>
+<p>A traffic simulation has no concept of molecular bonds.</p>
+<p>Each domain chooses its own vocabulary.</p>
+<p>The resulting tokens become the atoms from which the computation is built.</p>
+<hr>
+<h2 id="precision-through-representation"><a class="header" href="#precision-through-representation">Precision Through Representation</a></h2>
+<p>At first glance, reducing continuous mathematics to a finite vocabulary might appear to sacrifice precision.</p>
+<p>In practice, the opposite is often true.</p>
+<p>Every simulation already makes approximations.</p>
+<p>Floating-point numbers are approximations.</p>
+<p>Finite element meshes are approximations.</p>
+<p>Time steps are approximations.</p>
+<p>MatterScript simply makes that approximation explicit.</p>
+<p>Instead of hiding quantization inside binary encodings, it asks the programmer to define the meaningful distinctions directly.</p>
+<p>Once those distinctions have been chosen, the resulting computation becomes dramatically simpler.</p>
+<p>Relationships become direct.</p>
+<p>Transform rules become local.</p>
+<p>Hardware can exploit massive concurrency because every token already represents exactly the information the system needs.</p>
+<hr>
+<h2 id="computation-as-distinction"><a class="header" href="#computation-as-distinction">Computation as Distinction</a></h2>
+<p>This chapter illustrates a recurring theme throughout MatterScript.</p>
+<p>Traditional software tends to begin with mathematics and encode the world into numbers.</p>
+<p>MatterScript begins with the world itself.</p>
+<p>It asks what objects exist, what states they may occupy, and how those states transform through local interactions.</p>
+<p>Numbers become just one possible vocabulary among many.</p>
+<p>The real foundation of computation is not arithmetic.</p>
+<p>It is distinction.</p>
+<p><em>Drafting in progress…</em></p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../part-04-learning-matterscript/11-integer-quantization.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../part-04-learning-matterscript/11-generate-blocks.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../part-04-learning-matterscript/13-standard-library.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../part-04-learning-matterscript/13-runtime-boundary.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -196,11 +345,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../part-04-learning-matterscript/11-integer-quantization.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../part-04-learning-matterscript/11-generate-blocks.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../part-04-learning-matterscript/13-standard-library.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../part-04-learning-matterscript/13-runtime-boundary.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

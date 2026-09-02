@@ -15,7 +15,7 @@ zig-out/
 # Ignore GHDL build artifacts
 *.cf
 
-docs/mdbook/book/pdf/output.pdf
+docs/mdbook/book/pdf/matterscript-guide.pdf
 
 # Ignore everything in the mdbook output directory...
 docs/mdbook/book/*

@@ -6,7 +6,7 @@ language = "en"
 src = "src"
 
 [build]
-build-dir = "book"
+build-dir = "book/html"
 
 [output.html]
 default-theme = "light"
@@ -26,4 +26,3 @@ boost-paragraph = 1
 expand = true
 heading-split-level = 3
 
-[output.pdf]

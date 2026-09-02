@@ -39,10 +39,10 @@
 - [Invocation](part-04-learning-matterscript/08-invocation.md)
 - [Name Composition](part-04-learning-matterscript/09-name-composition.md)
 - [Mutexes, Arbitration and Bundling](part-04-learning-matterscript/10-mutexes-arbitration-bundling.md)
-- [Generate Blocks](part-04-learning-matterscript/10-generate-blocks.md)
-- [Integer Quantization](part-04-learning-matterscript/11-integer-quantization.md)
-- [The Runtime Boundary](part-04-learning-matterscript/12-runtime-boundary.md)
-- [Standard Library](part-04-learning-matterscript/13-standard-library.md)
+- [Generate Blocks](part-04-learning-matterscript/11-generate-blocks.md)
+- [Integer Quantization](part-04-learning-matterscript/12-integer-quantization.md)
+- [The Runtime Boundary](part-04-learning-matterscript/13-runtime-boundary.md)
+- [Standard Library](part-04-learning-matterscript/14-standard-library.md)
 
 # Part V: Geometry Becomes Code
 - [Introduction](part-05-geometry-becomes-code/index.md)
