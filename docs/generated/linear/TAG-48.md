@@ -6,7 +6,7 @@
 
 ## Software Notes
 
-_(not yet written)_
+[TAG-189](https://linear.app/taguniversal/issue/TAG-189/example-1214-arbitrated-places)
 
 ## Reference
 

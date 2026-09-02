@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-aa5136fd.js";
+            window.path_to_searchindex_js = "searchindex-efce8a92.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2684e975.js"></script>
+        <script src="toc-a7b86394.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -3608,393 +3608,121 @@ Hydrated Protein
 <p>The language allows those relationships to resolve themselves.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="mutexes-arbitration-and-bundling"><a href="#mutexes-arbitration-and-bundling" class="header">Mutexes, Arbitration and Bundling</a></h1>
+<h2 id="bundles-mutexes-and-arbitration"><a class="header" href="#bundles-mutexes-and-arbitration">Bundles, Mutexes, and Arbitration</a></h2>
+<p>As Matterscript expressions become larger, it quickly becomes impractical to treat every path as an isolated signal. A single value may be represented by multiple rails, a bus may consist of dozens of paths, and multiple producers may need to communicate through a shared destination. Matterscript provides three closely related mechanisms to address these common patterns:</p>
+<ul>
+<li><strong>Bundles</strong> group multiple places into a single logical place.</li>
+<li><strong>Mutexes</strong> express that only one place in a group may contain content at a time.</li>
+<li><strong>Arbitration</strong> coordinates the flow of multiple independent sources into a single destination.</li>
+</ul>
+<p>Together, these constructs allow complex dataflows to be expressed without sacrificing the explicit association model that lies at the heart of the language.</p>
+<h3 id="bundles"><a class="header" href="#bundles">Bundles</a></h3>
+<p>A bundle is simply a collection of places that travel together as a single logical unit.</p>
+<p>Rather than exposing every constituent place at every level of composition, a bundle allows an expression to present a cleaner interface while preserving the detailed structure internally.</p>
+<p>For example, a dual-rail Boolean value consists of two mutually exclusive rails. At a higher level of composition it is often more convenient to treat those two rails as a single value.</p>
+<pre><code class="language-matterscript">OR($A $B)(Y&lt;&gt;)
+</code></pre>
+<p>Internally, however, the Boolean function still operates on the individual rails.</p>
+<pre><code class="language-matterscript">OR[( [{A0&lt;&gt; A1&lt;&gt;}] [{B0&lt;&gt; B1&lt;&gt;}] ) ( [{$0 $1}] )
+     1&lt; 3of6($A1 $A1 $A0 $B0 $B1 $B1) &gt;
+     0&lt; 2of2($A0 $B0) &gt; : ]
+</code></pre>
+<p>The two bracketed groups in the definition source list unbundle the invocation places <code>$A</code> and <code>$B</code> into their individual rails.</p>
+<p>Likewise, the destination rails <code>$0</code> and <code>$1</code> are bundled back together and associated with the single invocation place <code>Y&lt;&gt;</code>.</p>
+<p>This allows the implementation to operate on the explicit physical representation while the surrounding design works with a more convenient logical representation.</p>
+<p>Bundles are not limited to dual-rail logic. They can represent any collection of places that naturally travel together.</p>
+<p>A four-digit number, for example, might be represented internally as:</p>
+<pre><code class="language-matterscript">A0&lt;&gt; A1&lt;&gt; A2&lt;&gt; A3&lt;&gt;
+</code></pre>
+<p>while appearing externally as simply:</p>
+<pre><code class="language-matterscript">A&lt;&gt;
+</code></pre>
+<p>Each level of composition may bundle or unbundle information as appropriate for its level of abstraction.</p>
+<p>Conceptually, bundling is similar to a structure or record in conventional programming languages, except that the bundle represents <strong>paths of association</strong> rather than fields of memory.</p>
+<h3 id="nested-bundles"><a class="header" href="#nested-bundles">Nested Bundles</a></h3>
+<p>Bundles may themselves contain other bundles.</p>
+<p>Each additional level of bundling adds another outer pair of brackets.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">[A0 A1]
+</code></pre>
+<p>represents a single bundle.</p>
+<pre><code class="language-matterscript">[[A0 A1] [B0 B1]]
+</code></pre>
+<p>represents two bundles grouped into a larger bundle.</p>
+<p>When content flows into a definition, each level of unbundling removes one level of brackets until the expression reaches the individual places it operates upon.</p>
+<p>Because bundling follows the natural hierarchy of composition, large interfaces remain compact while definitions retain complete visibility of their internal structure.</p>
+<h3 id="mutual-exclusion-mutex"><a class="header" href="#mutual-exclusion-mutex">Mutual Exclusion (Mutex)</a></h3>
+<p>Many bundled representations describe values for which only one member may ever be active.</p>
+<p>Dual-rail logic is the simplest example.</p>
+<p>If a Boolean value is represented by two rails:</p>
+<pre><code class="language-matterscript">A0&lt;&gt;
+A1&lt;&gt;
+</code></pre>
+<p>then only one rail may contain content at any instant.</p>
+<p>The rails are therefore enclosed in braces:</p>
+<pre><code class="language-matterscript">{A0&lt;&gt; A1&lt;&gt;}
+</code></pre>
+<p>The braces declare a <strong>mutual exclusion relationship</strong>.</p>
+<p>Rather than describing computation, the mutex expresses a property of the representation itself.</p>
+<p>It tells the reader—and the compiler—that these places are alternative representations of the same logical value.</p>
+<p>Mutexes appear naturally throughout Matterscript:</p>
+<ul>
+<li>dual-rail values</li>
+<li>multi-rail encodings</li>
+<li>one-hot state machines</li>
+<li>alternative symbolic representations</li>
+</ul>
+<p>They communicate intent while allowing the compiler to verify that mutually exclusive paths remain mutually exclusive throughout the design.</p>
+<h3 id="arbitration"><a class="header" href="#arbitration">Arbitration</a></h3>
+<p>Mutual exclusion describes values.</p>
+<p>Arbitration describes <strong>behavior</strong>.</p>
+<p>Consider two independent producers attempting to send content to the same destination.</p>
+<p>If both produce content simultaneously, which one should proceed first?</p>
+<p>In conventional software this often becomes a lock, semaphore, message queue, or scheduler.</p>
+<p>In Matterscript, arbitration is expressed directly as part of the association graph.</p>
+<pre><code class="language-matterscript">Arbiter({{$place1 $place2}}(next&lt;&gt;)
+
+Arbiter[
+    (placeB&lt;&gt;)
+    ($pass)
+    pass&lt;$placeB&gt; :
+]
+</code></pre>
+<p>The double braces in the invocation indicate that <code>$place1</code> and <code>$place2</code> are competing for access to the same flow path.</p>
+<p>If both places contain content simultaneously, the arbiter performs a competition.</p>
+<p>The winner proceeds through the expression.</p>
+<p>The remaining content simply waits until the next opportunity.</p>
+<p>Importantly, the language does <strong>not</strong> define which competitor wins.</p>
+<p>The result is intentionally nondeterministic.</p>
+<p>If only one place contains content, no competition occurs and the content flows immediately.</p>
+<p>The effect is to transform multiple independent, uncoordinated flows into a single coordinated flow.</p>
+<pre><code class="language-text">place1 ─┐
+         │
+place2 ──┼──► Arbiter ───► next&lt;&gt;
+         │
+place3 ──┘
+</code></pre>
+<p>Arbitration therefore provides the synchronization point between concurrent producers while preserving Matterscript’s declarative association model.</p>
+<h3 id="a-hierarchy-of-flow"><a class="header" href="#a-hierarchy-of-flow">A Hierarchy of Flow</a></h3>
+<p>Bundles, mutexes, and arbitration each solve a different problem.</p>
+<p>Bundles organize related paths.</p>
+<p>Mutexes describe alternative representations of the same logical value.</p>
+<p>Arbitration coordinates independent flows that converge upon a common destination.</p>
+<p>Although distinct, they frequently appear together.</p>
+<p>A bundled value may contain mutually exclusive rails.</p>
+<p>Multiple bundled values may compete through an arbiter.</p>
+<p>An arbiter may produce another bundled value for the next stage of computation.</p>
+<p>These constructs allow Matterscript to scale naturally from individual signal paths to complex computational fabrics while preserving the same fundamental principle introduced throughout this guide:</p>
+<p><strong>computation is expressed as the movement and transformation of associations rather than the execution of sequential instructions.</strong></p>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="generate-blocks"><a class="header" href="#generate-blocks">Generate Blocks</a></h1>
-<p>One of MatterScript’s goals is to make large computational networks as easy to describe as small ones.</p>
-<p>That creates an obvious challenge.</p>
-<p>Many real systems consist of thousands—or millions—of nearly identical relationships.</p>
-<p>A memory array contains thousands of repeated cells.</p>
-<p>A systolic array repeats the same processing element over and over.</p>
-<p>A cellular automaton may contain millions of identical neighborhoods.</p>
-<p>Writing these structures by hand would add no information to the program. It would merely repeat the same pattern over and over.</p>
-<p>The <code>generate</code> block exists to solve that problem.</p>
-<p>Rather than describing computation, it describes <strong>how to construct computation</strong>.</p>
-<hr>
-<h2 id="generating-relationships"><a class="header" href="#generating-relationships">Generating Relationships</a></h2>
-<p>A generate block contains a generator expression followed by the ranges over which that expression should be expanded.</p>
-<pre><code class="language-matterscript">generate {
-
-    clamp($x + $y) * 2
-
-    inputs $x[0..255], $y[0..255]
-
-    output [0..512]
-
-    const MAX_LIMIT = 512
-    const OFFSET = 4
-
-}
-</code></pre>
-<p>Instead of manually writing hundreds or thousands of nearly identical association expressions, the programmer describes the pattern once.</p>
-<p>The compiler expands that pattern into the corresponding MatterScript network.</p>
-<p>The generated result is exactly the same as if the programmer had written every relationship by hand.</p>
-<hr>
-<h2 id="source-generation-not-runtime-execution"><a class="header" href="#source-generation-not-runtime-execution">Source Generation, Not Runtime Execution</a></h2>
-<p>The most important thing to understand is that <code>generate</code> is <strong>not</strong> part of the running computation.</p>
-<p>Nothing is generated while the program executes.</p>
-<p>The generate block exists only during compilation.</p>
-<p>Its purpose is to produce ordinary MatterScript definitions, places, invocations, and transform rules.</p>
-<p>Once expansion is complete, the generated code behaves exactly like handwritten MatterScript.</p>
-<p>This keeps the language remarkably simple.</p>
-<p>The computational model never changes.</p>
-<p>The compiler merely helps construct larger expressions.</p>
-<hr>
-<h2 id="declaring-the-input-space"><a class="header" href="#declaring-the-input-space">Declaring the Input Space</a></h2>
-<p>The <code>inputs</code> section specifies the variables that participate in generation.</p>
-<pre><code class="language-matterscript">inputs $x[0..255], $y[0..255]
-</code></pre>
-<p>Each variable defines a finite range over which the generator expression will be expanded.</p>
-<p>Rather than describing individual values, these declarations describe an entire space of possible relationships.</p>
-<p>The generator expression can then refer to those variables symbolically.</p>
-<hr>
-<h2 id="describing-the-output-space"><a class="header" href="#describing-the-output-space">Describing the Output Space</a></h2>
-<p>The <code>output</code> declaration specifies the range of values that the generated relationships may produce.</p>
-<pre><code class="language-matterscript">output [0..512]
-</code></pre>
-<p>This gives the compiler enough information to construct the resulting association network while preserving the same correspondence model used throughout the language.</p>
-<hr>
-<h2 id="compile-time-constants"><a class="header" href="#compile-time-constants">Compile-Time Constants</a></h2>
-<p>Large generated structures often depend on parameters.</p>
-<p>The optional <code>const</code> declarations allow those parameters to be named.</p>
-<pre><code class="language-matterscript">const MAX_LIMIT = 512
-const OFFSET = 4
-</code></pre>
-<p>These constants exist only while the generator is expanding the network.</p>
-<p>They are not runtime variables.</p>
-<p>Like the rest of the generate block, they disappear once generation is complete.</p>
-<hr>
-<h2 id="scaling-without-changing-the-language"><a class="header" href="#scaling-without-changing-the-language">Scaling Without Changing the Language</a></h2>
-<p>One of the remarkable aspects of MatterScript is that the generated result uses exactly the same language as everything else.</p>
-<p>The compiler does not introduce a hidden runtime.</p>
-<p>It does not create a new execution model.</p>
-<p>It simply writes more MatterScript.</p>
-<p>Whether a definition contains ten relationships or ten million, the underlying computational model remains identical.</p>
-<p>Generation changes the size of the description.</p>
-<p>It does not change the nature of the computation.</p>
-<hr>
-<h2 id="from-patterns-to-computational-fabric"><a class="header" href="#from-patterns-to-computational-fabric">From Patterns to Computational Fabric</a></h2>
-<p>Today, <code>generate</code> provides a concise way to construct large regular networks.</p>
-<p>In the future, it may become the foundation for much richer forms of synthesis.</p>
-<p>A geometry engine could generate millions of spatial relationships from a compact geometric description.</p>
-<p>A compiler could synthesize entire arithmetic units from algebraic specifications.</p>
-<p>A simulation framework could construct vast lattices of interacting cells from a single neighborhood rule.</p>
-<p>In every case, the principle remains the same.</p>
-<p>The programmer describes the pattern.</p>
-<p>The compiler expands the pattern into explicit relationships.</p>
-<p>Those relationships become part of the computational fabric, indistinguishable from code written by hand.</p>
-<p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="integer-quantization"><a class="header" href="#integer-quantization">Integer Quantization</a></h1>
-<p>Most programming languages begin with numbers.</p>
-<p>MatterScript begins with distinctions.</p>
-<p>That difference may seem subtle at first, but it changes the way we model problems.</p>
-<p>Traditional software assumes that every quantity is fundamentally a number.</p>
-<p>MatterScript asks a different question:</p>
-<blockquote>
-<p><strong>What are the meaningful states of this system?</strong></p>
-</blockquote>
-<p>The answer is often not a number at all.</p>
-<p>It is a finite set of distinguishable possibilities.</p>
-<p>Those possibilities become <strong>single-digit numbers</strong>.</p>
-<hr>
-<h2 id="single-digit-numbers"><a class="header" href="#single-digit-numbers">Single-Digit Numbers</a></h2>
-<p>When most programmers hear the word <em>digit</em>, they think of decimal notation.</p>
-<p>MatterScript uses the term differently.</p>
-<p>A single-digit number is a value represented by <strong>one symbol</strong>, regardless of how many possible values exist.</p>
-<p>If a quantity can take on fifty distinct values, then its number system simply contains fifty digits.</p>
-<p>There is no need to construct that value from multiple place-value digits.</p>
-<p>Instead, each possible state is represented directly.</p>
-<p>You can think of it as choosing a radix large enough that every value fits into a single position.</p>
-<hr>
-<h2 id="from-mathematics-to-tokens"><a class="header" href="#from-mathematics-to-tokens">From Mathematics to Tokens</a></h2>
-<p>This changes one of the programmer’s primary responsibilities.</p>
-<p>In conventional software, we begin by deciding how many bits are needed to store a number.</p>
-<p>In MatterScript, we begin by deciding what distinctions actually exist.</p>
-<p>Suppose we are modeling traffic lights.</p>
-<p>A traditional program might write:</p>
-<pre><code class="language-text">0 = Red
-1 = Yellow
-2 = Green
-</code></pre>
-<p>Those integers have no intrinsic meaning.</p>
-<p>They are merely encodings.</p>
-<p>MatterScript would instead treat the three possible states as the vocabulary of the system.</p>
-<pre><code class="language-text">RED
-YELLOW
-GREEN
-</code></pre>
-<p>Each is a single token.</p>
-<p>Each is equally fundamental.</p>
-<p>None is “greater” than another.</p>
-<hr>
-<h2 id="there-is-no-number-line"><a class="header" href="#there-is-no-number-line">There Is No Number Line</a></h2>
-<p>This is perhaps the hardest idea for programmers to internalize.</p>
-<p>Single-digit numbers do not necessarily possess numerical relationships.</p>
-<p>There is no requirement that one value be larger than another.</p>
-<p>There may be no meaningful notion of distance.</p>
-<p>No ordering.</p>
-<p>No arithmetic.</p>
-<p>Only distinction.</p>
-<p>For a traffic light, asking whether <strong>GREEN</strong> is larger than <strong>RED</strong> is meaningless.</p>
-<p>For a protein, asking whether <strong>Folded</strong> is greater than <strong>Unfolded</strong> is equally meaningless.</p>
-<p>The values simply represent different states.</p>
-<hr>
-<h2 id="quantizing-a-weather-system"><a class="header" href="#quantizing-a-weather-system">Quantizing a Weather System</a></h2>
-<p>Consider a simple weather simulation.</p>
-<p>Instead of assigning floating-point temperatures everywhere, we might decide that, for our model, only a small number of atmospheric states matter.</p>
-<pre><code class="language-text">COLD
-COOL
-WARM
-HOT
-</code></pre>
-<p>Humidity might become</p>
-<pre><code class="language-text">DRY
-NORMAL
-HUMID
-SATURATED
-</code></pre>
-<p>Wind might become</p>
-<pre><code class="language-text">NORTH
-SOUTH
-EAST
-WEST
-CALM
-</code></pre>
-<p>These are no longer numbers in the mathematical sense.</p>
-<p>They are tokens describing the current state of a region.</p>
-<p>Transform rules define how neighboring regions influence one another.</p>
-<p>Millions of cells evolve simultaneously through local interactions.</p>
-<p>The programmer has quantized the continuous world into a vocabulary appropriate for the simulation.</p>
-<hr>
-<h2 id="quantizing-chemistry"><a class="header" href="#quantizing-chemistry">Quantizing Chemistry</a></h2>
-<p>Chemistry provides another example.</p>
-<p>A conventional simulation often stores tables of atomic properties and repeatedly computes interactions numerically.</p>
-<p>MatterScript encourages a different perspective.</p>
-<p>The fundamental vocabulary might consist of tokens such as</p>
-<pre><code class="language-text">H
-O
-C
-N
-</code></pre>
-<p>along with bonding states</p>
-<pre><code class="language-text">FREE
-SINGLE_BOND
-DOUBLE_BOND
-</code></pre>
-<p>Transform rules describe how neighboring atoms interact.</p>
-<p>As relationships become satisfied, larger molecular structures emerge naturally from the network.</p>
-<p>The simulation evolves because local distinctions change, not because a processor repeatedly scans an array looking for work.</p>
-<hr>
-<h2 id="quantizing-digital-logic"><a class="header" href="#quantizing-digital-logic">Quantizing Digital Logic</a></h2>
-<p>Digital electronics has already been using this idea for decades.</p>
-<p>A logic signal is not an arbitrary integer.</p>
-<p>It has a very small vocabulary.</p>
-<pre><code class="language-text">NULL
-0
-1
-</code></pre>
-<p>Each state has a specific meaning.</p>
-<p>Transform rules describe how those states propagate through logic.</p>
-<p>This is precisely why MatterScript maps so naturally onto asynchronous hardware.</p>
-<p>The language speaks the same conceptual language as the underlying circuits.</p>
-<hr>
-<h2 id="choosing-the-vocabulary"><a class="header" href="#choosing-the-vocabulary">Choosing the Vocabulary</a></h2>
-<p>Viewed this way, quantization becomes one of the most important design decisions in a MatterScript program.</p>
-<p>Before writing transform rules, the programmer asks:</p>
-<blockquote>
-<p><strong>What distinctions matter?</strong></p>
-</blockquote>
-<p>Everything else is discarded.</p>
-<p>A weather model does not need nanometer precision.</p>
-<p>A biological model may not care about floating-point voltages.</p>
-<p>A traffic simulation has no concept of molecular bonds.</p>
-<p>Each domain chooses its own vocabulary.</p>
-<p>The resulting tokens become the atoms from which the computation is built.</p>
-<hr>
-<h2 id="precision-through-representation"><a class="header" href="#precision-through-representation">Precision Through Representation</a></h2>
-<p>At first glance, reducing continuous mathematics to a finite vocabulary might appear to sacrifice precision.</p>
-<p>In practice, the opposite is often true.</p>
-<p>Every simulation already makes approximations.</p>
-<p>Floating-point numbers are approximations.</p>
-<p>Finite element meshes are approximations.</p>
-<p>Time steps are approximations.</p>
-<p>MatterScript simply makes that approximation explicit.</p>
-<p>Instead of hiding quantization inside binary encodings, it asks the programmer to define the meaningful distinctions directly.</p>
-<p>Once those distinctions have been chosen, the resulting computation becomes dramatically simpler.</p>
-<p>Relationships become direct.</p>
-<p>Transform rules become local.</p>
-<p>Hardware can exploit massive concurrency because every token already represents exactly the information the system needs.</p>
-<hr>
-<h2 id="computation-as-distinction"><a class="header" href="#computation-as-distinction">Computation as Distinction</a></h2>
-<p>This chapter illustrates a recurring theme throughout MatterScript.</p>
-<p>Traditional software tends to begin with mathematics and encode the world into numbers.</p>
-<p>MatterScript begins with the world itself.</p>
-<p>It asks what objects exist, what states they may occupy, and how those states transform through local interactions.</p>
-<p>Numbers become just one possible vocabulary among many.</p>
-<p>The real foundation of computation is not arithmetic.</p>
-<p>It is distinction.</p>
-<p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="the-runtime-boundary"><a class="header" href="#the-runtime-boundary">The Runtime Boundary</a></h1>
-<p>One of the central ideas behind MatterScript is that a program should describe <strong>what</strong> a computation is, not <strong>how</strong> it executes.</p>
-<p>Most programming languages blur these two concerns together. The language describes the computation, but it also implicitly assumes a particular execution environment: a processor with an instruction pointer, a stack, a heap, and a runtime responsible for coordinating them all.</p>
-<p>MatterScript makes a different distinction.</p>
-<p>The language ends where the relationships have been fully described.</p>
-<p>Everything beyond that point belongs to the compiler.</p>
-<hr>
-<h2 id="programs-describe-relationships"><a class="header" href="#programs-describe-relationships">Programs Describe Relationships</a></h2>
-<p>When you write a MatterScript definition, you are not writing instructions for a processor.</p>
-<p>You are describing a network of causal relationships.</p>
-<pre><code class="language-matterscript">FULLADD($A $B $C)(SUM&lt;&gt; CARRY&lt;&gt;)
-</code></pre>
-<p>The definition says nothing about clocks.</p>
-<p>Nothing about memory.</p>
-<p>Nothing about registers.</p>
-<p>Nothing about threads.</p>
-<p>Nothing about instruction order.</p>
-<p>It simply declares that when the appropriate information arrives, these relationships exist.</p>
-<p>That description is complete in itself.</p>
-<hr>
-<h2 id="from-source-to-association-graph"><a class="header" href="#from-source-to-association-graph">From Source to Association Graph</a></h2>
-<p>The compiler’s first responsibility is not to generate machine code.</p>
-<p>It is to recover the computational fabric described by the program.</p>
-<p>Conceptually, every MatterScript program is transformed into an <strong>association graph</strong>.</p>
-<pre><code class="language-text">MatterScript Source
-        │
-        ▼
-Association Graph
-</code></pre>
-<p>This graph contains every place, every invocation, every correspondence relationship, and every causal dependency expressed by the source.</p>
-<p>At this point the computation has already been defined.</p>
-<p>Nothing about processors or hardware has entered the picture.</p>
-<p>The graph is simply a faithful representation of the relationships described by the programmer.</p>
-<hr>
-<h2 id="the-runtime-boundary-1"><a class="header" href="#the-runtime-boundary-1">The Runtime Boundary</a></h2>
-<p>The association graph forms the boundary between the language and its implementation.</p>
-<p>Everything above this boundary belongs to MatterScript.</p>
-<p>Everything below it belongs to the compiler.</p>
-<pre><code class="language-text">MatterScript Source
-        │
-        ▼
-Association Graph
-        │
-────────┼────────  Runtime Boundary
-        │
-        ▼
-Backend Mapping
-        │
- ┌──────┼──────────────┐
- ▼      ▼              ▼
-FPGA   POSIX         GPU
-VHDL   C/Pthreads    CUDA
-</code></pre>
-<p>The language never specifies how those relationships should be realized.</p>
-<p>That decision belongs entirely to the backend.</p>
-<hr>
-<h2 id="one-program-many-realizations"><a class="header" href="#one-program-many-realizations">One Program, Many Realizations</a></h2>
-<p>This separation allows the same MatterScript program to target radically different computational substrates.</p>
-<p>One backend may generate VHDL, mapping every relationship onto lookup tables, routing resources, and asynchronous logic.</p>
-<p>Another may generate a POSIX application, where independent regions of the graph execute as cooperating threads.</p>
-<p>A GPU backend may map repeated structures onto thousands of parallel execution units.</p>
-<p>Future backends might target custom ASICs, distributed systems, neuromorphic hardware, or architectures that have not yet been invented.</p>
-<p>The program itself does not change.</p>
-<p>Only its realization changes.</p>
-<hr>
-<h2 id="the-runtime-is-an-implementation-detail"><a class="header" href="#the-runtime-is-an-implementation-detail">The Runtime Is an Implementation Detail</a></h2>
-<p>Traditional software is usually thought of in three layers:</p>
-<pre><code class="language-text">Program
-    │
-    ▼
-Runtime
-    │
-    ▼
-Hardware
-</code></pre>
-<p>The runtime is responsible for scheduling execution, managing memory, coordinating threads, and providing operating-system services.</p>
-<p>MatterScript shifts that boundary.</p>
-<pre><code class="language-text">Program
-    │
-    ▼
-Association Graph
-    │
-    ▼
-Physical Realization
-</code></pre>
-<p>There is no mandatory runtime.</p>
-<p>There is no required virtual machine.</p>
-<p>No required scheduler.</p>
-<p>No required heap.</p>
-<p>No required stack.</p>
-<p>A particular backend may choose to implement some or all of these mechanisms, but they are no longer properties of the language itself.</p>
-<p>They are engineering decisions made during realization.</p>
-<hr>
-<h2 id="computation-becomes-portable"><a class="header" href="#computation-becomes-portable">Computation Becomes Portable</a></h2>
-<p>This separation has another consequence that is unlike anything possible in traditional software.</p>
-<p>Today’s computers routinely transmit data across networks.</p>
-<p>Sometimes they transmit executable programs.</p>
-<p>But those programs are still written for a particular processor architecture and operating system. They assume the receiving machine will execute instructions using its own runtime.</p>
-<p>MatterScript can transmit something much more fundamental.</p>
-<p><strong>It can transmit the computation itself.</strong></p>
-<p>Imagine a running MatterScript system that constructs a new computational network dynamically—a signal-processing pipeline, a robotic controller, a physics simulation, or a specialized accelerator. That generated network is simply another MatterScript description. It can be handed to the local backend for synthesis, becoming dedicated hardware inside an FPGA.</p>
-<p>Or it can be sent across the network to an entirely different machine.</p>
-<p>That receiving machine might have different processors.</p>
-<p>Different memory.</p>
-<p>Different accelerators.</p>
-<p>Different hardware capabilities.</p>
-<p>It compiles the received MatterScript into a realization appropriate for its own architecture while preserving exactly the same causal relationships.</p>
-<p>In effect, the computation has moved without carrying any assumptions about the machine on which it will execute.</p>
-<p>One computer has transmitted part of itself to another.</p>
-<p>Not merely its data.</p>
-<p>Not merely its executable binary.</p>
-<p>Its computational structure.</p>
-<p>It is, in a very real sense, <strong>the teleportation of machinery</strong>.</p>
-<hr>
-<h2 id="preserving-the-relationships"><a class="header" href="#preserving-the-relationships">Preserving the Relationships</a></h2>
-<p>The compiler’s job is not simply to translate syntax.</p>
-<p>Its responsibility is to preserve the causal structure expressed by the program.</p>
-<p>Whether that structure becomes a network of FPGA logic cells, a collection of POSIX threads, or a GPU kernel, the observable behavior must remain identical.</p>
-<p>Only the implementation strategy changes.</p>
-<p>The relationships do not.</p>
-<p>This is the same principle that has guided the language from the beginning.</p>
-<p>MatterScript describes causality.</p>
-<p>The compiler determines how that causality is embodied in a physical system.</p>
-<hr>
-<h2 id="a-language-independent-of-its-machine"><a class="header" href="#a-language-independent-of-its-machine">A Language Independent of Its Machine</a></h2>
-<p>Perhaps the most significant consequence of the runtime boundary is philosophical rather than technical.</p>
-<p>For decades, programming languages have largely been descriptions of how to drive a processor.</p>
-<p>MatterScript is instead a description of a computation itself.</p>
-<p>The processor is no longer the center of the programming model.</p>
-<p>It is merely one possible realization of a deeper computational structure.</p>
-<p>That distinction opens possibilities that have scarcely existed before. Computational structures can be generated, evolved, synthesized into hardware, or transmitted to entirely different machines for realization. Computation becomes something that can inhabit whatever physical substrate is available without changing its identity.</p>
-<p>The language ends when the relationships have been described.</p>
-<p>Everything beyond that point is an implementation choice.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h1>
-<p>Logic</p>
-<p>Arithmetic</p>
-<p>Geometry</p>
-<p>Spatial transforms</p>
-<p>Signal processing</p>
-<p>Probability</p>
-<p>Chemistry</p>
-<p>Biology</p>
-<p>Linear algebra</p>
-<p>Cryptography</p>
-<p>Networking</p>
-<p>Simulation primitives</p>
-<p>Collections</p>
-<p>File formats</p>
-<p>Temporal relationships</p>
-<p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-vi-geometry-becomes-code"><a class="header" href="#part-vi-geometry-becomes-code">Part VI: Geometry Becomes Code</a></h1>
 <p>Traditional languages separate computation from geometry.</p>
@@ -4736,22 +4464,6 @@ Target Backend
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>
