@@ -1,6 +1,6 @@
 # Example verification results
 
-17 expected outcomes, 5 unexpected outcomes.
+16 expected outcomes, 6 unexpected outcomes.
 
 | Issue | Example | Expected | Parse | GHDL | Result |
 | --- | --- | --- | --- | --- | --- |
@@ -13,7 +13,7 @@
 | TAG-142 | example-12.3.ms.ipl | Partial | ok | ok | 🟡 unexpected pass |
 | TAG-143 | example-12.2.ms.ipl | Partial | ok | ok | 🟡 unexpected pass |
 | TAG-146 | example-12.12.ms.ipl | Partial | ok | FAIL | ⬛ expected fail |
-| TAG-147 | example-12.13.ms.ipl | Spec Only | ok | FAIL | ⬛ expected fail |
+| TAG-147 | example-12.13.ms.ipl | Partial | ok | ok | 🟡 unexpected pass |
 | TAG-148 | example-12.11.ms.ipl | Partial | ok | FAIL | ⬛ expected fail |
 | TAG-149 | example-12.9.ms.ipl | Spec Only | ok | ok | 🟡 unexpected pass |
 | TAG-151 | example-12.17.ms.ipl | Partial | ok | FAIL | ⬛ expected fail |

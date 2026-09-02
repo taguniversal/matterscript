@@ -1,4 +1,9 @@
 {
+  "TAG-188": {
+    "implementation_status": null,
+    "simulation_requested": false,
+    "workflow_state": "In Progress"
+  },
   "TAG-187": {
     "implementation_status": "Implemented",
     "simulation_requested": false,
@@ -190,7 +195,7 @@
     "workflow_state": "In Progress"
   },
   "TAG-147": {
-    "implementation_status": "Spec Only",
+    "implementation_status": "Partial",
     "simulation_requested": false,
     "workflow_state": "In Progress"
   },

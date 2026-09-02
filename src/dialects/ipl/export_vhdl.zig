@@ -142,30 +142,70 @@ fn writeOneNetworkEntity(
     defer allocator.free(def_id);
     try writer.print("\n  dut : entity work.{s} port map (\n", .{def_id});
     try writer.print("    clk => '0', rst => '0'", .{});
-    for (matched.sources, 0..) |src, i| {
-        const sid = try placeName(allocator, src);
-        defer allocator.free(sid);
-        if (i < entry.args.len) {
-            try writer.print(",\n    {s} => arg_{d}", .{ sid, i });
-        } else {
-            // more sources than the entry supplies args for — wire
-            // directly to null_value rather than an undeclared signal
-            try writer.print(",\n    {s} => null_value", .{sid});
-        }
+    
+    var arg_index: usize = 0;
+    for (matched.sources) |src| {
+        try writeNetworkSourceMapping(allocator, writer, src, &arg_index, entry);
     }
-    for (matched.destinations, 0..) |dst, i| {
-        const did = try placeName(allocator, dst);
-        defer allocator.free(did);
-        if (i < output_names.items.len) {
-            const out_id = try sanitizeName(allocator, output_names.items[i]);
-            defer allocator.free(out_id);
-            try writer.print(",\n    {s} => {s}", .{ did, out_id });
-        } else {
-            try writer.print(",\n    {s} => open", .{did});
-        }
+
+    var output_index: usize = 0;
+    for (matched.destinations) |dst| {
+        try writeNetworkDestMapping(allocator, writer, dst, &output_index, output_names.items);
     }
     try writer.print("\n  );\n", .{});
     try writer.print("\nend rtl;\n", .{});
+}
+
+fn writeNetworkSourceMapping(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    place: network.Place,
+    arg_index: *usize,
+    entry: network.EntryInvocation,
+) !void {
+    if (place.group) |group| {
+        if (group.kind == .mutex) {
+            for (group.places) |member| {
+                try writeNetworkSourceMapping(allocator, writer, member, arg_index, entry);
+            }
+            return;
+        }
+    }
+    const port_id = try placeName(allocator, place);
+    defer allocator.free(port_id);
+    if (arg_index.* < entry.args.len) {
+        try writer.print(",\n    {s} => arg_{d}", .{ port_id, arg_index.* });
+    } else {
+        try writer.print(",\n    {s} => null_value", .{port_id});
+    }
+    arg_index.* += 1;
+}
+
+fn writeNetworkDestMapping(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    place: network.Place,
+    output_index: *usize,
+    output_names: []const []const u8,
+) !void {
+    if (place.group) |group| {
+        if (group.kind == .mutex) {
+            for (group.places) |member| {
+                try writeNetworkDestMapping(allocator, writer, member, output_index, output_names);
+            }
+            return;
+        }
+    }
+    const port_id = try placeName(allocator, place);
+    defer allocator.free(port_id);
+    if (output_index.* < output_names.len) {
+        const out_id = try sanitizeName(allocator, output_names[output_index.*]);
+        defer allocator.free(out_id);
+        try writer.print(",\n    {s} => {s}", .{ port_id, out_id });
+    } else {
+        try writer.print(",\n    {s} => open", .{port_id});
+    }
+    output_index.* += 1;
 }
 
 fn writeDefinition(

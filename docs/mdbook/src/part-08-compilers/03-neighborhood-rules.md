@@ -66,6 +66,8 @@ The third rule ```[4, 4, 6]:4``` introduces a pattern for state `4`: if the cent
 
 With explicit domain declarations like `@domain(spatial2d,  size: [300, 500])`, you decouple topology from extents. This allows the same neighborhood rules to compile across different grid sizes or dimensions without modifying the rule block syntax.
 
+When there are multiple @domain contexts in a definition, other statements can sit between them, with the domain context persisting for the rest of the definition, or until a new @domain appears. @domain(...) acts by setting ambient context for everything after it in that resolution area.
+
 Any number of transformations can be defined, and they are not restricted to numeric states. Numbers hold no arithmetic meaning in MatterScript; here is an example defining transformations using domain-specific tokens:
 
 ```matterscript

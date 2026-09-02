@@ -66,7 +66,7 @@ const Parser = struct {
         }
     }
 
-        fn parseDirective(p: *Parser) !network.Statement {
+    fn parseDirective(p: *Parser) !network.Statement {
         _ = p.advance(); // consume '@'
         const name = try p.readName();
         p.skipWhitespaceAndComments();
