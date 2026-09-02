@@ -14,3 +14,11 @@ zig-out/
 
 # Ignore GHDL build artifacts
 *.cf
+
+docs/mdbook/book/pdf/output.pdf
+
+# Ignore everything in the mdbook output directory...
+docs/mdbook/book/*
+
+# ...except for the html directory
+!docs/mdbook/book/html/
