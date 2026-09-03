@@ -17,6 +17,17 @@ const workspace = @import("../../common/workspace.zig");
 const SIGNAL_WIDTH = 8;
 const DATA_WIDTH = 7;
 
+fn argToText(arg: network.Arg) []const u8 {
+    return switch (arg.kind) {
+        .literal, .expression => arg.text,
+        .group => if (arg.group) |g| switch (g.kind) {
+            .bundle => "[group]",
+            .mutex => "{mutex}",
+            .arbitration => "{{arbitration}}",
+        } else "",
+    };
+}
+
 pub fn writeVhdlNetwork(
     io: std.Io,
     allocator: std.mem.Allocator,
@@ -129,7 +140,8 @@ fn writeOneNetworkEntity(
     try writer.print("begin\n\n", .{});
 
     for (entry.args, 0..) |arg, i| {
-        const trimmed = std.mem.trim(u8, arg, " \t\r\n");
+        const text = argToText(arg);
+        const trimmed = std.mem.trim(u8, text, " \t\r\n");
         const value = std.fmt.parseInt(u64, trimmed, 10) catch {
             try writer.print("  -- TODO: non-literal entry argument '{s}' not yet supported\n", .{trimmed});
             try writer.print("  arg_{d} <= null_value;\n", .{i});
@@ -142,7 +154,7 @@ fn writeOneNetworkEntity(
     defer allocator.free(def_id);
     try writer.print("\n  dut : entity work.{s} port map (\n", .{def_id});
     try writer.print("    clk => '0', rst => '0'", .{});
-    
+
     var arg_index: usize = 0;
     for (matched.sources) |src| {
         try writeNetworkSourceMapping(allocator, writer, src, &arg_index, entry);
@@ -321,7 +333,7 @@ fn writeDefinition(
                     try writeIntermediatePlaceSignal(allocator, writer, def, &intermediate_names, output);
                 }
                 for (inv.args) |arg| {
-                    try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, arg);
+                    try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, argToText(arg));
                 }
             },
             .pure_value => |value| try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, value),
@@ -554,12 +566,22 @@ fn writeInvocationArgument(
     writer: anytype,
     invocation_index: usize,
     argument_index: usize,
-    argument: []const u8,
+    argument: network.Arg,
 ) !void {
     const signal_name = try std.fmt.allocPrint(allocator, "invocation_{d}_arg_{d}", .{ invocation_index, argument_index });
     defer allocator.free(signal_name);
-    const trimmed = std.mem.trim(u8, argument, " \t\r\n");
-    if (trimmed.len > 1 and trimmed[0] == '$' and std.mem.indexOfScalar(u8, trimmed[1..], '$') == null) {
+
+    const text = argToText(argument);
+    const trimmed = std.mem.trim(u8, text, " \t\r\n");
+
+    if (argument.kind == .group) {
+        if (argument.group) |group| {
+            if (group.kind == .arbitration) {
+                try writer.print("  -- Arbiter input competition group\n", .{});
+            }
+        }
+        try writer.print("  {s} <= null_value;\n", .{signal_name});
+    } else if (trimmed.len > 1 and trimmed[0] == '$' and std.mem.indexOfScalar(u8, trimmed[1..], '$') == null) {
         const source_id = try sanitizeName(allocator, trimmed[1..]);
         defer allocator.free(source_id);
         try writer.print("  {s} <= {s};\n", .{ signal_name, source_id });
@@ -1188,8 +1210,14 @@ fn normalizeStatements(
             },
             .invoke => |raw_invocation| {
                 var invocation = raw_invocation;
-                var args: std.ArrayListUnmanaged([]const u8) = .empty;
-                for (raw_invocation.args) |arg| try args.append(allocator, try rewriteDollarReferences(allocator, names, arg));
+                var args: std.ArrayListUnmanaged(network.Arg) = .empty;
+                for (raw_invocation.args) |arg| {
+                    var updated_arg = arg;
+                    if (arg.kind != .group and arg.text.len > 0) {
+                        updated_arg.text = try rewriteDollarReferences(allocator, names, arg.text);
+                    }
+                    try args.append(allocator, updated_arg);
+                }
                 invocation.args = try args.toOwnedSlice(allocator);
                 invocation.outputs = try normalizePlaces(allocator, names, raw_invocation.outputs);
                 try normalized.append(allocator, .{ .invoke = invocation });

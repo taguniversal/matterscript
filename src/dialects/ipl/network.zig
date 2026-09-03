@@ -44,7 +44,11 @@ pub const Place = struct {
     group: ?*const PlaceGroup = null,
 };
 
-pub const PlaceGroupKind = enum { bundle, mutex };
+pub const PlaceGroupKind = enum { 
+    bundle,        // signal groups [..]
+    mutex,         // Mutually exclusive signals {..}
+    arbitration,   // Expresses nondeterministic flow competition {{...}}
+};
 
 pub const PlaceGroup = struct {
     kind: PlaceGroupKind,
@@ -129,10 +133,22 @@ pub const SourceFill = struct {
     parsed_expr: ?*const Expr = null,
 };
 
+pub const ArgKind = enum {
+    literal,
+    expression,
+    group,
+};
+
+pub const Arg = struct {
+    kind: ArgKind,
+    text: []const u8 = "",
+    group: ?*const PlaceGroup = null,
+};
+
 pub const Invocation = struct {
     name: []const u8,
     /// Destination places — values provided by caller to the definition
-    args: []const []const u8,
+    args: []const Arg, // Upgraded from []const []const u8
     /// Source places — values returned from the definition to the caller
     outputs: []const Place,
 };
@@ -165,7 +181,7 @@ pub const Definition = struct {
 pub const EntryInvocation = struct {
     name: []const u8,
     /// Destination args — values passed in to the definition's sources
-    args: []const []const u8,
+    args: []const Arg, // Upgraded from []const []const u8
     /// Source places — outputs returned to the top-level context
     outputs: []const Place,
 };
