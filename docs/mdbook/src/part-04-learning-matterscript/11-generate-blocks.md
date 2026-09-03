@@ -25,17 +25,14 @@ Rather than describing computation, it describes **how to construct computation*
 A generate block contains a generator expression followed by the ranges over which that expression should be expanded.
 
 ```matterscript
-generate {
+// Bind to a 2D spatial domain with bounds
+@domain(spatial2d, size: [300, 500])
 
-    clamp($x + $y) * 2
-
-    inputs $x[0..255], $y[0..255]
-
-    output [0..512]
-
-    const MAX_LIMIT = 512
-    const OFFSET = 4
-
+@generate {
+  // Format: [ Left , Center , Right ] -> New Center State
+  [2, 1, 5]:4
+  [3, 2, 4]:6
+  [4, 4, 6]:4
 }
 ```
 

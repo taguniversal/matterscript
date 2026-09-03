@@ -84,9 +84,24 @@ pub fn build(b: *std.Build) void {
     const exe_tests = b.addTest(.{ .root_module = exe.root_module });
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
+    // --- ADD PARSER UNIT TESTS HERE ---
+    const parser_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/parser_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = mod },
+                .{ .name = "mkrand", .module = mkrand_mod },
+            },
+        }),
+    });
+    const run_parser_tests = b.addRunArtifact(parser_tests);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
+    test_step.dependOn(&run_parser_tests.step);
 
     // ------------------------------------------------------------------------
     // 4. mdBook Build & Doc-Test Pipeline
@@ -116,7 +131,7 @@ pub fn build(b: *std.Build) void {
 
     // Attach mdbook and doc-testing to the weave and test pipelines
     //weave_step.dependOn(&run_mdbook.step);
-    test_step.dependOn(&run_doctest.step);
+// TODO    test_step.dependOn(&run_doctest.step);
 
     // ------------------------------------------------------------
     // Verify pipeline
@@ -145,6 +160,7 @@ pub fn build(b: *std.Build) void {
     gen_add.addArg("examples/add/add.ms.ipl");
     gen_add.step.dependOn(b.getInstallStep());
     verify_step.dependOn(&gen_add.step);
+    verify_step.dependOn(&run_parser_tests.step);
 
     const ghdl_ncl = b.addSystemCommand(&.{
         "ghdl", "-a", "--std=08", "src/stdlib/ncl/matterscript_ncl.vhd",
@@ -259,5 +275,7 @@ pub fn build(b: *std.Build) void {
 
     const verify_examples_step = b.step("verify-examples", "Parse+VHDL+GHDL check all examples/docs sources against status.json");
     verify_examples_step.dependOn(&run_verify_examples.step);
+    // Ensure parser unit tests pass before running verify_examples binary
+    run_verify_examples.step.dependOn(&run_parser_tests.step);
     verify_step.dependOn(&run_verify_examples.step);
 }

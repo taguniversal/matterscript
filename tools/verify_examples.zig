@@ -12,8 +12,8 @@
 const std = @import("std");
 
 const matterscript = @import("matterscript");
-const il_parser = matterscript.il_parser;
-const il_export_vhdl = matterscript.il_export_vhdl;
+const ipl_parser = matterscript.ipl_parser;
+const ipl_export_vhdl = matterscript.ipl_export_vhdl;
 
 const ExampleResult = enum { pass, fail, expected_fail, unexpected_pass };
 
@@ -84,7 +84,7 @@ pub fn main(init: std.process.Init) !void {
             continue;
         };
 
-        const net = il_parser.parseWithTag(arena, source, ex.tag) catch {
+        const net = ipl_parser.parseWithTag(arena, source, ex.tag) catch {
             try rows.append(arena, .{
                 .tag = ex.tag,
                 .path = ex.path,
@@ -102,7 +102,7 @@ pub fn main(init: std.process.Init) !void {
         var vhdl_writer: std.Io.Writer.Allocating = .fromArrayList(arena, &vhdl_body);
 
         const emit_ok = blk: {
-            il_export_vhdl.write(arena, &vhdl_writer.writer, net) catch break :blk false;
+            ipl_export_vhdl.write(arena, &vhdl_writer.writer, net) catch break :blk false;
             break :blk true;
         };
 

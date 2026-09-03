@@ -28,6 +28,87 @@ fn argToText(arg: network.Arg) []const u8 {
     };
 }
 
+fn getUniqueStateTokens(
+    allocator: std.mem.Allocator,
+    entries: []const GeneratedEntry,
+) ![]const []const u8 {
+    var tokens: std.ArrayListUnmanaged([]const u8) = .empty;
+    errdefer tokens.deinit(allocator);
+
+    for (entries) |entry| {
+        // Collect pattern tokens (e.g. "DE", "AK", "JD")
+        for (entry.pattern) |tok| {
+            if (!containsString(tokens.items, tok)) {
+                try tokens.append(allocator, tok);
+            }
+        }
+        // Collect target output state (e.g. "JC")
+        if (!containsString(tokens.items, entry.target_state)) {
+            try tokens.append(allocator, entry.target_state);
+        }
+    }
+
+    return tokens.toOwnedSlice(allocator);
+}
+
+fn containsString(haystack: []const []const u8, needle: []const u8) bool {
+    for (haystack) |item| {
+        if (std.mem.eql(u8, item, needle)) return true;
+    }
+    return false;
+}
+
+pub fn emitCellularAutomatonVHDL(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    entries: []const GeneratedEntry,
+) !void {
+    const states = try getUniqueStateTokens(allocator, entries);
+    defer allocator.free(states);
+
+    // 1. Emit VHDL Custom Type Definition for symbolic states
+    try writer.writeAll("  -- Symbolic Cell State Enumeration\n");
+    try writer.writeAll("  TYPE cell_state_t IS (");
+    for (states, 0..) |st, i| {
+        if (i > 0) try writer.writeAll(", ");
+        try writer.print("ST_{s}", .{st});
+    }
+    try writer.writeAll(");\n\n");
+
+    // 2. Emit Cell Combinatorial / Synchronous Next-State Logic
+    try writer.writeAll("  -- Cell State Transition Process\n");
+    try writer.writeAll("  process(clk, reset)\n");
+    try writer.writeAll("  begin\n");
+    try writer.writeAll("    if reset = '1' then\n");
+    if (states.len > 0) {
+        try writer.print("      current_state <= ST_{s};\n", .{states[0]});
+    }
+    try writer.writeAll("    elif rising_edge(clk) then\n");
+
+    // Iterate rules to emit pattern matching branch logic
+    for (entries, 0..) |entry, idx| {
+        const branch_keyword = if (idx == 0) "      if" else "      elsif";
+
+        // Assume standard 1D/2D neighborhood mapping: [0]=Left, [1]=Center/Self, [2]=Right
+        if (entry.pattern.len >= 3) {
+            try writer.print(
+                "{s} (neighbor_L = ST_{s} AND current_state = ST_{s} AND neighbor_R = ST_{s}) then\n",
+                .{ branch_keyword, entry.pattern[0], entry.pattern[1], entry.pattern[2] },
+            );
+            try writer.print("        next_state <= ST_{s};\n", .{entry.target_state});
+        }
+    }
+
+    if (entries.len > 0) {
+        try writer.writeAll("      else\n");
+        try writer.writeAll("        next_state <= current_state; -- Default: retain state\n");
+        try writer.writeAll("      end if;\n");
+    }
+
+    try writer.writeAll("    end if;\n");
+    try writer.writeAll("  end process;\n");
+}
+
 pub fn writeVhdlNetwork(
     io: std.Io,
     allocator: std.mem.Allocator,
@@ -461,21 +542,8 @@ fn writeDefinition(
                     try writer.print("        when \"{s}\" => {s}_data <= \"{s}\"; {s}_valid <= '1';\n", .{ key_str, tbl_id, val_str, tbl_id });
                 }
             },
-            .generate => |gen| {
-                const entries = try enumerateGenerate(allocator, gen);
-                defer allocator.free(entries);
-                var key_buf: [128]u8 = undefined;
-                var val_buf: [64]u8 = undefined;
-                for (entries) |entry| {
-                    var key_pos: usize = 0;
-                    for (entry.input_values) |v| {
-                        const seg = binStr(key_buf[key_pos..], @intCast(v), DATA_WIDTH);
-                        key_pos += seg.len;
-                    }
-                    const key_str = key_buf[0..key_pos];
-                    const val_str = binStr(&val_buf, @intCast(entry.output_value), val_bits);
-                    try writer.print("        when \"{s}\" => {s}_data <= \"{s}\"; {s}_valid <= '1';\n", .{ key_str, tbl_id, val_str, tbl_id });
-                }
+            .generate =>  {
+               // TODO
             },
         }
 
@@ -1026,26 +1094,31 @@ fn internSymbol(list: *std.ArrayListUnmanaged([]const u8), allocator: std.mem.Al
 // ----------------------------------------------------------------
 
 const GeneratedEntry = struct {
-    input_values: []const i64,
-    output_value: i64,
+    pattern: []const []const u8, // e.g. ["DE", "AK", "JD"] or ["2", "1", "5"]
+    target_state: []const u8,    // e.g. "JC" or "4"
 };
 
 fn enumerateGenerate(
     allocator: std.mem.Allocator,
     gen: network.GenerateBlock,
 ) ![]const GeneratedEntry {
-    var const_map = std.StringHashMap(i64).init(allocator);
-    defer const_map.deinit();
-    for (gen.constants) |c| try const_map.put(c.name, c.value);
-
     var entries: std.ArrayListUnmanaged(GeneratedEntry) = .empty;
-    var var_map = std.StringHashMap(i64).init(allocator);
-    defer var_map.deinit();
+    errdefer entries.deinit(allocator);
 
-    const current_vals = try allocator.alloc(i64, gen.inputs.len);
-    defer allocator.free(current_vals);
+    for (gen.rules) |rule| {
+        // Store symbolic pattern strings directly
+        var pattern_tokens: std.ArrayListUnmanaged([]const u8) = .empty;
+        errdefer pattern_tokens.deinit(allocator);
 
-    try enumerateRecursive(allocator, gen, gen.inputs, current_vals, 0, &var_map, const_map, &entries);
+        for (rule.pattern) |tok| {
+            try pattern_tokens.append(allocator, tok);
+        }
+
+        try entries.append(allocator, .{
+            .pattern = try pattern_tokens.toOwnedSlice(allocator),
+            .target_state = rule.value,
+        });
+    }
 
     return entries.toOwnedSlice(allocator);
 }
@@ -1342,9 +1415,9 @@ fn tableValueWidth(allocator: std.mem.Allocator, tbl: network.TableDef) !usize {
                 if (v > max_val) max_val = v;
             }
         },
-        .generate => |gen| {
+        .generate => {
             _ = allocator;
-            max_val = @intCast(@max(0, gen.output_max));
+            // TODO
         },
     }
     if (max_val == 0) return 1;

@@ -23,6 +23,21 @@
 
 const std = @import("std");
 
+pub const SpatialDomainKind = enum {
+    spatial1d,
+    spatial2d,
+    spatial3d,
+    // future domains: spatial1d, etc.
+};
+
+pub const DomainSpec = struct {
+    kind: SpatialDomainKind,
+    size_x: usize,
+    size_y: usize,
+    size_z: usize,
+};
+
+
 pub const PlaceKind = enum {
     /// source place: name<>
     /// In a definition: receives tokens from outside (input to the definition)
@@ -107,11 +122,9 @@ pub const Expr = struct {
 };
 
 pub const GenerateBlock = struct {
-    expr: *Expr,
-    inputs: []const InputDecl,
-    output_min: i64,
-    output_max: i64,
-    constants: []const ConstDecl,
+    expr: ?*Expr = null,
+    domain: ?DomainSpec = null,
+    rules: []const NeighborhoodRule = &.{},
 };
 
 pub const TableKind = union(enum) {
@@ -167,6 +180,8 @@ pub const Definition = struct {
     name: []const u8,
     sources: []const Place,
     destinations: []const Place,
+    domain_spec: ?DomainSpec = null,
+    generateBlock: ?GenerateBlock = null,
     resolution: []const Statement,
     constants: []const TableDef,
     contained: []const Definition = &.{}, // definitions nested inside
@@ -199,4 +214,5 @@ pub const Network = struct {
     // value<>/$value, the very invocation that precedes it.
     // Semantics/VHDL emission are deliberately deferred here —
     // this only captures the syntax.
+    rules: []const NeighborhoodRule = &.{},
 };

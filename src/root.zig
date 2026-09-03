@@ -8,8 +8,8 @@ pub const chain_fuzz =
 // Re-exported so tools outside src/ (e.g. tools/verify_examples.zig)
 // can reuse the IL parser/emitter without crossing the module boundary
 // via a relative "../src/..." import, which Zig doesn't allow.
-pub const il_parser = @import("dialects/ipl/parser.zig");
-pub const il_export_vhdl = @import("dialects/ipl/export_vhdl.zig");
+pub const ipl_parser = @import("dialects/ipl/parser.zig");
+pub const ipl_export_vhdl = @import("dialects/ipl/export_vhdl.zig");
 
 test {
     std.testing.refAllDecls(@This());

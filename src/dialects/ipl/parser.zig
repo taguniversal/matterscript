@@ -15,7 +15,7 @@
 //     second list = source places (name<>) — outputs returned to caller
 
 const std = @import("std");
-const network = @import("network.zig");
+pub const network = @import("network.zig");
 
 pub const ParseError = error{
     UnexpectedEnd,
@@ -46,6 +46,13 @@ const Parser = struct {
         return p.src[p.pos];
     }
 
+    pub fn peekNext(p: *Parser) ?u8 {
+        if (p.pos + 1 < p.src.len) {
+            return p.src[p.pos + 1];
+        }
+        return null;
+    }
+
     fn advance(p: *Parser) ?u8 {
         if (p.pos >= p.src.len) return null;
         const c = p.src[p.pos];
@@ -66,35 +73,8 @@ const Parser = struct {
         }
     }
 
-    fn parseDirective(p: *Parser) !network.Statement {
-        _ = p.advance(); // consume '@'
-        const name = try p.readName();
-        p.skipWhitespaceAndComments();
-        const next = p.peek() orelse return ParseError.UnexpectedEnd;
 
-        if (next == '{') {
-            // A Neighborhood Rule block, e.g. @generate { [2,1,5]:4 ... } —
-            // a MatterScript-specific extension, not part of Fant's own
-            // grammar. Sparse-defaults-to-identity and wildcard matching
-            // are deliberately not interpreted here — this only captures
-            // the rule shape faithfully.
-            const rules = try p.parseNeighborhoodRuleBlock();
-            return network.Statement{ .directive = .{ .name = name, .args = "", .rules = rules } };
-        }
-
-        try p.expect('(');
-        const args_start = p.pos;
-        var depth: usize = 1;
-        while (depth > 0) {
-            const ch = p.advance() orelse return ParseError.UnexpectedEnd;
-            if (ch == '(') depth += 1;
-            if (ch == ')') depth -= 1;
-        }
-        const args = p.src[args_start .. p.pos - 1];
-        return network.Statement{ .directive = .{ .name = name, .args = args } };
-    }
-
-    fn parseNeighborhoodRuleBlock(p: *Parser) ![]const network.NeighborhoodRule {
+    fn parseNeighborhoodRulesBlock(p: *Parser) ![]const network.NeighborhoodRule {
         try p.expect('{');
         var rules: std.ArrayListUnmanaged(network.NeighborhoodRule) = .empty;
         while (true) {
@@ -394,62 +374,107 @@ const Parser = struct {
         return node;
     }
 
+    fn parseDomainDirective(p: *Parser) !network.DomainSpec {
+        try p.consumeKeyword("@domain");
+        try p.expect('(');
+        p.skipWhitespaceAndComments();
+
+        // Parse domain kind (e.g. "spatial2d")
+        const kind_str = try p.readName();
+        const kind: network.SpatialDomainKind = if (std.mem.eql(u8, kind_str, "spatial2d"))
+            .spatial2d
+        else
+            return error.UnknownDomainKind;
+
+        p.skipWhitespaceAndComments();
+        try p.expect(',');
+        p.skipWhitespaceAndComments();
+
+        // Parse "size:" parameter
+        try p.consumeKeyword("size");
+        try p.expect(':');
+        p.skipWhitespaceAndComments();
+
+        // Parse bounds array [width, height]
+        try p.expect('[');
+        const size_x = try p.readInteger(usize);
+        p.skipWhitespaceAndComments();
+        try p.expect(',');
+        p.skipWhitespaceAndComments();
+        const size_y = try p.readInteger(usize);
+        p.skipWhitespaceAndComments();
+        try p.expect(']');
+
+        p.skipWhitespaceAndComments();
+        try p.expect(')');
+
+        return network.DomainSpec{
+            .kind = kind,
+            .size_x = size_x,
+            .size_y = size_y,
+        };
+    }
     // ----------------------------------------------------------------
     // Generate block
     // ----------------------------------------------------------------
+    // Inside src/dialects/ipl/parser.zig
 
     fn parseGenerateBlock(p: *Parser) !network.GenerateBlock {
         try p.consumeKeyword("generate");
+        p.skipWhitespaceAndComments();
         try p.expect('{');
 
-        const expr_start = p.pos;
-        while (p.pos < p.src.len) {
-            if (p.peekKeyword("inputs")) break;
-            p.pos += 1;
-        }
-        const expr_src = std.mem.trim(u8, p.src[expr_start..p.pos], " \t\n\r");
+        var rules: std.ArrayListUnmanaged(network.NeighborhoodRule) = .empty;
 
-        var ep = Parser.init(p.allocator, expr_src);
-        const expr = try ep.parseGenExpr();
-
-        try p.consumeKeyword("inputs");
-        var inputs: std.ArrayListUnmanaged(network.InputDecl) = .empty;
         while (true) {
             p.skipWhitespaceAndComments();
-            if (p.peek() != '$') break;
-            if (p.peekKeyword("output")) break;
-            _ = p.advance(); // $
-            const name = try p.readName();
-            p.skipWhitespaceAndComments();
-            const range = try p.readRange();
-            try inputs.append(p.allocator, .{ .name = name, .min = range.min, .max = range.max });
-            p.skipWhitespaceAndComments();
-            _ = p.tryConsume(',');
-        }
+            if (p.peek() == '}' or p.pos >= p.src.len) break;
 
-        try p.consumeKeyword("output");
-        const out_range = try p.readRange();
+            // Parse rule pattern: [ Left, Center, Right ]
+            if (p.peek() == '[') {
+                _ = p.advance(); // consume '['
+                var pattern_tokens: std.ArrayListUnmanaged([]const u8) = .empty;
 
-        var constants: std.ArrayListUnmanaged(network.ConstDecl) = .empty;
-        while (true) {
-            p.skipWhitespaceAndComments();
-            if (p.peek() == '}') break;
-            if (!p.peekKeyword("const")) break;
-            try p.consumeKeyword("const");
-            const name = try p.readName();
-            try p.expect('=');
-            const val = try p.readInteger();
-            try constants.append(p.allocator, .{ .name = name, .value = val });
+                while (true) {
+                    p.skipWhitespaceAndComments();
+                    if (p.peek() == ']') break;
+
+                    const token = try p.readName();
+                    try pattern_tokens.append(p.allocator, token);
+
+                    p.skipWhitespaceAndComments();
+                    if (p.peek() == ',') {
+                        _ = p.advance();
+                    }
+                }
+                try p.expect(']');
+                p.skipWhitespaceAndComments();
+
+                // Parse rule output delimiter (':' or '->')
+                if (p.peek() == ':') {
+                    _ = p.advance();
+                } else if (p.peek() == '-' and p.peekNext() == '>') {
+                    p.pos += 2;
+                }
+                p.skipWhitespaceAndComments();
+
+                // Parse new state value
+                const target_val = try p.readName();
+
+                try rules.append(p.allocator, .{
+                    .pattern = try pattern_tokens.toOwnedSlice(p.allocator),
+                    .value = target_val,
+                });
+            } else {
+                // Handle unexpected tokens inside @generate block
+                return error.InvalidGenerateRule;
+            }
         }
 
         try p.expect('}');
 
         return network.GenerateBlock{
-            .expr = expr,
-            .inputs = try inputs.toOwnedSlice(p.allocator),
-            .output_min = out_range.min,
-            .output_max = out_range.max,
-            .constants = try constants.toOwnedSlice(p.allocator),
+            .rules = try rules.toOwnedSlice(p.allocator),
         };
     }
 
@@ -808,11 +833,6 @@ const Parser = struct {
             const c = p.peek() orelse break;
             if (c == ':' or c == ']') break;
 
-            if (c == '@') {
-                try stmts.append(p.allocator, try p.parseDirective());
-                continue;
-            }
-
             if (c == '<') {
                 try stmts.append(p.allocator, try p.parseSourceFill(""));
                 continue;
@@ -926,6 +946,79 @@ const Parser = struct {
         };
     }
 
+    pub fn parseDomainSpec(p: *Parser) !network.DomainSpec {
+        // 1. Consume opening parenthesis: '('
+        try p.expect('(');
+        p.skipWhitespaceAndComments();
+
+        // 2. Read domain kind string: "spatial1d", "spatial2d", "spatial3d"
+        const kind_str = try p.readName();
+        const kind: network.SpatialDomainKind = if (std.mem.eql(u8, kind_str, "spatial1d"))
+            .spatial1d
+        else if (std.mem.eql(u8, kind_str, "spatial2d"))
+            .spatial2d
+        else if (std.mem.eql(u8, kind_str, "spatial3d"))
+            .spatial3d
+        else
+            return error.UnknownDomainKind;
+
+        p.skipWhitespaceAndComments();
+
+        var size_x: usize = 0;
+        var size_y: usize = 0;
+        var size_z: usize = 0;
+
+        // 3. Parse optional parameters (e.g. `, size: [300, 500]`)
+        if (p.peek() == ',') {
+            p.pos += 1; // Consume ','
+            p.skipWhitespaceAndComments();
+
+            const param_name = try p.readName();
+            if (std.mem.eql(u8, param_name, "size")) {
+                p.skipWhitespaceAndComments();
+                try p.expect(':');
+                p.skipWhitespaceAndComments();
+                try p.expect('[');
+                p.skipWhitespaceAndComments();
+
+                // Read X dimension
+                const x_str = try p.readName();
+                size_x = try std.fmt.parseInt(usize, x_str, 10);
+                p.skipWhitespaceAndComments();
+
+                // Read Y dimension if present
+                if (p.peek() == ',') {
+                    p.pos += 1;
+                    p.skipWhitespaceAndComments();
+                    const y_str = try p.readName();
+                    size_y = try std.fmt.parseInt(usize, y_str, 10);
+                    p.skipWhitespaceAndComments();
+                }
+
+                // Read Z dimension if present
+                if (p.peek() == ',') {
+                    p.pos += 1;
+                    p.skipWhitespaceAndComments();
+                    const z_str = try p.readName();
+                    size_z = try std.fmt.parseInt(usize, z_str, 10);
+                    p.skipWhitespaceAndComments();
+                }
+
+                try p.expect(']');
+                p.skipWhitespaceAndComments();
+            }
+        }
+
+        try p.expect(')');
+
+        return network.DomainSpec{
+            .kind = kind,
+            .size_x = size_x,
+            .size_y = size_y,
+            .size_z = size_z,
+        };
+    }
+
     // ----------------------------------------------------------------
     // Definition and entry invocation
     // ----------------------------------------------------------------
@@ -945,6 +1038,32 @@ const Parser = struct {
         else
             &.{};
 
+        p.skipWhitespaceAndComments();
+
+        var domain_spec: ?network.DomainSpec = null;
+        var generate_block: ?network.GenerateBlock = null;
+        // Loop to consume all '@' directives inside the definition header
+        while (p.peek() == '@') {
+            p.pos += 1; // Consume '@'
+            const directive = try p.readName();
+            p.skipWhitespaceAndComments();
+
+            if (std.mem.eql(u8, directive, "domain")) {
+                domain_spec = try p.parseDomainSpec();
+                p.skipWhitespaceAndComments();
+            } else if (std.mem.eql(u8, directive, "generate")) {
+                // parseNeighborhoodRuleBlock expects and consumes '{'
+                const rules = try p.parseNeighborhoodRulesBlock();
+                generate_block = network.GenerateBlock{
+                    .domain = domain_spec,
+                    .rules = rules,
+                };
+                p.skipWhitespaceAndComments();
+            } else {
+                return error.UnknownDirective;
+            }
+        }
+        p.skipWhitespaceAndComments();
         const resolution = try p.parseResolution();
         _ = p.tryConsume(':');
         const section = try p.parseContainedSection();
@@ -954,6 +1073,8 @@ const Parser = struct {
             .name = name,
             .sources = sources,
             .destinations = destinations,
+            .domain_spec = domain_spec,
+            .generateBlock = generate_block,
             .resolution = resolution,
             .constants = section.constants,
             .contained = section.contained,
