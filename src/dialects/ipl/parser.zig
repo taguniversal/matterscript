@@ -548,6 +548,20 @@ const Parser = struct {
             kind = .bundle;
             close_delim = '>';
             p.pos += 1;
+        } else if (p.peek() == '(') {
+            // Bare parenthesized sub-group — parens are used the same
+            // way <> wraps a bundle elsewhere in the grammar (e.g. a
+            // second arg tacked directly onto an arbitration group:
+            // "{{$a $b}}(next<>)").
+            kind = .bundle;
+            close_delim = ')';
+            p.pos += 1;
+        } else if (p.peek() == '[') {
+            // Bundle-brackets (§12.6) — same semantics as <>, matching
+            // the mapping already used by parseArgSequence.
+            kind = .bundle;
+            close_delim = ']';
+            p.pos += 1;
         } else if (p.peek() == '{') {
             p.pos += 1;
             if (p.peek() == '{') {
@@ -608,8 +622,9 @@ const Parser = struct {
         const start_pos = p.pos;
         const ch = p.peek() orelse return error.UnexpectedEof;
 
-        // Check if argument begins directly with a group modifier (<...> or {...})
-        if (ch == '<' or ch == '{') {
+        // Check if argument begins directly with a group modifier
+        // (<...>, {...}, {{...}}, [...], or a bare (...) sub-group)
+        if (ch == '<' or ch == '{' or ch == '(' or ch == '[') {
             const grp = try p.parseGroup();
             return network.Arg{
                 .kind = .group,
@@ -620,6 +635,19 @@ const Parser = struct {
         // Standard place identifier
         const name = try p.readName();
         p.skipWhitespaceAndComments();
+
+        // A name immediately followed by '(' is a call/function
+        // expression (topology helpers like "face(loop(edge($p0,
+        // $p1), ...)))"), not a place with an attached group modifier.
+        // Capture it as raw text, same as $-composition expressions.
+        if (p.peek() == '(') {
+            _ = try p.consumeBalanced('(', ')');
+            return network.Arg{
+                .kind = .expression,
+                .name = name,
+                .text = p.src[start_pos..p.pos],
+            };
+        }
 
         // Check for attached place group modifier like 'a<>'
         if (p.peek()) |next_ch| {
@@ -856,10 +884,62 @@ const Parser = struct {
         return .{ .composed_name = composed, .kind = .{ .explicit = try entries.toOwnedSlice(p.allocator) } };
     }
 
+    /// Parses a shorthand truth-table row like S,U,W[SUM<S> CO<W>]
+    fn parseTruthTableRow(p: *Parser) anyerror!network.Definition {
+        var sources: std.ArrayListUnmanaged(network.Arg) = .empty;
+        while (true) {
+            p.skipWhitespaceAndComments();
+            const name = try p.readName();
+            try sources.append(p.allocator, network.Arg{
+                .name = name,
+                .kind = .place,
+                .group = null,
+            });
+            p.skipWhitespaceAndComments();
+            if (p.peek() == ',') {
+                p.pos += 1;
+            } else {
+                break;
+            }
+        }
+
+        try p.expect('[');
+        p.skipWhitespaceAndComments();
+
+        var destinations: std.ArrayListUnmanaged(network.Arg) = .empty;
+        while (true) {
+            p.skipWhitespaceAndComments();
+            const c = p.peek() orelse return error.UnexpectedEof;
+            if (c == ']') {
+                p.pos += 1; // consume ']'
+                break;
+            }
+
+            // Parse the destination argument (handles name and optional <modifier> automatically)
+            const arg = try p.parseArg();
+            try destinations.append(p.allocator, arg);
+
+            p.skipWhitespaceAndComments();
+            if (p.peek() == ',') {
+                p.pos += 1;
+            }
+        }
+
+        return network.Definition{
+            .name = "",
+            .sources = try sources.toOwnedSlice(p.allocator),
+            .destinations = try destinations.toOwnedSlice(p.allocator),
+            .resolution = &.{},
+            .constants = &.{},
+            .contained = &.{},
+        };
+    }
+
     /// Parses everything after a definition's resolution-terminating ':'
     /// — Fant's "contained definitions" position (§12.3.2). Can hold
     /// $-composed constant tables and/or genuine nested Definitions
     /// (with their own sources/destinations/resolution), in any order.
+    ///
     fn parseContainedSection(p: *Parser) anyerror!struct {
         constants: []const network.TableDef,
         contained: []const network.Definition,
@@ -879,16 +959,25 @@ const Parser = struct {
 
             if (std.ascii.isAlphanumeric(c) or c == '_') {
                 const save = p.pos;
-                _ = p.readCommaSeparatedName() catch {
+                const names = p.readCommaSeparatedName() catch {
                     p.pos = save;
                     break;
                 };
                 p.skipWhitespaceAndComments();
                 if (p.peek() == '[') {
-                    p.pos = save;
-                    const def = try p.parseDefinition();
-                    try nested.append(p.allocator, def);
-                    continue;
+                    if (std.mem.indexOfScalar(u8, names, ',') != null) {
+                        // Shorthand truth-table row (e.g. S,U,W[...])
+                        p.pos = save;
+                        const row = try p.parseTruthTableRow();
+                        try nested.append(p.allocator, row);
+                        continue;
+                    } else {
+                        // Standard nested definition (e.g. AND[...])
+                        p.pos = save;
+                        const def = try p.parseDefinition();
+                        try nested.append(p.allocator, def);
+                        continue;
+                    }
                 }
                 p.pos = save;
                 break;
@@ -1074,6 +1163,26 @@ pub fn parseWithTag(
     };
 }
 
+fn canonicalizeDefNames(allocator: std.mem.Allocator, def: *network.Definition, anon_id: *usize) !void {
+    if (def.name.len == 0) {
+        def.name = try std.fmt.allocPrint(allocator, "__anon_{d}", .{anon_id.*});
+        anon_id.* += 1;
+    }
+
+    // Cast away const qualifier on slice elements to mutate nested definition names in-place
+    const mutable_contained = @constCast(def.contained);
+    for (mutable_contained) |*child| {
+        try canonicalizeDefNames(allocator, child, anon_id);
+    }
+}
+
+pub fn canonicalizeNames(allocator: std.mem.Allocator, definitions: *std.ArrayListUnmanaged(network.Definition)) !void {
+    var anon_id: usize = 0;
+    for (definitions.items) |*def| {
+        try canonicalizeDefNames(allocator, def, &anon_id);
+    }
+}
+
 fn parseInner(p: *Parser, allocator: std.mem.Allocator) !network.Network {
     var definitions: std.ArrayListUnmanaged(network.Definition) = .empty;
     var entries: std.ArrayListUnmanaged(network.EntryInvocation) = .empty;
@@ -1113,11 +1222,16 @@ fn parseInner(p: *Parser, allocator: std.mem.Allocator) !network.Network {
         } else return error.UnexpectedChar;
     }
 
-    return network.Network{
+   // Run recursive canonicalization before freezing into immutable slices
+    try canonicalizeNames(allocator, &definitions);
+
+    const net = network.Network{
         .definitions = try definitions.toOwnedSlice(allocator),
         .entries = try entries.toOwnedSlice(allocator),
         .free_destinations = try free_refs.toOwnedSlice(allocator),
     };
+
+    return net;
 }
 
 /// On parse failure, print the 1-indexed line/column and the offending

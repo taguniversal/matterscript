@@ -82,6 +82,69 @@ The AST understands syntax.
 The association graph understands computation.
 
 ---
+## Compiler AST
+
+The abstract syntax tree (AST) for IPL/NPL dialects translates high-level component declarations, resolution blocks, and transition rules into structured intermediate representations.
+
+Understanding how source text maps to internal Go/Zig structs (`network.Definition`, `Arg`, and `Place`) is essential for building custom evaluators, validators, and code generators.
+
+---
+
+### Shorthand Truth-Table Syntax
+
+To streamline truth-table definitions and value transform rules, the parser supports a shorthand row notation. Instead of requiring a full nested component signature, shorthand rows specify input identifiers separated by commas, followed by bracketed output targets.
+
+#### Example: Binary Equality Evaluation
+
+```matterscript
+binaryequal[(a<> b<>) 
+   <$a$b()>
+    : 0,0[TRUE]
+      0,1[FALSE]
+      1,0[FALSE]
+      1,1[TRUE]  
+]
+
+```
+
+---
+
+### Internal AST Mapping
+
+When the compiler encounters a shorthand truth-table row inside a `contained` section, it synthesizes an anonymous `Definition` object rather than a traditional named component.
+
+The table below illustrates how the components of a shorthand row map to internal `network.Definition` fields:
+
+| Source Text Element | AST Field (`network.Definition`) | Internal Representation |
+| --- | --- | --- |
+| **Row Name** | `.name` | Synthesized as an empty string (`""`) for anonymous rows. |
+| **Input Tuple** (`0, 0`) | `.sources` | A slice of `Arg` structs (`kind = .place`), where each element captures the literal or signal name (`"0"`). |
+| **Bracketed Target** (`[TRUE]`) | `.destinations` | A slice of `Arg` structs representing the evaluation target (`"TRUE"`), supporting optional angle-bracket modifiers (e.g., `<S>`). |
+| **Sub-Components** | `.contained` | Empty (`&.{}`) for leaf truth-table rows, or nested `Definition` slices for hierarchical logic blocks. |
+
+---
+
+### Structural Breakdown
+
+For the `binaryequal` example above, the resulting parent definition holds **four contained shorthand definitions** within its AST:
+
+```text
+Definition {
+    .name = "binaryequal",
+    .sources = [a<>, b<>],
+    .contained = [
+        Definition { .name = "", .sources = [0, 0], .destinations = [TRUE] },
+        Definition { .name = "", .sources = [0, 1], .destinations = [FALSE] },
+        Definition { .name = "", .sources = [1, 0], .destinations = [FALSE] },
+        Definition { .name = "", .sources = [1, 1], .destinations = [TRUE] }
+    ]
+}
+
+```
+
+This unified AST representation allows evaluators to process truth-table rows uniformly alongside standard nested hardware blocks while eliminating boilerplate component naming in dense logic tables.
+
+---
 
 ## A Stable Foundation
 

@@ -49,7 +49,7 @@ test "TAG-187 parse 2D cellular automaton generate block and domain" {
     try testing.expectEqualStrings("4", gen.rules[0].value);
 }
 
-test "TAG-190 parse binaryequal truth table definition" {
+test "TAG-190 Example 12.5 AND Function with value transform rule definitions" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -80,33 +80,60 @@ test "TAG-190 parse binaryequal truth table definition" {
 
     // Resolution contains $a$b()
     try testing.expect(def.resolution.len > 0);
+    // Contained section holds the 4 value transform rule definitions
+    try testing.expectEqual(@as(usize, 4), def.contained.len);
+
+    std.debug.print("Contained definitions (len: {d}):\n", .{def.contained.len});
+    for (def.contained, 0..) |c_def, i| {
+        std.debug.print("  [{d}] name: '{s}' | sources: {d} | destinations: {d}\n", .{
+            i,
+            c_def.name,
+            c_def.sources.len,
+            c_def.destinations.len,
+        });
+        for (c_def.sources) |src2| {
+            std.debug.print("       -> src: {s}\n", .{src2.name});
+        }
+        for (c_def.destinations) |dest| {
+            std.debug.print("       -> dest: {s}\n", .{dest.name});
+        }
+    }
 
     // Contained section holds the 4 value transform rule definitions
     try testing.expectEqual(@as(usize, 4), def.contained.len);
 
-    const expected = [_]struct { name: []const u8, target: []const u8 }{
-        .{ .name = "0,0", .target = "TRUE" },
-        .{ .name = "0,1", .target = "FALSE" },
-        .{ .name = "1,0", .target = "FALSE" },
-        .{ .name = "1,1", .target = "TRUE" },
-    };
+    // Row 0: 0, 0 [TRUE]
+    try testing.expectEqualStrings("__anon_0", def.contained[0].name);
+    try testing.expectEqual(@as(usize, 2), def.contained[0].sources.len);
+    try testing.expectEqualStrings("0", def.contained[0].sources[0].name);
+    try testing.expectEqualStrings("0", def.contained[0].sources[1].name);
+    try testing.expectEqual(@as(usize, 1), def.contained[0].destinations.len);
+    try testing.expectEqualStrings("TRUE", def.contained[0].destinations[0].name);
 
-    for (def.contained, expected) |c, exp| {
-        try testing.expectEqualStrings(exp.name, c.name);
-        try testing.expectEqual(@as(usize, 0), c.sources.len);
-        try testing.expectEqual(@as(usize, 0), c.destinations.len);
-        try testing.expectEqual(@as(usize, 1), c.resolution.len);
+    // Row 1: 0, 1 [FALSE]
+    try testing.expectEqualStrings("__anon_1", def.contained[1].name);
+    try testing.expectEqual(@as(usize, 2), def.contained[1].sources.len);
+    try testing.expectEqualStrings("0", def.contained[1].sources[0].name);
+    try testing.expectEqualStrings("1", def.contained[1].sources[1].name);
+    try testing.expectEqual(@as(usize, 1), def.contained[1].destinations.len);
+    try testing.expectEqualStrings("FALSE", def.contained[1].destinations[0].name);
 
-        switch (c.resolution[0]) {
-            inline else => |payload| {
-                if (@hasField(@TypeOf(payload), "name")) {
-                    try testing.expectEqualStrings(exp.target, payload.name);
-                } else if (@TypeOf(payload) == []const u8) {
-                    try testing.expectEqualStrings(exp.target, payload);
-                }
-            },
-        }
-    }
+    // Row 2: 1, 0 [FALSE]
+    try testing.expectEqualStrings("__anon_2", def.contained[2].name);
+    try testing.expectEqual(@as(usize, 2), def.contained[2].sources.len);
+    try testing.expectEqualStrings("1", def.contained[2].sources[0].name);
+    try testing.expectEqualStrings("0", def.contained[2].sources[1].name);
+    try testing.expectEqual(@as(usize, 1), def.contained[2].destinations.len);
+    try testing.expectEqualStrings("FALSE", def.contained[2].destinations[0].name);
+
+    // Row 3: 1, 1 [TRUE]
+    try testing.expectEqualStrings("__anon_3", def.contained[3].name);
+    try testing.expectEqual(@as(usize, 2), def.contained[3].sources.len);
+    try testing.expectEqualStrings("1", def.contained[3].sources[0].name);
+    try testing.expectEqualStrings("1", def.contained[3].sources[1].name);
+    try testing.expectEqual(@as(usize, 1), def.contained[3].destinations.len);
+    try testing.expectEqualStrings("TRUE", def.contained[3].destinations[0].name);
+    
 }
 
 test "parse TAG-181 controlled fanout expression and definition" {
@@ -127,7 +154,7 @@ test "parse TAG-181 controlled fanout expression and definition" {
     ;
     const net = try parser.parse(allocator, src);
 
-    // 1. Verify Top-Level Definition
+    // 1. Verify vTop-Level Definition
     try testing.expectEqual(@as(usize, 1), net.definitions.len);
     const def = net.definitions[0];
     try testing.expectEqualStrings("fanout", def.name);
@@ -141,11 +168,123 @@ test "parse TAG-181 controlled fanout expression and definition" {
     try testing.expectEqual(@as(usize, 1), def.destinations.len);
     const dest_arg = def.destinations[0];
     try testing.expectEqual(network.ArgKind.group, dest_arg.kind);
-    
+
     const dest_group = dest_arg.group.?;
     try testing.expectEqual(@as(usize, 4), dest_group.places.len);
     try testing.expectEqualStrings("$out1", dest_group.places[0].name);
     try testing.expectEqualStrings("$out2", dest_group.places[1].name);
     try testing.expectEqualStrings("$out3", dest_group.places[2].name);
     try testing.expectEqualStrings("$out4", dest_group.places[3].name);
+}
+
+test "parse TAG-185 preserve case-sensitive IPL identifiers" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\// TAG-185 Preserve case-sensitive IPL identifiers when emitting VHD
+        \\
+        \\test[(a<> A<> b<> B<>)($result)
+        \\    $a$A$b$B()
+        \\:
+        \\    0,0,0,0[0]
+        \\    1,1,1,1[1]
+        \\]
+    ;
+
+    const net = try parser.parse(allocator, src);
+
+    // Verify top-level definition was successfully parsed
+    try testing.expectEqual(@as(usize, 1), net.definitions.len);
+    const def = net.definitions[0];
+
+    // Sources: four individual arguments (a<>, A<>, b<>, B<>)
+    try testing.expectEqual(@as(usize, 4), def.sources.len);
+
+    // Verify strict case preservation and attached group modifiers on sources
+    try testing.expectEqualStrings("a", def.sources[0].name);
+    try testing.expectEqual(network.ArgKind.group, def.sources[0].kind);
+
+    try testing.expectEqualStrings("A", def.sources[1].name);
+    try testing.expectEqual(network.ArgKind.group, def.sources[1].kind);
+
+    try testing.expectEqualStrings("b", def.sources[2].name);
+    try testing.expectEqual(network.ArgKind.group, def.sources[2].kind);
+
+    try testing.expectEqualStrings("B", def.sources[3].name);
+    try testing.expectEqual(network.ArgKind.group, def.sources[3].kind);
+
+    // Verify destinations: ($result)
+    try testing.expectEqual(@as(usize, 1), def.destinations.len);
+    try testing.expectEqualStrings("$result", def.destinations[0].name);
+
+    // Verify body rules / truth-table transitions are present
+    try testing.expect(def.resolution.len > 0);
+}
+
+test "parse TAG-184 Pure Value Place of Resolution - explicit contained rows" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\// Linear: TAG-184 Pure Value Place of Resolution
+        \\
+        \\FULLADD($A,$B,$C)(<> CARRYOUT<>)
+        \\
+        \\FULLADD[(A<> B<> CI<> )($SUM $CO)
+        \\
+        \\$A$B$CI :
+        \\
+        \\S,U,W[SUM<S> CO<W>] 
+        \\S,U,X[SUM<T> CO<W>]
+        \\S,V,W[SUM<T> CO<W>] 
+        \\S,V,X[SUM<S> CO<X>]
+        \\T,U,W[SUM<T> CO<W>] 
+        \\T,U,X[SUM<S> CO<X>]
+        \\T,V,W[SUM<S> CO<X>] 
+        \\T,V,X[SUM<T> CO<X>] ]
+    ;
+
+    const net = try parser.parse(allocator, src);
+    try testing.expectEqual(@as(usize, 1), net.definitions.len);
+    const def = net.definitions[0];
+
+    try testing.expectEqualStrings("FULLADD", def.name);
+    try testing.expectEqual(@as(usize, 3), def.sources.len);
+    try testing.expectEqual(@as(usize, 2), def.destinations.len);
+
+    // Verify all 8 truth-table transition rows are captured in contained
+    try testing.expectEqual(@as(usize, 8), def.contained.len);
+
+    // Validate Row 1: S,U,W[SUM<S> CO<W>]
+    const row0 = def.contained[0];
+    try testing.expectEqual(@as(usize, 3), row0.sources.len);
+    try testing.expectEqualStrings("S", row0.sources[0].name);
+    try testing.expectEqualStrings("U", row0.sources[1].name);
+    try testing.expectEqualStrings("W", row0.sources[2].name);
+    try testing.expectEqual(@as(usize, 2), row0.destinations.len);
+    try testing.expectEqualStrings("SUM", row0.destinations[0].name);
+    try testing.expectEqualStrings("CO", row0.destinations[1].name);
+
+    // Validate Row 2: S,U,X[SUM<T> CO<W>]
+    const row1 = def.contained[1];
+    try testing.expectEqual(@as(usize, 3), row1.sources.len);
+    try testing.expectEqualStrings("S", row1.sources[0].name);
+    try testing.expectEqualStrings("U", row1.sources[1].name);
+    try testing.expectEqualStrings("X", row1.sources[2].name);
+    try testing.expectEqual(@as(usize, 2), row1.destinations.len);
+    try testing.expectEqualStrings("SUM", row1.destinations[0].name);
+    try testing.expectEqualStrings("CO", row1.destinations[1].name);
+
+    // Validate final Row 8: T,V,X[SUM<T> CO<X>]
+    const row7 = def.contained[7];
+    try testing.expectEqual(@as(usize, 3), row7.sources.len);
+    try testing.expectEqualStrings("T", row7.sources[0].name);
+    try testing.expectEqualStrings("V", row7.sources[1].name);
+    try testing.expectEqualStrings("X", row7.sources[2].name);
+    try testing.expectEqual(@as(usize, 2), row7.destinations.len);
+    try testing.expectEqualStrings("SUM", row7.destinations[0].name);
+    try testing.expectEqualStrings("CO", row7.destinations[1].name);
 }

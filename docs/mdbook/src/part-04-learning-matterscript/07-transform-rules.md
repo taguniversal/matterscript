@@ -6,7 +6,7 @@ Eventually, however, every hierarchy reaches a point where there is nothing left
 
 That is where **transform rules** come in.
 
-Transform rules describe behavior directly. Rather than expressing a computation by invoking other definitions, they specify the relationship between an input and its corresponding output.
+Transform rules describe behavior directly. Rather than expressing a computation by invoking other definitions, they specify the relationship between an input (or set of inputs) and its corresponding output.
 
 ```matterscript
 AND[(A<> B<>)($res)

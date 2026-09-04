@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 9  |  🟡 Partial: 11  |  ⬛ Spec only: 3  |  ⬜ Not started: 114  |  Total: 137
+✅ Implemented: 10  |  🟡 Partial: 11  |  ⬛ Spec only: 3  |  ⬜ Not started: 113  |  Total: 137
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
@@ -135,7 +135,7 @@
 - ✅ Implemented [Generate Directive](TAG-187.md)
 - ⬜ Not started [Brace groups in invocation arguments](TAG-188.md)
 - ⬜ Not started [Example 12.14 Arbitrated Places](TAG-189.md)
-- ⬜ Not started [Example 12.5 AND Function with value transform rule definitions](TAG-190.md)
+- ✅ Implemented [Example 12.5 AND Function with value transform rule definitions](TAG-190.md)
 - ⬜ Not started [Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [The Completeness Dialogue](TAG-80.md)

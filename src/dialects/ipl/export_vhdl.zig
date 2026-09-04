@@ -475,16 +475,35 @@ fn writeDefinition(
         for (def.sources) |src| {
             try writeBoundaryValidAssignments(allocator, writer, src);
         }
-
+        
         // completeness: AND of all source valids
         try writer.print("\n  -- complete when all source places are valid\n", .{});
-        if (def.sources.len == 0) {
+
+        var valid_exprs: std.ArrayListUnmanaged([]const u8) = .empty;
+        defer {
+            for (valid_exprs.items) |expr| allocator.free(expr);
+            valid_exprs.deinit(allocator);
+        }
+
+        for (def.sources) |src| {
+            var aw: std.Io.Writer.Allocating = .init(allocator);
+            defer aw.deinit();
+
+            try writeBoundaryValidExpression(allocator, &aw.writer, src);
+
+            const trimmed = std.mem.trim(u8, aw.written(), " \t\r\n");
+            if (trimmed.len > 0) {
+                try valid_exprs.append(allocator, try allocator.dupe(u8, trimmed));
+            }
+        }
+
+        if (valid_exprs.items.len == 0) {
             try writer.print("  complete <= '1';\n", .{});
         } else {
             try writer.print("  complete <= ", .{});
-            for (def.sources, 0..) |src, i| {
+            for (valid_exprs.items, 0..) |expr, i| {
                 if (i > 0) try writer.print(" and ", .{});
-                try writeBoundaryValidExpression(allocator, writer, src);
+                try writer.print("{s}", .{expr});
             }
             try writer.print(";\n", .{});
         }
@@ -584,7 +603,8 @@ fn writeDefinition(
         try writer.print("\nend rtl;\n", .{});
 
         for (def.contained) |contained| {
-            if (std.ascii.isDigit(contained.name[0])) continue;
+            // Guard empty string before checking if first character is a digit
+            if (contained.name.len == 0 or std.ascii.isDigit(contained.name[0])) continue;
             try writer.print("\n", .{});
             try writeDefinition(allocator, writer, contained, def_id);
         }

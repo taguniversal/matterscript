@@ -1,6 +1,6 @@
 {
   "TAG-190": {
-    "implementation_status": null,
+    "implementation_status": "Implemented",
     "simulation_requested": false,
     "workflow_state": "In Progress"
   },

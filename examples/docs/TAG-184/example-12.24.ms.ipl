@@ -4,7 +4,7 @@ FULLADD($A,$B,$C)(<> CARRYOUT<>)
 
 FULLADD[(A<> B<> CI<> )($SUM $CO)
 
-$A$B$CI :
+$A$B$CI() :
 
 S,U,W[SUM<S> CO<W>] 
 S,U,X[SUM<T> CO<W>]
