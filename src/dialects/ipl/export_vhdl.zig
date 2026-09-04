@@ -19,6 +19,7 @@ const DATA_WIDTH = 7;
 
 fn argToText(arg: network.Arg) []const u8 {
     return switch (arg.kind) {
+        .place => if (arg.name.len > 0) arg.name else arg.text,
         .literal, .expression => arg.text,
         .group => if (arg.group) |g| switch (g.kind) {
             .bundle => "[group]",
@@ -184,8 +185,12 @@ fn writeOneNetworkEntity(
     try used_names.append(allocator, try allocator.dupe(u8, entity_id));
 
     var output_names: std.ArrayListUnmanaged([]const u8) = .empty;
-    for (entry.outputs) |output| {
-        try output_names.append(allocator, if (output.name.len == 0) "result" else output.name);
+    for (entry.destinations) |output| {
+        const raw_name = switch (output.kind) {
+            .place => output.name,
+            else => output.text,
+        };
+        try output_names.append(allocator, if (raw_name.len == 0) "result" else raw_name);
     }
 
     try writer.print(
@@ -215,12 +220,12 @@ fn writeOneNetworkEntity(
     }
 
     try writer.print("architecture rtl of {s} is\n", .{entity_id});
-    for (entry.args, 0..) |_, i| {
+    for (entry.sources, 0..) |_, i| {
         try writer.print("  signal arg_{d} : ncl_signal;\n", .{i});
     }
     try writer.print("begin\n\n", .{});
 
-    for (entry.args, 0..) |arg, i| {
+    for (entry.sources, 0..) |arg, i| {
         const text = argToText(arg);
         const trimmed = std.mem.trim(u8, text, " \t\r\n");
         const value = std.fmt.parseInt(u64, trimmed, 10) catch {
@@ -252,53 +257,51 @@ fn writeOneNetworkEntity(
 fn writeNetworkSourceMapping(
     allocator: std.mem.Allocator,
     writer: anytype,
-    place: network.Place,
+    arg: network.Arg,
     arg_index: *usize,
     entry: network.EntryInvocation,
 ) !void {
-    if (place.group) |group| {
-        if (group.kind == .mutex) {
-            for (group.places) |member| {
-                try writeNetworkSourceMapping(allocator, writer, member, arg_index, entry);
+    switch (arg.kind) {
+        .group => if (arg.group) |grp| {
+            for (grp.places) |child| {
+                try writeNetworkSourceMapping(allocator, writer, child, arg_index, entry);
             }
-            return;
-        }
+        },
+        .place => {
+            const port_id = try sanitizeName(allocator, arg.name);
+            defer allocator.free(port_id);
+            try writer.print(",\n    {s} => arg_{d}", .{ port_id, arg_index.* });
+            arg_index.* += 1;
+        },
+        else => {},
     }
-    const port_id = try placeName(allocator, place);
-    defer allocator.free(port_id);
-    if (arg_index.* < entry.args.len) {
-        try writer.print(",\n    {s} => arg_{d}", .{ port_id, arg_index.* });
-    } else {
-        try writer.print(",\n    {s} => null_value", .{port_id});
-    }
-    arg_index.* += 1;
 }
 
 fn writeNetworkDestMapping(
     allocator: std.mem.Allocator,
     writer: anytype,
-    place: network.Place,
+    arg: network.Arg,
     output_index: *usize,
     output_names: []const []const u8,
 ) !void {
-    if (place.group) |group| {
-        if (group.kind == .mutex) {
-            for (group.places) |member| {
-                try writeNetworkDestMapping(allocator, writer, member, output_index, output_names);
+    switch (arg.kind) {
+        .group => if (arg.group) |grp| {
+            for (grp.places) |child| {
+                try writeNetworkDestMapping(allocator, writer, child, output_index, output_names);
             }
-            return;
-        }
+        },
+        .place => {
+            const port_id = try sanitizeName(allocator, arg.name);
+            defer allocator.free(port_id);
+            const output_name = if (output_index.* < output_names.len) output_names[output_index.*] else "result";
+            const output_id = try sanitizeName(allocator, output_name);
+            defer allocator.free(output_id);
+
+            try writer.print(",\n    {s} => {s}", .{ port_id, output_id });
+            output_index.* += 1;
+        },
+        else => {},
     }
-    const port_id = try placeName(allocator, place);
-    defer allocator.free(port_id);
-    if (output_index.* < output_names.len) {
-        const out_id = try sanitizeName(allocator, output_names[output_index.*]);
-        defer allocator.free(out_id);
-        try writer.print(",\n    {s} => {s}", .{ port_id, out_id });
-    } else {
-        try writer.print(",\n    {s} => open", .{port_id});
-    }
-    output_index.* += 1;
 }
 
 fn writeDefinition(
@@ -339,254 +342,252 @@ fn writeDefinition(
             }
         }
         if (names.items.len > 0) {
-            var dests: std.ArrayListUnmanaged(network.Place) = .empty;
-            for (names.items) |n| try dests.append(allocator, .{ .name = n, .kind = .destination });
+            var dests: std.ArrayListUnmanaged(network.Arg) = .empty;
+            for (names.items) |n| try dests.append(allocator, .{ .kind = .place, .name = n });
             def.destinations = try dests.toOwnedSlice(allocator);
             def.resolution = try normalized.toOwnedSlice(allocator);
         }
-    }
+        // IPL names are case-sensitive, whereas VHDL identifiers are not.  Give
+        // every exact IPL spelling a stable, lowercase VHDL spelling before any
+        // declaration or reference is emitted.  This is deliberately done to the
+        // whole definition, rather than only to ports: `a` and `A` must remain
+        // distinct in assignments, expression references, and intermediate
+        // signals as well as in the entity interface.
+        def = try normalizeDefinitionIdentifiers(allocator, def);
 
-    // IPL names are case-sensitive, whereas VHDL identifiers are not.  Give
-    // every exact IPL spelling a stable, lowercase VHDL spelling before any
-    // declaration or reference is emitted.  This is deliberately done to the
-    // whole definition, rather than only to ports: `a` and `A` must remain
-    // distinct in assignments, expression references, and intermediate
-    // signals as well as in the entity interface.
-    def = try normalizeDefinitionIdentifiers(allocator, def);
+        const def_id = try scopedDefinitionName(allocator, scope, def.name);
+        defer allocator.free(def_id);
+        try writer.print(
+            \\-- generated by MatterScript IPL
+            \\-- definition: {s}
+            \\library ieee;
+            \\use ieee.std_logic_1164.all;
+            \\use ieee.numeric_std.all;
+            \\use work.matterscript_ncl.all;
+            \\
+            \\
+        , .{def.name});
 
-    const def_id = try scopedDefinitionName(allocator, scope, def.name);
-    defer allocator.free(def_id);
-    try writer.print(
-        \\-- generated by MatterScript IPL
-        \\-- definition: {s}
-        \\library ieee;
-        \\use ieee.std_logic_1164.all;
-        \\use ieee.numeric_std.all;
-        \\use work.matterscript_ncl.all;
-        \\
-        \\
-    , .{def.name});
+        // entity
+        try writer.print("entity {s} is\n  port(\n", .{def_id});
+        try writer.print("    clk : in  std_logic;\n", .{});
+        const boundary_count = boundaryCount(def.sources) + boundaryCount(def.destinations);
+        try writer.print("    rst : in  std_logic{s}\n", .{if (boundary_count == 0) "" else ";"});
 
-    // entity
-    try writer.print("entity {s} is\n  port(\n", .{def_id});
-    try writer.print("    clk : in  std_logic;\n", .{});
-    const boundary_count = boundaryCount(def.sources) + boundaryCount(def.destinations);
-    try writer.print("    rst : in  std_logic{s}\n", .{if (boundary_count == 0) "" else ";"});
-
-    // sources → inputs (tokens flow IN to the definition)
-    var port_index: usize = 0;
-    var port_names: std.ArrayListUnmanaged([]const u8) = .empty;
-    for (def.sources) |src| {
-        try writeBoundaryPorts(allocator, writer, src, "in", &port_index, boundary_count, &port_names);
-    }
-
-    // destinations → outputs (tokens flow OUT of the definition)
-    for (def.destinations) |dest| {
-        try writeBoundaryPorts(allocator, writer, dest, "out", &port_index, boundary_count, &port_names);
-    }
-    try writer.print("  );\nend {s};\n\n", .{def_id});
-    // architecture
-    try writer.print("architecture rtl of {s} is\n", .{def_id});
-
-    // valid signals — one per source (input)
-    for (def.sources) |src| {
-        try writeBoundaryValidDeclarations(allocator, writer, src);
-    }
-    try writer.print("  signal complete   : std_logic;\n", .{});
-
-    // per-table signals
-    for (def.constants) |tbl| {
-        const tbl_id = try sanitizeName(allocator, tbl.composed_name);
-        defer allocator.free(tbl_id);
-        const key_bits = countSources(tbl.composed_name) * DATA_WIDTH;
-        const val_bits = try tableValueWidth(allocator, tbl);
-        try writer.print("  signal {s}_key   : std_logic_vector({d} downto 0);\n", .{ tbl_id, key_bits - 1 });
-        try writer.print("  signal {s}_data  : std_logic_vector({d} downto 0);\n", .{ tbl_id, val_bits - 1 });
-        try writer.print("  signal {s}_valid : std_logic;\n", .{tbl_id});
-    }
-
-    var intermediate_names: std.ArrayListUnmanaged([]const u8) = .empty;
-    for (def.resolution) |stmt| {
-        switch (stmt) {
-            .fill => {}, // handled later, after 'begin' — no declaration needed here
-            .invoke => |inv| {
-                for (inv.outputs) |output| {
-                    try writeIntermediatePlaceSignal(allocator, writer, def, &intermediate_names, output);
-                }
-                for (inv.args) |arg| {
-                    try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, argToText(arg));
-                }
-            },
-            .pure_value => |value| try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, value),
-            .directive => |d| {
-                try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
-            },
-        }
-    }
-
-    var component_names: std.ArrayListUnmanaged([]const u8) = .empty;
-    for (def.resolution) |stmt| {
-        if (stmt != .invoke) continue;
-        const inv = stmt.invoke;
-        var already_declared = false;
-        for (component_names.items) |name| {
-            if (std.ascii.eqlIgnoreCase(name, inv.name)) {
-                already_declared = true;
-                break;
-            }
-        }
-        if (already_declared) continue;
-        const name = try allocator.dupe(u8, inv.name);
-        try component_names.append(allocator, name);
-        const component_id = try invocationDefinitionName(allocator, def, scope, inv.name);
-        defer allocator.free(component_id);
-        try writeComponentDeclaration(writer, inv, component_id);
-    }
-
-    for (def.resolution, 0..) |stmt, invocation_index| {
-        if (stmt != .invoke) continue;
-        const inv = stmt.invoke;
-        for (inv.args, 0..) |_, argument_index| {
-            try writer.print("  signal invocation_{d}_arg_{d} : ncl_signal;\n", .{ invocation_index, argument_index });
-        }
-        for (inv.outputs, 0..) |output, output_index| {
-            if (output.group == null and output.name.len != 0) continue;
-            try writer.print("  signal invocation_{d}_output_{d} : ncl_signal;\n", .{ invocation_index, output_index });
-        }
-    }
-
-    try writer.print("begin\n\n", .{});
-
-    for (def.resolution, 0..) |stmt, invocation_index| {
-        if (stmt != .invoke) continue;
-        const inv = stmt.invoke;
-        for (inv.args, 0..) |arg, argument_index| {
-            try writeInvocationArgument(allocator, writer, invocation_index, argument_index, arg);
-        }
-        for (inv.outputs, 0..) |output, output_index| {
-            if (output.group == null and output.name.len != 0) continue;
-            try writer.print("  invocation_{d}_output_{d} <= null_value;\n", .{ invocation_index, output_index });
-        }
-        try writeInvocationInstance(allocator, writer, def, scope, inv, invocation_index);
-    }
-
-    // valid extraction from source places (inputs)
-    try writer.print("  -- extract valid bits from source places (inputs)\n", .{});
-    for (def.sources) |src| {
-        try writeBoundaryValidAssignments(allocator, writer, src);
-    }
-
-    // completeness: AND of all source valids
-    try writer.print("\n  -- complete when all source places are valid\n", .{});
-    if (def.sources.len == 0) {
-        try writer.print("  complete <= '1';\n", .{});
-    } else {
-        try writer.print("  complete <= ", .{});
-        for (def.sources, 0..) |src, i| {
-            if (i > 0) try writer.print(" and ", .{});
-            try writeBoundaryValidExpression(allocator, writer, src);
-        }
-        try writer.print(";\n", .{});
-    }
-
-    // key composition
-    for (def.constants) |tbl| {
-        const tbl_id = try sanitizeName(allocator, tbl.composed_name);
-        defer allocator.free(tbl_id);
-        try writer.print("\n  -- key composition for {s}\n", .{tbl.composed_name});
-        try writer.print("  {s}_key <= ", .{tbl_id});
-        var i: usize = 0;
-        var first = true;
-        const cn = tbl.composed_name;
-        while (i < cn.len) {
-            if (cn[i] == '$') {
-                i += 1;
-                const start = i;
-                while (i < cn.len and cn[i] != '$' and cn[i] != '(') i += 1;
-                const sname = cn[start..i];
-                if (!first) try writer.print(" & ", .{});
-                try writer.print("{s}(7 downto 1)", .{sname});
-                first = false;
-            } else i += 1;
-        }
-        try writer.print(";\n", .{});
-    }
-
-    // ROM lookups
-    for (def.constants) |tbl| {
-        const tbl_id = try sanitizeName(allocator, tbl.composed_name);
-        defer allocator.free(tbl_id);
-        const val_bits = try tableValueWidth(allocator, tbl);
-
-        try writer.print("\n  -- ROM lookup for {s}\n", .{tbl.composed_name});
-        try writer.print("  process({s}_key, complete) begin\n", .{tbl_id});
-        try writer.print("    {s}_data  <= (others => '0');\n", .{tbl_id});
-        try writer.print("    {s}_valid <= '0';\n", .{tbl_id});
-        try writer.print("    if complete = '1' then\n", .{});
-        try writer.print("      case {s}_key is\n", .{tbl_id});
-
-        switch (tbl.kind) {
-            .explicit => |entries| {
-                var key_buf: [128]u8 = undefined;
-                var val_buf: [64]u8 = undefined;
-                for (entries) |entry| {
-                    var key_pos: usize = 0;
-                    for (entry.key) |ch| {
-                        const dv: u64 = ch - '0';
-                        const seg = binStr(key_buf[key_pos..], dv, DATA_WIDTH);
-                        key_pos += seg.len;
-                    }
-                    const key_str = key_buf[0..key_pos];
-                    const val_int = std.fmt.parseInt(u64, entry.value, 10) catch 0;
-                    const val_str = binStr(&val_buf, val_int, val_bits);
-                    try writer.print("        when \"{s}\" => {s}_data <= \"{s}\"; {s}_valid <= '1';\n", .{ key_str, tbl_id, val_str, tbl_id });
-                }
-            },
-            .generate =>  {
-               // TODO
-            },
+        // sources → inputs (tokens flow IN to the definition)
+        var port_index: usize = 0;
+        var port_names: std.ArrayListUnmanaged([]const u8) = .empty;
+        for (def.sources) |src| {
+            try writeBoundaryPorts(allocator, writer, src, "in", &port_index, boundary_count, &port_names);
         }
 
-        try writer.print("        when others => null;\n", .{});
-        try writer.print("      end case;\n    end if;\n  end process;\n", .{});
-    }
+        // destinations → outputs (tokens flow OUT of the definition)
+        for (def.destinations) |dest| {
+            try writeBoundaryPorts(allocator, writer, dest, "out", &port_index, boundary_count, &port_names);
+        }
+        try writer.print("  );\nend {s};\n\n", .{def_id});
+        // architecture
+        try writer.print("architecture rtl of {s} is\n", .{def_id});
 
-    // destination fills (outputs)
-    try writer.print("\n  -- destination fills (outputs)\n", .{});
-    if (!try writeContainedLookupTable(allocator, writer, def)) {
+        // valid signals — one per source (input)
+        for (def.sources) |src| {
+            try writeBoundaryValidDeclarations(allocator, writer, src);
+        }
+        try writer.print("  signal complete   : std_logic;\n", .{});
+
+        // per-table signals
+        for (def.constants) |tbl| {
+            const tbl_id = try sanitizeName(allocator, tbl.composed_name);
+            defer allocator.free(tbl_id);
+            const key_bits = countSources(tbl.composed_name) * DATA_WIDTH;
+            const val_bits = try tableValueWidth(allocator, tbl);
+            try writer.print("  signal {s}_key   : std_logic_vector({d} downto 0);\n", .{ tbl_id, key_bits - 1 });
+            try writer.print("  signal {s}_data  : std_logic_vector({d} downto 0);\n", .{ tbl_id, val_bits - 1 });
+            try writer.print("  signal {s}_valid : std_logic;\n", .{tbl_id});
+        }
+
+        var intermediate_names: std.ArrayListUnmanaged([]const u8) = .empty;
         for (def.resolution) |stmt| {
             switch (stmt) {
-                .fill => |f| {
-                    const literal = std.fmt.parseInt(u64, std.mem.trim(u8, f.expr, " \t\r\n"), 10) catch null;
-                    if (literal) |value| {
-                        const dest_id = try sanitizeName(allocator, f.dest_name);
-                        defer allocator.free(dest_id);
-                        try writer.print("  {s} <= data_value({d});\n", .{ dest_id, value });
-                    } else if (!try writeExpressionFill(allocator, writer, f)) {
-                        const dest_id = try sanitizeName(allocator, f.dest_name);
-                        defer allocator.free(dest_id);
-                        try writer.print("  {s} <= null_value;\n", .{dest_id});
+                .fill => {}, // handled later, after 'begin' — no declaration needed here
+                .invoke => |inv| {
+                    for (inv.destinations) |dest| {
+                        try writeIntermediatePlaceSignal(allocator, writer, def, &intermediate_names, dest);
+                    }
+                    for (inv.sources) |src| {
+                        try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, argToText(src));
                     }
                 },
-                .invoke => |inv| {
-                    _ = inv;
-                },
-                .pure_value => |v| {
-                    try writer.print("  -- TODO: pure value expression {s} (not a recognized lookup-table shape)\n", .{v});
-                },
+                .pure_value => |value| try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, value),
                 .directive => |d| {
                     try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
                 },
             }
         }
-    }
 
-    try writer.print("\nend rtl;\n", .{});
+        var component_names: std.ArrayListUnmanaged([]const u8) = .empty;
+        for (def.resolution) |stmt| {
+            if (stmt != .invoke) continue;
+            const inv = stmt.invoke;
+            var already_declared = false;
+            for (component_names.items) |name| {
+                if (std.ascii.eqlIgnoreCase(name, inv.name)) {
+                    already_declared = true;
+                    break;
+                }
+            }
+            if (already_declared) continue;
+            const name = try allocator.dupe(u8, inv.name);
+            try component_names.append(allocator, name);
+            const component_id = try invocationDefinitionName(allocator, def, scope, inv.name);
+            defer allocator.free(component_id);
+            try writeComponentDeclaration(writer, inv, component_id);
+        }
 
-    for (def.contained) |contained| {
-        if (std.ascii.isDigit(contained.name[0])) continue;
-        try writer.print("\n", .{});
-        try writeDefinition(allocator, writer, contained, def_id);
+        for (def.resolution, 0..) |stmt, invocation_index| {
+            if (stmt != .invoke) continue;
+            const inv = stmt.invoke;
+            for (inv.sources, 0..) |_, argument_index| {
+                try writer.print("  signal invocation_{d}_arg_{d} : ncl_signal;\n", .{ invocation_index, argument_index });
+            }
+            for (inv.destinations, 0..) |output, output_index| {
+                if (output.group == null and output.name.len != 0) continue;
+                try writer.print("  signal invocation_{d}_output_{d} : ncl_signal;\n", .{ invocation_index, output_index });
+            }
+        }
+        try writer.print("begin\n\n", .{});
+
+        for (def.resolution, 0..) |stmt, invocation_index| {
+            if (stmt != .invoke) continue;
+            const inv = stmt.invoke;
+            for (inv.sources, 0..) |arg, argument_index| {
+                try writeInvocationArgument(allocator, writer, invocation_index, argument_index, arg);
+            }
+            for (inv.destinations, 0..) |output, output_index| {
+                if (output.group == null and output.name.len != 0) continue;
+                try writer.print("  invocation_{d}_output_{d} <= null_value;\n", .{ invocation_index, output_index });
+            }
+            try writeInvocationInstance(allocator, writer, def, scope, inv, invocation_index);
+        }
+
+        // valid extraction from source places (inputs)
+        try writer.print("  -- extract valid bits from source places (inputs)\n", .{});
+        for (def.sources) |src| {
+            try writeBoundaryValidAssignments(allocator, writer, src);
+        }
+
+        // completeness: AND of all source valids
+        try writer.print("\n  -- complete when all source places are valid\n", .{});
+        if (def.sources.len == 0) {
+            try writer.print("  complete <= '1';\n", .{});
+        } else {
+            try writer.print("  complete <= ", .{});
+            for (def.sources, 0..) |src, i| {
+                if (i > 0) try writer.print(" and ", .{});
+                try writeBoundaryValidExpression(allocator, writer, src);
+            }
+            try writer.print(";\n", .{});
+        }
+
+        // key composition
+        for (def.constants) |tbl| {
+            const tbl_id = try sanitizeName(allocator, tbl.composed_name);
+            defer allocator.free(tbl_id);
+            try writer.print("\n  -- key composition for {s}\n", .{tbl.composed_name});
+            try writer.print("  {s}_key <= ", .{tbl_id});
+            var i: usize = 0;
+            var first = true;
+            const cn = tbl.composed_name;
+            while (i < cn.len) {
+                if (cn[i] == '$') {
+                    i += 1;
+                    const start = i;
+                    while (i < cn.len and cn[i] != '$' and cn[i] != '(') i += 1;
+                    const sname = cn[start..i];
+                    if (!first) try writer.print(" & ", .{});
+                    try writer.print("{s}(7 downto 1)", .{sname});
+                    first = false;
+                } else i += 1;
+            }
+            try writer.print(";\n", .{});
+        }
+
+        // ROM lookups
+        for (def.constants) |tbl| {
+            const tbl_id = try sanitizeName(allocator, tbl.composed_name);
+            defer allocator.free(tbl_id);
+            const val_bits = try tableValueWidth(allocator, tbl);
+
+            try writer.print("\n  -- ROM lookup for {s}\n", .{tbl.composed_name});
+            try writer.print("  process({s}_key, complete) begin\n", .{tbl_id});
+            try writer.print("    {s}_data  <= (others => '0');\n", .{tbl_id});
+            try writer.print("    {s}_valid <= '0';\n", .{tbl_id});
+            try writer.print("    if complete = '1' then\n", .{});
+            try writer.print("      case {s}_key is\n", .{tbl_id});
+
+            switch (tbl.kind) {
+                .explicit => |entries| {
+                    var key_buf: [128]u8 = undefined;
+                    var val_buf: [64]u8 = undefined;
+                    for (entries) |entry| {
+                        var key_pos: usize = 0;
+                        for (entry.key) |ch| {
+                            const dv: u64 = ch - '0';
+                            const seg = binStr(key_buf[key_pos..], dv, DATA_WIDTH);
+                            key_pos += seg.len;
+                        }
+                        const key_str = key_buf[0..key_pos];
+                        const val_int = std.fmt.parseInt(u64, entry.value, 10) catch 0;
+                        const val_str = binStr(&val_buf, val_int, val_bits);
+                        try writer.print("        when \"{s}\" => {s}_data <= \"{s}\"; {s}_valid <= '1';\n", .{ key_str, tbl_id, val_str, tbl_id });
+                    }
+                },
+                .generate => {
+                    // TODO
+                },
+            }
+
+            try writer.print("        when others => null;\n", .{});
+            try writer.print("      end case;\n    end if;\n  end process;\n", .{});
+        }
+
+        // destination fills (outputs)
+        try writer.print("\n  -- destination fills (outputs)\n", .{});
+        if (!try writeContainedLookupTable(allocator, writer, def)) {
+            for (def.resolution) |stmt| {
+                switch (stmt) {
+                    .fill => |f| {
+                        const literal = std.fmt.parseInt(u64, std.mem.trim(u8, f.expr, " \t\r\n"), 10) catch null;
+                        if (literal) |value| {
+                            const dest_id = try sanitizeName(allocator, f.dest_name);
+                            defer allocator.free(dest_id);
+                            try writer.print("  {s} <= data_value({d});\n", .{ dest_id, value });
+                        } else if (!try writeExpressionFill(allocator, writer, f)) {
+                            const dest_id = try sanitizeName(allocator, f.dest_name);
+                            defer allocator.free(dest_id);
+                            try writer.print("  {s} <= null_value;\n", .{dest_id});
+                        }
+                    },
+                    .invoke => |inv| {
+                        _ = inv;
+                    },
+                    .pure_value => |v| {
+                        try writer.print("  -- TODO: pure value expression {s} (not a recognized lookup-table shape)\n", .{v});
+                    },
+                    .directive => |d| {
+                        try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
+                    },
+                }
+            }
+        }
+
+        try writer.print("\nend rtl;\n", .{});
+
+        for (def.contained) |contained| {
+            if (std.ascii.isDigit(contained.name[0])) continue;
+            try writer.print("\n", .{});
+            try writeDefinition(allocator, writer, contained, def_id);
+        }
     }
 }
 
@@ -671,10 +672,10 @@ fn writeInvocationInstance(
     const component_id = try invocationDefinitionName(allocator, def, scope, inv.name);
     defer allocator.free(component_id);
     try writer.print("  invocation_{d} : {s} port map (clk => clk, rst => rst", .{ invocation_index, component_id });
-    for (inv.args, 0..) |_, argument_index| {
+    for (inv.sources, 0..) |_, argument_index| {
         try writer.print(", arg_{d} => invocation_{d}_arg_{d}", .{ argument_index, invocation_index, argument_index });
     }
-    for (inv.outputs, 0..) |output, output_index| {
+    for (inv.destinations, 0..) |output, output_index| {
         if (output.group != null or output.name.len == 0) {
             try writer.print(", output_{d} => invocation_{d}_output_{d}", .{ output_index, invocation_index, output_index });
         } else {
@@ -718,22 +719,29 @@ fn writeComponentDeclaration(
 ) !void {
     try writer.print("  component {s}\n    port(\n", .{component_id});
     try writer.print("      clk : in std_logic;\n      rst : in std_logic", .{});
-    const port_count = inv.args.len + inv.outputs.len;
+    const port_count = inv.sources.len + inv.destinations.len;
     if (port_count > 0) try writer.print(";", .{});
     try writer.print("\n", .{});
 
-    for (inv.args, 0..) |_, i| {
+    for (inv.sources, 0..) |_, i| {
         try writer.print("      arg_{d} : in ncl_signal{s}\n", .{ i, if (i + 1 == port_count) "" else ";" });
     }
-    for (inv.outputs, 0..) |_, i| {
-        try writer.print("      output_{d} : out ncl_signal{s}\n", .{ i, if (i + inv.args.len + 1 == port_count) "" else ";" });
+    for (inv.destinations, 0..) |_, i| {
+        try writer.print("      output_{d} : out ncl_signal{s}\n", .{ i, if (i + inv.sources.len + 1 == port_count) "" else ";" });
     }
     try writer.print("    );\n  end component;\n\n", .{});
 }
 
-fn boundaryCount(places: []const network.Place) usize {
+fn boundaryCount(args: []const network.Arg) usize {
     var count: usize = 0;
-    for (places) |place| count += placeBoundaryCount(place);
+    for (args) |arg| {
+        switch (arg.kind) {
+            .group => if (arg.group) |grp| {
+                count += boundaryCount(grp.places);
+            },
+            else => count += 1,
+        }
+    }
     return count;
 }
 
@@ -746,29 +754,33 @@ fn placeBoundaryCount(place: network.Place) usize {
 fn writeBoundaryPorts(
     allocator: std.mem.Allocator,
     writer: anytype,
-    place: network.Place,
-    direction: []const u8,
-    index: *usize,
-    total: usize,
-    names: *std.ArrayListUnmanaged([]const u8),
+    arg: network.Arg,
+    dir: []const u8,
+    port_index: *usize,
+    boundary_count: usize,
+    port_names: *std.ArrayListUnmanaged([]const u8),
 ) !void {
-    if (place.group) |group| {
-        if (group.kind == .mutex) {
-            for (group.places) |member| {
-                try writeBoundaryPorts(allocator, writer, member, direction, index, total, names);
+    switch (arg.kind) {
+        .group => if (arg.group) |grp| {
+            for (grp.places) |child| {
+                try writeBoundaryPorts(allocator, writer, child, dir, port_index, boundary_count, port_names);
             }
-            return;
-        }
+        },
+        .place => {
+            const port_id = try sanitizeName(allocator, arg.name);
+            defer allocator.free(port_id);
+            try port_names.append(allocator, try allocator.dupe(u8, port_id));
+
+            port_index.* += 1;
+            const is_last = (port_index.* == boundary_count);
+            try writer.print("    {s} : {s} std_logic_vector(DATA_WIDTH - 1 downto 0){s}\n", .{
+                port_id,
+                dir,
+                if (is_last) "" else ";",
+            });
+        },
+        else => {},
     }
-    const base_id = try placeName(allocator, place);
-    defer allocator.free(base_id);
-    const id = try uniqueVhdlName(allocator, names.items, base_id);
-    defer allocator.free(id);
-    try names.append(allocator, try allocator.dupe(u8, id));
-    index.* += 1;
-    try writer.print("    {s} : {s} std_logic_vector({d} downto 0){s}\n", .{
-        id, direction, SIGNAL_WIDTH - 1, if (index.* == total) "" else ";",
-    });
 }
 
 fn uniqueVhdlName(
@@ -797,66 +809,121 @@ fn uniqueVhdlName(
 fn writeBoundaryValidDeclarations(
     allocator: std.mem.Allocator,
     writer: anytype,
-    place: network.Place,
+    arg: network.Arg,
 ) !void {
-    if (place.group) |group| {
-        if (group.kind == .mutex) {
-            for (group.places) |member| try writeBoundaryValidDeclarations(allocator, writer, member);
-            return;
-        }
+    switch (arg.kind) {
+        .group => if (arg.group) |grp| {
+            for (grp.places) |child| {
+                try writeBoundaryValidDeclarations(allocator, writer, child);
+            }
+        },
+        .place => {
+            const port_id = try sanitizeName(allocator, arg.name);
+            defer allocator.free(port_id);
+            try writer.print("  signal {s}_valid : std_logic;\n", .{port_id});
+        },
+        else => {},
     }
-    const id = try placeName(allocator, place);
-    defer allocator.free(id);
-    try writer.print("  signal {s}_valid : std_logic;\n", .{id});
 }
 
 fn writeBoundaryValidAssignments(
     allocator: std.mem.Allocator,
     writer: anytype,
-    place: network.Place,
+    arg: network.Arg,
 ) !void {
-    if (place.group) |group| {
-        if (group.kind == .mutex) {
-            for (group.places) |member| try writeBoundaryValidAssignments(allocator, writer, member);
-            return;
-        }
+    switch (arg.kind) {
+        .group => if (arg.group) |grp| {
+            for (grp.places) |child| {
+                try writeBoundaryValidAssignments(allocator, writer, child);
+            }
+        },
+        .place => {
+            const port_id = try sanitizeName(allocator, arg.name);
+            defer allocator.free(port_id);
+            try writer.print("  {s}_valid <= valid_of({s});\n", .{ port_id, port_id });
+        },
+        else => {},
     }
-    const id = try placeName(allocator, place);
-    defer allocator.free(id);
-    try writer.print("  {s}_valid <= {s}(0);\n", .{ id, id });
 }
 
 fn writeBoundaryValidExpression(
     allocator: std.mem.Allocator,
     writer: anytype,
-    place: network.Place,
+    arg: network.Arg,
 ) !void {
-    if (place.group) |group| {
-        if (group.kind == .mutex) {
-            try writer.print("(", .{});
-            for (group.places, 0..) |member, i| {
-                if (i > 0) try writer.print(" or ", .{});
-                try writeBoundaryValidExpression(allocator, writer, member);
+    switch (arg.kind) {
+        .group => if (arg.group) |grp| {
+            for (grp.places, 0..) |child, i| {
+                if (i > 0) try writer.print(" and ", .{});
+                try writeBoundaryValidExpression(allocator, writer, child);
             }
-            try writer.print(")", .{});
-            return;
-        }
+        },
+        .place => {
+            const port_id = try sanitizeName(allocator, arg.name);
+            defer allocator.free(port_id);
+            try writer.print("{s}_valid", .{port_id});
+        },
+        else => {},
     }
-    const id = try placeName(allocator, place);
-    defer allocator.free(id);
-    try writer.print("{s}_valid", .{id});
+}
+
+fn isBoundaryPort(def: network.Definition, name: []const u8) bool {
+    for (def.sources) |src| {
+        if (argContainsName(src, name)) return true;
+    }
+    for (def.destinations) |dest| {
+        if (argContainsName(dest, name)) return true;
+    }
+    return false;
+}
+
+fn argContainsName(arg: network.Arg, name: []const u8) bool {
+    switch (arg.kind) {
+        .group => if (arg.group) |grp| {
+            for (grp.places) |child| {
+                if (argContainsName(child, name)) return true;
+            }
+        },
+        .place => return std.mem.eql(u8, arg.name, name),
+        else => {},
+    }
+    return false;
 }
 
 fn writeIntermediatePlaceSignal(
     allocator: std.mem.Allocator,
     writer: anytype,
     def: network.Definition,
-    names: *std.ArrayListUnmanaged([]const u8),
-    place: network.Place,
+    intermediate_names: *std.ArrayListUnmanaged([]const u8),
+    arg: network.Arg,
 ) !void {
-    const name = try placeName(allocator, place);
-    defer allocator.free(name);
-    try writeIntermediateSignal(allocator, writer, def, names, name);
+    switch (arg.kind) {
+        .group => if (arg.group) |grp| {
+            for (grp.places) |child| {
+                try writeIntermediatePlaceSignal(allocator, writer, def, intermediate_names, child);
+            }
+        },
+        .place => {
+            const raw_name = arg.name;
+            if (raw_name.len == 0) return;
+
+            // Avoid declaring signals for ports already declared on the boundary
+            if (isBoundaryPort(def, raw_name)) return;
+
+            // Avoid duplicate declarations
+            for (intermediate_names.items) |existing| {
+                if (std.mem.eql(u8, existing, raw_name)) return;
+            }
+
+            const signal_id = try sanitizeName(allocator, raw_name);
+            defer allocator.free(signal_id);
+
+            try intermediate_names.append(allocator, try allocator.dupe(u8, raw_name));
+            try writer.print("  signal {s} : std_logic_vector(DATA_WIDTH - 1 downto 0);\n", .{signal_id});
+            try writer.print("  signal {s}_valid : std_logic;\n", .{signal_id});
+        },
+        else => {},
+    }
 }
 
 fn writeIntermediateSignal(
@@ -1095,7 +1162,7 @@ fn internSymbol(list: *std.ArrayListUnmanaged([]const u8), allocator: std.mem.Al
 
 const GeneratedEntry = struct {
     pattern: []const []const u8, // e.g. ["DE", "AK", "JD"] or ["2", "1", "5"]
-    target_state: []const u8,    // e.g. "JC" or "4"
+    target_state: []const u8, // e.g. "JC" or "4"
 };
 
 fn enumerateGenerate(
@@ -1248,23 +1315,37 @@ fn normalizeDefinitionIdentifiers(allocator: std.mem.Allocator, raw_def: network
 fn normalizePlaces(
     allocator: std.mem.Allocator,
     names: *IdentifierMap,
-    places: []const network.Place,
-) ![]const network.Place {
-    var normalized: std.ArrayListUnmanaged(network.Place) = .empty;
-    for (places) |raw_place| {
-        var place = raw_place;
-        if (place.name.len != 0) place.name = try names.resolve(place.name);
-        if (raw_place.group) |raw_group| {
-            const group = try allocator.create(network.PlaceGroup);
-            group.* = .{
-                .kind = raw_group.kind,
-                .places = try normalizePlaces(allocator, names, raw_group.places),
-            };
-            place.group = group;
-        }
-        try normalized.append(allocator, place);
+    places: []const network.Arg,
+) ![]const network.Arg {
+    var list: std.ArrayListUnmanaged(network.Arg) = .empty;
+    for (places) |arg| {
+        try list.append(allocator, try normalizeArg(allocator, names, arg));
     }
-    return normalized.toOwnedSlice(allocator);
+    return list.toOwnedSlice(allocator);
+}
+
+fn normalizeArg(
+    allocator: std.mem.Allocator,
+    names: *IdentifierMap,
+    arg: network.Arg,
+) !network.Arg {
+    var out = arg;
+    if (arg.name.len > 0) {
+        out.name = try names.resolve(arg.name);
+    }
+    if (arg.group) |grp| {
+        var nested_places: std.ArrayListUnmanaged(network.Arg) = .empty;
+        for (grp.places) |child| {
+            try nested_places.append(allocator, try normalizeArg(allocator, names, child));
+        }
+        const new_grp = try allocator.create(network.PlaceGroup);
+        new_grp.* = .{
+            .kind = grp.kind,
+            .places = try nested_places.toOwnedSlice(allocator),
+        };
+        out.group = new_grp;
+    }
+    return out;
 }
 
 fn normalizeStatements(
@@ -1283,16 +1364,16 @@ fn normalizeStatements(
             },
             .invoke => |raw_invocation| {
                 var invocation = raw_invocation;
-                var args: std.ArrayListUnmanaged(network.Arg) = .empty;
-                for (raw_invocation.args) |arg| {
+                var sources: std.ArrayListUnmanaged(network.Arg) = .empty;
+                for (raw_invocation.sources) |arg| {
                     var updated_arg = arg;
                     if (arg.kind != .group and arg.text.len > 0) {
                         updated_arg.text = try rewriteDollarReferences(allocator, names, arg.text);
                     }
-                    try args.append(allocator, updated_arg);
+                    try sources.append(allocator, updated_arg);
                 }
-                invocation.args = try args.toOwnedSlice(allocator);
-                invocation.outputs = try normalizePlaces(allocator, names, raw_invocation.outputs);
+                invocation.sources = try sources.toOwnedSlice(allocator);
+                invocation.destinations = try normalizePlaces(allocator, names, raw_invocation.destinations);
                 try normalized.append(allocator, .{ .invoke = invocation });
             },
             .pure_value => |expression| try normalized.append(allocator, .{ .pure_value = try rewriteDollarReferences(allocator, names, expression) }),
@@ -1358,24 +1439,13 @@ fn sanitizeName(allocator: std.mem.Allocator, composed: []const u8) ![]u8 {
     return buf.toOwnedSlice(allocator);
 }
 
-fn placeName(allocator: std.mem.Allocator, place: network.Place) ![]u8 {
-    if (place.group) |group| {
-        var raw: std.ArrayListUnmanaged(u8) = .empty;
-        try raw.appendSlice(allocator, "group");
-        if (group.places.len == 0) {
-            if (place.content) |content| try raw.appendSlice(allocator, content);
-        }
-        for (group.places) |member| {
-            const member_name = try placeName(allocator, member);
-            defer allocator.free(member_name);
-            try raw.append(allocator, '_');
-            try raw.appendSlice(allocator, member_name);
-        }
-        const result = try sanitizeName(allocator, raw.items);
-        raw.deinit(allocator);
-        return result;
-    }
-    return sanitizeName(allocator, place.name);
+fn placeName(allocator: std.mem.Allocator, arg: network.Arg) ![]const u8 {
+    const raw_name = switch (arg.kind) {
+        .place => if (arg.name.len > 0) arg.name else arg.text,
+        .literal, .expression => arg.text,
+        .group => arg.text,
+    };
+    return try sanitizeName(allocator, raw_name);
 }
 
 fn isVhdlReserved(name: []const u8) bool {

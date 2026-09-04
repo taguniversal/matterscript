@@ -80,7 +80,7 @@ pub fn main(init: std.process.Init) !void {
             }
         }
         for (net.entries) |e| {
-            try stdout_writer.print("\nentry: {s} with {d} args\n", .{ e.name, e.args.len });
+            try stdout_writer.print("\nentry: {s} with {d} sources\n", .{ e.name, e.sources.len });
         }
 
         try il_export_vhdl.writeVhdlNetwork(

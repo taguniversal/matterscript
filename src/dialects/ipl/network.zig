@@ -67,7 +67,7 @@ pub const PlaceGroupKind = enum {
 
 pub const PlaceGroup = struct {
     kind: PlaceGroupKind,
-    places: []const Place,
+    places: []const Arg, // Recursive / composite support
 };
 
 pub const Directive = struct {
@@ -147,6 +147,7 @@ pub const SourceFill = struct {
 };
 
 pub const ArgKind = enum {
+    place,
     literal,
     expression,
     group,
@@ -154,16 +155,15 @@ pub const ArgKind = enum {
 
 pub const Arg = struct {
     kind: ArgKind,
+    name: []const u8 = "",
     text: []const u8 = "",
     group: ?*const PlaceGroup = null,
 };
 
 pub const Invocation = struct {
     name: []const u8,
-    /// Destination places — values provided by caller to the definition
-    args: []const Arg, // Upgraded from []const []const u8
-    /// Source places — values returned from the definition to the caller
-    outputs: []const Place,
+    sources: []const Arg,
+    destinations: []const Arg,
 };
 
 pub const Statement = union(enum) {
@@ -178,8 +178,8 @@ pub const Statement = union(enum) {
 
 pub const Definition = struct {
     name: []const u8,
-    sources: []const Place,
-    destinations: []const Place,
+    sources: []const Arg,
+    destinations: []const Arg,
     domain_spec: ?DomainSpec = null,
     generateBlock: ?GenerateBlock = null,
     resolution: []const Statement,
@@ -195,15 +195,14 @@ pub const Definition = struct {
 /// NAME($arg1 $arg2)(output1<> output2<>)
 pub const EntryInvocation = struct {
     name: []const u8,
-    /// Destination args — values passed in to the definition's sources
-    args: []const Arg, // Upgraded from []const []const u8
-    /// Source places — outputs returned to the top-level context
-    outputs: []const Place,
+    sources: []const Arg,
+    destinations: []const Arg,
 };
 
 pub const Network = struct {
-    definitions: []const Definition,
-    entries: []const EntryInvocation,
+    definitions: []const Definition = &.{},
+    invocations: []const Invocation = &.{},
+    entries: []const EntryInvocation = &.{},
     free_destinations: []const []const u8 = &.{}, // bare $name references
     // appearing at the top level of the network, outside any
     // invocation or definition syntax — Fant's "outlying

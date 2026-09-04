@@ -1,0 +1,2 @@
+// Linear: TAG-190 Example 12.5 AND Function with value transform rule definitions
+AND[(A<> B<>)<$A$B()>: 00[0] 01[0] 10[0] 11[1]]

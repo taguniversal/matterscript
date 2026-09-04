@@ -73,7 +73,6 @@ const Parser = struct {
         }
     }
 
-
     fn parseNeighborhoodRulesBlock(p: *Parser) ![]const network.NeighborhoodRule {
         try p.expect('{');
         var rules: std.ArrayListUnmanaged(network.NeighborhoodRule) = .empty;
@@ -134,7 +133,11 @@ const Parser = struct {
         const start = p.pos;
         while (p.pos < p.src.len) {
             const c = p.src[p.pos];
-            if (std.ascii.isAlphanumeric(c) or c == '_') p.pos += 1 else break;
+            if (std.ascii.isAlphanumeric(c) or c == '_' or c == '$') {
+                p.pos += 1;
+            } else {
+                break;
+            }
         }
         if (p.pos == start) return ParseError.ExpectedName;
         return p.src[start..p.pos];
@@ -478,158 +481,192 @@ const Parser = struct {
         };
     }
 
-    // ----------------------------------------------------------------
-    // Definition list parsers (corrected Fant order)
-    // ----------------------------------------------------------------
+    /// Parses a sequence of arguments/places until `close_char` is encountered.
+    fn parseArgSequence(p: *Parser, close_char: u8) ![]const network.Arg {
+        var args: std.ArrayListUnmanaged(network.Arg) = .empty;
+        p.skipWhitespaceAndComments();
 
-    /// Shared parser for "(name<> ...)"-style lists — a definition's
-    /// source-place list and an invocation's output list share
-    /// identical grammar. Handles three forms per Fant §12.3.4:
-    ///   name<>        — normal named, empty place
-    ///   name<content> — named place carrying literal content (state<S0>)
-    ///   <>  / <content> — unnamed place (abbreviated single-return
-    ///                     form), represented as Place{ .name = "" }
-    fn parsePlaceList(p: *Parser, kind: network.PlaceKind) ![]const network.Place {
-        try p.expect('(');
-        const list = try p.parsePlaceSequence(kind, ')', false);
-        try p.expect(')');
-        return list;
-    }
-    fn parsePlaceSequence(
-        p: *Parser,
-        kind: network.PlaceKind,
-        terminator: u8,
-        definition_destinations: bool,
-    ) ![]const network.Place {
-        var list: std.ArrayListUnmanaged(network.Place) = .empty;
-
-        while (true) {
+        while (p.peek() != close_char and p.peek() != null) {
             p.skipWhitespaceAndComments();
-
-            const c = p.peek() orelse break;
-
-            if (c == terminator) break;
+            const c = p.peek().?;
 
             if (c == '{' or c == '[') {
-                var group_kind: network.PlaceGroupKind = .bundle;
+                const is_arb = (c == '{' and p.pos + 1 < p.src.len and p.src[p.pos + 1] == '{');
 
-                var open_char: u8 = '[';
-
-                var close_char: u8 = ']';
-
-                if (c == '{') {
-                    open_char = '{';
-
-                    close_char = '}';
-
-                    // Peek ahead to check for double-brace arbitration: {{ ... }}
-
-                    if (p.pos + 1 < p.src.len and p.src[p.pos + 1] == '{') {
-                        group_kind = .arbitration;
-                    } else {
-                        group_kind = .mutex;
-                    }
-                }
-
-                if (group_kind == .arbitration) {
-                    _ = p.advance(); // consume first '{'
-
-                    _ = p.advance(); // consume second '{'
-
-                    const nested = try p.parsePlaceSequence(kind, '}', definition_destinations);
-
+                if (is_arb) {
+                    _ = p.advance();
+                    _ = p.advance();
+                    const nested = try p.parseArgSequence('}');
+                    try p.expect('}');
                     try p.expect('}');
 
-                    try p.expect('}'); // Expect matching closing double-brace
-
                     const group = try p.allocator.create(network.PlaceGroup);
-
                     group.* = .{ .kind = .arbitration, .places = nested };
-
-                    try list.append(p.allocator, .{
-                        .name = "{arbitration}",
-
-                        .kind = kind,
-
-                        .group = group,
-                    });
+                    try args.append(p.allocator, .{ .kind = .group, .group = group });
                 } else {
-
-                    // Standard single { ... } or [ ... ] handling
-
-                    const group_start = p.pos;
-
+                    const closing: u8 = if (c == '{') '}' else ']';
+                    const group_kind: network.PlaceGroupKind = if (c == '{') .mutex else .bundle;
                     _ = p.advance();
 
-                    p.skipWhitespaceAndComments();
-
-                    const has_nested_lists = p.peek() == '(';
-
-                    p.pos = group_start;
-
-                    const raw_group = if (has_nested_lists)
-                        try p.consumeBalanced(c, close_char)
-                    else
-                        null;
-
-                    const places = if (raw_group != null) &.{} else blk: {
-                        _ = p.advance();
-
-                        const nested = try p.parsePlaceSequence(kind, close_char, definition_destinations);
-
-                        try p.expect(close_char);
-
-                        break :blk nested;
-                    };
+                    const nested = try p.parseArgSequence(closing);
+                    try p.expect(closing);
 
                     const group = try p.allocator.create(network.PlaceGroup);
-
-                    group.* = .{ .kind = group_kind, .places = places };
-
-                    try list.append(p.allocator, .{
-                        .name = if (group_kind == .mutex) "{mutex}" else "[bundle]",
-
-                        .kind = kind,
-
-                        .content = raw_group,
-
-                        .group = group,
-                    });
+                    group.* = .{ .kind = group_kind, .places = nested };
+                    try args.append(p.allocator, .{ .kind = .group, .group = group });
                 }
+            } else if (c == '$') {
+                const expr = try p.parseILExpr();
+                try args.append(p.allocator, .{ .kind = .expression, .text = expr });
+            } else if (std.ascii.isDigit(c) or c == '-') {
+                const lit = try p.readNumericLiteral();
+                try args.append(p.allocator, .{ .kind = .literal, .text = lit });
             } else {
-                var name: []const u8 = "";
-
-                // Destination places inside invocation/definition lists start with '$' and do not use '< >'
-                if (c == '$' or definition_destinations) {
-                    if (c == '$') _ = p.advance();
-                    name = try p.readName();
-                    try list.append(p.allocator, .{ .name = name, .kind = kind });
-                    p.skipWhitespaceAndComments();
-                    _ = p.tryConsume(',');
-                    continue;
-                }
-
-                // Source places use identifier name followed by '< >'
-                if (c != '<') name = try p.readName();
-                p.skipWhitespaceAndComments();
-                if (p.peek() != '<') {
-                    return ParseError.ExpectedToken;
-                }
-                _ = p.advance();
-                p.skipWhitespaceAndComments();
-                var content: ?[]const u8 = null;
-                if (p.peek() != '>') {
-                    const content_start = p.pos;
-                    while (p.pos < p.src.len and p.src[p.pos] != '>') p.pos += 1;
-                    content = std.mem.trim(u8, p.src[content_start..p.pos], " \t\r\n");
-                }
-                try p.expect('>');
-                try list.append(p.allocator, .{ .name = name, .kind = kind, .content = content });
+                const name = try p.readName();
+                try args.append(p.allocator, .{ .kind = .place, .name = name });
             }
 
             p.skipWhitespaceAndComments();
-
             _ = p.tryConsume(',');
+            p.skipWhitespaceAndComments();
+        }
+
+        return args.toOwnedSlice(p.allocator);
+    }
+
+    // ----------------------------------------------------------------
+    // Definition list parsers (corrected Fant order)
+    // ----------------------------------------------------------------
+    /// Shared helper for parsing symmetric source/destination lists
+    fn parseGroup(p: *Parser) anyerror!*const network.PlaceGroup {
+        p.skipWhitespaceAndComments();
+
+        var kind: network.PlaceGroupKind = .bundle;
+        var close_delim: u8 = '>';
+
+        if (p.peek() == '<') {
+            kind = .bundle;
+            close_delim = '>';
+            p.pos += 1;
+        } else if (p.peek() == '{') {
+            p.pos += 1;
+            if (p.peek() == '{') {
+                kind = .arbitration;
+                close_delim = '}'; // Will consume the second '}' on loop exit
+                p.pos += 1;
+            } else {
+                kind = .mutex;
+                close_delim = '}';
+            }
+        } else {
+            return error.InvalidGroupDelimiter;
+        }
+
+        var places: std.ArrayListUnmanaged(network.Arg) = .empty;
+
+        while (true) {
+            p.skipWhitespaceAndComments();
+            const ch = p.peek() orelse return error.UnexpectedEof;
+
+            if (ch == close_delim) {
+                p.pos += 1;
+                // Handle secondary closing brace for double-curly arbitration {{ ... }}
+                if (kind == .arbitration) {
+                    p.skipWhitespaceAndComments();
+                    if (p.peek() == '}') {
+                        p.pos += 1;
+                    } else {
+                        return error.ExpectedClosingBrace;
+                    }
+                }
+                break;
+            }
+
+            const child_arg = try p.parseArg();
+            try places.append(p.allocator, child_arg);
+
+            p.skipWhitespaceAndComments();
+            if (p.peek() == ',') {
+                p.pos += 1;
+            } else if (p.peek() == close_delim) {
+                // Loop continue will consume close_delim and perform arbitration check
+                continue;
+            }
+        }
+
+        const group_ptr = try p.allocator.create(network.PlaceGroup);
+        group_ptr.* = network.PlaceGroup{
+            .kind = kind,
+            .places = try places.toOwnedSlice(p.allocator),
+        };
+
+        return group_ptr;
+    }
+
+    fn parseArg(p: *Parser) anyerror!network.Arg {
+        p.skipWhitespaceAndComments();
+        const start_pos = p.pos;
+        const ch = p.peek() orelse return error.UnexpectedEof;
+
+        // Check if argument begins directly with a group modifier (<...> or {...})
+        if (ch == '<' or ch == '{') {
+            const grp = try p.parseGroup();
+            return network.Arg{
+                .kind = .group,
+                .group = grp,
+            };
+        }
+
+        // Standard place identifier
+        const name = try p.readName();
+        p.skipWhitespaceAndComments();
+
+        // Check for attached place group modifier like 'a<>'
+        if (p.peek()) |next_ch| {
+            if (next_ch == '<' or next_ch == '{') {
+                const grp = try p.parseGroup();
+                return network.Arg{
+                    .kind = .group,
+                    .name = name,
+                    .text = p.src[start_pos..p.pos],
+                    .group = grp,
+                };
+            }
+        }
+
+        return network.Arg{
+            .kind = .place,
+            .name = name,
+            .text = name,
+        };
+    }
+
+    fn parseArgList(p: *Parser, close_delim: u8) anyerror![]const network.Arg {
+        p.skipWhitespaceAndComments();
+        if (p.peek() == '(') {
+            p.pos += 1;
+        }
+        var list: std.ArrayListUnmanaged(network.Arg) = .empty;
+
+        while (true) {
+            p.skipWhitespaceAndComments();
+            if (p.peek() == close_delim) {
+                p.pos += 1;
+                break;
+            }
+
+            const arg = try p.parseArg();
+            try list.append(p.allocator, arg);
+
+            p.skipWhitespaceAndComments();
+            if (p.peek() == ',') {
+                p.pos += 1;
+            } else if (p.peek() == close_delim) {
+                p.pos += 1;
+                break;
+            }
+            // If there is whitespace separating arguments (like '$select $input'),
+            // we simply continue the loop instead of breaking or failing.
         }
 
         return list.toOwnedSlice(p.allocator);
@@ -656,98 +693,13 @@ const Parser = struct {
     }
 
     /// Definition first list: (name<> ...) — source places, tokens flow IN
-    fn parseDefSourceList(p: *Parser) ![]const network.Place {
-        return p.parsePlaceList(.source);
+    fn parseDefSourceList(p: *Parser) ![]const network.Arg {
+        return p.parseArgList(')');
     }
 
-    fn parseDefDestList(p: *Parser) ![]const network.Place {
-        try p.expect('(');
-        var list: std.ArrayListUnmanaged(network.Place) = .empty;
-        while (true) {
-            p.skipWhitespaceAndComments();
-            const c = p.peek() orelse break;
-            if (c == ')') break;
-
-            if (c == '{' or c == '[') {
-                const span = if (c == '{')
-                    try p.consumeBalanced('{', '}')
-                else
-                    try p.consumeBalanced('[', ']');
-                try list.append(p.allocator, .{
-                    .name = if (c == '{') "{group}" else "[bundle]",
-                    .kind = .destination,
-                    .content = span,
-                });
-                p.skipWhitespaceAndComments();
-                _ = p.tryConsume(',');
-                continue;
-            }
-
-            if (c != '$') break;
-            _ = p.advance();
-            const name = try p.readName();
-            try list.append(p.allocator, .{ .name = name, .kind = .destination });
-            p.skipWhitespaceAndComments();
-            _ = p.tryConsume(',');
-        }
-        try p.expect(')');
-        return list.toOwnedSlice(p.allocator);
-    }
-
-    /// Invocation first list: ($name or literal ...) — args passed to definition sources
-    fn parseInvArgList(p: *Parser) ![]const network.Arg {
-        try p.expect('(');
-        var args: std.ArrayListUnmanaged(network.Arg) = .empty;
-        p.skipWhitespaceAndComments();
-
-        while (p.peek() != ')' and p.peek() != null) {
-            p.skipWhitespaceAndComments();
-            const c = p.peek().?;
-
-            if (c == '{' or c == '[') {
-                // Parse as a structured group arg rather than an opaque string
-                const is_arb = (c == '{' and p.pos + 1 < p.src.len and p.src[p.pos + 1] == '{');
-
-                if (is_arb) {
-                    _ = p.advance();
-                    _ = p.advance();
-                    const nested = try p.parsePlaceSequence(.destination, '}', false);
-                    try p.expect('}');
-                    try p.expect('}');
-
-                    const group = try p.allocator.create(network.PlaceGroup);
-                    group.* = .{ .kind = .arbitration, .places = nested };
-                    try args.append(p.allocator, .{ .kind = .group, .group = group });
-                } else {
-                    const close_char: u8 = if (c == '{') '}' else ']';
-                    const group_kind: network.PlaceGroupKind = if (c == '{') .mutex else .bundle;
-                    _ = p.advance();
-
-                    const nested = try p.parsePlaceSequence(.destination, close_char, false);
-                    try p.expect(close_char);
-
-                    const group = try p.allocator.create(network.PlaceGroup);
-                    group.* = .{ .kind = group_kind, .places = nested };
-                    try args.append(p.allocator, .{ .kind = .group, .group = group });
-                }
-            } else if (c == '$') {
-                const expr = try p.parseILExpr();
-                try args.append(p.allocator, .{ .kind = .expression, .text = expr });
-            } else if (std.ascii.isDigit(c) or c == '-') {
-                const lit = try p.readNumericLiteral();
-                try args.append(p.allocator, .{ .kind = .literal, .text = lit });
-            } else {
-                const lit = try p.readName();
-                try args.append(p.allocator, .{ .kind = .literal, .text = lit });
-            }
-
-            p.skipWhitespaceAndComments();
-            _ = p.tryConsume(',');
-            p.skipWhitespaceAndComments();
-        }
-
-        try p.expect(')');
-        return args.toOwnedSlice(p.allocator);
+    /// Definition second list: ($name ...) — destination places, tokens flow OUT
+    fn parseDefDestinationList(p: *Parser) ![]const network.Arg {
+        return p.parseArgList(')');
     }
 
     /// Invocation second list: (name<> ...) — outputs returned to caller
@@ -811,17 +763,22 @@ const Parser = struct {
     }
 
     fn parseInvocation(p: *Parser, name: []const u8) !network.Statement {
-        const args = try p.parseInvArgList();
-        p.skipWhitespaceAndComments();
-        const outputs: []const network.Place = if (p.peek() == '(')
-            try p.parseInvOutputList()
+        const sources = if (p.peek() == '(')
+            try p.parseArgList(')')
         else
-            &.{}; // §12.3.4 — output list omitted, implicit single
-        // unnamed return
+            &.{};
+
+        p.skipWhitespaceAndComments();
+
+        const destinations: []const network.Arg = if (p.peek() == '(')
+            try p.parseArgList(')')
+        else
+            &.{}; // §12.3.4 — destination list omitted, implicit single unnamed return
+
         return network.Statement{ .invoke = .{
             .name = name,
-            .args = args,
-            .outputs = outputs,
+            .sources = sources,
+            .destinations = destinations,
         } };
     }
 
@@ -1027,14 +984,14 @@ const Parser = struct {
         try p.expect('[');
 
         p.skipWhitespaceAndComments();
-        const sources: []const network.Place = if (p.peek() == '(')
-            try p.parseDefSourceList()
+        const sources: []const network.Arg = if (p.peek() == '(')
+            try p.parseArgList(')')
         else
             &.{};
 
         p.skipWhitespaceAndComments();
-        const destinations: []const network.Place = if (p.peek() == '(')
-            try p.parseDefDestList()
+        const destinations: []const network.Arg = if (p.peek() == '(')
+            try p.parseArgList(')')
         else
             &.{};
 
@@ -1082,22 +1039,21 @@ const Parser = struct {
     }
 
     fn parseEntryInvocation(p: *Parser, name: []const u8) !network.EntryInvocation {
-        // Fant invocation order: args first ($name/literal), outputs second (name<>)
-        const args = try p.parseInvArgList();
+        // Fant invocation order: sources first ($name/literal/groups), destinations second (name<>)
+        const sources = try p.parseArgList(')');
         p.skipWhitespaceAndComments();
-        const outputs: []const network.Place = if (p.peek() == '(')
-            try p.parseInvOutputList()
+        const destinations: []const network.Arg = if (p.peek() == '(')
+            try p.parseArgList(')')
         else
-            &.{}; // §12.3.4 — output list omitted, implicit single
-        // unnamed return to the place of the invocation
+            &.{}; // §12.3.4 — destination list omitted, implicit single unnamed return
+
         return network.EntryInvocation{
             .name = name,
-            .args = args,
-            .outputs = outputs,
+            .sources = sources,
+            .destinations = destinations,
         };
     }
-}; // <-- Parser struct closes HERE, not at the end of the file
-
+};
 // ----------------------------------------------------------------
 // Public API
 // ----------------------------------------------------------------
