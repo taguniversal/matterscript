@@ -1,18 +1,21 @@
 // Linear - TAG-163 Set of definitions establishing correspondence name connvention
 
-binaryequal[(a<> b<>) $a$b() 
+binaryequal[(a<> b<>) 
+    $a$b() 
    : 0,0[TRUE] 
      0,1[FALSE] 
      1,0[FALSE]
      1,1[TRUE]  ]
 
-binarygreater[(a<> b<>) $a$b() 
+binarygreater[(a<> b<>) 
+    $a$b() 
       : 0,0[FALSE] 
         0,1[FALSE] 
         1,0[TRUE]
         1,1[FALSE]  ]
 
-logicaland[(a<> b<>) $a$b() 
+logicaland[(a<> b<>) 
+    $a$b() 
   :  FALSE,FALSE[FALSE]
      FALSE,TRUE[FALSE]
      TRUE,FALSE[FALSE]

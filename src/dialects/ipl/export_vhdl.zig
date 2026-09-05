@@ -347,14 +347,16 @@ fn writeDefinition(
             def.destinations = try dests.toOwnedSlice(allocator);
             def.resolution = try normalized.toOwnedSlice(allocator);
         }
-        // IPL names are case-sensitive, whereas VHDL identifiers are not.  Give
-        // every exact IPL spelling a stable, lowercase VHDL spelling before any
-        // declaration or reference is emitted.  This is deliberately done to the
-        // whole definition, rather than only to ports: `a` and `A` must remain
-        // distinct in assignments, expression references, and intermediate
-        // signals as well as in the entity interface.
-        def = try normalizeDefinitionIdentifiers(allocator, def);
+    }
+    // IPL names are case-sensitive, whereas VHDL identifiers are not.  Give
+    // every exact IPL spelling a stable, lowercase VHDL spelling before any
+    // declaration or reference is emitted.  This is deliberately done to the
+    // whole definition, rather than only to ports: `a` and `A` must remain
+    // distinct in assignments, expression references, and intermediate
+    // signals as well as in the entity interface.
+    def = try normalizeDefinitionIdentifiers(allocator, def);
 
+    {
         const def_id = try scopedDefinitionName(allocator, scope, def.name);
         defer allocator.free(def_id);
         try writer.print(
@@ -1524,4 +1526,47 @@ fn binStr(buf: []u8, val: u64, width: usize) []u8 {
         buf[i] = if (bit == 1) '1' else '0';
     }
     return buf[0..width];
+}
+
+// ----------------------------------------------------------------
+// Private-function tests. Kept colocated (rather than in
+// src/tests/export_vhdl_test.zig) so they can exercise non-pub
+// mechanics directly, per zig's normal same-file test visibility.
+// API-level tests against write()/writeVhdlNetwork() live in
+// src/tests/export_vhdl_test.zig instead, since those only need the
+// pub surface and don't justify growing this already-large file.
+// ----------------------------------------------------------------
+const testing = std.testing;
+
+test "sanitizeName lowercases, strips punctuation, and prefixes reserved/digit-led names" {
+    const allocator = testing.allocator;
+
+    const plain = try sanitizeName(allocator, "CARRYOUT");
+    defer allocator.free(plain);
+    try testing.expectEqualStrings("carryout", plain);
+
+    // Reserved VHDL keyword needs an ms_ prefix to stay a legal identifier.
+    const reserved = try sanitizeName(allocator, "Process");
+    defer allocator.free(reserved);
+    try testing.expectEqualStrings("ms_process", reserved);
+
+    // A leading digit isn't a legal VHDL identifier start either.
+    const digit_led = try sanitizeName(allocator, "0S0");
+    defer allocator.free(digit_led);
+    try testing.expectEqualStrings("ms_0s0", digit_led);
+}
+
+test "sanitizeName collapses a multi-variable composed name into one identifier" {
+    // This is the exact shape writeExpressionFill hands it for a
+    // composed expression like "$A$B()" (see the TAG-190/TAG-160
+    // "no declaration for ab" bug, tracked at the call site in
+    // src/tests/export_vhdl_test.zig): sanitizeName's own contract —
+    // strip non-identifier characters from ONE string — is being met
+    // correctly here. The bug is the caller treating a two-variable
+    // composed key as if it were a single variable name before this
+    // function ever sees it.
+    const allocator = testing.allocator;
+    const collapsed = try sanitizeName(allocator, "A$B");
+    defer allocator.free(collapsed);
+    try testing.expectEqualStrings("ab", collapsed);
 }

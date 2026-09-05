@@ -98,10 +98,25 @@ pub fn build(b: *std.Build) void {
     });
     const run_parser_tests = b.addRunArtifact(parser_tests);
 
+    // --- VHDL exporter API-level tests (src/tests/export_vhdl_test.zig) ---
+    const export_vhdl_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/export_vhdl_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = mod },
+                .{ .name = "mkrand", .module = mkrand_mod },
+            },
+        }),
+    });
+    const run_export_vhdl_tests = b.addRunArtifact(export_vhdl_tests);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
     test_step.dependOn(&run_parser_tests.step);
+    test_step.dependOn(&run_export_vhdl_tests.step);
 
     // ------------------------------------------------------------------------
     // 4. mdBook Build & Doc-Test Pipeline

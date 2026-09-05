@@ -288,3 +288,51 @@ test "parse TAG-184 Pure Value Place of Resolution - explicit contained rows" {
     try testing.expectEqualStrings("SUM", row7.destinations[0].name);
     try testing.expectEqualStrings("CO", row7.destinations[1].name);
 }
+
+test "TAG-190 concatenated multi-source keys are rejected as ambiguous" {
+    // The programmer's intent (confirmed): with more than one source,
+    // a contained row's key must comma-separate each source's value
+    // ("0,0[0]"), since symbolic values aren't fixed-width and a
+    // concatenated key ("00[0]") has no reliable split point. This
+    // used to parse "silently", then collapse downstream in the VHDL
+    // exporter into an undeclared "ab" signal reference (ghdl:
+    // `no declaration for "ab"`) — now it's rejected at parse time
+    // with a specific error instead.
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src = "AND[(A<> B<>)<$A$B()>: 00[0] 01[0] 10[0] 11[1]]";
+
+    try testing.expectError(parser.ParseError.AmbiguousComposedKey, parser.parse(allocator, src));
+}
+
+test "TAG-160 comma-separated multi-source keys are not flagged as ambiguous" {
+    // The comma-separated form is exactly what the check above
+    // requires, so it must parse without error. (Whether the VHDL
+    // exporter then does the right thing with it is a separate,
+    // already-known issue — see the comment on parseTruthTableRow's
+    // dispatch in parseContainedSection: a comma-separated row name
+    // is currently parsed as Fant's "S,U,W[...]" fresh-source-name
+    // shorthand, not as a composed lookup key, which is its own bug
+    // to resolve separately.)
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src = "OR[(A<>B<>)<$A$B()>: 0,0[0] 0,1[1] 1,0[1] 1,1[1]]";
+
+    _ = try parser.parse(allocator, src);
+}
+
+test "a single-source definition's multi-character row names are not flagged as ambiguous" {
+    // source_count == 1 means there's nothing to disambiguate between,
+    // so a multi-character symbolic value with no comma is fine.
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src = "IDENT[(A<>)($res) res<$A()>: TRUE[FALSE] FALSE[TRUE]]";
+
+    _ = try parser.parse(allocator, src);
+}

@@ -29,6 +29,14 @@ pub const ParseError = error{
     ExpectedRange,
     UnknownFunction,
     OutOfMemory,
+    /// A contained-definition row name for a multi-source definition
+    /// concatenated its signal values with no comma between them (e.g.
+    /// "00[0]" for a 2-source table). With more than one source there
+    /// is no reliable way to infer where one value ends and the next
+    /// begins — symbolic states aren't fixed-width — so this is
+    /// rejected rather than silently misparsed. Separate each value
+    /// with a comma (e.g. "0,0[0]").
+    AmbiguousComposedKey,
 };
 
 const Parser = struct {
@@ -966,7 +974,13 @@ const Parser = struct {
     /// $-composed constant tables and/or genuine nested Definitions
     /// (with their own sources/destinations/resolution), in any order.
     ///
-    fn parseContainedSection(p: *Parser) anyerror!struct {
+    /// `source_count` is the enclosing definition's source count, used
+    /// only to detect an ambiguous composed lookup-table key: with
+    /// more than one source, a row name must comma-separate each
+    /// source's value (e.g. "0,0[0]"), since symbolic values aren't
+    /// fixed-width and a concatenated "00[0]" has no reliable split
+    /// point. See AmbiguousComposedKey.
+    fn parseContainedSection(p: *Parser, source_count: usize) anyerror!struct {
         constants: []const network.TableDef,
         contained: []const network.Definition,
     } {
@@ -998,7 +1012,15 @@ const Parser = struct {
                         try nested.append(p.allocator, row);
                         continue;
                     } else {
-                        // Standard nested definition (e.g. AND[...])
+                        // Standard nested definition (e.g. AND[...]) —
+                        // unless this is actually a multi-source
+                        // lookup-table row whose values were
+                        // concatenated instead of comma-separated,
+                        // which is ambiguous and must be rejected.
+                        if (source_count > 1 and names.len > 1) {
+                            p.pos = save;
+                            return ParseError.AmbiguousComposedKey;
+                        }
                         p.pos = save;
                         const def = try p.parseDefinition();
                         try nested.append(p.allocator, def);
@@ -1138,7 +1160,7 @@ const Parser = struct {
         p.skipWhitespaceAndComments();
         const resolution = try p.parseResolution();
         _ = p.tryConsume(':');
-        const section = try p.parseContainedSection();
+        const section = try p.parseContainedSection(sources.len);
         try p.expect(']');
 
         return network.Definition{
