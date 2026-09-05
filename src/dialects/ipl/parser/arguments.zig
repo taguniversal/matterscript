@@ -149,3 +149,118 @@ fn readNumericLiteral(p: *core.Parser) ![]const u8 {
     if (p.pos == start) return core.ParseError.ExpectedName;
     return p.src[start..p.pos];
 }
+
+// Tests 
+const testing = std.testing;
+
+
+test "readNumericLiteral parsing and errors" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // 1. Test valid integers and decimals (positive and negative)
+    {
+        var p = core.Parser.init(allocator, "-123.456 remainder");
+        const lit = try readNumericLiteral(&p);
+        try testing.expectEqualStrings("-123.456", lit);
+        try testing.expectEqual(@as(usize, 8), p.pos); // consumed up to the space
+    }
+
+    {
+        var p = core.Parser.init(allocator, "42");
+        const lit = try readNumericLiteral(&p);
+        try testing.expectEqualStrings("42", lit);
+    }
+
+    // 2. Test integer with trailing decimal point (stops before dot if no digits follow, or handles cleanly based on implementation)
+    {
+        var p = core.Parser.init(allocator, "3.abc");
+        const lit = try readNumericLiteral(&p);
+        try testing.expectEqualStrings("3.", lit);
+    }
+
+    // 3. Test failure case: non-numeric string returns ExpectedName error
+    {
+        var p = core.Parser.init(allocator, "not_a_number");
+        try testing.expectError(core.ParseError.ExpectedName, readNumericLiteral(&p));
+    }
+}
+
+test "parseArgList parses mixed argument lists" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // Test list with commas and whitespace separation enclosed in parentheses
+    var p = core.Parser.init(allocator, "(a, $b, 42)");
+    const args = try parseArgList(&p, ')');
+
+    try testing.expectEqual(@as(usize, 3), args.len);
+    
+    // First argument: place "a"
+    try testing.expectEqual(.place, args[0].kind);
+    try testing.expectEqualStrings("a", args[0].name);
+
+    // Second argument: variable "$b"
+    try testing.expectEqual(.expression, args[1].kind);
+    try testing.expectEqualStrings("b", args[1].name);
+
+    // Third argument: literal "42"
+    try testing.expectEqual(.literal, args[2].kind);
+    try testing.expectEqualStrings("42", args[2].text);
+}
+
+test "parseArg handles places, expressions, and group modifiers" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // 1. Test standard place identifier
+    {
+        var p = core.Parser.init(allocator, "my_place");
+        const arg = try parseArg(&p);
+        try testing.expectEqual(.place, arg.kind);
+        try testing.expectEqualStrings("my_place", arg.name);
+    }
+
+    // 2. Test function expression (name followed by balanced parentheses)
+    {
+        var p = core.Parser.init(allocator, "face(loop($p0))");
+        const arg = try parseArg(&p);
+        try testing.expectEqual(.expression, arg.kind);
+        try testing.expectEqualStrings("face", arg.name);
+        try testing.expectEqualStrings("face(loop($p0))", arg.text);
+    }
+
+    // 3. Test place with an attached bundle group modifier (e.g., 'signal_a [...]')
+    {
+        var p = core.Parser.init(allocator, "signal_a [sub1, sub2]");
+        const arg = try parseArg(&p);
+        try testing.expectEqual(.group, arg.kind);
+        try testing.expectEqualStrings("signal_a", arg.name);
+        try testing.expectNotNil(arg.group);
+        try testing.expectEqual(network.PlaceGroupKind.bundle, arg.group.?.kind);
+    }
+
+    // 4. Test place with an attached mutex group modifier (e.g., 'signal_b{sub1, sub2}')
+    {
+        var p = core.Parser.init(allocator, "signal_b {sub1, sub2}");
+        const arg = try parseArg(&p);
+        try testing.expectEqual(.group, arg.kind);
+        try testing.expectEqualStrings("signal_b", arg.name);
+        try testing.expectNotNil(arg.group);
+        try testing.expectEqual(network.PlaceGroupKind.mutex, arg.group.?.kind);
+    }
+
+    // 5. Test place with an attached arbitration group modifier (e.g., 'signal_c{{sub1, sub2}}')
+    {
+        var p = core.Parser.init(allocator, "signal_c {{sub1, sub2}}");
+        const arg = try parseArg(&p);
+        try testing.expectEqual(.group, arg.kind);
+        try testing.expectEqualStrings("signal_c", arg.name);
+        try testing.expectNotNil(arg.group);
+        try testing.expectEqual(network.PlaceGroupKind.arbitration, arg.group.?.kind);
+    }
+}
+
