@@ -125,11 +125,26 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_definition_tests = b.addRunArtifact(definition_tests);
-    
+
+// --- Argument parser tests (src/tests/argument_test.zig) ---
+    const argument_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/argument_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = mod },
+                .{ .name = "mkrand", .module = mkrand_mod },
+            },
+        }),
+    });
+    const run_argument_tests = b.addRunArtifact(argument_tests);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
     test_step.dependOn(&run_parser_tests.step);
+    test_step.dependOn(&run_argument_tests.step);
     test_step.dependOn(&run_export_vhdl_tests.step);
     test_step.dependOn(&run_definition_tests.step);
 

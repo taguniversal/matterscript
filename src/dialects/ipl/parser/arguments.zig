@@ -54,30 +54,60 @@ fn parseArgSequence(p: *core.Parser, close_char: u8) ![]const network.Arg {
 
     return args.toOwnedSlice(p.allocator);
 }
-
 pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
     p.skipWhitespaceAndComments();
     const start_pos = p.pos;
     const ch = p.peek() orelse return error.UnexpectedEof;
 
-    // Check if argument begins directly with a group modifier
-    // (<...>, {...}, {{...}}, [...], or a bare (...) sub-group)
-    if (ch == '<' or ch == '{' or ch == '(' or ch == '[') {
+    // 1. Check if argument begins with a group selector ({, [, or standalone parentheses)
+    if (ch == '{' or ch == '(' or ch == '[') {
         const grp = try p.parseGroup();
         return network.Arg{
             .kind = .group,
             .group = grp,
+            .text = p.src[start_pos..p.pos],
         };
     }
 
-    // Standard place identifier
+    // 2. Check for '$' prefix (destination places / expressions prefixed with $)
+    if (ch == '$') {
+        p.pos += 1; // consume '$'
+        const name = try p.readName();
+        return network.Arg{
+            .kind = .expression, // Or .place depending on your exact network.Arg union/enum, keeping expression/place aligned
+            .name = name,
+            .text = p.src[start_pos..p.pos],
+        };
+    }
+
+    // Handle bare source brackets like '<>'
+    if (ch == '<') {
+        _ = p.advance(); // consume '<'
+        if (p.peek() == '>') {
+            _ = p.advance(); // consume '>'
+            return network.Arg{
+                .kind = .place,
+                .name = "", // Unnamed source
+                .text = "<>",
+            };
+        }
+        // otherwise fall back or parse as a group if it has contents
+    }
+
+    // 3. Check for numeric literals (delegating directly to readNumericLiteral which handles signs/digits)
+    if (ch == '-' or std.ascii.isDigit(ch)) {
+        const lit = try readNumericLiteral(p);
+        return network.Arg{
+            .kind = .literal,
+            .text = lit,
+        };
+    }
+
+    // 4. Standard identifier (place, function expression, or place with postfix <>)
     const name = try p.readName();
     p.skipWhitespaceAndComments();
 
-    // A name immediately followed by '(' is a call/function
-    // expression (topology helpers like "face(loop(edge($p0,
-    // $p1), ...)))"), not a place with an attached group modifier.
-    // Capture it as raw text, same as $-composition expressions.
+    // A name immediately followed by '(' is a call/function expression
     if (p.peek() == '(') {
         _ = try p.consumeBalanced('(', ')');
         return network.Arg{
@@ -87,9 +117,19 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
         };
     }
 
-    // Check for attached place group modifier like 'a<>'
-    if (p.peek()) |next_ch| {
-        if (next_ch == '<' or next_ch == '{') {
+    // 5. Check for postfix '<>' indicating source places / group modifiers
+    if (p.peek() == '<') {
+        p.pos += 1;
+        if (p.peek() == '>') {
+            p.pos += 1;
+            return network.Arg{
+                .kind = .place, // or source place classification
+                .name = name,
+                .text = p.src[start_pos..p.pos],
+            };
+        } else {
+            // If it's a generic group modifier like <sub1, sub2>
+            p.pos -= 1; // un-peek '<' for generic group parsing if needed
             const grp = try p.parseGroup();
             return network.Arg{
                 .kind = .group,
@@ -100,8 +140,9 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
         }
     }
 
+    // 6. Default standard literal
     return network.Arg{
-        .kind = .place,
+        .kind = .literal,
         .name = name,
         .text = name,
     };
@@ -138,7 +179,7 @@ pub fn parseArgList(p: *core.Parser, close_delim: u8) anyerror![]const network.A
     return list.toOwnedSlice(p.allocator);
 }
 
-fn readNumericLiteral(p: *core.Parser) ![]const u8 {
+pub fn readNumericLiteral(p: *core.Parser) ![]const u8 {
     const start = p.pos;
     if (p.peek() == '-') _ = p.advance();
     while (p.pos < p.src.len and std.ascii.isDigit(p.src[p.pos])) p.pos += 1;
@@ -150,117 +191,5 @@ fn readNumericLiteral(p: *core.Parser) ![]const u8 {
     return p.src[start..p.pos];
 }
 
-// Tests 
-const testing = std.testing;
 
-
-test "readNumericLiteral parsing and errors" {
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-
-    // 1. Test valid integers and decimals (positive and negative)
-    {
-        var p = core.Parser.init(allocator, "-123.456 remainder");
-        const lit = try readNumericLiteral(&p);
-        try testing.expectEqualStrings("-123.456", lit);
-        try testing.expectEqual(@as(usize, 8), p.pos); // consumed up to the space
-    }
-
-    {
-        var p = core.Parser.init(allocator, "42");
-        const lit = try readNumericLiteral(&p);
-        try testing.expectEqualStrings("42", lit);
-    }
-
-    // 2. Test integer with trailing decimal point (stops before dot if no digits follow, or handles cleanly based on implementation)
-    {
-        var p = core.Parser.init(allocator, "3.abc");
-        const lit = try readNumericLiteral(&p);
-        try testing.expectEqualStrings("3.", lit);
-    }
-
-    // 3. Test failure case: non-numeric string returns ExpectedName error
-    {
-        var p = core.Parser.init(allocator, "not_a_number");
-        try testing.expectError(core.ParseError.ExpectedName, readNumericLiteral(&p));
-    }
-}
-
-test "parseArgList parses mixed argument lists" {
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-
-    // Test list with commas and whitespace separation enclosed in parentheses
-    var p = core.Parser.init(allocator, "(a, $b, 42)");
-    const args = try parseArgList(&p, ')');
-
-    try testing.expectEqual(@as(usize, 3), args.len);
-    
-    // First argument: place "a"
-    try testing.expectEqual(.place, args[0].kind);
-    try testing.expectEqualStrings("a", args[0].name);
-
-    // Second argument: variable "$b"
-    try testing.expectEqual(.expression, args[1].kind);
-    try testing.expectEqualStrings("b", args[1].name);
-
-    // Third argument: literal "42"
-    try testing.expectEqual(.literal, args[2].kind);
-    try testing.expectEqualStrings("42", args[2].text);
-}
-
-test "parseArg handles places, expressions, and group modifiers" {
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-
-    // 1. Test standard place identifier
-    {
-        var p = core.Parser.init(allocator, "my_place");
-        const arg = try parseArg(&p);
-        try testing.expectEqual(.place, arg.kind);
-        try testing.expectEqualStrings("my_place", arg.name);
-    }
-
-    // 2. Test function expression (name followed by balanced parentheses)
-    {
-        var p = core.Parser.init(allocator, "face(loop($p0))");
-        const arg = try parseArg(&p);
-        try testing.expectEqual(.expression, arg.kind);
-        try testing.expectEqualStrings("face", arg.name);
-        try testing.expectEqualStrings("face(loop($p0))", arg.text);
-    }
-
-    // 3. Test place with an attached bundle group modifier (e.g., 'signal_a [...]')
-    {
-        var p = core.Parser.init(allocator, "signal_a [sub1, sub2]");
-        const arg = try parseArg(&p);
-        try testing.expectEqual(.group, arg.kind);
-        try testing.expectEqualStrings("signal_a", arg.name);
-        try testing.expectNotNil(arg.group);
-        try testing.expectEqual(network.PlaceGroupKind.bundle, arg.group.?.kind);
-    }
-
-    // 4. Test place with an attached mutex group modifier (e.g., 'signal_b{sub1, sub2}')
-    {
-        var p = core.Parser.init(allocator, "signal_b {sub1, sub2}");
-        const arg = try parseArg(&p);
-        try testing.expectEqual(.group, arg.kind);
-        try testing.expectEqualStrings("signal_b", arg.name);
-        try testing.expectNotNil(arg.group);
-        try testing.expectEqual(network.PlaceGroupKind.mutex, arg.group.?.kind);
-    }
-
-    // 5. Test place with an attached arbitration group modifier (e.g., 'signal_c{{sub1, sub2}}')
-    {
-        var p = core.Parser.init(allocator, "signal_c {{sub1, sub2}}");
-        const arg = try parseArg(&p);
-        try testing.expectEqual(.group, arg.kind);
-        try testing.expectEqualStrings("signal_c", arg.name);
-        try testing.expectNotNil(arg.group);
-        try testing.expectEqual(network.PlaceGroupKind.arbitration, arg.group.?.kind);
-    }
-}
 

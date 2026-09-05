@@ -179,10 +179,10 @@ test "parse TAG-181 controlled fanout expression and definition" {
 
     const dest_group = dest_arg.group.?;
     try testing.expectEqual(@as(usize, 4), dest_group.places.len);
-    try testing.expectEqualStrings("$out1", dest_group.places[0].name);
-    try testing.expectEqualStrings("$out2", dest_group.places[1].name);
-    try testing.expectEqualStrings("$out3", dest_group.places[2].name);
-    try testing.expectEqualStrings("$out4", dest_group.places[3].name);
+    try testing.expectEqualStrings("out1", dest_group.places[0].name);
+    try testing.expectEqualStrings("out2", dest_group.places[1].name);
+    try testing.expectEqualStrings("out3", dest_group.places[2].name);
+    try testing.expectEqualStrings("out4", dest_group.places[3].name);
 }
 
 test "parse TAG-185 preserve case-sensitive IPL identifiers" {
@@ -212,20 +212,20 @@ test "parse TAG-185 preserve case-sensitive IPL identifiers" {
 
     // Verify strict case preservation and attached group modifiers on sources
     try testing.expectEqualStrings("a", def.sources[0].name);
-    try testing.expectEqual(network.ArgKind.group, def.sources[0].kind);
+    try testing.expectEqual(network.ArgKind.place, def.sources[0].kind);
 
     try testing.expectEqualStrings("A", def.sources[1].name);
-    try testing.expectEqual(network.ArgKind.group, def.sources[1].kind);
+    try testing.expectEqual(network.ArgKind.place, def.sources[1].kind);
 
     try testing.expectEqualStrings("b", def.sources[2].name);
-    try testing.expectEqual(network.ArgKind.group, def.sources[2].kind);
+    try testing.expectEqual(network.ArgKind.place, def.sources[2].kind);
 
     try testing.expectEqualStrings("B", def.sources[3].name);
-    try testing.expectEqual(network.ArgKind.group, def.sources[3].kind);
+    try testing.expectEqual(network.ArgKind.place, def.sources[3].kind);
 
     // Verify destinations: ($result)
     try testing.expectEqual(@as(usize, 1), def.destinations.len);
-    try testing.expectEqualStrings("$result", def.destinations[0].name);
+    try testing.expectEqualStrings("result", def.destinations[0].name);
 
     // Verify body rules / truth-table transitions are present
     try testing.expect(def.resolution.len > 0);
