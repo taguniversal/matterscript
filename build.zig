@@ -112,11 +112,26 @@ pub fn build(b: *std.Build) void {
     });
     const run_export_vhdl_tests = b.addRunArtifact(export_vhdl_tests);
 
+    // --- Definition parser tests (src/tests/definition_test.zig) ---
+    const definition_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/definition_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = mod },
+                .{ .name = "mkrand", .module = mkrand_mod },
+            },
+        }),
+    });
+    const run_definition_tests = b.addRunArtifact(definition_tests);
+    
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
     test_step.dependOn(&run_parser_tests.step);
     test_step.dependOn(&run_export_vhdl_tests.step);
+    test_step.dependOn(&run_definition_tests.step);
 
     // ------------------------------------------------------------------------
     // 4. mdBook Build & Doc-Test Pipeline
@@ -146,7 +161,7 @@ pub fn build(b: *std.Build) void {
 
     // Attach mdbook and doc-testing to the weave and test pipelines
     //weave_step.dependOn(&run_mdbook.step);
-// TODO    test_step.dependOn(&run_doctest.step);
+    // TODO    test_step.dependOn(&run_doctest.step);
 
     // ------------------------------------------------------------
     // Verify pipeline

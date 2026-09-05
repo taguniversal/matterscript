@@ -187,7 +187,7 @@ fn parseOneConstantTable(p: *core.Parser) !network.TableDef {
 }
 
 /// Parses a shorthand truth-table row like S,U,W[SUM<S> CO<W>]
-fn parseTruthTableRow(p: *core.Parser) anyerror!network.Definition {
+pub fn parseTruthTableRow(p: *core.Parser) anyerror!network.Definition {
     var sources: std.ArrayListUnmanaged(network.Arg) = .empty;
     while (true) {
         p.skipWhitespaceAndComments();
@@ -413,3 +413,4 @@ pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
             .rules = try rules.toOwnedSlice(p.allocator),
         };
     }
+

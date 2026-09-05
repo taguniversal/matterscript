@@ -7,6 +7,14 @@ const matterscript = @import("matterscript");
 const parser = matterscript.ipl_parser;
 pub const network = matterscript.network;
 
+// Force-reference your submodules so Zig's test runner discovers them
+test "reference submodules for testing" {
+    _ = parser.core;
+    _ = parser.arguments;
+    _ = parser.definitions;
+    _ = parser.expressions;
+}
+
 test "TAG-187 parse 2D cellular automaton generate block and domain" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();

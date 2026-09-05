@@ -18,6 +18,8 @@ const std = @import("std");
 pub const core = @import("parser/core.zig");
 pub const network = @import("network.zig");
 pub const definitions = @import("parser/definitions.zig");
+pub const arguments = @import("parser/arguments.zig");
+pub const expressions = @import("parser/expressions.zig");
 
 
 
