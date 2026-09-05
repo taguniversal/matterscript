@@ -89,8 +89,9 @@ test "composed two-variable lookup with comma-separated keys parses, though code
     const allocator = arena.allocator();
 
     const src =
-        \\OR[(A<>B<>)<$A$B()>
-        \\:
+        \\OR[(A<>B<>)
+        \\  <$A$B()>
+        \\  :
         \\   0,0[0]
         \\   0,1[1]
         \\   1,0[1]
@@ -98,5 +99,31 @@ test "composed two-variable lookup with comma-separated keys parses, though code
     ;
 
     const vhdl = try exportToString(allocator, src);
+    std.debug.print("\n--- GENERATED VHDL ---\n{s}\n----------------------\n", .{vhdl});
     try testing.expect(std.mem.indexOf(u8, vhdl, "<= ab;") == null);
+}
+
+test "an anonymous contained definition never produces consecutive underscores when scoped" {
+    // End-to-end regression test for the exact reported ghdl error:
+    // "two underscores can't be consecutive" on entity names like
+    // "code___anon_11". writeDefinition scopes each contained
+    // definition's entity name under its parent's (scopedDefinitionName
+    // joins them with a single "_"), and the parser's old "__anon_N"
+    // synthesis for anonymous rows collided with that join. Both the
+    // naming fix (parser.zig) and the sanitizeName hardening
+    // (export_vhdl.zig) are covered by this single check on the full
+    // generated text.
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\CODE[(X<> Y<>)($OUT)
+        \\  OUT<$X$Y()>
+        \\: X,Y[SUM<X>]
+        \\]
+    ;
+
+    const vhdl = try exportToString(allocator, src);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "__") == null);
 }

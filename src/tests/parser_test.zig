@@ -103,7 +103,7 @@ test "TAG-190 Example 12.5 AND Function with value transform rule definitions" {
     try testing.expectEqual(@as(usize, 4), def.contained.len);
 
     // Row 0: 0, 0 [TRUE]
-    try testing.expectEqualStrings("__anon_0", def.contained[0].name);
+    try testing.expectEqualStrings("anon_0", def.contained[0].name);
     try testing.expectEqual(@as(usize, 2), def.contained[0].sources.len);
     try testing.expectEqualStrings("0", def.contained[0].sources[0].name);
     try testing.expectEqualStrings("0", def.contained[0].sources[1].name);
@@ -111,7 +111,7 @@ test "TAG-190 Example 12.5 AND Function with value transform rule definitions" {
     try testing.expectEqualStrings("TRUE", def.contained[0].destinations[0].name);
 
     // Row 1: 0, 1 [FALSE]
-    try testing.expectEqualStrings("__anon_1", def.contained[1].name);
+    try testing.expectEqualStrings("anon_1", def.contained[1].name);
     try testing.expectEqual(@as(usize, 2), def.contained[1].sources.len);
     try testing.expectEqualStrings("0", def.contained[1].sources[0].name);
     try testing.expectEqualStrings("1", def.contained[1].sources[1].name);
@@ -119,7 +119,7 @@ test "TAG-190 Example 12.5 AND Function with value transform rule definitions" {
     try testing.expectEqualStrings("FALSE", def.contained[1].destinations[0].name);
 
     // Row 2: 1, 0 [FALSE]
-    try testing.expectEqualStrings("__anon_2", def.contained[2].name);
+    try testing.expectEqualStrings("anon_2", def.contained[2].name);
     try testing.expectEqual(@as(usize, 2), def.contained[2].sources.len);
     try testing.expectEqualStrings("1", def.contained[2].sources[0].name);
     try testing.expectEqualStrings("0", def.contained[2].sources[1].name);
@@ -127,7 +127,7 @@ test "TAG-190 Example 12.5 AND Function with value transform rule definitions" {
     try testing.expectEqualStrings("FALSE", def.contained[2].destinations[0].name);
 
     // Row 3: 1, 1 [TRUE]
-    try testing.expectEqualStrings("__anon_3", def.contained[3].name);
+    try testing.expectEqualStrings("anon_3", def.contained[3].name);
     try testing.expectEqual(@as(usize, 2), def.contained[3].sources.len);
     try testing.expectEqualStrings("1", def.contained[3].sources[0].name);
     try testing.expectEqualStrings("1", def.contained[3].sources[1].name);
@@ -304,7 +304,7 @@ test "TAG-190 concatenated multi-source keys are rejected as ambiguous" {
 
     const src = "AND[(A<> B<>)<$A$B()>: 00[0] 01[0] 10[0] 11[1]]";
 
-    try testing.expectError(parser.ParseError.AmbiguousComposedKey, parser.parse(allocator, src));
+    try testing.expectError(parser.core.ParseError.AmbiguousComposedKey, parser.parse(allocator, src));
 }
 
 test "TAG-160 comma-separated multi-source keys are not flagged as ambiguous" {
@@ -335,4 +335,31 @@ test "a single-source definition's multi-character row names are not flagged as 
     const src = "IDENT[(A<>)($res) res<$A()>: TRUE[FALSE] FALSE[TRUE]]";
 
     _ = try parser.parse(allocator, src);
+}
+
+test "anonymous contained definitions are canonicalized without a leading double underscore" {
+    // Regression test: this used to be "__anon_0" (leading double
+    // underscore). export_vhdl.zig's scopedDefinitionName joins a
+    // scope and a name with a single "_", so under a scope like
+    // "code" that produced "code___anon_0" — three consecutive
+    // underscores, which ghdl rejects ("two underscores can't be
+    // consecutive"). The row shorthand "X,Y[SUM<X>]" below produces
+    // an anonymous (empty-name) contained definition via
+    // parseTruthTableRow, which is exactly what canonicalizeNames
+    // assigns a synthesized name to.
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\CODE[(X<> Y<>)($OUT)
+        \\  OUT<$X$Y()>
+        \\: X,Y[SUM<X>]
+        \\]
+    ;
+
+    const net = try parser.parse(allocator, src);
+    try testing.expectEqual(@as(usize, 1), net.definitions.len);
+    try testing.expectEqual(@as(usize, 1), net.definitions[0].contained.len);
+    try testing.expectEqualStrings("anon_0", net.definitions[0].contained[0].name);
 }
