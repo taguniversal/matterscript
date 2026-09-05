@@ -115,27 +115,34 @@ pub fn parseContainedSection(p: *core.Parser, source_count: usize) anyerror!stru
             };
             p.skipWhitespaceAndComments();
             if (p.peek() == '[') {
-                if (std.mem.indexOfScalar(u8, names, ',') != null) {
-                    // Shorthand truth-table row (e.g. S,U,W[...])
+                // A contained-definition row: the composed key is
+                // just the comma-joined name (or a bare token for a
+                // single source) and the bracket holds the row's
+                // value(s) as ordinary resolution statements — parsed
+                // identically whether the key itself uses commas
+                // ("0,0[0]", "S,U,W[SUM<S> CO<W>]") or not ("00[0]"
+                // for a single source, "1[2]" for a bare constant).
+                // There's no separate "declare fresh source names"
+                // construct here — S, U, W above carry no $ or <>
+                // designators, so they're composed-key tokens like
+                // any other.
+                //
+                // With more than one source, a key with no comma is
+                // ambiguous: there's no reliable way to know where
+                // one source's value ends and the next begins, since
+                // values can be symbolic and aren't fixed-width — so
+                // that specific case is rejected instead of silently
+                // misparsed.
+                if (source_count > 1 and names.len > 1 and
+                    std.mem.indexOfScalar(u8, names, ',') == null)
+                {
                     p.pos = save;
-                    const row = try parseTruthTableRow(p);
-                    try nested.append(p.allocator, row);
-                    continue;
-                } else {
-                    // Standard nested definition (e.g. AND[...]) —
-                    // unless this is actually a multi-source
-                    // lookup-table row whose values were
-                    // concatenated instead of comma-separated,
-                    // which is ambiguous and must be rejected.
-                    if (source_count > 1 and names.len > 1) {
-                        p.pos = save;
-                        return core.ParseError.AmbiguousComposedKey;
-                    }
-                    p.pos = save;
-                    const def = try parseDefinition(p);
-                    try nested.append(p.allocator, def);
-                    continue;
+                    return core.ParseError.AmbiguousComposedKey;
                 }
+                p.pos = save;
+                const def = try parseDefinition(p);
+                try nested.append(p.allocator, def);
+                continue;
             }
             p.pos = save;
             break;
@@ -184,57 +191,6 @@ fn parseOneConstantTable(p: *core.Parser) !network.TableDef {
         try entries.append(p.allocator, .{ .key = key, .value = val });
     }
     return .{ .composed_name = composed, .kind = .{ .explicit = try entries.toOwnedSlice(p.allocator) } };
-}
-
-/// Parses a shorthand truth-table row like S,U,W[SUM<S> CO<W>]
-pub fn parseTruthTableRow(p: *core.Parser) anyerror!network.Definition {
-    var sources: std.ArrayListUnmanaged(network.Arg) = .empty;
-    while (true) {
-        p.skipWhitespaceAndComments();
-        const name = try p.readName();
-        try sources.append(p.allocator, network.Arg{
-            .name = name,
-            .kind = .place,
-            .group = null,
-        });
-        p.skipWhitespaceAndComments();
-        if (p.peek() == ',') {
-            p.pos += 1;
-        } else {
-            break;
-        }
-    }
-
-    try p.expect('[');
-    p.skipWhitespaceAndComments();
-
-    var destinations: std.ArrayListUnmanaged(network.Arg) = .empty;
-    while (true) {
-        p.skipWhitespaceAndComments();
-        const c = p.peek() orelse return error.UnexpectedEof;
-        if (c == ']') {
-            p.pos += 1; // consume ']'
-            break;
-        }
-
-        // Parse the destination argument (handles name and optional <modifier> automatically)
-        const arg = try arguments.parseArg(p);
-        try destinations.append(p.allocator, arg);
-
-        p.skipWhitespaceAndComments();
-        if (p.peek() == ',') {
-            p.pos += 1;
-        }
-    }
-
-    return network.Definition{
-        .name = "",
-        .sources = try sources.toOwnedSlice(p.allocator),
-        .destinations = try destinations.toOwnedSlice(p.allocator),
-        .resolution = &.{},
-        .constants = &.{},
-        .contained = &.{},
-    };
 }
 
 pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
@@ -413,4 +369,3 @@ pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
             .rules = try rules.toOwnedSlice(p.allocator),
         };
     }
-

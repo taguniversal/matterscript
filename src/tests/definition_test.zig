@@ -4,45 +4,39 @@ const matterscript = @import("matterscript");
 
 const parser = matterscript.ipl_parser;
 
-test "parseTruthTableRow parses shorthand truth-table rows correctly" {
+test "a comma-separated contained-row key parses as a composed key, not fresh source names" {
+    // Historical note: this test used to call parseTruthTableRow
+    // directly, asserting that "S,U,W" became three source-place Args
+    // and "SUM<S> CO<W>" became two destination Args. That was
+    // establishing the wrong shape — S, U, W carry no $ or <>
+    // designators, so there's nothing marking them as source or
+    // destination declarations; they're tokens in a composed lookup
+    // key, exactly like "0,0" in "0,0[0]". parseTruthTableRow has
+    // been removed: parseContainedSection now routes every
+    // contained-row header (comma-separated or not) through the same
+    // parseDefinition path, so "S,U,W[SUM<S> CO<W>]" is just an
+    // ordinary Definition whose name is the composed key and whose
+    // resolution holds fills against the ENCLOSING definition's own
+    // destinations (SUM, CO) — not sources/destinations of its own.
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    // 1. Initialize the Parser with the source string
-    const source = "S,U,W[SUM<S>, CO<W>]";
+    const source = "S,U,W[SUM<S> CO<W>]";
     var p = parser.core.Parser.init(allocator, source);
-    
-    // 2. Pass the parser pointer to parseTruthTableRow
-    const def = parser.definitions.parseTruthTableRow(&p) catch |err| {
-        std.debug.print("Error parsing truth table row: {}\n", .{err});
-        return err;
-    };
 
-    // 3. Verify definition name is empty for anonymous truth table rows
-    try testing.expectEqualStrings("", def.name);
+    const def = try parser.definitions.parseDefinition(&p);
 
-    // 4. Verify sources (S, U, W)
-    try testing.expectEqual(@as(usize, 3), def.sources.len);
-    try testing.expectEqualStrings("S", def.sources[0].name);
-    try testing.expectEqualStrings("U", def.sources[1].name);
-    try testing.expectEqualStrings("W", def.sources[2].name);
-    try testing.expectEqual(.place, def.sources[0].kind);
+    try testing.expectEqualStrings("S,U,W", def.name);
+    try testing.expectEqual(@as(usize, 0), def.sources.len);
+    try testing.expectEqual(@as(usize, 0), def.destinations.len);
 
-    // 5. Verify destinations (SUM<S> and CO<W>)
-    try testing.expectEqual(@as(usize, 2), def.destinations.len);
+    try testing.expectEqual(@as(usize, 2), def.resolution.len);
+    try testing.expectEqualStrings("SUM", def.resolution[0].fill.dest_name);
+    try testing.expectEqualStrings("S", def.resolution[0].fill.expr);
+    try testing.expectEqualStrings("CO", def.resolution[1].fill.dest_name);
+    try testing.expectEqualStrings("W", def.resolution[1].fill.expr);
 
-    // First destination: SUM<S>
-    std.debug.print("SUM: {s}\n", .{def.destinations[0].name});
-    try testing.expectEqualStrings("SUM", def.destinations[0].name);
-    try testing.expectEqual(.group, def.destinations[0].kind);
-
-    // Second destination: CO<W>
-    try testing.expectEqualStrings("CO", def.destinations[1].name);
-    try testing.expectEqual(.group, def.destinations[1].kind);
-
-    // 6. Verify structural fields default to empty
-    try testing.expectEqual(@as(usize, 0), def.resolution.len);
     try testing.expectEqual(@as(usize, 0), def.constants.len);
     try testing.expectEqual(@as(usize, 0), def.contained.len);
 }

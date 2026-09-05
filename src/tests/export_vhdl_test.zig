@@ -68,22 +68,14 @@ test "a definition with no destination list still uses the synthesized 'result' 
     try testing.expect(std.mem.indexOf(u8, vhdl, "result") != null);
 }
 
-test "composed two-variable lookup with comma-separated keys parses, though codegen still mishandles it" {
-    // Correction from an earlier pass: this does NOT currently resolve
-    // to a case statement. Comma-separated row names like "0,0[0]" are
-    // parsed by parseContainedSection as Fant's "S,U,W[...]" shorthand
-    // for declaring fresh source places (a real, separately-tested
-    // construct — see parser_test.zig), not as a composed lookup key.
-    // That produces a row with non-empty sources/destinations, which
-    // writeContainedLookupTable's own guard clause rejects outright,
-    // so this falls through to the same writeExpressionFill path (and
-    // the same undeclared "ab" signal) as the concatenated-key case
-    // that AmbiguousComposedKey now catches at parse time — just via
-    // a different mechanism this check doesn't cover. Left as a
-    // documented, known-failing assertion rather than silently
-    // dropped, since it's a real gap: the two constructs share
-    // "a,b,c[...]" syntax and current dispatch always picks one
-    // reading over the other.
+test "composed two-variable lookup with comma-separated keys resolves to a case statement" {
+    // Correction from two passes ago: I'd claimed this worked, then
+    // found it didn't (comma rows were routed to a since-deleted
+    // parseTruthTableRow, producing a row shape writeContainedLookupTable
+    // rejected, falling through to the same undeclared "ab" signal bug
+    // as the concatenated-key case). Now that parseContainedSection
+    // routes every row through parseDefinition uniformly, it actually
+    // does resolve to a real case-select ROM.
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -99,20 +91,19 @@ test "composed two-variable lookup with comma-separated keys parses, though code
     ;
 
     const vhdl = try exportToString(allocator, src);
-    std.debug.print("\n--- GENERATED VHDL ---\n{s}\n----------------------\n", .{vhdl});
+    try testing.expect(std.mem.indexOf(u8, vhdl, "case ") != null);
     try testing.expect(std.mem.indexOf(u8, vhdl, "<= ab;") == null);
 }
 
-test "an anonymous contained definition never produces consecutive underscores when scoped" {
-    // End-to-end regression test for the exact reported ghdl error:
-    // "two underscores can't be consecutive" on entity names like
-    // "code___anon_11". writeDefinition scopes each contained
-    // definition's entity name under its parent's (scopedDefinitionName
-    // joins them with a single "_"), and the parser's old "__anon_N"
-    // synthesis for anonymous rows collided with that join. Both the
-    // naming fix (parser.zig) and the sanitizeName hardening
-    // (export_vhdl.zig) are covered by this single check on the full
-    // generated text.
+test "a comma-keyed contained definition never produces consecutive underscores when scoped" {
+    // Softer claim than an earlier pass made here: this input no
+    // longer exercises the anonymous-naming mechanism at all (no
+    // parser path leaves Definition.name empty any more — see
+    // parser_test.zig's canonicalizeNames unit test for that), since
+    // "X,Y[SUM<X>]" now parses with the real name "X,Y". This is now
+    // just a general safety-net check that sanitizeName's
+    // underscore-collapsing holds up end-to-end for a comma-bearing
+    // identifier, not a reproduction of the original bug report.
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
