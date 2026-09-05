@@ -1213,7 +1213,11 @@ pub fn parseWithTag(
 
 fn canonicalizeDefNames(allocator: std.mem.Allocator, def: *network.Definition, anon_id: *usize) !void {
     if (def.name.len == 0) {
-        def.name = try std.fmt.allocPrint(allocator, "__anon_{d}", .{anon_id.*});
+        // No leading underscore: scopedDefinitionName in export_vhdl.zig
+        // joins scope and name with "_" (e.g. "code" + "_" + this),
+        // and VHDL identifiers can't contain consecutive underscores —
+        // a leading "__anon_N" here used to collide into "code___anon_N".
+        def.name = try std.fmt.allocPrint(allocator, "anon_{d}", .{anon_id.*});
         anon_id.* += 1;
     }
 
