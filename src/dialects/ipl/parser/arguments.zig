@@ -74,7 +74,7 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
         p.pos += 1; // consume '$'
         const name = try p.readName();
         return network.Arg{
-            .kind = .expression, // Or .place depending on your exact network.Arg union/enum, keeping expression/place aligned
+            .kind = .place,
             .name = name,
             .text = p.src[start_pos..p.pos],
         };

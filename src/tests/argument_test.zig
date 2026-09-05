@@ -44,22 +44,28 @@ test "parseArgList parses mixed argument lists" {
     const allocator = arena.allocator();
 
     // Test list with commas and whitespace separation enclosed in parentheses
-    var p = parser.core.Parser.init(allocator, "(a, $b, 42)");
+    var p = parser.core.Parser.init(allocator, "(a, $b, 42, c<>)");
     const args = try parser.arguments.parseArgList(&p, ')');
 
-    try testing.expectEqual(@as(usize, 3), args.len);
+    try testing.expectEqual(@as(usize, 4), args.len);
 
     // First argument: literal "a"
     try testing.expectEqual(.literal, args[0].kind);
     try testing.expectEqualStrings("a", args[0].name);
 
-    // Second argument: variable "$b"
-    try testing.expectEqual(.expression, args[1].kind);
+    // Second argument: place "$b"
+    try testing.expectEqual(.place, args[1].kind);
     try testing.expectEqualStrings("b", args[1].name);
 
     // Third argument: literal "42"
     try testing.expectEqual(.literal, args[2].kind);
     try testing.expectEqualStrings("42", args[2].text);
+
+    // Fourth argument: place "C<>"
+    try testing.expectEqual(.place, args[3].kind);
+    try testing.expectEqualStrings("c<>", args[3].text);
+
+
 }
 
 test "parseArg handles places, expressions, and group modifiers" {
