@@ -1445,20 +1445,31 @@ fn rewriteDollarReferences(allocator: std.mem.Allocator, names: *IdentifierMap, 
 
 fn sanitizeName(allocator: std.mem.Allocator, composed: []const u8) ![]u8 {
     var buf: std.ArrayListUnmanaged(u8) = .empty;
+    defer buf.deinit(allocator);
     for (composed) |c| {
-        if (std.ascii.isAlphanumeric(c) or c == '_')
+        if (std.ascii.isAlphanumeric(c) or c == '_') {
+            // VHDL identifiers can't contain consecutive underscores —
+            // collapse runs of '_' to a single one instead of copying
+            // them verbatim.
+            if (c == '_' and buf.items.len > 0 and buf.items[buf.items.len - 1] == '_') continue;
             try buf.append(allocator, std.ascii.toLower(c));
+        }
     }
-    const needs_prefix = isVhdlReserved(buf.items) or
-        (buf.items.len > 0 and std.ascii.isDigit(buf.items[0]));
+    // VHDL identifiers also can't start or end with an underscore.
+    // Trim both before deciding whether a reserved-word/digit-start
+    // prefix is needed, so a name like "__anon_11" doesn't reintroduce
+    // a double underscore when "ms_" gets prepended below.
+    const trimmed = std.mem.trim(u8, buf.items, "_");
+
+    const needs_prefix = isVhdlReserved(trimmed) or
+        (trimmed.len > 0 and std.ascii.isDigit(trimmed[0]));
     if (needs_prefix) {
         var prefixed: std.ArrayListUnmanaged(u8) = .empty;
         try prefixed.appendSlice(allocator, "ms_");
-        try prefixed.appendSlice(allocator, buf.items);
-        buf.deinit(allocator);
+        try prefixed.appendSlice(allocator, trimmed);
         return prefixed.toOwnedSlice(allocator);
     }
-    return buf.toOwnedSlice(allocator);
+    return allocator.dupe(u8, trimmed);
 }
 
 fn placeName(allocator: std.mem.Allocator, arg: network.Arg) ![]const u8 {
@@ -1569,4 +1580,34 @@ test "sanitizeName collapses a multi-variable composed name into one identifier"
     const collapsed = try sanitizeName(allocator, "A$B");
     defer allocator.free(collapsed);
     try testing.expectEqualStrings("ab", collapsed);
+}
+
+test "sanitizeName never produces consecutive, leading, or trailing underscores" {
+    // Regression test: canonicalizeDefNames (parser.zig) used to name
+    // anonymous contained definitions "__anon_N" (leading double
+    // underscore). scopedDefinitionName joins scope and name with a
+    // single "_", so "code" + "_" + "__anon_11" produced
+    // "code___anon_11" — three consecutive underscores, which ghdl
+    // rejects outright ("two underscores can't be consecutive"). That
+    // specific name is now "anon_N" instead, but sanitizeName is
+    // hardened here too, since any raw IPL name containing "__", or
+    // starting/ending with "_", would trip the same VHDL rule.
+    const allocator = testing.allocator;
+
+    const leading = try sanitizeName(allocator, "__anon_11");
+    defer allocator.free(leading);
+    try testing.expectEqualStrings("anon_11", leading);
+    try testing.expect(std.mem.indexOf(u8, leading, "__") == null);
+
+    const joined = try std.fmt.allocPrint(allocator, "{s}_{s}", .{ "code", leading });
+    defer allocator.free(joined);
+    try testing.expect(std.mem.indexOf(u8, joined, "__") == null);
+
+    const internal = try sanitizeName(allocator, "A__B");
+    defer allocator.free(internal);
+    try testing.expectEqualStrings("a_b", internal);
+
+    const trailing = try sanitizeName(allocator, "FOO_");
+    defer allocator.free(trailing);
+    try testing.expectEqualStrings("foo", trailing);
 }
