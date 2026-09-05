@@ -4,7 +4,7 @@
 
 | Issue | Example | Expected | Parse | GHDL | Result |
 | --- | --- | --- | --- | --- | --- |
-| TAG-112 | mobius_ring.ms.ipl | - | FAIL | - | ⬛ expected fail |
+| TAG-112 | mobius_ring.ms.ipl | - | ok | FAIL | ⬛ expected fail |
 | TAG-129 | example-12.19.ms.ipl | Implemented | ok | FAIL | ❌ FAIL |
 | TAG-130 | example-12.1.ms.ipl | Partial | ok | FAIL | ⬛ expected fail |
 | TAG-136 | example-12.45.ms.ipl | Implemented | ok | FAIL | ❌ FAIL |
@@ -26,5 +26,5 @@
 | TAG-184 | example-12.24.ms.ipl | Implemented | ok | FAIL | ❌ FAIL |
 | TAG-185 | case-unique-signals.ms.ipl | Implemented | ok | FAIL | ❌ FAIL |
 | TAG-187 | generate_syntax.ms.ipl | Implemented | ok | ok | ✅ PASS |
-| TAG-189 | example-12.14-arbitration.ms.ipl | - | FAIL | - | ⬛ expected fail |
+| TAG-189 | example-12.14-arbitration.ms.ipl | - | ok | FAIL | ⬛ expected fail |
 | TAG-190 | example-12.5.ms.ipl | Implemented | ok | FAIL | ❌ FAIL |

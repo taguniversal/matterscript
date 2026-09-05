@@ -270,8 +270,34 @@ const Parser = struct {
             return node;
         }
 
-        // 3. Standard identifiers
+        // 3. Standard identifiers, or a nested call expression like
+        // "loop(edge($p0, $p1), ...)" when the identifier is
+        // immediately followed by '(' — mirrors the top-level call
+        // parsing in parseILExpr so calls can nest arbitrarily deep
+        // as arguments (e.g. face(loop(edge(...), edge(...)))).
         const name = try p.readName();
+        p.skipWhitespaceAndComments();
+        if (p.peek() == '(') {
+            _ = p.advance();
+            var args: std.ArrayListUnmanaged(*network.Expr) = .empty;
+            p.skipWhitespaceAndComments();
+            while (p.peek() != ')' and p.peek() != null) {
+                const arg = try p.parseILCallArgument();
+                try args.append(p.allocator, arg);
+                p.skipWhitespaceAndComments();
+                _ = p.tryConsume(',');
+                p.skipWhitespaceAndComments();
+            }
+            try p.expect(')');
+            const node = try p.allocator.create(network.Expr);
+            node.* = .{
+                .kind = .call,
+                .func = name,
+                .args = try args.toOwnedSlice(p.allocator),
+            };
+            return node;
+        }
+
         const node = try p.allocator.create(network.Expr);
         node.* = .{ .kind = .constant, .name = name };
         return node;
