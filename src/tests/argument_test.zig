@@ -44,10 +44,10 @@ test "parseArgList parses mixed argument lists" {
     const allocator = arena.allocator();
 
     // Test list with commas and whitespace separation enclosed in parentheses
-    var p = parser.core.Parser.init(allocator, "(a, $b, 42, c<>)");
+    var p = parser.core.Parser.init(allocator, "(a, $b, 42, c<> d< >)");
     const args = try parser.arguments.parseArgList(&p, ')');
 
-    try testing.expectEqual(@as(usize, 4), args.len);
+    try testing.expectEqual(@as(usize, 5), args.len);
 
     // First argument: literal "a"
     try testing.expectEqual(.literal, args[0].kind);
@@ -65,6 +65,9 @@ test "parseArgList parses mixed argument lists" {
     try testing.expectEqual(.place, args[3].kind);
     try testing.expectEqualStrings("c<>", args[3].text);
 
+    // Fifth argument: place "d< >"
+    try testing.expectEqual(.place, args[4].kind);
+    try testing.expectEqualStrings("d< >", args[4].text);
 
 }
 

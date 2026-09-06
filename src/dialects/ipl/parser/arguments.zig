@@ -74,24 +74,45 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
         p.pos += 1; // consume '$'
         const name = try p.readName();
         return network.Arg{
+            // A bare $name is a boundary place reference (Fant's
+            // destination syntax, "$SUM"), not a computed expression —
+            // writeBoundaryPorts/boundaryCount in export_vhdl.zig only
+            // treat .place (and .group) as real ports, so classifying
+            // this as .expression made it silently vanish from the
+            // emitted port list while still being counted toward the
+            // total, throwing off the "is this the last port" check
+            // and producing an illegal trailing ';' in every entity
+            // that uses a $name destination — i.e. nearly all of them.
             .kind = .place,
             .name = name,
             .text = p.src[start_pos..p.pos],
         };
     }
 
-    // Handle bare source brackets like '<>'
+    // Handle bare source brackets like '<>' or '< >'
     if (ch == '<') {
-        _ = p.advance(); // consume '<'
+        const lt_pos = p.pos;
+        p.pos += 1; // consume '<'
+        p.skipWhitespaceAndComments();
         if (p.peek() == '>') {
-            _ = p.advance(); // consume '>'
+            p.pos += 1; // consume '>'
             return network.Arg{
                 .kind = .place,
                 .name = "", // Unnamed source
-                .text = "<>",
+                .text = p.src[start_pos..p.pos],
             };
         }
-        // otherwise fall back or parse as a group if it has contents
+        // Non-empty bare <...>: restore to the '<' itself and let
+        // parseGroup parse it properly (it wasn't actually attempted
+        // here before — this branch used to fall through with no
+        // group parsed at all, then fail in readName below).
+        p.pos = lt_pos;
+        const grp = try p.parseGroup();
+        return network.Arg{
+            .kind = .group,
+            .group = grp,
+            .text = p.src[start_pos..p.pos],
+        };
     }
 
     // 3. Check for numeric literals (delegating directly to readNumericLiteral which handles signs/digits)
@@ -117,9 +138,11 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
         };
     }
 
-    // 5. Check for postfix '<>' indicating source places / group modifiers
+    // 5. Check for postfix '<>' or '< >' indicating source places / group modifiers
     if (p.peek() == '<') {
-        p.pos += 1;
+        const lt_pos = p.pos;
+        p.pos += 1; // consume '<'
+        p.skipWhitespaceAndComments();
         if (p.peek() == '>') {
             p.pos += 1;
             return network.Arg{
@@ -129,7 +152,7 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
             };
         } else {
             // If it's a generic group modifier like <sub1, sub2>
-            p.pos -= 1; // un-peek '<' for generic group parsing if needed
+            p.pos = lt_pos; // restore to '<' for generic group parsing
             const grp = try p.parseGroup();
             return network.Arg{
                 .kind = .group,
@@ -190,6 +213,3 @@ pub fn readNumericLiteral(p: *core.Parser) ![]const u8 {
     if (p.pos == start) return core.ParseError.ExpectedName;
     return p.src[start..p.pos];
 }
-
-
-

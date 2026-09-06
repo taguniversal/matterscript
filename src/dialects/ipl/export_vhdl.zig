@@ -1551,7 +1551,7 @@ const testing = std.testing;
 
 test "sanitizeName lowercases, strips punctuation, and prefixes reserved/digit-led names" {
     const allocator = testing.allocator;
-
+   
     const plain = try sanitizeName(allocator, "CARRYOUT");
     defer allocator.free(plain);
     try testing.expectEqualStrings("carryout", plain);

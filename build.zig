@@ -152,7 +152,7 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
-    
+
     const run_expression_tests = b.addRunArtifact(expression_tests);
 
     const test_step = b.step("test", "Run unit tests");
