@@ -10,7 +10,7 @@ const geo_build = @import("dialects/geo/geo_build.zig");
 const StateProgram = @import("dialects/fsm/program.zig").Program;
 const cell_runner = @import("dialects/geo/runner.zig");
 const il_parser = @import("dialects/ipl/parser.zig");
-const il_export_vhdl = @import("dialects/ipl/export_vhdl.zig");
+const il_export_vhdl = @import("dialects/ipl/vhdl/root.zig");
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();

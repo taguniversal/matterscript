@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 10  |  🟡 Partial: 11  |  ⬛ Spec only: 3  |  ⬜ Not started: 113  |  Total: 137
+✅ Implemented: 10  |  🟡 Partial: 12  |  ⬛ Spec only: 3  |  ⬜ Not started: 113  |  Total: 138
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
@@ -76,7 +76,7 @@
 - ⬜ Not started [Implement NuttX backend: invocation scheduling via NuttX tasks](TAG-107.md)
 - ⬜ Not started [Build NuttX simulator target for runtime validation without hardware](TAG-108.md)
 - ⬜ Not started [Cross-target test: same `.ms.il` network, verify identical behavior on POSIX and NuttX](TAG-109.md)
-- ⬜ Not started [Define mesh ingestion format and MeshLab interop boundary](TAG-112.md)
+- 🟡 Partial [Define mesh ingestion format and MeshLab interop boundary](TAG-112.md)
 - ⬜ Not started [Implement mesh-to-Zig data structures (vertices, adjacency, per-vertex metadata)](TAG-113.md)
 - ⬜ Not started [Language feature: mesh node reference syntax ( `cell[N]` )](TAG-114.md)
 - ⬜ Not started [Compiler pass: resolve `cell[N]` references against a loaded mesh](TAG-115.md)
@@ -136,6 +136,7 @@
 - ⬜ Not started [Brace groups in invocation arguments](TAG-188.md)
 - ⬜ Not started [Example 12.14 Arbitrated Places](TAG-189.md)
 - ✅ Implemented [Example 12.5 AND Function with value transform rule definitions](TAG-190.md)
+- ⬜ Not started [writeDefinition unconditional recursion](TAG-191.md)
 - ⬜ Not started [Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [The Completeness Dialogue](TAG-80.md)

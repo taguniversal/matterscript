@@ -4,7 +4,7 @@
 
 | Issue | Example | Expected | Parse | GHDL | Result |
 | --- | --- | --- | --- | --- | --- |
-| TAG-112 | mobius_ring.ms.ipl | - | ok | ok | 🟡 unexpected pass |
+| TAG-112 | mobius_ring.ms.ipl | Partial | ok | ok | 🟡 unexpected pass |
 | TAG-129 | example-12.19.ms.ipl | Implemented | ok | FAIL | ❌ FAIL |
 | TAG-130 | example-12.1.ms.ipl | Partial | ok | FAIL | ⬛ expected fail |
 | TAG-136 | example-12.45.ms.ipl | Implemented | ok | FAIL | ❌ FAIL |

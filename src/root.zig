@@ -9,7 +9,7 @@ pub const chain_fuzz =
 // can reuse the IL parser/emitter without crossing the module boundary
 // via a relative "../src/..." import, which Zig doesn't allow.
 pub const ipl_parser = @import("dialects/ipl/parser.zig");
-pub const ipl_export_vhdl = @import("dialects/ipl/export_vhdl.zig");
+pub const ipl_export_vhdl = @import("dialects/ipl/vhdl/root.zig");
 pub const network = @import("dialects/ipl/network.zig");
 
 test {

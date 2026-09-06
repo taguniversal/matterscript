@@ -24,7 +24,7 @@ pub fn build(b: *std.Build) void {
     const tangle_step = b.step("tangle", "Extract code blocks from documentation");
     tangle_step.dependOn(&run_tangle.step);
 
-    const mod = b.addModule("matterscript", .{
+    const matterscript_mod = b.addModule("matterscript", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
     });
@@ -34,7 +34,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
-    mod.addImport("mkrand", mkrand_mod);
+    matterscript_mod.addImport("mkrand", mkrand_mod);
 
     const exe = b.addExecutable(.{
         .name = "matterscript",
@@ -43,7 +43,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "matterscript", .module = mod },
+                .{ .name = "matterscript", .module = matterscript_mod },
                 .{ .name = "mkrand", .module = mkrand_mod },
             },
         }),
@@ -78,7 +78,7 @@ pub fn build(b: *std.Build) void {
     run_cmd.step.dependOn(b.getInstallStep());
     run_cmd.addPassthruArgs();
 
-    const mod_tests = b.addTest(.{ .root_module = mod });
+    const mod_tests = b.addTest(.{ .root_module = matterscript_mod });
     const run_mod_tests = b.addRunArtifact(mod_tests);
 
     const exe_tests = b.addTest(.{ .root_module = exe.root_module });
@@ -91,7 +91,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "matterscript", .module = mod },
+                .{ .name = "matterscript", .module = matterscript_mod },
                 .{ .name = "mkrand", .module = mkrand_mod },
             },
         }),
@@ -105,7 +105,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "matterscript", .module = mod },
+                .{ .name = "matterscript", .module = matterscript_mod },
                 .{ .name = "mkrand", .module = mkrand_mod },
             },
         }),
@@ -119,21 +119,21 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "matterscript", .module = mod },
+                .{ .name = "matterscript", .module = matterscript_mod },
                 .{ .name = "mkrand", .module = mkrand_mod },
             },
         }),
     });
     const run_definition_tests = b.addRunArtifact(definition_tests);
 
-// --- Argument parser tests (src/tests/argument_test.zig) ---
+    // --- Argument parser tests (src/tests/argument_test.zig) ---
     const argument_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/tests/argument_test.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "matterscript", .module = mod },
+                .{ .name = "matterscript", .module = matterscript_mod },
                 .{ .name = "mkrand", .module = mkrand_mod },
             },
         }),
@@ -147,7 +147,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "matterscript", .module = mod },
+                .{ .name = "matterscript", .module = matterscript_mod },
                 .{ .name = "mkrand", .module = mkrand_mod },
             },
         }),
@@ -164,6 +164,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_export_vhdl_tests.step);
     test_step.dependOn(&run_definition_tests.step);
 
+
     // ------------------------------------------------------------------------
     // 4. mdBook Build & Doc-Test Pipeline
     // ------------------------------------------------------------------------
@@ -179,7 +180,7 @@ pub fn build(b: *std.Build) void {
             .target = b.graph.host,
             .optimize = .Debug,
             .imports = &.{
-                .{ .name = "matterscript", .module = mod },
+                .{ .name = "matterscript", .module = matterscript_mod },
             },
         }),
     });
@@ -302,7 +303,7 @@ pub fn build(b: *std.Build) void {
             .target = b.graph.host,
             .optimize = .Debug,
             .imports = &.{
-                .{ .name = "matterscript", .module = mod },
+                .{ .name = "matterscript", .module = matterscript_mod },
             },
         }),
     });
