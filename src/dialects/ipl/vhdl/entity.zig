@@ -403,7 +403,24 @@ fn writeOneNetworkEntity(
             .place => output.name,
             else => output.text,
         };
-        try output_names.append(allocator, if (raw_name.len == 0) "result" else raw_name);
+        const candidate = if (raw_name.len == 0) "result" else raw_name;
+        // Two unnamed destination slots (e.g. TAG-129's own
+        // "(< > CARRYOUT < >)") would otherwise both fall back to the
+        // literal "result", producing two identical port declarations.
+        const unique = try sanitizer.uniqueVhdlName(allocator, output_names.items, candidate);
+        try output_names.append(allocator, unique);
+    }
+    // The entry invocation can name fewer destinations than the DUT
+    // actually has (fanout's 5 outputs vs. an entry that only cares
+    // about one, say). writeNetworkDestMapping below falls back to a
+    // placeholder for every DUT output beyond what output_names
+    // covers — that placeholder must actually be declared as a port
+    // here, or ghdl reports "no declaration for result" on the
+    // resulting port-map reference.
+    const dut_output_count = boundaryCount(matched.destinations);
+    while (output_names.items.len < dut_output_count) {
+        const unique = try sanitizer.uniqueVhdlName(allocator, output_names.items, "result");
+        try output_names.append(allocator, unique);
     }
 
     try writer.print(
@@ -433,7 +450,16 @@ fn writeOneNetworkEntity(
     }
 
     try writer.print("architecture rtl of {s} is\n", .{entity_id});
-    for (entry.sources, 0..) |_, i| {
+    // Same padding issue as output_names above, mirrored on the
+    // source side: writeNetworkSourceMapping walks matched.sources
+    // (the DUT's real, flattened input count) and increments a
+    // shared arg_index for each one, so if the entry invocation
+    // supplied fewer literal arguments than the DUT actually has
+    // inputs, references to the missing arg_N signals would never
+    // have been declared here at all.
+    const dut_source_count = boundaryCount(matched.sources);
+    const declared_source_count = @max(entry.sources.len, dut_source_count);
+    for (0..declared_source_count) |i| {
         try writer.print("  signal arg_{d} : ncl_signal;\n", .{i});
     }
     try writer.print("begin\n\n", .{});
@@ -447,6 +473,15 @@ fn writeOneNetworkEntity(
             continue;
         };
         try writer.print("  arg_{d} <= data_value({d});\n", .{ i, value });
+    }
+    // Any DUT inputs beyond what the entry invocation supplied still
+    // need a defined value — tie them to null_value rather than leave
+    // them floating.
+    if (dut_source_count > entry.sources.len) {
+        try writer.print("  -- entry invocation supplied fewer arguments than the DUT has inputs\n", .{});
+        for (entry.sources.len..dut_source_count) |i| {
+            try writer.print("  arg_{d} <= null_value;\n", .{i});
+        }
     }
 
     const def_id = try scopedDefinitionName(allocator, "", matched.name);
@@ -903,8 +938,25 @@ fn writeDollarReferenceSignals(
 }
 
 fn isDefinitionPort(def: network.Definition, name: []const u8) bool {
-    for (def.sources) |place| if (std.ascii.eqlIgnoreCase(place.name, name)) return true;
-    for (def.destinations) |place| if (std.ascii.eqlIgnoreCase(place.name, name)) return true;
+    return argListContainsName(def.sources, name) or argListContainsName(def.destinations, name);
+}
+
+fn argListContainsName(args: []const network.Arg, name: []const u8) bool {
+    // Mirrors writeBoundaryPorts/boundaryCount's own recursion —
+    // without it, any source/destination nested inside a bracket or
+    // mutex group ("[{A0<> A1<>}]", "{$0 $1}", etc. — a very common
+    // shape) is invisible here, so the fill/$-reference declaration
+    // code below wrongly re-declares it as a fresh internal signal,
+    // colliding with the port writeBoundaryPorts already emitted.
+    for (args) |arg| {
+        switch (arg.kind) {
+            .group => if (arg.group) |grp| {
+                if (argListContainsName(grp.places, name)) return true;
+            },
+            .place => if (std.ascii.eqlIgnoreCase(arg.name, name)) return true,
+            else => {},
+        }
+    }
     return false;
 }
 
