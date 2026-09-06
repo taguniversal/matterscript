@@ -1,9 +1,15 @@
 const std = @import("std");
 const testing = std.testing;
 const matterscript = @import("matterscript");
+const network = matterscript.network;
 
 const parser = matterscript.ipl_parser;
 
+// Ensure internal tests run too
+const definitions = matterscript.ipl_parser.definitions;
+test {
+    std.testing.refAllDecls(definitions);
+}
 test "a comma-separated contained-row key parses as a composed key, not fresh source names" {
     // Historical note: this test used to call parseTruthTableRow
     // directly, asserting that "S,U,W" became three source-place Args
@@ -39,4 +45,15 @@ test "a comma-separated contained-row key parses as a composed key, not fresh so
 
     try testing.expectEqual(@as(usize, 0), def.constants.len);
     try testing.expectEqual(@as(usize, 0), def.contained.len);
+}
+
+
+test "composedKeySegmentCount counts destination names" {
+    // Construct a mock statement list with a .fill statement containing two variables
+    const statements = [_]network.Statement{ 
+        .{ .fill = .{ .expr = "$a$b$c()", .dest_name = "DEST1" } },
+    };
+    std.debug.print("{any}\n", .{statements});
+    const count = definitions.composedKeySegmentCount(&statements);
+    try std.testing.expectEqual(@as(usize, 3), count);
 }

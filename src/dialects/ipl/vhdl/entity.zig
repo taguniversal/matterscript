@@ -974,5 +974,5 @@ test "argContainsName checks nested structures" {
     try std.testing.expect(argContainsName(nested_group, "target_place"));
     // Should return false for missing names
     try std.testing.expect(!argContainsName(nested_group, "nonexistent"));
-    std.testing.expect(false);
+   
 }
