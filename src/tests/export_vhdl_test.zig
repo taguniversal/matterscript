@@ -81,7 +81,7 @@ test "composed two-variable lookup with comma-separated keys resolves to a case 
     const allocator = arena.allocator();
 
     const src =
-        \\OR[(A<>B<>)
+        \\OR[(A<> B<>)
         \\  <$A$B()>
         \\  :
         \\   0,0[0]

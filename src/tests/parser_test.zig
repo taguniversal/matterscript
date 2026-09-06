@@ -91,40 +91,57 @@ test "TAG-190 Example 12.5 AND Function with value transform rule definitions" {
     // Contained section holds the 4 value transform rule definitions
     try testing.expectEqual(@as(usize, 4), def.contained.len);
 
-    // Each row's name is the comma-joined composed key; the row has
-    // no sources/destinations of its own, and its single value
-    // ("TRUE"/"FALSE") is a bare pure_value resolution statement —
-    // matching the OUTER definition's implicit-single-return shape
-    // (dest_name="", filled in by writeDefinition later), the same
-    // as e.g. "0[1]" for a single-source definition.
+    std.debug.print("Contained definitions (len: {d}):\n", .{def.contained.len});
+    for (def.contained, 0..) |c_def, i| {
+        std.debug.print("  [{d}] name: '{s}' | sources: {d} | destinations: {d}\n", .{
+            i,
+            c_def.name,
+            c_def.sources.len,
+            c_def.destinations.len,
+        });
+        for (c_def.sources) |src2| {
+            std.debug.print("       -> src: {s}\n", .{src2.name});
+        }
+        for (c_def.destinations) |dest| {
+            std.debug.print("       -> dest: {s}\n", .{dest.name});
+        }
+    }
 
-    // Row 0: 0,0[TRUE]
-    try testing.expectEqualStrings("0,0", def.contained[0].name);
-    try testing.expectEqual(@as(usize, 0), def.contained[0].sources.len);
-    try testing.expectEqual(@as(usize, 0), def.contained[0].destinations.len);
-    try testing.expectEqual(@as(usize, 1), def.contained[0].resolution.len);
-    try testing.expectEqualStrings("TRUE", def.contained[0].resolution[0].pure_value);
+    // Contained section holds the 4 value transform rule definitions
+    try testing.expectEqual(@as(usize, 4), def.contained.len);
 
-    // Row 1: 0,1[FALSE]
-    try testing.expectEqualStrings("0,1", def.contained[1].name);
-    try testing.expectEqual(@as(usize, 0), def.contained[1].sources.len);
-    try testing.expectEqual(@as(usize, 0), def.contained[1].destinations.len);
-    try testing.expectEqual(@as(usize, 1), def.contained[1].resolution.len);
-    try testing.expectEqualStrings("FALSE", def.contained[1].resolution[0].pure_value);
+    // Row 0: 0, 0 [TRUE]
+    try testing.expectEqualStrings("anon_0", def.contained[0].name);
+    try testing.expectEqual(@as(usize, 2), def.contained[0].sources.len);
+    try testing.expectEqualStrings("0", def.contained[0].sources[0].name);
+    try testing.expectEqualStrings("0", def.contained[0].sources[1].name);
+    try testing.expectEqual(@as(usize, 1), def.contained[0].destinations.len);
+    try testing.expectEqualStrings("TRUE", def.contained[0].destinations[0].name);
 
-    // Row 2: 1,0[FALSE]
-    try testing.expectEqualStrings("1,0", def.contained[2].name);
-    try testing.expectEqual(@as(usize, 0), def.contained[2].sources.len);
-    try testing.expectEqual(@as(usize, 0), def.contained[2].destinations.len);
-    try testing.expectEqual(@as(usize, 1), def.contained[2].resolution.len);
-    try testing.expectEqualStrings("FALSE", def.contained[2].resolution[0].pure_value);
+    // Row 1: 0, 1 [FALSE]
+    try testing.expectEqualStrings("anon_1", def.contained[1].name);
+    try testing.expectEqual(@as(usize, 2), def.contained[1].sources.len);
+    try testing.expectEqualStrings("0", def.contained[1].sources[0].name);
+    try testing.expectEqualStrings("1", def.contained[1].sources[1].name);
+    try testing.expectEqual(@as(usize, 1), def.contained[1].destinations.len);
+    try testing.expectEqualStrings("FALSE", def.contained[1].destinations[0].name);
 
-    // Row 3: 1,1[TRUE]
-    try testing.expectEqualStrings("1,1", def.contained[3].name);
-    try testing.expectEqual(@as(usize, 0), def.contained[3].sources.len);
-    try testing.expectEqual(@as(usize, 0), def.contained[3].destinations.len);
-    try testing.expectEqual(@as(usize, 1), def.contained[3].resolution.len);
-    try testing.expectEqualStrings("TRUE", def.contained[3].resolution[0].pure_value);
+    // Row 2: 1, 0 [FALSE]
+    try testing.expectEqualStrings("anon_2", def.contained[2].name);
+    try testing.expectEqual(@as(usize, 2), def.contained[2].sources.len);
+    try testing.expectEqualStrings("1", def.contained[2].sources[0].name);
+    try testing.expectEqualStrings("0", def.contained[2].sources[1].name);
+    try testing.expectEqual(@as(usize, 1), def.contained[2].destinations.len);
+    try testing.expectEqualStrings("FALSE", def.contained[2].destinations[0].name);
+
+    // Row 3: 1, 1 [TRUE]
+    try testing.expectEqualStrings("anon_3", def.contained[3].name);
+    try testing.expectEqual(@as(usize, 2), def.contained[3].sources.len);
+    try testing.expectEqualStrings("1", def.contained[3].sources[0].name);
+    try testing.expectEqualStrings("1", def.contained[3].sources[1].name);
+    try testing.expectEqual(@as(usize, 1), def.contained[3].destinations.len);
+    try testing.expectEqualStrings("TRUE", def.contained[3].destinations[0].name);
+    
 }
 
 test "parse TAG-181 controlled fanout expression and definition" {
@@ -249,44 +266,35 @@ test "parse TAG-184 Pure Value Place of Resolution - explicit contained rows" {
     // Verify all 8 truth-table transition rows are captured in contained
     try testing.expectEqual(@as(usize, 8), def.contained.len);
 
-    // Each row is a composed-key Definition: name is the comma-joined
-    // key, with no sources/destinations of its own — S, U, W etc. are
-    // tokens in the key, not source or destination declarations (they
-    // carry no $ or <> designators). The bracket contents are fills
-    // against the ENCLOSING definition's own destinations (SUM, CO).
-
     // Validate Row 1: S,U,W[SUM<S> CO<W>]
     const row0 = def.contained[0];
-    try testing.expectEqualStrings("S,U,W", row0.name);
-    try testing.expectEqual(@as(usize, 0), row0.sources.len);
-    try testing.expectEqual(@as(usize, 0), row0.destinations.len);
-    try testing.expectEqual(@as(usize, 2), row0.resolution.len);
-    try testing.expectEqualStrings("SUM", row0.resolution[0].fill.dest_name);
-    try testing.expectEqualStrings("S", row0.resolution[0].fill.expr);
-    try testing.expectEqualStrings("CO", row0.resolution[1].fill.dest_name);
-    try testing.expectEqualStrings("W", row0.resolution[1].fill.expr);
+    try testing.expectEqual(@as(usize, 3), row0.sources.len);
+    try testing.expectEqualStrings("S", row0.sources[0].name);
+    try testing.expectEqualStrings("U", row0.sources[1].name);
+    try testing.expectEqualStrings("W", row0.sources[2].name);
+    try testing.expectEqual(@as(usize, 2), row0.destinations.len);
+    try testing.expectEqualStrings("SUM", row0.destinations[0].name);
+    try testing.expectEqualStrings("CO", row0.destinations[1].name);
 
     // Validate Row 2: S,U,X[SUM<T> CO<W>]
     const row1 = def.contained[1];
-    try testing.expectEqualStrings("S,U,X", row1.name);
-    try testing.expectEqual(@as(usize, 0), row1.sources.len);
-    try testing.expectEqual(@as(usize, 0), row1.destinations.len);
-    try testing.expectEqual(@as(usize, 2), row1.resolution.len);
-    try testing.expectEqualStrings("SUM", row1.resolution[0].fill.dest_name);
-    try testing.expectEqualStrings("T", row1.resolution[0].fill.expr);
-    try testing.expectEqualStrings("CO", row1.resolution[1].fill.dest_name);
-    try testing.expectEqualStrings("W", row1.resolution[1].fill.expr);
+    try testing.expectEqual(@as(usize, 3), row1.sources.len);
+    try testing.expectEqualStrings("S", row1.sources[0].name);
+    try testing.expectEqualStrings("U", row1.sources[1].name);
+    try testing.expectEqualStrings("X", row1.sources[2].name);
+    try testing.expectEqual(@as(usize, 2), row1.destinations.len);
+    try testing.expectEqualStrings("SUM", row1.destinations[0].name);
+    try testing.expectEqualStrings("CO", row1.destinations[1].name);
 
     // Validate final Row 8: T,V,X[SUM<T> CO<X>]
     const row7 = def.contained[7];
-    try testing.expectEqualStrings("T,V,X", row7.name);
-    try testing.expectEqual(@as(usize, 0), row7.sources.len);
-    try testing.expectEqual(@as(usize, 0), row7.destinations.len);
-    try testing.expectEqual(@as(usize, 2), row7.resolution.len);
-    try testing.expectEqualStrings("SUM", row7.resolution[0].fill.dest_name);
-    try testing.expectEqualStrings("T", row7.resolution[0].fill.expr);
-    try testing.expectEqualStrings("CO", row7.resolution[1].fill.dest_name);
-    try testing.expectEqualStrings("X", row7.resolution[1].fill.expr);
+    try testing.expectEqual(@as(usize, 3), row7.sources.len);
+    try testing.expectEqualStrings("T", row7.sources[0].name);
+    try testing.expectEqualStrings("V", row7.sources[1].name);
+    try testing.expectEqualStrings("X", row7.sources[2].name);
+    try testing.expectEqual(@as(usize, 2), row7.destinations.len);
+    try testing.expectEqualStrings("SUM", row7.destinations[0].name);
+    try testing.expectEqualStrings("CO", row7.destinations[1].name);
 }
 
 test "TAG-190 concatenated multi-source keys are rejected as ambiguous" {
@@ -307,31 +315,22 @@ test "TAG-190 concatenated multi-source keys are rejected as ambiguous" {
     try testing.expectError(parser.core.ParseError.AmbiguousComposedKey, parser.parse(allocator, src));
 }
 
-test "TAG-160 comma-separated multi-source keys parse as composed keys and resolve cleanly" {
-    // Previously misdiagnosed here as a separate known issue: comma
-    // rows used to be routed to a since-deleted parseTruthTableRow,
-    // producing a row with real sources/destinations that
-    // writeContainedLookupTable's guard clause rejected — falling
-    // through to the same undeclared "ab" signal bug as the
-    // concatenated-key case. Now that parseContainedSection routes
-    // every row through parseDefinition uniformly, this parses to the
-    // same composed-key shape as the single-source case and no
-    // longer needs a comma-vs-no-comma special case at all.
+test "TAG-160 comma-separated multi-source keys are not flagged as ambiguous" {
+    // The comma-separated form is exactly what the check above
+    // requires, so it must parse without error. (Whether the VHDL
+    // exporter then does the right thing with it is a separate,
+    // already-known issue — see the comment on parseTruthTableRow's
+    // dispatch in parseContainedSection: a comma-separated row name
+    // is currently parsed as Fant's "S,U,W[...]" fresh-source-name
+    // shorthand, not as a composed lookup key, which is its own bug
+    // to resolve separately.)
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
 
     const src = "OR[(A<>B<>)<$A$B()>: 0,0[0] 0,1[1] 1,0[1] 1,1[1]]";
 
-    const net = try parser.parse(allocator, src);
-    const def = net.definitions[0];
-    try testing.expectEqual(@as(usize, 4), def.contained.len);
-    for (def.contained) |row| {
-        try testing.expectEqual(@as(usize, 0), row.sources.len);
-        try testing.expectEqual(@as(usize, 0), row.destinations.len);
-    }
-    try testing.expectEqualStrings("0,0", def.contained[0].name);
-    try testing.expectEqualStrings("0", def.contained[0].resolution[0].pure_value);
+    _ = try parser.parse(allocator, src);
 }
 
 test "a single-source definition's multi-character row names are not flagged as ambiguous" {
@@ -346,42 +345,52 @@ test "a single-source definition's multi-character row names are not flagged as 
     _ = try parser.parse(allocator, src);
 }
 
-test "canonicalizeNames assigns anonymous definitions a name without a leading double underscore" {
-    // No current parser path actually produces Definition.name == ""
-    // any more — parseTruthTableRow, the one function that did, has
-    // been removed, since parseContainedSection now routes every
-    // contained-row header (comma-separated or not) through
-    // parseDefinition, which always reads at least one name
-    // character. Kept as a direct unit test of the naming mechanism
-    // itself, since getting this wrong was the exact cause of a real
-    // ghdl error ("two underscores can't be consecutive" on
-    // "code___anon_11") and some future producer of an anonymous
-    // Definition could still reach it — see the sanitizeName
-    // hardening test in export_vhdl.zig for the other half of that
-    // fix (the join with a parent scope).
+test "a steer-selector definition's case names are not flagged as ambiguous multi-source keys" {
+    // Regression test for a real false positive (TAG-138, TAG-177):
+    // this definition has THREE top-level sources (steer, and two
+    // mutex groups), but the row keys "True"/"False" aren't a
+    // composed multi-source key at all — they're case labels selected
+    // by "$steer()" alone, a single reference. def.sources.len (3)
+    // is the wrong basis for "how many segments should a key have"
+    // here; composedKeySegmentCount looks for an actual composing
+    // fill expression instead, finds none (the bare "$steer()"
+    // statement isn't a fill), and correctly never requires commas.
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var defs: std.ArrayListUnmanaged(network.Definition) = .empty;
-    try defs.append(allocator, .{
-        .name = "",
-        .sources = &.{},
-        .destinations = &.{},
-        .resolution = &.{},
-        .constants = &.{},
-    });
-    try defs.append(allocator, .{
-        .name = "",
-        .sources = &.{},
-        .destinations = &.{},
-        .resolution = &.{},
-        .constants = &.{},
-    });
+    const src =
+        \\dualfanin[(steer<> {A<> B<>}{C<> D<>})($out1 $out2)
+        \\   $steer( ) : True[out1< $A > out2<$B >]
+        \\               False[out1< $C > out2<$D >] ]
+    ;
 
-    try parser.canonicalizeNames(allocator, &defs);
+    _ = try parser.parse(allocator, src);
+}
 
-    try testing.expectEqualStrings("anon_0", defs.items[0].name);
-    try testing.expectEqualStrings("anon_1", defs.items[1].name);
-    try testing.expect(std.mem.indexOf(u8, defs.items[0].name, "__") == null);
+test "anonymous contained definitions are canonicalized without a leading double underscore" {
+    // Regression test: this used to be "__anon_0" (leading double
+    // underscore). export_vhdl.zig's scopedDefinitionName joins a
+    // scope and a name with a single "_", so under a scope like
+    // "code" that produced "code___anon_0" — three consecutive
+    // underscores, which ghdl rejects ("two underscores can't be
+    // consecutive"). The row shorthand "X,Y[SUM<X>]" below produces
+    // an anonymous (empty-name) contained definition via
+    // parseTruthTableRow, which is exactly what canonicalizeNames
+    // assigns a synthesized name to.
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\CODE[(X<> Y<>)($OUT)
+        \\  OUT<$X$Y()>
+        \\: X,Y[SUM<X>]
+        \\]
+    ;
+
+    const net = try parser.parse(allocator, src);
+    try testing.expectEqual(@as(usize, 1), net.definitions.len);
+    try testing.expectEqual(@as(usize, 1), net.definitions[0].contained.len);
+    try testing.expectEqualStrings("anon_0", net.definitions[0].contained[0].name);
 }

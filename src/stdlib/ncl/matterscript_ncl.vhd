@@ -14,6 +14,7 @@ package matterscript_ncl is
 	function payload(signal_value : ncl_signal) return ncl_payload;
 	function null_value return ncl_signal;
 	function data_value(value : natural) return ncl_signal;
+	function valid_of(signal_value : ncl_signal) return std_logic;
 end package matterscript_ncl;
 
 package body matterscript_ncl is
@@ -40,5 +41,18 @@ package body matterscript_ncl is
 	function data_value(value : natural) return ncl_signal is
 	begin
 		return std_logic_vector(to_unsigned(value, DATA_WIDTH)) & '1';
+	end function;
+
+	-- Assignable (std_logic) form of is_data, for driving a plain
+	-- "<port>_valid : std_logic" signal directly from a boundary port —
+	-- is_data itself returns boolean, which VHDL won't let you assign
+	-- straight into a std_logic signal without this kind of wrapper.
+	function valid_of(signal_value : ncl_signal) return std_logic is
+	begin
+		if is_data(signal_value) then
+			return '1';
+		else
+			return '0';
+		end if;
 	end function;
 end package body matterscript_ncl;

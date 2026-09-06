@@ -64,7 +64,7 @@ pub fn parseDefinition(p: *core.Parser) anyerror!network.Definition {
     p.skipWhitespaceAndComments();
     const resolution = try parseResolution(p);
     _ = p.tryConsume(':');
-    const section = try parseContainedSection(p, sources.len);
+    const section = try parseContainedSection(p, composedKeySegmentCount(resolution));
     try p.expect(']');
 
     return network.Definition{
@@ -79,18 +79,53 @@ pub fn parseDefinition(p: *core.Parser) anyerror!network.Definition {
     };
 }
 
+/// How many comma-separated segments a contained row's composed key
+/// is expected to have, derived from counting distinct $-referenced
+/// names in a fill statement's expression (e.g. "$A$B()" → 2).
+///
+/// This is deliberately NOT def.sources.len: a definition can have
+/// sources that aren't part of the lookup key at all — e.g. a
+/// "steer"-selector pattern (fanout/fanin/dualfanin) where a single
+/// $select()/$steer() reference picks between named cases like
+/// "True"/"False" or "A"/"B"/"C"/"D", while the OTHER sources are
+/// just data being routed, referenced inside the row bodies rather
+/// than composed into the key. Using sources.len there would flag
+/// those single-token case names as ambiguous multi-source keys when
+/// they aren't keys at all in that sense. If no fill composes a key,
+/// this returns 0 and AmbiguousComposedKey never fires for the row.
+fn composedKeySegmentCount(resolution: []const network.Statement) usize {
+    for (resolution) |stmt| {
+        if (stmt != .fill) continue;
+        var count: usize = 0;
+        var i: usize = 0;
+        const expr = stmt.fill.expr;
+        while (i < expr.len) {
+            if (expr[i] != '$') {
+                i += 1;
+                continue;
+            }
+            i += 1;
+            const start = i;
+            while (i < expr.len and (std.ascii.isAlphanumeric(expr[i]) or expr[i] == '_')) i += 1;
+            if (i > start) count += 1;
+        }
+        if (count > 0) return count;
+    }
+    return 0;
+}
+
 /// Parses everything after a definition's resolution-terminating ':'
 /// — Fant's "contained definitions" position (§12.3.2). Can hold
 /// $-composed constant tables and/or genuine nested Definitions
 /// (with their own sources/destinations/resolution), in any order.
 ///
-/// `source_count` is the enclosing definition's source count, used
-/// only to detect an ambiguous composed lookup-table key: with
-/// more than one source, a row name must comma-separate each
-/// source's value (e.g. "0,0[0]"), since symbolic values aren't
-/// fixed-width and a concatenated "00[0]" has no reliable split
-/// point. See AmbiguousComposedKey.
-pub fn parseContainedSection(p: *core.Parser, source_count: usize) anyerror!struct {
+/// `expected_segments` is the composed-key segment count derived by
+/// composedKeySegmentCount above — NOT the enclosing definition's
+/// source count. With more than one expected segment, a row name
+/// must comma-separate each value (e.g. "0,0[0]"), since symbolic
+/// values aren't fixed-width and a concatenated "00[0]" has no
+/// reliable split point. See AmbiguousComposedKey.
+pub fn parseContainedSection(p: *core.Parser, expected_segments: usize) anyerror!struct {
     constants: []const network.TableDef,
     contained: []const network.Definition,
 } {
@@ -115,34 +150,27 @@ pub fn parseContainedSection(p: *core.Parser, source_count: usize) anyerror!stru
             };
             p.skipWhitespaceAndComments();
             if (p.peek() == '[') {
-                // A contained-definition row: the composed key is
-                // just the comma-joined name (or a bare token for a
-                // single source) and the bracket holds the row's
-                // value(s) as ordinary resolution statements — parsed
-                // identically whether the key itself uses commas
-                // ("0,0[0]", "S,U,W[SUM<S> CO<W>]") or not ("00[0]"
-                // for a single source, "1[2]" for a bare constant).
-                // There's no separate "declare fresh source names"
-                // construct here — S, U, W above carry no $ or <>
-                // designators, so they're composed-key tokens like
-                // any other.
-                //
-                // With more than one source, a key with no comma is
-                // ambiguous: there's no reliable way to know where
-                // one source's value ends and the next begins, since
-                // values can be symbolic and aren't fixed-width — so
-                // that specific case is rejected instead of silently
-                // misparsed.
-                if (source_count > 1 and names.len > 1 and
-                    std.mem.indexOfScalar(u8, names, ',') == null)
-                {
+                if (std.mem.indexOfScalar(u8, names, ',') != null) {
+                    // Shorthand truth-table row (e.g. S,U,W[...])
                     p.pos = save;
-                    return core.ParseError.AmbiguousComposedKey;
+                    const row = try parseTruthTableRow(p);
+                    try nested.append(p.allocator, row);
+                    continue;
+                } else {
+                    // Standard nested definition (e.g. AND[...]) —
+                    // unless this is actually a multi-source
+                    // lookup-table row whose values were
+                    // concatenated instead of comma-separated,
+                    // which is ambiguous and must be rejected.
+                    if (expected_segments > 1 and names.len > 1) {
+                        p.pos = save;
+                        return core.ParseError.AmbiguousComposedKey;
+                    }
+                    p.pos = save;
+                    const def = try parseDefinition(p);
+                    try nested.append(p.allocator, def);
+                    continue;
                 }
-                p.pos = save;
-                const def = try parseDefinition(p);
-                try nested.append(p.allocator, def);
-                continue;
             }
             p.pos = save;
             break;
@@ -191,6 +219,57 @@ fn parseOneConstantTable(p: *core.Parser) !network.TableDef {
         try entries.append(p.allocator, .{ .key = key, .value = val });
     }
     return .{ .composed_name = composed, .kind = .{ .explicit = try entries.toOwnedSlice(p.allocator) } };
+}
+
+/// Parses a shorthand truth-table row like S,U,W[SUM<S> CO<W>]
+pub fn parseTruthTableRow(p: *core.Parser) anyerror!network.Definition {
+    var sources: std.ArrayListUnmanaged(network.Arg) = .empty;
+    while (true) {
+        p.skipWhitespaceAndComments();
+        const name = try p.readName();
+        try sources.append(p.allocator, network.Arg{
+            .name = name,
+            .kind = .place,
+            .group = null,
+        });
+        p.skipWhitespaceAndComments();
+        if (p.peek() == ',') {
+            p.pos += 1;
+        } else {
+            break;
+        }
+    }
+
+    try p.expect('[');
+    p.skipWhitespaceAndComments();
+
+    var destinations: std.ArrayListUnmanaged(network.Arg) = .empty;
+    while (true) {
+        p.skipWhitespaceAndComments();
+        const c = p.peek() orelse return error.UnexpectedEof;
+        if (c == ']') {
+            p.pos += 1; // consume ']'
+            break;
+        }
+
+        // Parse the destination argument (handles name and optional <modifier> automatically)
+        const arg = try arguments.parseArg(p);
+        try destinations.append(p.allocator, arg);
+
+        p.skipWhitespaceAndComments();
+        if (p.peek() == ',') {
+            p.pos += 1;
+        }
+    }
+
+    return network.Definition{
+        .name = "",
+        .sources = try sources.toOwnedSlice(p.allocator),
+        .destinations = try destinations.toOwnedSlice(p.allocator),
+        .resolution = &.{},
+        .constants = &.{},
+        .contained = &.{},
+    };
 }
 
 pub fn parseResolution(p: *core.Parser) ![]const network.Statement {

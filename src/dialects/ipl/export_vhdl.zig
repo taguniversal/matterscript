@@ -411,7 +411,19 @@ fn writeDefinition(
         var intermediate_names: std.ArrayListUnmanaged([]const u8) = .empty;
         for (def.resolution) |stmt| {
             switch (stmt) {
-                .fill => {}, // handled later, after 'begin' — no declaration needed here
+                .fill => |fill| {
+                    // A fill's destination (e.g. "p0" in "p0<point(...)>")
+                    // is only a boundary port when it's actually
+                    // declared in sources/destinations — otherwise it's
+                    // a purely internal place that still needs a
+                    // signal declared for it, or ghdl reports "no
+                    // declaration for <name>" on the assignment below.
+                    // Any $-referenced names inside the expression
+                    // itself need the same treatment (mirroring the
+                    // .invoke and .pure_value cases here).
+                    try writeIntermediateSignal(allocator, writer, def, &intermediate_names, fill.dest_name);
+                    try writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, fill.expr);
+                },
                 .invoke => |inv| {
                     for (inv.destinations) |dest| {
                         try writeIntermediatePlaceSignal(allocator, writer, def, &intermediate_names, dest);
@@ -755,13 +767,19 @@ fn writeComponentDeclaration(
 }
 
 fn boundaryCount(args: []const network.Arg) usize {
+    // Deliberately mirrors writeBoundaryPorts' own switch exactly
+    // (group → recurse, place → +1, anything else → +0), rather than
+    // counting every non-group kind, so this can never again disagree
+    // with what actually gets printed — see the parseArg fix for
+    // '$name' destinations for what happens when it does.
     var count: usize = 0;
     for (args) |arg| {
         switch (arg.kind) {
             .group => if (arg.group) |grp| {
                 count += boundaryCount(grp.places);
             },
-            else => count += 1,
+            .place => count += 1,
+            else => {},
         }
     }
     return count;
@@ -795,7 +813,16 @@ fn writeBoundaryPorts(
 
             port_index.* += 1;
             const is_last = (port_index.* == boundary_count);
-            try writer.print("    {s} : {s} std_logic_vector(DATA_WIDTH - 1 downto 0){s}\n", .{
+            // ncl_signal (SIGNAL_WIDTH = DATA_WIDTH + 1 bits), not a
+            // bare DATA_WIDTH-bit vector: every consumer downstream
+            // (is_data/payload/null_value/data_value, and the
+            // "x(7 downto 1)" case-key builders) already assumes the
+            // 8-bit encoding with an embedded validity bit at index 0.
+            // Declaring the port itself one bit narrower is what made
+            // valid_of(x) unresolvable and produced the "value
+            // constraints don't match target ones" / "left bound
+            // incompatible with range" warnings on every assignment.
+            try writer.print("    {s} : {s} ncl_signal{s}\n", .{
                 port_id,
                 dir,
                 if (is_last) "" else ";",
@@ -941,7 +968,9 @@ fn writeIntermediatePlaceSignal(
             defer allocator.free(signal_id);
 
             try intermediate_names.append(allocator, try allocator.dupe(u8, raw_name));
-            try writer.print("  signal {s} : std_logic_vector(DATA_WIDTH - 1 downto 0);\n", .{signal_id});
+            // Same width fix as writeBoundaryPorts above — must match
+            // ncl_signal, not a bare DATA_WIDTH vector.
+            try writer.print("  signal {s} : ncl_signal;\n", .{signal_id});
             try writer.print("  signal {s}_valid : std_logic;\n", .{signal_id});
         },
         else => {},
@@ -1551,7 +1580,7 @@ const testing = std.testing;
 
 test "sanitizeName lowercases, strips punctuation, and prefixes reserved/digit-led names" {
     const allocator = testing.allocator;
-   
+
     const plain = try sanitizeName(allocator, "CARRYOUT");
     defer allocator.free(plain);
     try testing.expectEqualStrings("carryout", plain);
