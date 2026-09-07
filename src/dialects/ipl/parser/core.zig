@@ -220,7 +220,6 @@ pub const Parser = struct {
             .size_y = size_y,
         };
     }
-    
 
     // ----------------------------------------------------------------
     // Definition list parsers (corrected Fant order)
@@ -383,7 +382,7 @@ pub const Parser = struct {
         } };
     }
 
-    pub fn parseInvocation(p: *Parser, name: []const u8) !network.Statement {
+    pub fn parseInvocation(p: *Parser, label: ?[]const u8, name: []const u8) !network.Statement {
         const sources = if (p.peek() == '(')
             try arguments.parseArgList(p, ')')
         else
@@ -398,13 +397,13 @@ pub const Parser = struct {
 
         return network.Statement{ .invoke = .{
             .name = name,
+            .label = label,
             .sources = sources,
             .destinations = destinations,
         } };
     }
 
-
-    pub fn parseEntryInvocation(p: *Parser, name: []const u8) !network.EntryInvocation {
+    pub fn parseEntryInvocation(p: *Parser, label: ?[]const u8, name: []const u8) !network.EntryInvocation {
         // Fant invocation order: sources first ($name/literal/groups), destinations second (name<>)
         const sources = try arguments.parseArgList(p, ')');
         p.skipWhitespaceAndComments();
@@ -414,6 +413,7 @@ pub const Parser = struct {
             &.{}; // §12.3.4 — destination list omitted, implicit single unnamed return
 
         return network.EntryInvocation{
+            .label = label,
             .name = name,
             .sources = sources,
             .destinations = destinations,

@@ -92,16 +92,36 @@ fn parseInner(p: *core.Parser, allocator: std.mem.Allocator) !network.Network {
         }
 
         const name_start = p.pos;
-        const name = try p.readName();
+        const potential_label = try p.readName();
         p.skipWhitespaceAndComments();
+
+        var label: ?[]const u8 = null;
+        var name: []const u8 = undefined;
+
+        // Check if this identifier is an explicit prefix label followed by a colon
+        if (p.peek() == ':') {
+            p.pos += 1; // consume ':'
+            label = potential_label;
+            p.skipWhitespaceAndComments();
+            name = try p.readName();
+            p.skipWhitespaceAndComments();
+        } else {
+            // No colon, so it's a standard unlabeled name (definition or invocation)
+            p.pos = name_start;
+            name = try p.readName();
+            p.skipWhitespaceAndComments();
+        }
+
         const next = p.peek() orelse break;
 
         if (next == '[') {
+            // Definitions do not take prefix labels, so backtrack to name_start
             p.pos = name_start;
             const def = try definitions.parseDefinition(p);
             try inner_definitions.append(allocator, def);
         } else if (next == '(') {
-            const parsed_entry = try p.parseEntryInvocation(name);
+            // Top-level entry invocation supporting the optional label
+            const parsed_entry = try p.parseEntryInvocation(label, name);
             try entries.append(allocator, parsed_entry);
         } else return error.UnexpectedChar;
     }

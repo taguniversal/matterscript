@@ -253,7 +253,7 @@ test "parse TAG-184 Pure Value Place of Resolution - explicit contained rows" {
     // Verify all 8 truth-table transition rows are captured in contained
     try testing.expectEqual(@as(usize, 8), def.contained.len);
     // Validate Row 0: S,U,W[SUM<S> CO<W>]
-    const row0 :network.Definition = def.contained[0];
+    const row0: network.Definition = def.contained[0];
     try testing.expectEqualStrings("S,U,W", row0.name);
     try testing.expectEqual(@as(usize, 2), row0.resolution.len);
     try testing.expectEqualSlices(u8, "SUM", row0.resolution[0].fill.dest_name);
@@ -340,7 +340,7 @@ test "TAG-190 concatenated multi-source keys are rejected as ambiguous" {
 
     const src = "AND[(A<> B<>)<$A$B()>: 00[0] 01[0] 10[0] 11[1]]";
     const result = parser.parse(allocator, src);
-    
+
     if (result) |_| {
         std.debug.print("Expected parse error, but parsing succeeded!\n", .{});
         return error.TestExpectedError;
@@ -428,4 +428,35 @@ test "anonymous contained definitions are canonicalized without a leading double
     try testing.expectEqual(@as(usize, 1), net.definitions.len);
     try testing.expectEqual(@as(usize, 1), net.definitions[0].contained.len);
     try testing.expectEqualStrings("X,Y", net.definitions[0].contained[0].name);
+}
+
+test "TAG-192 Support Explicit Instance Labelling (prefixlabel: invocation) for Invocations" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+       \\ TEST_NET[()()
+       \\
+        \\     u1: AND($A $B)
+        \\     u2: AND($C $D)
+        \\:
+        \\ ]
+    ;
+
+    const net = try parser.parse(allocator, src);
+    try testing.expectEqual(@as(usize, 1), net.definitions.len);
+
+    const resolution = net.definitions[0].resolution;
+    try testing.expectEqual(@as(usize, 2), resolution.len);
+
+    // Verify first labeled invocation (u1)
+    try testing.expect(resolution[0] == .invoke);
+    try testing.expectEqualStrings("u1", resolution[0].invoke.label.?);
+    try testing.expectEqualStrings("AND", resolution[0].invoke.name);
+
+    // Verify second labeled invocation (u2)
+    try testing.expect(resolution[1] == .invoke);
+    try testing.expectEqualStrings("u2", resolution[1].invoke.label.?);
+    try testing.expectEqualStrings("AND", resolution[1].invoke.name);
 }

@@ -161,6 +161,7 @@ pub const Arg = struct {
 };
 
 pub const Invocation = struct {
+    label: ?[]const u8 = null,
     name: []const u8,
     sources: []const Arg,
     destinations: []const Arg,
@@ -195,6 +196,7 @@ pub const Definition = struct {
 /// NAME($arg1 $arg2)(output1<> output2<>)
 pub const EntryInvocation = struct {
     name: []const u8,
+    label: ?[]const u8 = null,
     sources: []const Arg,
     destinations: []const Arg,
 };

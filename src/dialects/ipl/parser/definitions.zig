@@ -251,13 +251,38 @@ pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
         }
 
         const tok_start = p.pos;
-        const name = try p.readName();
+
+        // 1. Check for optional prefix label (e.g., "u1: AND(...)")
+        var label: ?[]const u8 = null;
+        const potential_label = p.readName() catch |err| {
+            // If it's not a valid name starting the statement, let it fall through 
+            // or handle whatever token error occurs.
+            return err;
+        };
+        
         p.skipWhitespaceAndComments();
+        var name: []const u8 = undefined;
+        
+        if (p.peek() == ':') {
+            p.pos += 1; // consume ':'
+            label = potential_label;
+            p.skipWhitespaceAndComments();
+            // Now read the actual component/invocation name that follows the label
+            name = try p.readName();
+            p.skipWhitespaceAndComments();
+        } else {
+            // No colon, so `potential_label` was actually the regular name/identifier!
+            p.pos = tok_start; // backtrack to start
+            name = try p.readName();
+            p.skipWhitespaceAndComments();
+        }
+
         const next = p.peek() orelse return core.ParseError.UnexpectedEnd;
         if (next == '<') {
             try stmts.append(p.allocator, try p.parseSourceFill(name));
         } else if (next == '(') {
-            try stmts.append(p.allocator, try p.parseInvocation(name));
+            // Pass the label here!
+            try stmts.append(p.allocator, try p.parseInvocation(label, name));
         } else if (next == ',') {
             p.pos = tok_start;
             const full = try p.readCommaSeparatedName();

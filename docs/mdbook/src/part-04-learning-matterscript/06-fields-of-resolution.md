@@ -15,7 +15,7 @@ The field of resolution describes what happens in between.
 ```matterscript
 FULLADD[(X<> Y<> C<>)( $SUM $CARRY )
 
-    NOT($X)(OP1<>)
+    U1: NOT($X)(OP1<>)
     AND($OP1 $Y)(OP4<>)
     OR($OP4 $OP3)(FIRSTSUM<>)
 
@@ -25,6 +25,11 @@ FULLADD[(X<> Y<> C<>)( $SUM $CARRY )
 ```
 
 Everything between the interface and the contained definitions belongs to the field of resolution.
+
+## Understanding Invocation Labels
+**Function**: Explicit instance labels (such as u1: attached to NOT($X)(OP1<>)) assign a unique identifier to a specific component instance in the netlist. This is particularly useful during hardware code generation (e.g., VHDL) to maintain stable component instantiation paths, prevent multiple-driver errors, and make netlist debuggers much easier to read.
+
+**Optionality**: Invocation labels are completely optional. As shown above, subsequent invocations like AND and OR omit the prefix label and rely on standard anonymous or compiler-generated handling.
 
 ---
 
