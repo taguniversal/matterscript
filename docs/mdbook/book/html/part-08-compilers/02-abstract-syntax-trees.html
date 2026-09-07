@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6dc9b05c.js";
+            window.path_to_searchindex_js = "../searchindex-73839f54.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-94f21e3e.js"></script>
@@ -261,7 +261,9 @@ Backend Realization
 <hr>
 <h3 id="structural-breakdown"><a class="header" href="#structural-breakdown">Structural Breakdown</a></h3>
 <p>For the <code>binaryequal</code> example above, the resulting parent definition holds <strong>four contained shorthand definitions</strong> within its AST:</p>
-<pre><code class="language-zig">Definition{
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>Definition{
     .name = "binaryequal",
     .sources = &amp;.{
         Arg{ .kind = .place, .name = "a" },
@@ -297,7 +299,7 @@ Backend Realization
     },
 }
 
-</code></pre>
+<span class="boring">}</span></code></pre>
 <h2 id="parsing-matterscript-expressions-ast-generation-guide"><a class="header" href="#parsing-matterscript-expressions-ast-generation-guide">Parsing MatterScript Expressions: AST Generation Guide</a></h2>
 <p>This section details how MatterScript parses complex component definitions—such as gate-level logic or truth-table lookups—into the Abstract Syntax Tree (AST).</p>
 <hr>
@@ -333,7 +335,9 @@ Backend Realization
 <hr>
 <h3 id="integration-with-sourcefill"><a class="header" href="#integration-with-sourcefill">Integration with <code>SourceFill</code></a></h3>
 <p>In the compiler backend, when an unresolved invocation is detected within a fill statement, the raw string is parsed and stored using the following structure:</p>
-<pre><code class="language-zig">pub const SourceFill = struct {
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub const SourceFill = struct {
     /// The destination place being filled (output of definition)
     dest_name: []const u8,
     /// The expression whose value fills the place
@@ -342,9 +346,9 @@ Backend Realization
     parsed_expr: ?*const Expr = null,
 };
 
-</code></pre>
+<span class="boring">}</span></code></pre>
 <blockquote>
-<p><strong>Note:</strong> Ensure that any custom parser extensions handling <code>TAG-184</code> expressions preserve the table row ordering, as downstream code generators rely on sequential pattern matching for hardware layout synthesis.</p>
+<p><strong>Note:</strong> Ensure that any custom parser extensions handling transformation rules preserve the table row ordering, as downstream code generators rely on sequential pattern matching for hardware layout synthesis.</p>
 </blockquote>
 <hr>
 <p>This unified AST representation allows evaluators to process truth-table rows uniformly alongside standard nested hardware blocks while eliminating boilerplate component naming in dense logic tables.</p>

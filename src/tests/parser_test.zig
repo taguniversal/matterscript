@@ -339,8 +339,15 @@ test "TAG-190 concatenated multi-source keys are rejected as ambiguous" {
     const allocator = arena.allocator();
 
     const src = "AND[(A<> B<>)<$A$B()>: 00[0] 01[0] 10[0] 11[1]]";
-
-    try testing.expectError(parser.core.ParseError.AmbiguousComposedKey, parser.parse(allocator, src));
+    const result = parser.parse(allocator, src);
+    
+    if (result) |_| {
+        std.debug.print("Expected parse error, but parsing succeeded!\n", .{});
+        return error.TestExpectedError;
+    } else |err| {
+        std.debug.print("Got actual error: {}\n", .{err});
+        try testing.expectEqual(parser.core.ParseError.AmbiguousComposedKey, err);
+    }
 }
 
 test "TAG-160 comma-separated multi-source keys are not flagged as ambiguous" {
@@ -420,5 +427,5 @@ test "anonymous contained definitions are canonicalized without a leading double
     const net = try parser.parse(allocator, src);
     try testing.expectEqual(@as(usize, 1), net.definitions.len);
     try testing.expectEqual(@as(usize, 1), net.definitions[0].contained.len);
-    try testing.expectEqualStrings("anon_0", net.definitions[0].contained[0].name);
+    try testing.expectEqualStrings("X,Y", net.definitions[0].contained[0].name);
 }

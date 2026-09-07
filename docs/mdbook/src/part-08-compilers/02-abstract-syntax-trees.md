@@ -126,7 +126,7 @@ The table below illustrates how the components of a shorthand row map to interna
 
 For the `binaryequal` example above, the resulting parent definition holds **four contained shorthand definitions** within its AST:
 
-```zig
+```rust
 Definition{
     .name = "binaryequal",
     .sources = &.{
@@ -211,7 +211,7 @@ When the parser encounters this structure, it translates the linear syntax into 
 
 In the compiler backend, when an unresolved invocation is detected within a fill statement, the raw string is parsed and stored using the following structure:
 
-```zig
+```rust
 pub const SourceFill = struct {
     /// The destination place being filled (output of definition)
     dest_name: []const u8,
@@ -223,7 +223,7 @@ pub const SourceFill = struct {
 
 ```
 
-> **Note:** Ensure that any custom parser extensions handling `TAG-184` expressions preserve the table row ordering, as downstream code generators rely on sequential pattern matching for hardware layout synthesis.
+> **Note:** Ensure that any custom parser extensions handling transformation rules preserve the table row ordering, as downstream code generators rely on sequential pattern matching for hardware layout synthesis.
 
 ---
 
