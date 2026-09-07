@@ -111,37 +111,24 @@ test "TAG-190 Example 12.5 AND Function with value transform rule definitions" {
     try testing.expectEqual(@as(usize, 4), def.contained.len);
 
     // Row 0: 0, 0 [TRUE]
-    try testing.expectEqualStrings("anon_0", def.contained[0].name);
-    try testing.expectEqual(@as(usize, 2), def.contained[0].sources.len);
-    try testing.expectEqualStrings("0", def.contained[0].sources[0].name);
-    try testing.expectEqualStrings("0", def.contained[0].sources[1].name);
-    try testing.expectEqual(@as(usize, 1), def.contained[0].destinations.len);
-    try testing.expectEqualStrings("TRUE", def.contained[0].destinations[0].name);
+    try testing.expectEqualStrings("0,0", def.contained[0].name);
+    try testing.expectEqual(@as(usize, 0), def.contained[0].sources.len);
+    try testing.expectEqual(@as(usize, 0), def.contained[0].destinations.len);
 
     // Row 1: 0, 1 [FALSE]
-    try testing.expectEqualStrings("anon_1", def.contained[1].name);
-    try testing.expectEqual(@as(usize, 2), def.contained[1].sources.len);
-    try testing.expectEqualStrings("0", def.contained[1].sources[0].name);
-    try testing.expectEqualStrings("1", def.contained[1].sources[1].name);
-    try testing.expectEqual(@as(usize, 1), def.contained[1].destinations.len);
-    try testing.expectEqualStrings("FALSE", def.contained[1].destinations[0].name);
+    try testing.expectEqualStrings("0,1", def.contained[1].name);
+    try testing.expectEqual(@as(usize, 0), def.contained[1].sources.len);
+    try testing.expectEqual(@as(usize, 0), def.contained[1].destinations.len);
 
     // Row 2: 1, 0 [FALSE]
-    try testing.expectEqualStrings("anon_2", def.contained[2].name);
-    try testing.expectEqual(@as(usize, 2), def.contained[2].sources.len);
-    try testing.expectEqualStrings("1", def.contained[2].sources[0].name);
-    try testing.expectEqualStrings("0", def.contained[2].sources[1].name);
-    try testing.expectEqual(@as(usize, 1), def.contained[2].destinations.len);
-    try testing.expectEqualStrings("FALSE", def.contained[2].destinations[0].name);
+    try testing.expectEqualStrings("1,0", def.contained[2].name);
+    try testing.expectEqual(@as(usize, 0), def.contained[2].sources.len);
+    try testing.expectEqual(@as(usize, 0), def.contained[2].destinations.len);
 
     // Row 3: 1, 1 [TRUE]
-    try testing.expectEqualStrings("anon_3", def.contained[3].name);
-    try testing.expectEqual(@as(usize, 2), def.contained[3].sources.len);
-    try testing.expectEqualStrings("1", def.contained[3].sources[0].name);
-    try testing.expectEqualStrings("1", def.contained[3].sources[1].name);
-    try testing.expectEqual(@as(usize, 1), def.contained[3].destinations.len);
-    try testing.expectEqualStrings("TRUE", def.contained[3].destinations[0].name);
-    
+    try testing.expectEqualStrings("1,1", def.contained[3].name);
+    try testing.expectEqual(@as(usize, 0), def.contained[3].sources.len);
+    try testing.expectEqual(@as(usize, 0), def.contained[3].destinations.len);
 }
 
 test "parse TAG-181 controlled fanout expression and definition" {
@@ -265,36 +252,77 @@ test "parse TAG-184 Pure Value Place of Resolution - explicit contained rows" {
 
     // Verify all 8 truth-table transition rows are captured in contained
     try testing.expectEqual(@as(usize, 8), def.contained.len);
+    // Validate Row 0: S,U,W[SUM<S> CO<W>]
+    const row0 :network.Definition = def.contained[0];
+    try testing.expectEqualStrings("S,U,W", row0.name);
+    try testing.expectEqual(@as(usize, 2), row0.resolution.len);
+    try testing.expectEqualSlices(u8, "SUM", row0.resolution[0].fill.dest_name);
+    try testing.expectEqualSlices(u8, "S", row0.resolution[0].fill.expr);
+    try testing.expectEqualSlices(u8, "CO", row0.resolution[1].fill.dest_name);
+    try testing.expectEqualSlices(u8, "W", row0.resolution[1].fill.expr);
 
-    // Validate Row 1: S,U,W[SUM<S> CO<W>]
-    const row0 = def.contained[0];
-    try testing.expectEqual(@as(usize, 3), row0.sources.len);
-    try testing.expectEqualStrings("S", row0.sources[0].name);
-    try testing.expectEqualStrings("U", row0.sources[1].name);
-    try testing.expectEqualStrings("W", row0.sources[2].name);
-    try testing.expectEqual(@as(usize, 2), row0.destinations.len);
-    try testing.expectEqualStrings("SUM", row0.destinations[0].name);
-    try testing.expectEqualStrings("CO", row0.destinations[1].name);
+    // Validate Row 1: S,U,X[SUM<T> CO<W>]
+    const row1: network.Definition = def.contained[1];
+    try testing.expectEqualStrings("S,U,X", row1.name);
+    try testing.expectEqual(@as(usize, 2), row1.resolution.len);
+    try testing.expectEqualSlices(u8, "SUM", row1.resolution[0].fill.dest_name);
+    try testing.expectEqualSlices(u8, "T", row1.resolution[0].fill.expr);
+    try testing.expectEqualSlices(u8, "CO", row1.resolution[1].fill.dest_name);
+    try testing.expectEqualSlices(u8, "W", row1.resolution[1].fill.expr);
 
-    // Validate Row 2: S,U,X[SUM<T> CO<W>]
-    const row1 = def.contained[1];
-    try testing.expectEqual(@as(usize, 3), row1.sources.len);
-    try testing.expectEqualStrings("S", row1.sources[0].name);
-    try testing.expectEqualStrings("U", row1.sources[1].name);
-    try testing.expectEqualStrings("X", row1.sources[2].name);
-    try testing.expectEqual(@as(usize, 2), row1.destinations.len);
-    try testing.expectEqualStrings("SUM", row1.destinations[0].name);
-    try testing.expectEqualStrings("CO", row1.destinations[1].name);
+    // Validate Row 2: S,V,W[SUM<T> CO<W>]
+    const row2: network.Definition = def.contained[2];
+    try testing.expectEqualStrings("S,V,W", row2.name);
+    try testing.expectEqual(@as(usize, 2), row2.resolution.len);
+    try testing.expectEqualSlices(u8, "SUM", row2.resolution[0].fill.dest_name);
+    try testing.expectEqualSlices(u8, "T", row2.resolution[0].fill.expr);
+    try testing.expectEqualSlices(u8, "CO", row2.resolution[1].fill.dest_name);
+    try testing.expectEqualSlices(u8, "W", row2.resolution[1].fill.expr);
 
-    // Validate final Row 8: T,V,X[SUM<T> CO<X>]
-    const row7 = def.contained[7];
-    try testing.expectEqual(@as(usize, 3), row7.sources.len);
-    try testing.expectEqualStrings("T", row7.sources[0].name);
-    try testing.expectEqualStrings("V", row7.sources[1].name);
-    try testing.expectEqualStrings("X", row7.sources[2].name);
-    try testing.expectEqual(@as(usize, 2), row7.destinations.len);
-    try testing.expectEqualStrings("SUM", row7.destinations[0].name);
-    try testing.expectEqualStrings("CO", row7.destinations[1].name);
+    // Validate Row 3: S,V,X[SUM<S> CO<X>]
+    const row3: network.Definition = def.contained[3];
+    try testing.expectEqualStrings("S,V,X", row3.name);
+    try testing.expectEqual(@as(usize, 2), row3.resolution.len);
+    try testing.expectEqualSlices(u8, "SUM", row3.resolution[0].fill.dest_name);
+    try testing.expectEqualSlices(u8, "S", row3.resolution[0].fill.expr);
+    try testing.expectEqualSlices(u8, "CO", row3.resolution[1].fill.dest_name);
+    try testing.expectEqualSlices(u8, "X", row3.resolution[1].fill.expr);
+
+    // Validate Row 4: T,U,W[SUM<T> CO<W>]
+    const row4: network.Definition = def.contained[4];
+    try testing.expectEqualStrings("T,U,W", row4.name);
+    try testing.expectEqual(@as(usize, 2), row4.resolution.len);
+    try testing.expectEqualSlices(u8, "SUM", row4.resolution[0].fill.dest_name);
+    try testing.expectEqualSlices(u8, "T", row4.resolution[0].fill.expr);
+    try testing.expectEqualSlices(u8, "CO", row4.resolution[1].fill.dest_name);
+    try testing.expectEqualSlices(u8, "W", row4.resolution[1].fill.expr);
+
+    // Validate Row 5: T,U,X[SUM<S> CO<X>]
+    const row5: network.Definition = def.contained[5];
+    try testing.expectEqualStrings("T,U,X", row5.name);
+    try testing.expectEqual(@as(usize, 2), row5.resolution.len);
+    try testing.expectEqualSlices(u8, "SUM", row5.resolution[0].fill.dest_name);
+    try testing.expectEqualSlices(u8, "S", row5.resolution[0].fill.expr);
+    try testing.expectEqualSlices(u8, "CO", row5.resolution[1].fill.dest_name);
+    try testing.expectEqualSlices(u8, "X", row5.resolution[1].fill.expr);
+
+    // Validate Row 6: T,V,W[SUM<S> CO<X>]
+    const row6: network.Definition = def.contained[6];
+    try testing.expectEqualStrings("T,V,W", row6.name);
+    try testing.expectEqual(@as(usize, 2), row6.resolution.len);
+    try testing.expectEqualSlices(u8, "SUM", row6.resolution[0].fill.dest_name);
+    try testing.expectEqualSlices(u8, "S", row6.resolution[0].fill.expr);
+    try testing.expectEqualSlices(u8, "CO", row6.resolution[1].fill.dest_name);
+    try testing.expectEqualSlices(u8, "X", row6.resolution[1].fill.expr);
+
+    // Validate Row 7: T,V,X[SUM<T> CO<X>]
+    const row7: network.Definition = def.contained[7];
+    try testing.expectEqualStrings("T,V,X", row7.name);
+    try testing.expectEqual(@as(usize, 2), row7.resolution.len);
+    try testing.expectEqualSlices(u8, "SUM", row7.resolution[0].fill.dest_name);
+    try testing.expectEqualSlices(u8, "T", row7.resolution[0].fill.expr);
+    try testing.expectEqualSlices(u8, "CO", row7.resolution[1].fill.dest_name);
+    try testing.expectEqualSlices(u8, "X", row7.resolution[1].fill.expr);
 }
 
 test "TAG-190 concatenated multi-source keys are rejected as ambiguous" {

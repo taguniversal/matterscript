@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-ba2467c8.js";
+            window.path_to_searchindex_js = "../searchindex-6dc9b05c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-94f21e3e.js"></script>
@@ -244,7 +244,7 @@ Backend Realization
 </code></pre>
 <hr>
 <h3 id="internal-ast-mapping"><a class="header" href="#internal-ast-mapping">Internal AST Mapping</a></h3>
-<p>When the compiler encounters a shorthand truth-table row inside a <code>contained</code> section, it synthesizes an anonymous <code>Definition</code> object rather than a traditional named component.</p>
+<p>When the compiler encounters a shorthand truth-table row inside a <code>contained</code> section, it synthesizes a nested <code>Definition</code> object representing that transition row.</p>
 <p>The table below illustrates how the components of a shorthand row map to internal <code>network.Definition</code> fields:</p>
 <div class="table-wrapper">
 <table>
@@ -252,9 +252,8 @@ Backend Realization
 <tr><th>Source Text Element</th><th>AST Field (<code>network.Definition</code>)</th><th>Internal Representation</th></tr>
 </thead>
 <tbody>
-<tr><td><strong>Row Name</strong></td><td><code>.name</code></td><td>Synthesized as an empty string (<code>""</code>) for anonymous rows.</td></tr>
-<tr><td><strong>Input Tuple</strong> (<code>0, 0</code>)</td><td><code>.sources</code></td><td>A slice of <code>Arg</code> structs (<code>kind = .place</code>), where each element captures the literal or signal name (<code>"0"</code>).</td></tr>
-<tr><td><strong>Bracketed Target</strong> (<code>[TRUE]</code>)</td><td><code>.destinations</code></td><td>A slice of <code>Arg</code> structs representing the evaluation target (<code>"TRUE"</code>), supporting optional angle-bracket modifiers (e.g., <code>&lt;S&gt;</code>).</td></tr>
+<tr><td><strong>Input Tuple</strong> (<code>0,0</code>)</td><td><code>.name</code></td><td>Captured as the row’s name string (e.g., <code>"0,0"</code>).</td></tr>
+<tr><td><strong>Bracketed Target</strong> (<code>[TRUE]</code>)</td><td><code>.resolution</code></td><td>A slice of <code>Statement</code> unions holding <code>SourceFill</code> structs (<code>.fill</code>), where <code>dest_name</code> is empty or implicit and <code>expr</code> captures the target value (<code>"TRUE"</code>).</td></tr>
 <tr><td><strong>Sub-Components</strong></td><td><code>.contained</code></td><td>Empty (<code>&amp;.{}</code>) for leaf truth-table rows, or nested <code>Definition</code> slices for hierarchical logic blocks.</td></tr>
 </tbody>
 </table>
@@ -262,18 +261,92 @@ Backend Realization
 <hr>
 <h3 id="structural-breakdown"><a class="header" href="#structural-breakdown">Structural Breakdown</a></h3>
 <p>For the <code>binaryequal</code> example above, the resulting parent definition holds <strong>four contained shorthand definitions</strong> within its AST:</p>
-<pre><code class="language-text">Definition {
+<pre><code class="language-zig">Definition{
     .name = "binaryequal",
-    .sources = [a&lt;&gt;, b&lt;&gt;],
-    .contained = [
-        Definition { .name = "", .sources = [0, 0], .destinations = [TRUE] },
-        Definition { .name = "", .sources = [0, 1], .destinations = [FALSE] },
-        Definition { .name = "", .sources = [1, 0], .destinations = [FALSE] },
-        Definition { .name = "", .sources = [1, 1], .destinations = [TRUE] }
-    ]
+    .sources = &amp;.{
+        Arg{ .kind = .place, .name = "a" },
+        Arg{ .kind = .place, .name = "b" },
+    },
+    .destinations = &amp;.{},
+    .resolution = &amp;.{},
+    .contained = &amp;.{
+        Definition{
+            .name = "0,0",
+            .resolution = &amp;.{
+                Statement{ .fill = SourceFill{ .dest_name = "", .expr = "TRUE" } },
+            },
+        },
+        Definition{
+            .name = "0,1",
+            .resolution = &amp;.{
+                Statement{ .fill = SourceFill{ .dest_name = "", .expr = "FALSE" } },
+            },
+        },
+        Definition{
+            .name = "1,0",
+            .resolution = &amp;.{
+                Statement{ .fill = SourceFill{ .dest_name = "", .expr = "FALSE" } },
+            },
+        },
+        Definition{
+            .name = "1,1",
+            .resolution = &amp;.{
+                Statement{ .fill = SourceFill{ .dest_name = "", .expr = "TRUE" } },
+            },
+        },
+    },
 }
 
 </code></pre>
+<h2 id="parsing-matterscript-expressions-ast-generation-guide"><a class="header" href="#parsing-matterscript-expressions-ast-generation-guide">Parsing MatterScript Expressions: AST Generation Guide</a></h2>
+<p>This section details how MatterScript parses complex component definitions—such as gate-level logic or truth-table lookups—into the Abstract Syntax Tree (AST).</p>
+<hr>
+<h3 id="anatomy-of-the-expression"><a class="header" href="#anatomy-of-the-expression">Anatomy of the Expression</a></h3>
+<p>Consider the following MatterScript snippet representing a full adder definition with explicit truth-table mappings (<code>TAG-184</code>):</p>
+<pre><code class="language-matterscript">  // Linear: TAG-184 Pure Value Place of Resolution
+      
+      FULLADD($A,$B,$C)(&lt;&gt; CARRYOUT&lt;&gt;)
+        
+      FULLADD[(A&lt;&gt; B&lt;&gt; CI&lt;&gt; )($SUM $CO)
+        
+        $A$B$CI :
+        
+        S,U,W[SUM&lt;S&gt; CO&lt;W&gt;] 
+        S,U,X[SUM&lt;T&gt; CO&lt;W&gt;]
+        S,V,W[SUM&lt;T&gt; CO&lt;W&gt;] 
+        S,V,X[SUM&lt;S&gt; CO&lt;X&gt;]
+        T,U,W[SUM&lt;T&gt; CO&lt;W&gt;] 
+        T,U,X[SUM&lt;S&gt; CO&lt;X&gt;]
+        T,V,W[SUM&lt;S&gt; CO&lt;X&gt;] 
+        T,V,X[SUM&lt;T&gt; CO&lt;X&gt;] 
+      ]
+</code></pre>
+<p>When the parser encounters this structure, it translates the linear syntax into a hierarchical AST node structure.</p>
+<hr>
+<h3 id="step-by-step-ast-translation"><a class="header" href="#step-by-step-ast-translation">Step-by-Step AST Translation</a></h3>
+<ul>
+<li><strong>Line Comment &amp; Metadata:</strong> The leading <code>\\//</code> acts as a metadata comment, attaching tags (e.g., <code>TAG-184</code>) to the enclosing expression node for diagnostic and resolution tracking.</li>
+<li><strong>Gate / Component Invocation:</strong> <code>FULLADD($A,$B,$C)(&lt;&gt; CARRYOUT&lt;&gt;)</code> is parsed into an invocation node containing positional input arguments ($A, $B,$C) and output resolution placeholders (<code>CARRYOUT&lt;&gt;</code>).</li>
+<li><strong>Truth Table Mapping (<code>[...]</code>):</strong> The bracketed block defines a truth-table or state-transition matrix. The parser maps input tuples ($A, $B,$CI) to output bindings ($SUM,$CO).</li>
+<li><strong>Resolution Rules:</strong> Each line (e.g., <code>S,U,W[SUM&lt;S&gt; CO&lt;W&gt;]</code>) is parsed into individual evaluation clauses that feed directly into the <code>SourceFill</code> struct’s <code>parsed_expr</code> field.</li>
+</ul>
+<hr>
+<h3 id="integration-with-sourcefill"><a class="header" href="#integration-with-sourcefill">Integration with <code>SourceFill</code></a></h3>
+<p>In the compiler backend, when an unresolved invocation is detected within a fill statement, the raw string is parsed and stored using the following structure:</p>
+<pre><code class="language-zig">pub const SourceFill = struct {
+    /// The destination place being filled (output of definition)
+    dest_name: []const u8,
+    /// The expression whose value fills the place
+    expr: []const u8,
+    /// Parsed expression when the fill contains an unresolved invocation.
+    parsed_expr: ?*const Expr = null,
+};
+
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> Ensure that any custom parser extensions handling <code>TAG-184</code> expressions preserve the table row ordering, as downstream code generators rely on sequential pattern matching for hardware layout synthesis.</p>
+</blockquote>
+<hr>
 <p>This unified AST representation allows evaluators to process truth-table rows uniformly alongside standard nested hardware blocks while eliminating boilerplate component naming in dense logic tables.</p>
 <hr>
 <h2 id="a-stable-foundation"><a class="header" href="#a-stable-foundation">A Stable Foundation</a></h2>
@@ -335,6 +408,22 @@ Backend Realization
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

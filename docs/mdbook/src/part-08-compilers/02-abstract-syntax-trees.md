@@ -93,7 +93,6 @@ Understanding how source text maps to internal Go/Zig structs (`network.Definiti
 ### Shorthand Truth-Table Syntax
 
 To streamline truth-table definitions and value transform rules, the parser supports a shorthand row notation. Instead of requiring a full nested component signature, shorthand rows specify input identifiers separated by commas, followed by bracketed output targets.
-
 #### Example: Binary Equality Evaluation
 
 ```matterscript
@@ -111,15 +110,14 @@ binaryequal[(a<> b<>)
 
 ### Internal AST Mapping
 
-When the compiler encounters a shorthand truth-table row inside a `contained` section, it synthesizes an anonymous `Definition` object rather than a traditional named component.
+When the compiler encounters a shorthand truth-table row inside a `contained` section, it synthesizes a nested `Definition` object representing that transition row.
 
 The table below illustrates how the components of a shorthand row map to internal `network.Definition` fields:
 
 | Source Text Element | AST Field (`network.Definition`) | Internal Representation |
 | --- | --- | --- |
-| **Row Name** | `.name` | Synthesized as an empty string (`""`) for anonymous rows. |
-| **Input Tuple** (`0, 0`) | `.sources` | A slice of `Arg` structs (`kind = .place`), where each element captures the literal or signal name (`"0"`). |
-| **Bracketed Target** (`[TRUE]`) | `.destinations` | A slice of `Arg` structs representing the evaluation target (`"TRUE"`), supporting optional angle-bracket modifiers (e.g., `<S>`). |
+| **Input Tuple** (`0,0`) | `.name` | Captured as the row's name string (e.g., `"0,0"`). |
+| **Bracketed Target** (`[TRUE]`) | `.resolution` | A slice of `Statement` unions holding `SourceFill` structs (`.fill`), where `dest_name` is empty or implicit and `expr` captures the target value (`"TRUE"`). |
 | **Sub-Components** | `.contained` | Empty (`&.{}`) for leaf truth-table rows, or nested `Definition` slices for hierarchical logic blocks. |
 
 ---
@@ -128,19 +126,107 @@ The table below illustrates how the components of a shorthand row map to interna
 
 For the `binaryequal` example above, the resulting parent definition holds **four contained shorthand definitions** within its AST:
 
-```text
-Definition {
+```zig
+Definition{
     .name = "binaryequal",
-    .sources = [a<>, b<>],
-    .contained = [
-        Definition { .name = "", .sources = [0, 0], .destinations = [TRUE] },
-        Definition { .name = "", .sources = [0, 1], .destinations = [FALSE] },
-        Definition { .name = "", .sources = [1, 0], .destinations = [FALSE] },
-        Definition { .name = "", .sources = [1, 1], .destinations = [TRUE] }
-    ]
+    .sources = &.{
+        Arg{ .kind = .place, .name = "a" },
+        Arg{ .kind = .place, .name = "b" },
+    },
+    .destinations = &.{},
+    .resolution = &.{},
+    .contained = &.{
+        Definition{
+            .name = "0,0",
+            .resolution = &.{
+                Statement{ .fill = SourceFill{ .dest_name = "", .expr = "TRUE" } },
+            },
+        },
+        Definition{
+            .name = "0,1",
+            .resolution = &.{
+                Statement{ .fill = SourceFill{ .dest_name = "", .expr = "FALSE" } },
+            },
+        },
+        Definition{
+            .name = "1,0",
+            .resolution = &.{
+                Statement{ .fill = SourceFill{ .dest_name = "", .expr = "FALSE" } },
+            },
+        },
+        Definition{
+            .name = "1,1",
+            .resolution = &.{
+                Statement{ .fill = SourceFill{ .dest_name = "", .expr = "TRUE" } },
+            },
+        },
+    },
 }
 
 ```
+## Parsing MatterScript Expressions: AST Generation Guide
+
+This section details how MatterScript parses complex component definitions—such as gate-level logic or truth-table lookups—into the Abstract Syntax Tree (AST).
+
+---
+
+### Anatomy of the Expression
+
+Consider the following MatterScript snippet representing a full adder definition with explicit truth-table mappings (`TAG-184`):
+
+```matterscript
+  // Linear: TAG-184 Pure Value Place of Resolution
+      
+      FULLADD($A,$B,$C)(<> CARRYOUT<>)
+        
+      FULLADD[(A<> B<> CI<> )($SUM $CO)
+        
+        $A$B$CI :
+        
+        S,U,W[SUM<S> CO<W>] 
+        S,U,X[SUM<T> CO<W>]
+        S,V,W[SUM<T> CO<W>] 
+        S,V,X[SUM<S> CO<X>]
+        T,U,W[SUM<T> CO<W>] 
+        T,U,X[SUM<S> CO<X>]
+        T,V,W[SUM<S> CO<X>] 
+        T,V,X[SUM<T> CO<X>] 
+      ]
+```
+
+When the parser encounters this structure, it translates the linear syntax into a hierarchical AST node structure.
+
+---
+
+### Step-by-Step AST Translation
+
+* **Line Comment & Metadata:** The leading `\\//` acts as a metadata comment, attaching tags (e.g., `TAG-184`) to the enclosing expression node for diagnostic and resolution tracking.
+* **Gate / Component Invocation:** `FULLADD($A,$B,$C)(<> CARRYOUT<>)` is parsed into an invocation node containing positional input arguments ($A, $B,$C) and output resolution placeholders (`CARRYOUT<>`).
+* **Truth Table Mapping (`[...]`):** The bracketed block defines a truth-table or state-transition matrix. The parser maps input tuples ($A, $B,$CI) to output bindings ($SUM,$CO).
+* **Resolution Rules:** Each line (e.g., `S,U,W[SUM<S> CO<W>]`) is parsed into individual evaluation clauses that feed directly into the `SourceFill` struct's `parsed_expr` field.
+
+---
+
+### Integration with `SourceFill`
+
+In the compiler backend, when an unresolved invocation is detected within a fill statement, the raw string is parsed and stored using the following structure:
+
+```zig
+pub const SourceFill = struct {
+    /// The destination place being filled (output of definition)
+    dest_name: []const u8,
+    /// The expression whose value fills the place
+    expr: []const u8,
+    /// Parsed expression when the fill contains an unresolved invocation.
+    parsed_expr: ?*const Expr = null,
+};
+
+```
+
+> **Note:** Ensure that any custom parser extensions handling `TAG-184` expressions preserve the table row ordering, as downstream code generators rely on sequential pattern matching for hardware layout synthesis.
+
+---
+
 
 This unified AST representation allows evaluators to process truth-table rows uniformly alongside standard nested hardware blocks while eliminating boilerplate component naming in dense logic tables.
 
