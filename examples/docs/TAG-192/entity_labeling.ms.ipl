@@ -1,6 +1,6 @@
-// User-defined explicit instance label
-AND($A $B)
-AND($C $D)
+// Lineaer: TAG-192 Support Explicit Instance Labelling (prefixlabel: invocation) for Invocations
+U1: AND($A $B)
+U2: AND($C $D)
 
 // Nested / anonymous invocation using compiler-generated hygienic temporary
 NOT(AND($A $B))

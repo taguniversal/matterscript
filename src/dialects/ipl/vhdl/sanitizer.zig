@@ -94,12 +94,53 @@ fn isVhdlReserved(name: []const u8) bool {
     return false;
 }
 
+/// Tracks, for each raw destination name, every distinct emitted VHDL
+/// name it was assigned. Ordinarily this is a 1:1 mapping — but Fant's
+/// "same value delivered to two output slots" pattern (e.g. EQ0's
+/// "($condition $condition)") declares the same raw destination name
+/// more than once, and VHDL forbids two ports sharing an identifier
+/// even when they're meant to carry identical values. Each repeat
+/// gets its own unique name here; a fill statement targeting the
+/// shared raw name then fans out to every alias of it.
+const DestinationAliasMap = struct {
+    allocator: std.mem.Allocator,
+    entries: std.ArrayListUnmanaged(struct {
+        raw: []const u8,
+        aliases: std.ArrayListUnmanaged([]const u8),
+    }) = .empty,
+
+    fn record(self: *DestinationAliasMap, raw: []const u8, emitted: []const u8) !void {
+        for (self.entries.items) |*entry| {
+            if (std.mem.eql(u8, entry.raw, raw)) {
+                try entry.aliases.append(self.allocator, emitted);
+                return;
+            }
+        }
+        var aliases: std.ArrayListUnmanaged([]const u8) = .empty;
+        try aliases.append(self.allocator, emitted);
+        try self.entries.append(self.allocator, .{
+            .raw = try self.allocator.dupe(u8, raw),
+            .aliases = aliases,
+        });
+    }
+
+    fn aliasesFor(self: *const DestinationAliasMap, raw: []const u8) ?[]const []const u8 {
+        for (self.entries.items) |entry| {
+            if (std.mem.eql(u8, entry.raw, raw)) return entry.aliases.items;
+        }
+        return null;
+    }
+};
+
 pub fn normalizeDefinitionIdentifiers(allocator: std.mem.Allocator, raw_def: network.Definition) !network.Definition {
     var names = IdentifierMap{ .allocator = allocator };
     var def = raw_def;
     def.sources = try normalizePlaces(allocator, &names, raw_def.sources);
-    def.destinations = try normalizePlaces(allocator, &names, raw_def.destinations);
-    def.resolution = try normalizeStatements(allocator, &names, raw_def.resolution);
+
+    var alias_map = DestinationAliasMap{ .allocator = allocator };
+    def.destinations = try normalizeDestinations(allocator, &names, &alias_map, raw_def.destinations);
+
+    def.resolution = try normalizeStatements(allocator, &names, &alias_map, raw_def.resolution);
     def.constants = try normalizeConstants(allocator, &names, raw_def.constants);
     return def;
 }
@@ -111,6 +152,50 @@ fn normalizePlaces(
 ) ![]const network.Arg {
     var list: std.ArrayListUnmanaged(network.Arg) = .empty;
     for (places) |arg| {
+        try list.append(allocator, try normalizeArg(allocator, names, arg));
+    }
+    return list.toOwnedSlice(allocator);
+}
+
+/// Like normalizePlaces, but for the top-level destinations list only:
+/// a repeated raw place name here gets its own unique emitted name
+/// (rather than collapsing to the first one, as plain reference
+/// resolution would) and is recorded in alias_map. Nested groups
+/// still go through the ordinary shared-IdentifierMap path — there's
+/// no observed case of the duplicate-name pattern occurring inside a
+/// group, only at this flat top-level list.
+fn normalizeDestinations(
+    allocator: std.mem.Allocator,
+    names: *IdentifierMap,
+    alias_map: *DestinationAliasMap,
+    places: []const network.Arg,
+) ![]const network.Arg {
+    var seen = std.StringHashMapUnmanaged(void){};
+    var list: std.ArrayListUnmanaged(network.Arg) = .empty;
+    for (places) |arg| {
+        if (arg.kind == .place and arg.name.len > 0) {
+            const raw = arg.name;
+            if (seen.contains(raw)) {
+                var known: std.ArrayListUnmanaged([]const u8) = .empty;
+                defer known.deinit(allocator);
+                for (names.entries.items) |entry| try known.append(allocator, entry.emitted);
+                const base = try sanitizeName(allocator, raw);
+                defer allocator.free(base);
+                const unique = try uniqueVhdlName(allocator, known.items, base);
+                try alias_map.record(raw, unique);
+                var out = arg;
+                out.name = unique;
+                try list.append(allocator, out);
+                continue;
+            }
+            try seen.put(allocator, raw, {});
+            const resolved = try names.resolve(raw);
+            try alias_map.record(raw, resolved);
+            var out = arg;
+            out.name = resolved;
+            try list.append(allocator, out);
+            continue;
+        }
         try list.append(allocator, try normalizeArg(allocator, names, arg));
     }
     return list.toOwnedSlice(allocator);
@@ -143,15 +228,32 @@ fn normalizeArg(
 fn normalizeStatements(
     allocator: std.mem.Allocator,
     names: *IdentifierMap,
+    alias_map: *const DestinationAliasMap,
     statements: []const network.Statement,
 ) ![]const network.Statement {
     var normalized: std.ArrayListUnmanaged(network.Statement) = .empty;
     for (statements) |statement| {
         switch (statement) {
             .fill => |raw_fill| {
+                const expr = try rewriteDollarReferences(allocator, names, raw_fill.expr);
+                if (raw_fill.dest_name.len != 0) {
+                    if (alias_map.aliasesFor(raw_fill.dest_name)) |aliases| {
+                        // Fan out to every port sharing this raw
+                        // destination name (Fant's "$condition
+                        // $condition" pattern) — every alias gets the
+                        // identical fill expression. For an
+                        // unduplicated destination this list always
+                        // has exactly one entry, so this is a no-op
+                        // in the common case.
+                        for (aliases) |alias| {
+                            try normalized.append(allocator, .{ .fill = .{ .dest_name = alias, .expr = expr } });
+                        }
+                        continue;
+                    }
+                }
                 var fill = raw_fill;
                 if (fill.dest_name.len != 0) fill.dest_name = try names.resolve(fill.dest_name);
-                fill.expr = try rewriteDollarReferences(allocator, names, fill.expr);
+                fill.expr = expr;
                 try normalized.append(allocator, .{ .fill = fill });
             },
             .invoke => |raw_invocation| {
@@ -266,48 +368,3 @@ pub fn uniqueVhdlName(
     }
 }
 
-
-test "sanitizeName collapses a multi-variable composed name into one identifier" {
-    // This is the exact shape writeExpressionFill hands it for a
-    // composed expression like "$A$B()" (see the TAG-190/TAG-160
-    // "no declaration for ab" bug, tracked at the call site in
-    // src/tests/export_vhdl_test.zig): sanitizeName's own contract —
-    // strip non-identifier characters from ONE string — is being met
-    // correctly here. The bug is the caller treating a two-variable
-    // composed key as if it were a single variable name before this
-    // function ever sees it.
-    const allocator = testing.allocator;
-    const collapsed = try sanitizeName(allocator, "A$B");
-    defer allocator.free(collapsed);
-    try testing.expectEqualStrings("ab", collapsed);
-}
-
-test "sanitizeName never produces consecutive, leading, or trailing underscores" {
-    // Regression test: canonicalizeDefNames (parser.zig) used to name
-    // anonymous contained definitions "__anon_N" (leading double
-    // underscore). scopedDefinitionName joins scope and name with a
-    // single "_", so "code" + "_" + "__anon_11" produced
-    // "code___anon_11" — three consecutive underscores, which ghdl
-    // rejects outright ("two underscores can't be consecutive"). That
-    // specific name is now "anon_N" instead, but sanitizeName is
-    // hardened here too, since any raw IPL name containing "__", or
-    // starting/ending with "_", would trip the same VHDL rule.
-    const allocator = testing.allocator;
-
-    const leading = try sanitizeName(allocator, "__anon_11");
-    defer allocator.free(leading);
-    try testing.expectEqualStrings("anon_11", leading);
-    try testing.expect(std.mem.indexOf(u8, leading, "__") == null);
-
-    const joined = try std.fmt.allocPrint(allocator, "{s}_{s}", .{ "code", leading });
-    defer allocator.free(joined);
-    try testing.expect(std.mem.indexOf(u8, joined, "__") == null);
-
-    const internal = try sanitizeName(allocator, "A__B");
-    defer allocator.free(internal);
-    try testing.expectEqualStrings("a_b", internal);
-
-    const trailing = try sanitizeName(allocator, "FOO_");
-    defer allocator.free(trailing);
-    try testing.expectEqualStrings("foo", trailing);
-}

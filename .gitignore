@@ -22,3 +22,6 @@ docs/mdbook/book/*
 
 # ...except for the html directory
 !docs/mdbook/book/html/
+
+zig-pkg/
+

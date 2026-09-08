@@ -15,6 +15,7 @@ const network = @import("../network.zig");
 const entity = @import("entity.zig");
 const workspace = @import("../../../common/workspace.zig");
 
+pub const sanitizer = @import("sanitizer.zig");
 
 pub fn writeVhdlNetwork(
     io: std.Io,

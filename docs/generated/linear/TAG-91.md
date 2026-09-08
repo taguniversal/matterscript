@@ -14,4 +14,6 @@ The binary Linear Feedback Shift Register (LFSR) shown in Figure 12.33 is a comp
 
 The LFSR could be isolated in a definition, but that would limit its accessibility. The LFSR is a wavefront source. The initialized values continually cycle around the rings of the LFSR, producing a steady stream of wavefronts to all associated destination places. Residing in the midst of a large expression, it can send wavefronts to many places simultaneously. 
 
+![figure-12.23.jpg](./images/figure-12.23.jpg)
+
 .

@@ -140,6 +140,20 @@ pub fn build(b: *std.Build) void {
     });
     const run_argument_tests = b.addRunArtifact(argument_tests);
 
+    // --- Sanitizer tests (src/tests/sanitizer_test.zig) ---
+    const sanitizer_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/sanitizer_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+                .{ .name = "mkrand", .module = mkrand_mod },
+            },
+        }),
+    });
+    const run_sanitizer_tests = b.addRunArtifact(sanitizer_tests);
+
     // --- Expression parser tests (src/tests/expression_test.zig) ---
     const expression_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -163,7 +177,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_expression_tests.step);
     test_step.dependOn(&run_export_vhdl_tests.step);
     test_step.dependOn(&run_definition_tests.step);
-
+    test_step.dependOn(&run_sanitizer_tests.step);
 
     // ------------------------------------------------------------------------
     // 4. mdBook Build & Doc-Test Pipeline
