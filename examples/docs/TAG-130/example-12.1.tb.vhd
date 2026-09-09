@@ -2,10 +2,10 @@ library ieee;
 use ieee.std_logic_1164.all;
 use work.matterscript_ncl.all;
 
-entity tb_fulladd_network is
-end tb_fulladd_network;
+entity example_12_1_tb is
+end example_12_1_tb;
 
-architecture sim of tb_fulladd_network is
+architecture sim of example_12_1_tb is
   signal result   : ncl_signal;
   signal carryout : ncl_signal;
 begin
