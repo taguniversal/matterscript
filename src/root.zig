@@ -11,6 +11,7 @@ pub const chain_fuzz =
 pub const ipl_parser = @import("dialects/ipl/parser.zig");
 pub const ipl_export_vhdl = @import("dialects/ipl/vhdl/root.zig");
 pub const network = @import("dialects/ipl/network.zig");
+pub const entity = @import("dialects/ipl/vhdl/entity.zig");
 
 test {
     std.testing.refAllDecls(@This());

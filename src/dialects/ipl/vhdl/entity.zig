@@ -11,7 +11,7 @@ const lookup = @import("lookup.zig");
 
 const DATA_WIDTH = constants.DATA_WIDTH;
 
-fn argContainsName(arg: network.Arg, name: []const u8) bool {
+pub fn argContainsName(arg: network.Arg, name: []const u8) bool {
     switch (arg.kind) {
         .group => if (arg.group) |grp| {
             for (grp.places) |child| {
@@ -633,7 +633,7 @@ fn writeInvocationInstance(
 
 /// Recursively counts the total number of individual scalar or port places 
 /// contained within a slice of definition arguments or groups.
-fn boundaryCount(args: []const network.Arg) usize {
+pub fn boundaryCount(args: []const network.Arg) usize {
     // Deliberately mirrors writeBoundaryPorts' own switch exactly
     // (group → recurse, place → +1, anything else → +0), rather than
     // counting every non-group kind, so this can never again disagree
@@ -764,7 +764,7 @@ fn writeBoundaryValidExpression(
 
 /// Unwraps a network argument into its raw text representation, handling places,
 /// literals, expressions, and group kinds.
-fn argToText(arg: network.Arg) []const u8 {
+pub fn argToText(arg: network.Arg) []const u8 {
     return switch (arg.kind) {
         .place => if (arg.name.len > 0) arg.name else arg.text,
         .literal, .expression => arg.text,
@@ -958,73 +958,4 @@ fn argListContainsName(args: []const network.Arg, name: []const u8) bool {
         }
     }
     return false;
-}
-
-// Tests
-
-test "boundaryCount calculates scalar and group places correctly" {
-    //const allocator = std.testing.allocator;
-
-    // Create mock network args to test boundary counting
-    const arg_place = network.Arg{
-        .kind = .place,
-        .name = "input_a",
-    };
-    
-    // Test a single place
-    const single_args = [_]network.Arg{arg_place};
-    try std.testing.expectEqual(@as(usize, 1), boundaryCount(&single_args));
-
-    // Test a group containing multiple places
-    var group_places = [_]network.Arg{
-        .{ .kind = .place, .name = "p1" },
-        .{ .kind = .place, .name = "p2" },
-    };
-    const group_arg = network.Arg{
-        .kind = .group,
-        .group = .{
-            .kind = .bundle,
-            .places = &group_places,
-        },
-    };
-    
-    const group_args = [_]network.Arg{group_arg};
-    try std.testing.expectEqual(@as(usize, 2), boundaryCount(&group_args));
-}
-
-test "argToText extracts expected string representations" {
-    // 1. Place with name
-    const place_arg = network.Arg{
-        .kind = .place,
-        .name = "foo",
-        .text = "",
-    };
-    try std.testing.expectEqualSlices(u8, "foo", argToText(place_arg));
-
-    // 2. Literal text
-    const literal_arg = network.Arg{
-        .kind = .literal,
-        .name = "",
-        .text = "42",
-    };
-    try std.testing.expectEqualSlices(u8, "42", argToText(literal_arg));
-}
-
-test "argContainsName checks nested structures" {
-    var group_places = [_]network.Arg{
-        .{ .kind = .place, .name = "target_place" },
-    };
-    const nested_group = network.Arg{
-        .kind = .group,
-        .group = .{
-            .kind = .bundle,
-            .places = &group_places,
-        },
-    };
-
-    // Should find the name nested inside the group
-    try std.testing.expect(argContainsName(nested_group, "target_place"));
-    // Should return false for missing names
-    try std.testing.expect(!argContainsName(nested_group, "nonexistent"));
-   
 }

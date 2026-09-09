@@ -169,6 +169,21 @@ pub fn build(b: *std.Build) void {
 
     const run_expression_tests = b.addRunArtifact(expression_tests);
 
+    // --- Entity tests (src/tests/entity_test.zig) ---
+    const entity_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/entity_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+                .{ .name = "mkrand", .module = mkrand_mod },
+            },
+        }),
+    });
+
+    const run_entity_tests = b.addRunArtifact(entity_tests);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
@@ -178,7 +193,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_export_vhdl_tests.step);
     test_step.dependOn(&run_definition_tests.step);
     test_step.dependOn(&run_sanitizer_tests.step);
-
+    test_step.dependOn(&run_entity_tests.step);
     // ------------------------------------------------------------------------
     // 4. mdBook Build & Doc-Test Pipeline
     // ------------------------------------------------------------------------
