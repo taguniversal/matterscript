@@ -1,20 +1,20 @@
 # Example verification results
 
-20 expected outcomes, 5 unexpected outcomes.
+16 expected outcomes, 9 unexpected outcomes.
 
 | Issue | Example | Expected | Parse | GHDL | Simulate | Result |
 | --- | --- | --- | --- | --- | --- | --- |
 | TAG-112 | mobius_ring.ms.ipl | Partial | ok | ok | - | 🟡 unexpected pass |
-| TAG-129 | example-12.19.ms.ipl | Implemented | ok | ok | ok | ✅ PASS |
-| TAG-130 | example-12.1.ms.ipl | Implemented | ok | ok | ok | ✅ PASS |
+| TAG-129 | example-12.19.ms.ipl | Implemented | ok | FAIL | FAIL | ❌ FAIL |
+| TAG-130 | example-12.1.ms.ipl | Implemented | ok | ok | FAIL | ❌ FAIL |
 | TAG-136 | example-12.45.ms.ipl | Implemented | ok | ok | - | ✅ PASS |
 | TAG-137 | example-12.41.ms.ipl | Implemented | ok | ok | - | ✅ PASS |
-| TAG-138 | example-12.40.ms.ipl | Implemented | ok | ok | - | ✅ PASS |
+| TAG-138 | example-12.40.ms.ipl | Implemented | ok | FAIL | - | ❌ FAIL |
 | TAG-142 | example-12.3.ms.ipl | Partial | ok | ok | - | 🟡 unexpected pass |
 | TAG-143 | example-12.2.ms.ipl | Implemented | ok | ok | - | ✅ PASS |
 | TAG-146 | example-12.12.ms.ipl | Implemented | ok | ok | - | ✅ PASS |
 | TAG-147 | example-12.13.ms.ipl | Implemented | ok | ok | - | ✅ PASS |
-| TAG-148 | example-12.11.ms.ipl | Implemented | ok | ok | ok | ✅ PASS |
+| TAG-148 | example-12.11.ms.ipl | Implemented | ok | ok | FAIL | ❌ FAIL |
 | TAG-149 | example-12.9.ms.ipl | Spec Only | ok | ok | - | 🟡 unexpected pass |
 | TAG-151 | example-12.17.ms.ipl | Partial | ok | ok | - | 🟡 unexpected pass |
 | TAG-153 | example-12.8.ms.ipl | Implemented | ok | ok | - | ✅ PASS |

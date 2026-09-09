@@ -8,79 +8,86 @@ end entity;
 
 architecture sim of example_12_19_tb is
 
-    -- Component declaration for the generated network
-    -- (Adjust output port names if your specific entry invocation named them differently)
-    component fulladd_network
-        port (
-            result    : out ncl_signal;
-            carryout  : out ncl_signal
-        );
-    end component;
-
-    signal result   : ncl_signal;
-    signal carryout : ncl_signal;
+    -- Declare all necessary testbench signals matching the port map
+    signal x_sig     : ncl_signal := null_value;
+    signal y_sig     : ncl_signal := null_value;
+    signal c_sig     : ncl_signal := null_value;
+    signal sum_sig   : ncl_signal;
+    signal carry_sig : ncl_signal;
 
 begin
 
-    -- Instantiate the Device Under Test (DUT)
-    dut : fulladd_network
+    -- Instantiate the generated fulladd entity with correct port mappings
+    dut : entity work.fulladd
         port map (
-            result   => result,
-            carryout => carryout
+            x     => x_sig,
+            y     => y_sig,
+            c     => c_sig,
+            sum   => sum_sig,
+            carry => carry_sig
         );
 
-    -- Test Pattern Stimulus Process
     stimulus_process: process
-        -- Helper procedure to apply a test vector and check outputs
         procedure apply_test(x_val, y_val, c_val : integer; exp_sum, exp_carry : integer) is
-begin
-            -- 1. In NCL, inputs typically start or transition through NULL (spacer phase)
-            -- (If your network inputs are internally hardcoded via an entry invocation, 
-            --  modify this section to drive top-level testbench input signals instead).
-            
-            report "Testing X=" & integer'image(x_val) & 
-                   " Y=" & integer'image(y_val) & 
-                   " C=" & integer'image(c_val);
+            variable act_sum   : integer := -1;
+            variable act_carry : integer := -1;
+        begin
+            report "=== Starting Exhaustive FULLADD Truth Table Test ===" severity note;
+        
+            -- Force an immediate error to test if assertions are active
+            assert false report "DEBUG: Forced testbench crash check" severity error;
+            -- Drive input rails
+            if x_val = 1 then x_sig <= data_value(1); else x_sig <= data_value(0); end if;
+            if y_val = 1 then y_sig <= data_value(1); else y_sig <= data_value(0); end if;
+            if c_val = 1 then c_sig <= data_value(1); else c_sig <= data_value(0); end if;
 
             wait for 50 ns;
-            
-            -- Basic assertion/reporting check on outputs
-            if is_data(result) then
-                report "  -> Result payload: " & integer'image(to_integer(unsigned(payload(result))));
+
+            -- Read payload data from outputs if valid
+            if is_data(sum_sig) then
+                act_sum := to_integer(unsigned(payload(sum_sig)));
             end if;
             
-            if is_data(carryout) then
-                report "  -> Carryout payload: " & integer'image(to_integer(unsigned(payload(carryout))));
+            if is_data(carry_sig) then
+                act_carry := to_integer(unsigned(payload(carry_sig)));
             end if;
-            
-            wait for 50 ns;
+
+            -- Assertions (these will fail properly once the compiler wires up internal expressions)
+            assert act_sum = exp_sum 
+                report "FAIL: Mismatch in SUM for inputs (" & 
+                       integer'image(x_val) & ", " & integer'image(y_val) & ", " & integer'image(c_val) & 
+                       "). Expected " & integer'image(exp_sum) & ", got " & integer'image(act_sum)
+                severity error;
+
+            assert act_carry = exp_carry 
+                report "FAIL: Mismatch in CARRY for inputs (" & 
+                       integer'image(x_val) & ", " & integer'image(y_val) & ", " & integer'image(c_val) & 
+                       "). Expected " & integer'image(exp_carry) & ", got " & integer'image(act_carry)
+                severity error;
+
+            if act_sum = exp_sum and act_carry = exp_carry then
+                report "PASS: X=" & integer'image(x_val) & " Y=" & integer'image(y_val) & " C=" & integer'image(c_val) &
+                       " => SUM=" & integer'image(act_sum) & " CARRY=" & integer'image(act_carry) severity note;
+            end if;
+
+            -- Return to null spacer state (NCL asynchronous handshake protocol)
+            x_sig <= null_value;
+            y_sig <= null_value;
+            c_sig <= null_value;
+            wait for 30 ns;
         end procedure;
 
     begin
         report "=== Starting Exhaustive FULLADD Truth Table Test ===" severity note;
 
-        -- Test Pattern 1: 0 + 0 + 0 = Sum 0, Carry 0
+        -- Exhaustive test suite for full adder
         apply_test(0, 0, 0, 0, 0);
-
-        -- Test Pattern 2: 0 + 0 + 1 = Sum 1, Carry 0
         apply_test(0, 0, 1, 1, 0);
-
-        -- Test Pattern 3: 0 + 1 + 0 = Sum 1, Carry 0
         apply_test(0, 1, 0, 1, 0);
-
-        -- Test Pattern 4: 0 + 1 + 1 = Sum 0, Carry 1
         apply_test(0, 1, 1, 0, 1);
-
-        -- Test Pattern 5: 1 + 0 + 0 = Sum 1, Carry 0
         apply_test(1, 0, 0, 1, 0);
-
-        -- Test Pattern 6: 1 + 0 + 1 = Sum 0, Carry 1
         apply_test(1, 0, 1, 0, 1);
-
-        -- Test Pattern 7: 1 + 1 + 0 = Sum 0, Carry 1
         apply_test(1, 1, 0, 0, 1);
-
-        -- Test Pattern 8: 1 + 1 + 1 = Sum 1, Carry 1
         apply_test(1, 1, 1, 1, 1);
 
         report "=== FULLADD Simulation Completed Successfully ===" severity note;

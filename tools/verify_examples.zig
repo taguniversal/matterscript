@@ -302,6 +302,7 @@ const SimulationResult = struct {
 
 fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, vhd_path: []const u8, tb_path: []const u8) SimulationResult {
     // 1. Analyze stdlib package
+    std.debug.print("  [{s}] Running GHDL simulation for testbench {s} (design {s})\n", .{ tb_path, tb_path, vhd_path });
     const package_result = std.process.run(allocator, io, .{
         .argv = &.{ "ghdl", "-a", "--std=08", "src/stdlib/ncl/matterscript_ncl.vhd" },
     }) catch |err| {
@@ -364,7 +365,7 @@ fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, vhd_path: []const
 
     // 5. Execute simulation
     const run_result = std.process.run(allocator, io, .{
-        .argv = &.{ "ghdl", "-r", "--std=08", entity_name, "--stop-time=100ns" },
+        .argv = &.{ "ghdl", "-r", "--std=08", entity_name, "--stop-time=10s" },
     }) catch |err| {
         const msg = std.fmt.allocPrint(allocator, "failed to spawn ghdl for execution: {s}", .{@errorName(err)}) catch return .{ .ok = false, .err_msg = "spawn error" };
         return .{ .ok = false, .err_msg = msg };

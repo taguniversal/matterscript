@@ -114,7 +114,20 @@ pub fn writeDefinition(
             try writer.print("  );\nend {s};\n\n", .{def_id});
         }
 
-        // architecture
+        // 1. Write children/contained definitions first (so they are declared before instantiation)
+        for (def.contained) |contained| {
+            if (contained.name.len == 0 or std.ascii.isDigit(contained.name[0])) continue;
+            try writer.print("\n", .{});
+            
+            // Compute this child's full scoped name using the current entity's name (def_id) as the parent scope
+            const child_scope = try scopedDefinitionName(allocator, def_id, contained.name);
+            defer allocator.free(child_scope);
+            
+            // Recursively write the child, passing its full scoped name as its def_id
+            try writeDefinition(allocator, writer, contained, child_scope);
+        }
+
+        // 2. Then write the parent definition/architecture that instantiates them
         try writer.print("architecture rtl of {s} is\n", .{def_id});
 
         // valid signals — one per source (input)
@@ -207,7 +220,7 @@ pub fn writeDefinition(
                 if (output.group == null and output.name.len != 0) continue;
                 try writer.print("  invocation_{d}_output_{d} <= null_value;\n", .{ invocation_index, output_index });
             }
-            try writeInvocationInstance(allocator, writer, def, scope, inv, invocation_index);
+            try writeInvocationInstance(allocator, writer, def, def_id, inv, invocation_index);
         }
 
         // valid extraction from source places (inputs)
@@ -342,12 +355,7 @@ pub fn writeDefinition(
 
         try writer.print("\nend rtl;\n", .{});
 
-        for (def.contained) |contained| {
-            // Guard empty string before checking if first character is a digit
-            if (contained.name.len == 0 or std.ascii.isDigit(contained.name[0])) continue;
-            try writer.print("\n", .{});
-            try writeDefinition(allocator, writer, contained, def_id);
-        }
+        
     }
 }
 
@@ -634,7 +642,8 @@ fn writeInvocationInstance(
     const component_id = try invocationDefinitionName(allocator, def, scope, inv.name);
     defer allocator.free(component_id);
     
-    try writer.print("  invocation_{d} : {s} port map (", .{ invocation_index, component_id });
+    // Changed from component instance name to direct entity instantiation
+    try writer.print("  invocation_{d} : entity work.{s} port map (", .{ invocation_index, component_id });
     
     var first = true;
     for (inv.sources, 0..) |_, argument_index| {
@@ -868,13 +877,25 @@ fn scopedDefinitionName(
     scope: []const u8,
     name: []const u8,
 ) ![]u8 {
-    if (scope.len == 0) return sanitizeName(allocator, name);
     const local_name = try sanitizeName(allocator, name);
     defer allocator.free(local_name);
-    return std.fmt.allocPrint(allocator, "{s}_{s}", .{ scope, local_name });
+
+    if (scope.len == 0) {
+        return allocator.dupe(u8, local_name);
+    }
+
+    const local_scope = try sanitizeName(allocator, scope);
+    defer allocator.free(local_scope);
+
+    // Prevent double-prefixing if the name already starts with the scope
+    if (std.mem.startsWith(u8, local_name, local_scope)) {
+        return allocator.dupe(u8, local_name);
+    }
+
+    return std.fmt.allocPrint(allocator, "{s}_{s}", .{ local_scope, local_name });
 }
 
-fn invocationDefinitionName(
+pub fn invocationDefinitionName(
     allocator: std.mem.Allocator,
     def: network.Definition,
     scope: []const u8,
@@ -885,7 +906,8 @@ fn invocationDefinitionName(
             return scopedDefinitionName(allocator, scope, name);
         }
     }
-    return sanitizeName(allocator, name);
+    // Fall back to the scoped name using the current definition's scope prefix
+    return scopedDefinitionName(allocator, scope, name);
 }
 
 fn writeIntermediatePlaceSignal(

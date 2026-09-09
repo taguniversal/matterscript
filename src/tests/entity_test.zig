@@ -78,3 +78,38 @@ test "argContainsName checks nested structures" {
     // Should return false for missing names
     try std.testing.expect(!entity.argContainsName(nested_group, "nonexistent"));
 }
+
+test "invocationDefinitionName respects scope for contained definitions" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // Create a mock contained definition that matches an invocation
+    var contained_defs = [_]network.Definition{
+        .{
+            .name = "ms_not",
+            .sources = &.{},
+            .destinations = &.{},
+            .resolution = &.{},
+            .constants = &.{},
+            .contained = &.{},
+        },
+    };
+
+    const parent_def = network.Definition{
+        .name = "fulladd",
+        .sources = &.{},
+        .destinations = &.{},
+        .resolution = &.{},
+        .constants = &.{},
+        .contained = &contained_defs,
+    };
+
+    // When looking up an invocation of "ms_not" inside scope "fulladd",
+    // it should return the scoped name "fulladd_ms_not", not "ms_not".
+    const resolved_name = try entity.invocationDefinitionName(allocator, parent_def, "fulladd", "ms_not");
+    defer allocator.free(resolved_name);
+    
+    try std.testing.expectEqualStrings("fulladd_ms_not", resolved_name);
+    try std.testing.expect(false);
+}
