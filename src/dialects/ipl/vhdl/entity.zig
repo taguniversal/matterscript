@@ -95,23 +95,25 @@ pub fn writeDefinition(
         , .{def.name});
 
         // entity
-        try writer.print("entity {s} is\n  port(\n", .{def_id});
-        try writer.print("    clk : in  std_logic;\n", .{});
         const boundary_count = boundaryCount(def.sources) + boundaryCount(def.destinations);
-        try writer.print("    rst : in  std_logic{s}\n", .{if (boundary_count == 0) "" else ";"});
+        if (boundary_count == 0) {
+            try writer.print("entity {s} is\nend {s};\n\n", .{ def_id, def_id });
+        } else {
+            try writer.print("entity {s} is\n  port(\n", .{def_id});
+            // sources → inputs (tokens flow IN to the definition)
+            var port_index: usize = 0;
+            var port_names: std.ArrayListUnmanaged([]const u8) = .empty;
+            for (def.sources) |src| {
+                try writeBoundaryPorts(allocator, writer, src, "in", &port_index, boundary_count, &port_names);
+            }
 
-        // sources → inputs (tokens flow IN to the definition)
-        var port_index: usize = 0;
-        var port_names: std.ArrayListUnmanaged([]const u8) = .empty;
-        for (def.sources) |src| {
-            try writeBoundaryPorts(allocator, writer, src, "in", &port_index, boundary_count, &port_names);
+            // destinations → outputs (tokens flow OUT of the definition)
+            for (def.destinations) |dest| {
+                try writeBoundaryPorts(allocator, writer, dest, "out", &port_index, boundary_count, &port_names);
+            }
+            try writer.print("  );\nend {s};\n\n", .{def_id});
         }
 
-        // destinations → outputs (tokens flow OUT of the definition)
-        for (def.destinations) |dest| {
-            try writeBoundaryPorts(allocator, writer, dest, "out", &port_index, boundary_count, &port_names);
-        }
-        try writer.print("  );\nend {s};\n\n", .{def_id});
         // architecture
         try writer.print("architecture rtl of {s} is\n", .{def_id});
 
@@ -487,16 +489,16 @@ fn writeOneNetworkEntity(
     const def_id = try scopedDefinitionName(allocator, "", matched.name);
     defer allocator.free(def_id);
     try writer.print("\n  dut : entity work.{s} port map (\n", .{def_id});
-    try writer.print("    clk => '0', rst => '0'", .{});
 
     var arg_index: usize = 0;
+    var first_port = true;
     for (matched.sources) |src| {
-        try writeNetworkSourceMapping(allocator, writer, src, &arg_index, entry);
+        try writeNetworkSourceMapping(allocator, writer, src, &arg_index, entry, &first_port);
     }
 
     var output_index: usize = 0;
     for (matched.destinations) |dst| {
-        try writeNetworkDestMapping(allocator, writer, dst, &output_index, output_names.items);
+        try writeNetworkDestMapping(allocator, writer, dst, &output_index, output_names.items, &first_port);
     }
     try writer.print("\n  );\n", .{});
     try writer.print("\nend rtl;\n", .{});
@@ -508,17 +510,24 @@ fn writeNetworkSourceMapping(
     arg: network.Arg,
     arg_index: *usize,
     entry: network.EntryInvocation,
+    first_port: *bool,
 ) !void {
     switch (arg.kind) {
         .group => if (arg.group) |grp| {
             for (grp.places) |child| {
-                try writeNetworkSourceMapping(allocator, writer, child, arg_index, entry);
+                try writeNetworkSourceMapping(allocator, writer, child, arg_index, entry, first_port);
             }
         },
         .place => {
             const port_id = try sanitizeName(allocator, arg.name);
             defer allocator.free(port_id);
-            try writer.print(",\n    {s} => arg_{d}", .{ port_id, arg_index.* });
+            
+            if (first_port.*) {
+                try writer.print("\n    {s} => arg_{d}", .{ port_id, arg_index.* });
+                first_port.* = false;
+            } else {
+                try writer.print(",\n    {s} => arg_{d}", .{ port_id, arg_index.* });
+            }
             arg_index.* += 1;
         },
         else => {},
@@ -531,11 +540,12 @@ fn writeNetworkDestMapping(
     arg: network.Arg,
     output_index: *usize,
     output_names: []const []const u8,
+    first_port: *bool,
 ) !void {
     switch (arg.kind) {
         .group => if (arg.group) |grp| {
             for (grp.places) |child| {
-                try writeNetworkDestMapping(allocator, writer, child, output_index, output_names);
+                try writeNetworkDestMapping(allocator, writer, child, output_index, output_names, first_port);
             }
         },
         .place => {
@@ -545,7 +555,12 @@ fn writeNetworkDestMapping(
             const output_id = try sanitizeName(allocator, output_name);
             defer allocator.free(output_id);
 
-            try writer.print(",\n    {s} => {s}", .{ port_id, output_id });
+            if (first_port.*) {
+                try writer.print("\n    {s} => {s}", .{ port_id, output_id });
+                first_port.* = false;
+            } else {
+                try writer.print(",\n    {s} => {s}", .{ port_id, output_id });
+            }
             output_index.* += 1;
         },
         else => {},
@@ -557,17 +572,22 @@ fn writeComponentDeclaration(
     inv: network.Invocation,
     component_id: []const u8,
 ) !void {
-    try writer.print("  component {s}\n    port(\n", .{component_id});
-    try writer.print("      clk : in std_logic;\n      rst : in std_logic", .{});
     const port_count = inv.sources.len + inv.destinations.len;
-    if (port_count > 0) try writer.print(";", .{});
-    try writer.print("\n", .{});
+    if (port_count == 0) {
+        try writer.print("  component {s}\n  end component;\n\n", .{component_id});
+        return;
+    }
+
+    try writer.print("  component {s}\n    port(\n", .{component_id});
 
     for (inv.sources, 0..) |_, i| {
-        try writer.print("      arg_{d} : in ncl_signal{s}\n", .{ i, if (i + 1 == port_count) "" else ";" });
+        const last = (i + 1 == port_count);
+        try writer.print("      arg_{d} : in ncl_signal{s}\n", .{ i, if (last) "" else ";" });
     }
     for (inv.destinations, 0..) |_, i| {
-        try writer.print("      output_{d} : out ncl_signal{s}\n", .{ i, if (i + inv.sources.len + 1 == port_count) "" else ";" });
+        const absolute_i = i + inv.sources.len;
+        const last = (absolute_i + 1 == port_count);
+        try writer.print("      output_{d} : out ncl_signal{s}\n", .{ i, if (last) "" else ";" });
     }
     try writer.print("    );\n  end component;\n\n", .{});
 }
@@ -613,25 +633,32 @@ fn writeInvocationInstance(
 ) !void {
     const component_id = try invocationDefinitionName(allocator, def, scope, inv.name);
     defer allocator.free(component_id);
-    try writer.print("  invocation_{d} : {s} port map (clk => clk, rst => rst", .{ invocation_index, component_id });
+    
+    try writer.print("  invocation_{d} : {s} port map (", .{ invocation_index, component_id });
+    
+    var first = true;
     for (inv.sources, 0..) |_, argument_index| {
-        try writer.print(", arg_{d} => invocation_{d}_arg_{d}", .{ argument_index, invocation_index, argument_index });
+        if (!first) try writer.print(", ", .{});
+        try writer.print("arg_{d} => invocation_{d}_arg_{d}", .{ argument_index, invocation_index, argument_index });
+        first = false;
     }
     for (inv.destinations, 0..) |output, output_index| {
+        if (!first) try writer.print(", ", .{});
         if (output.group != null or output.name.len == 0) {
-            try writer.print(", output_{d} => invocation_{d}_output_{d}", .{ output_index, invocation_index, output_index });
+            try writer.print("output_{d} => invocation_{d}_output_{d}", .{ output_index, invocation_index, output_index });
         } else {
             const output_id = try placeName(allocator, output);
             defer allocator.free(output_id);
-            try writer.print(", output_{d} => {s}", .{ output_index, output_id });
+            try writer.print("output_{d} => {s}", .{ output_index, output_id });
         }
+        first = false;
     }
     try writer.print(");\n", .{});
 }
 
 // Boundary Helpers
 
-/// Recursively counts the total number of individual scalar or port places 
+/// Recursively counts the total number of individual scalar or port places
 /// contained within a slice of definition arguments or groups.
 pub fn boundaryCount(args: []const network.Arg) usize {
     // Deliberately mirrors writeBoundaryPorts' own switch exactly
@@ -658,7 +685,7 @@ fn placeBoundaryCount(place: network.Place) usize {
     return boundaryCount(group.places);
 }
 
-/// Recursively generates VHDL port definitions (`in` or `out`) for boundary sources 
+/// Recursively generates VHDL port definitions (`in` or `out`) for boundary sources
 /// and destinations, mapping them to `ncl_signal` types.
 fn writeBoundaryPorts(
     allocator: std.mem.Allocator,
@@ -776,7 +803,7 @@ pub fn argToText(arg: network.Arg) []const u8 {
     };
 }
 
-/// Attempts to evaluate and emit an expression fill (such as direct signal mapping 
+/// Attempts to evaluate and emit an expression fill (such as direct signal mapping
 /// or equality checks against constants), returning `true` if successfully handled.
 fn writeExpressionFill(
     allocator: std.mem.Allocator,
@@ -817,7 +844,6 @@ fn writeExpressionFill(
     return false;
 }
 
-
 fn placeName(allocator: std.mem.Allocator, arg: network.Arg) ![]const u8 {
     const raw_name = switch (arg.kind) {
         .place => if (arg.name.len > 0) arg.name else arg.text,
@@ -826,7 +852,6 @@ fn placeName(allocator: std.mem.Allocator, arg: network.Arg) ![]const u8 {
     };
     return try sanitizeName(allocator, raw_name);
 }
-
 
 fn isBoundaryPort(def: network.Definition, name: []const u8) bool {
     for (def.sources) |src| {
@@ -862,7 +887,6 @@ fn invocationDefinitionName(
     }
     return sanitizeName(allocator, name);
 }
-
 
 fn writeIntermediatePlaceSignal(
     allocator: std.mem.Allocator,
