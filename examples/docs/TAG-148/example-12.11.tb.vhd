@@ -8,8 +8,6 @@ end example_12_11_tb;
 
 architecture sim of example_12_11_tb is
     -- Testbench signals for NCL rails
-    signal tb_clk     : std_logic := '0';
-    signal tb_rst     : std_logic := '1';
     signal tb_select  : ncl_signal := null_value;
     signal tb_in      : ncl_signal := null_value;
     signal out1       : ncl_signal;
@@ -21,8 +19,6 @@ begin
     -- Instantiate the core fanout DUT
     dut: entity work.fanout
         port map (
-            clk         => tb_clk,
-            rst         => tb_rst,
             ms_select   => tb_select,
             ms_in       => tb_in,
             out1        => out1,
@@ -34,14 +30,11 @@ begin
     -- Stimulus and verification process
     stim_proc: process
     begin
-        -- 1. Hold reset / null phase (asynchronous NCL initialization)
-        tb_rst <= '1';
+        -- 1.  null phase (asynchronous NCL initialization)
         tb_select <= null_value;
         tb_in <= null_value;
         wait for 20 ns;
 
-        -- 2. Release reset and drive input signals
-        tb_rst <= '0';
         
         -- If ncl_signal is a record type with data/valid fields, 
         -- or if we drive non-null values:
