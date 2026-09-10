@@ -118,13 +118,20 @@ pub fn writeDefinition(
         for (def.contained) |contained| {
             if (contained.name.len == 0 or std.ascii.isDigit(contained.name[0])) continue;
             try writer.print("\n", .{});
-            
-            // Compute this child's full scoped name using the current entity's name (def_id) as the parent scope
-            const child_scope = try scopedDefinitionName(allocator, def_id, contained.name);
-            defer allocator.free(child_scope);
-            
-            // Recursively write the child, passing its full scoped name as its def_id
-            try writeDefinition(allocator, writer, contained, child_scope);
+
+            // Recurse with this definition's own scoped name (def_id)
+            // as the child's parent scope. writeDefinition's own
+            // scopedDefinitionName(scope, def.name) call inside the
+            // recursion computes the fully-scoped child name exactly
+            // once ("fulladd" + "NOT" -> "fulladd_ms_not").
+            // Precomputing that full name here and passing it as
+            // `scope` double-concatenates it on the way in
+            // ("fulladd_ms_not" + "NOT" -> "fulladd_ms_not_ms_not"),
+            // which is exactly why declared child entities stopped
+            // matching what invocationDefinitionName instantiates —
+            // that function does the single concatenation correctly,
+            // using def_id directly as scope, the same as here.
+            try writeDefinition(allocator, writer, contained, def_id);
         }
 
         // 2. Then write the parent definition/architecture that instantiates them

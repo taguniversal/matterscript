@@ -118,3 +118,32 @@ test "a comma-keyed contained definition never produces consecutive underscores 
     const vhdl = try exportToString(allocator, src);
     try testing.expect(std.mem.indexOf(u8, vhdl, "__") == null);
 }
+test "a nested definition's declared entity name matches what its invocation instantiates" {
+    // Regression test for a real bug: writeDefinition's recursion into
+    // def.contained precomputed each child's full scoped name
+    // ("fulladd" + "NOT" -> "fulladd_ms_not") and then passed THAT as
+    // the `scope` argument to the recursive call, which concatenated
+    // scope + name AGAIN internally, declaring the child entity as
+    // "fulladd_ms_not_ms_not" — while invocationDefinitionName (used
+    // for the "entity work.X port map" instantiation) correctly
+    // concatenated scope + name exactly once, expecting
+    // "fulladd_ms_not". The declared name and the instantiated
+    // reference silently diverged: ghdl's actual complaint was
+    // `unit "fulladd_ms_not" not found in library "work"`.
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\FULLADD[(X<> Y<>)($OUT)
+        \\  NOT($X)(OP1<>)
+        \\  OP1<$OP1>
+        \\: NOT[(A<>)($res) res<$A()>: 1[0] 0[1]]
+        \\]
+    ;
+
+    const vhdl = try exportToString(allocator, src);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "entity fulladd_ms_not is") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "entity work.fulladd_ms_not port map") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "fulladd_ms_not_ms_not") == null);
+}
