@@ -118,20 +118,13 @@ pub fn writeDefinition(
         for (def.contained) |contained| {
             if (contained.name.len == 0 or std.ascii.isDigit(contained.name[0])) continue;
             try writer.print("\n", .{});
-
-            // Recurse with this definition's own scoped name (def_id)
-            // as the child's parent scope. writeDefinition's own
-            // scopedDefinitionName(scope, def.name) call inside the
-            // recursion computes the fully-scoped child name exactly
-            // once ("fulladd" + "NOT" -> "fulladd_ms_not").
-            // Precomputing that full name here and passing it as
-            // `scope` double-concatenates it on the way in
-            // ("fulladd_ms_not" + "NOT" -> "fulladd_ms_not_ms_not"),
-            // which is exactly why declared child entities stopped
-            // matching what invocationDefinitionName instantiates —
-            // that function does the single concatenation correctly,
-            // using def_id directly as scope, the same as here.
-            try writeDefinition(allocator, writer, contained, def_id);
+            
+            // Compute this child's full scoped name using the current entity's name (def_id) as the parent scope
+            const child_scope = try scopedDefinitionName(allocator, def_id, contained.name);
+            defer allocator.free(child_scope);
+            
+            // Recursively write the child, passing its full scoped name as its def_id
+            try writeDefinition(allocator, writer, contained, child_scope);
         }
 
         // 2. Then write the parent definition/architecture that instantiates them
@@ -648,24 +641,54 @@ fn writeInvocationInstance(
 ) !void {
     const component_id = try invocationDefinitionName(allocator, def, scope, inv.name);
     defer allocator.free(component_id);
-    
+
+    // The port map's formal (left-hand) names must match what the
+    // target entity actually declares — writeBoundaryPorts names each
+    // port after its real, sanitized source/destination name, never
+    // generic "arg_N"/"output_N" (that generic scheme is only valid
+    // for the special testbench "_network" component wrapper, not for
+    // an ordinary nested gate invocation like this). Look up the
+    // invoked definition's own ports, run them through the SAME
+    // normalization its own independent writeDefinition call will
+    // apply (in particular, EQ0-style duplicate destination names
+    // that fan out to "condition"/"condition_1" — see
+    // normalizeDestinations), and use those names. Fall back to
+    // "arg_N"/"output_N" only when no matching contained definition
+    // is found at all, since then there's no real port list to
+    // consult.
+    var target_sources: []const []const u8 = &.{};
+    var target_destinations: []const []const u8 = &.{};
+    if (findContainedDefinition(def, inv.name)) |raw_target| {
+        const target = try sanitizer.normalizeDefinitionIdentifiers(allocator, raw_target);
+        target_sources = try collectBoundaryPortNames(allocator, target.sources);
+        target_destinations = try collectBoundaryPortNames(allocator, target.destinations);
+    }
+
     // Changed from component instance name to direct entity instantiation
     try writer.print("  invocation_{d} : entity work.{s} port map (", .{ invocation_index, component_id });
-    
+
     var first = true;
     for (inv.sources, 0..) |_, argument_index| {
         if (!first) try writer.print(", ", .{});
-        try writer.print("arg_{d} => invocation_{d}_arg_{d}", .{ argument_index, invocation_index, argument_index });
+        if (argument_index < target_sources.len) {
+            try writer.print("{s} => invocation_{d}_arg_{d}", .{ target_sources[argument_index], invocation_index, argument_index });
+        } else {
+            try writer.print("arg_{d} => invocation_{d}_arg_{d}", .{ argument_index, invocation_index, argument_index });
+        }
         first = false;
     }
     for (inv.destinations, 0..) |output, output_index| {
         if (!first) try writer.print(", ", .{});
+        const formal = if (output_index < target_destinations.len)
+            target_destinations[output_index]
+        else
+            try std.fmt.allocPrint(allocator, "output_{d}", .{output_index});
         if (output.group != null or output.name.len == 0) {
-            try writer.print("output_{d} => invocation_{d}_output_{d}", .{ output_index, invocation_index, output_index });
+            try writer.print("{s} => invocation_{d}_output_{d}", .{ formal, invocation_index, output_index });
         } else {
             const output_id = try placeName(allocator, output);
             defer allocator.free(output_id);
-            try writer.print("output_{d} => {s}", .{ output_index, output_id });
+            try writer.print("{s} => {s}", .{ formal, output_id });
         }
         first = false;
     }
@@ -915,6 +938,38 @@ pub fn invocationDefinitionName(
     }
     // Fall back to the scoped name using the current definition's scope prefix
     return scopedDefinitionName(allocator, scope, name);
+}
+
+fn findContainedDefinition(def: network.Definition, name: []const u8) ?network.Definition {
+    for (def.contained) |contained| {
+        if (std.ascii.eqlIgnoreCase(contained.name, name)) return contained;
+    }
+    return null;
+}
+
+/// Mirrors writeBoundaryPorts' own traversal (group -> recurse,
+/// place -> sanitized name, anything else -> skipped) but collects
+/// the resulting port identifiers in order instead of writing them,
+/// so a port map's formal (left-hand) names can be built to match
+/// exactly what the target entity actually declares.
+fn collectBoundaryPortNames(allocator: std.mem.Allocator, args: []const network.Arg) ![]const []const u8 {
+    var names: std.ArrayListUnmanaged([]const u8) = .empty;
+    for (args) |arg| try collectBoundaryPortNamesInto(allocator, arg, &names);
+    return names.toOwnedSlice(allocator);
+}
+
+fn collectBoundaryPortNamesInto(
+    allocator: std.mem.Allocator,
+    arg: network.Arg,
+    out: *std.ArrayListUnmanaged([]const u8),
+) !void {
+    switch (arg.kind) {
+        .group => if (arg.group) |grp| {
+            for (grp.places) |child| try collectBoundaryPortNamesInto(allocator, child, out);
+        },
+        .place => try out.append(allocator, try sanitizeName(allocator, arg.name)),
+        else => {},
+    }
 }
 
 fn writeIntermediatePlaceSignal(

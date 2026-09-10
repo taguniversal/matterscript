@@ -111,5 +111,4 @@ test "invocationDefinitionName respects scope for contained definitions" {
     defer allocator.free(resolved_name);
     
     try std.testing.expectEqualStrings("fulladd_ms_not", resolved_name);
-    try std.testing.expect(false);
 }

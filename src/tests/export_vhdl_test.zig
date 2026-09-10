@@ -147,3 +147,34 @@ test "a nested definition's declared entity name matches what its invocation ins
     try testing.expect(std.mem.indexOf(u8, vhdl, "entity work.fulladd_ms_not port map") != null);
     try testing.expect(std.mem.indexOf(u8, vhdl, "fulladd_ms_not_ms_not") == null);
 }
+
+test "an invocation's port map uses the target entity's real port names, not generic arg_N/output_N" {
+    // Companion regression test: once the entity-name mismatch above
+    // was fixed, ghdl got far enough to check the port map itself and
+    // found a second bug — writeInvocationInstance always wrote
+    // "arg_0 => ...", "output_0 => ..." on the formal (left) side,
+    // but writeBoundaryPorts declares every real entity's ports under
+    // their actual sanitized source/destination names (here, "a" and
+    // "res" for NOT's single input and output) — that generic
+    // "arg_N"/"output_N" scheme is only valid for the special
+    // testbench "_network" component wrapper, not an ordinary nested
+    // gate invocation. ghdl's actual complaint was
+    // `no declaration for "arg_0"`.
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\FULLADD[(X<> Y<>)($OUT)
+        \\  NOT($X)(OP1<>)
+        \\  OP1<$OP1>
+        \\: NOT[(A<>)($res) res<$A()>: 1[0] 0[1]]
+        \\]
+    ;
+
+    const vhdl = try exportToString(allocator, src);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "a => invocation_0_arg_0") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "res => op1") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "arg_0 => invocation_0_arg_0") == null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "output_0 => op1") == null);
+}
