@@ -460,3 +460,35 @@ test "TAG-192 Support Explicit Instance Labelling (prefixlabel: invocation) for 
     try testing.expectEqualStrings("u2", resolution[1].invoke.label.?);
     try testing.expectEqualStrings("AND", resolution[1].invoke.name);
 }
+
+test "an unlabeled bare invoke with no destinations parses as a pure_value expression" {
+    // Regression test for TAG-138's LTsteer: "LT($A $B)" is a bare
+    // resolution statement with no destinations list and no label.
+    // Companion to the TAG-192 test above, which confirms the
+    // opposite case (a LABEL with empty destinations must stay a
+    // real .invoke, since the label supplies a hygienic temporary
+    // name for the implicit result). Without a label, there's no
+    // name to hang a synthesized component instantiation off of, and
+    // this shape is syntactically identical to the "$name(args)"
+    // pure-value pattern (dualfanin's "$steer()") — just naming a
+    // primitive function ("LT", "Equal") instead of a plain variable.
+    // Before this fix, codegen tried to instantiate a nonexistent
+    // "LT" component (ghdl: "unit ..._lt not found in library work").
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\LTSTEER[(A<>B<>)
+        \\  LT($A $B) : True[out1<$A> out2<$B>]
+        \\              False[out1<$B> out2<$A>]]
+    ;
+
+    const net = try parser.parse(allocator, src);
+    try testing.expectEqual(@as(usize, 1), net.definitions.len);
+
+    const resolution = net.definitions[0].resolution;
+    try testing.expectEqual(@as(usize, 1), resolution.len);
+    try testing.expect(resolution[0] == .pure_value);
+    try testing.expectEqualStrings("LT($A $B)", resolution[0].pure_value);
+}

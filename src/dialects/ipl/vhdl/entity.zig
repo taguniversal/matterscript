@@ -372,5 +372,3 @@ fn writeComponentDeclaration(
     }
     try writer.print("    );\n  end component;\n\n", .{});
 }
-
-
