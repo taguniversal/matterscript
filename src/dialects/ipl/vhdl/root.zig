@@ -14,7 +14,7 @@ const std = @import("std");
 const network = @import("../network.zig");
 const entity = @import("entity.zig");
 const workspace = @import("../../../common/workspace.zig");
-
+const network_entity = @import("export/network_entity.zig");
 pub const sanitizer = @import("sanitizer.zig");
 
 pub fn writeVhdlNetwork(
@@ -40,7 +40,7 @@ pub fn write(allocator: std.mem.Allocator, writer: anytype, net: network.Network
     for (net.definitions) |def| {
         try entity.writeDefinition(allocator, writer, def, "");
     }
-    try entity.writeNetworkEntity(allocator, writer, net);
+    try network_entity.writeNetworkEntity(allocator, writer, net);
 }
 
 
