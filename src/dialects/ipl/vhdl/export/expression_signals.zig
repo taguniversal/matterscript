@@ -101,3 +101,47 @@ pub fn writeDollarReferenceSignals(
         if (i > start) try writeIntermediateSignal(allocator, writer, def, names, expression[start..i]);
     }
 }
+
+
+/// Attempts to evaluate and emit an expression fill (such as direct signal mapping
+/// or equality checks against constants), returning `true` if successfully handled.
+pub fn writeExpressionFill(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    fill: network.SourceFill,
+) !bool {
+    const expression = std.mem.trim(u8, fill.expr, " \t\r\n");
+    const dest_id = try sanitizeName(allocator, fill.dest_name);
+    defer allocator.free(dest_id);
+
+    if (expression.len > 1 and expression[0] == '$') {
+        var end = expression.len;
+        if (std.mem.indexOfScalar(u8, expression, '(')) |open| end = open;
+        const source_id = try sanitizeName(allocator, expression[1..end]);
+        defer allocator.free(source_id);
+        try writer.print("  {s} <= {s};\n", .{ dest_id, source_id });
+        return true;
+    }
+
+    if (std.mem.startsWith(u8, expression, "Equal(")) {
+        const dollar = std.mem.indexOfScalar(u8, expression, '$') orelse return false;
+        const comma = std.mem.indexOfScalarPos(u8, expression, dollar, ',') orelse return false;
+        const source_id = try sanitizeName(allocator, expression[dollar + 1 .. comma]);
+        defer allocator.free(source_id);
+        const value_end = std.mem.indexOfScalarPos(u8, expression, comma + 1, ')') orelse return false;
+        const value_text = std.mem.trim(u8, expression[comma + 1 .. value_end], " \t\r\n");
+        const value = std.fmt.parseInt(u64, value_text, 10) catch return false;
+        try writer.print("  process({s}) begin\n", .{source_id});
+        try writer.print("    {s} <= null_value;\n", .{dest_id});
+        try writer.print("    if is_data({s}) and payload({s}) = std_logic_vector(to_unsigned({d}, DATA_WIDTH)) then\n", .{ source_id, source_id, value });
+        try writer.print("      {s} <= data_value(1);\n", .{dest_id});
+        try writer.print("    elsif is_data({s}) then\n", .{source_id});
+        try writer.print("      {s} <= data_value(0);\n", .{dest_id});
+        try writer.print("    end if;\n  end process;\n", .{});
+        return true;
+    }
+
+    return false;
+}
+
+
