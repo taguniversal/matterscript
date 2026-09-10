@@ -8,8 +8,8 @@ const sanitizer = @import("sanitizer.zig");
 const sanitizeName = sanitizer.sanitizeName;
 const constants = @import("constants.zig");
 const lookup = @import("lookup.zig");
-const boundary = @import("export/boundary.zig");
-const invocation = @import("export/invocation.zig");
+pub const boundary = @import("export/boundary.zig");
+pub const invocation = @import("export/invocation.zig");
 const signal = @import("export/expression_signals.zig");
 pub const network_entity = @import("export/network_entity.zig");
 

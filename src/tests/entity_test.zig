@@ -19,7 +19,7 @@ test "boundaryCount calculates scalar and group places correctly" {
 
     // Test a single place
     const single_args = [_]network.Arg{arg_place};
-    try std.testing.expectEqual(@as(usize, 1), entity.boundaryCount(&single_args));
+    try std.testing.expectEqual(@as(usize, 1), entity.boundary.boundaryCount(&single_args));
 
     // Test a group containing multiple places
     var group_places = [_]network.Arg{
@@ -37,7 +37,7 @@ test "boundaryCount calculates scalar and group places correctly" {
     };
 
     const group_args = [_]network.Arg{group_arg};
-    try std.testing.expectEqual(@as(usize, 2), entity.boundaryCount(&group_args));
+    try std.testing.expectEqual(@as(usize, 2), entity.boundary.boundaryCount(&group_args));
 }
 
 test "argToText extracts expected string representations" {
@@ -47,7 +47,7 @@ test "argToText extracts expected string representations" {
         .name = "foo",
         .text = "",
     };
-    try std.testing.expectEqualSlices(u8, "foo", entity.argToText(place_arg));
+    try std.testing.expectEqualSlices(u8, "foo", entity.invocation.argToText(place_arg));
 
     // 2. Literal text
     const literal_arg = network.Arg{
@@ -55,7 +55,7 @@ test "argToText extracts expected string representations" {
         .name = "",
         .text = "42",
     };
-    try std.testing.expectEqualSlices(u8, "42", entity.argToText(literal_arg));
+    try std.testing.expectEqualSlices(u8, "42", entity.invocation.argToText(literal_arg));
 }
 
 test "argContainsName checks nested structures" {
@@ -74,9 +74,9 @@ test "argContainsName checks nested structures" {
     };
 
     // Should find the name nested inside the group
-    try std.testing.expect(entity.argContainsName(nested_group, "target_place"));
+    try std.testing.expect(entity.boundary.argContainsName(nested_group, "target_place"));
     // Should return false for missing names
-    try std.testing.expect(!entity.argContainsName(nested_group, "nonexistent"));
+    try std.testing.expect(!entity.boundary.argContainsName(nested_group, "nonexistent"));
 }
 
 test "invocationDefinitionName respects scope for contained definitions" {
@@ -107,7 +107,7 @@ test "invocationDefinitionName respects scope for contained definitions" {
 
     // When looking up an invocation of "ms_not" inside scope "fulladd",
     // it should return the scoped name "fulladd_ms_not", not "ms_not".
-    const resolved_name = try entity.invocationDefinitionName(allocator, parent_def, "fulladd", "ms_not");
+    const resolved_name = try entity.invocation.invocationDefinitionName(allocator, parent_def, "fulladd", "ms_not");
     defer allocator.free(resolved_name);
     
     try std.testing.expectEqualStrings("fulladd_ms_not", resolved_name);
