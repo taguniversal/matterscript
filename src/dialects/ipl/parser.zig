@@ -20,8 +20,8 @@ pub const network = @import("network.zig");
 pub const definitions = @import("parser/definitions.zig");
 pub const arguments = @import("parser/arguments.zig");
 pub const expressions = @import("parser/expressions.zig");
-
-
+pub const directives = @import("parser/directives.zig");
+pub const statements = @import("parser/statements.zig");
 
 // ----------------------------------------------------------------
 // Public API
@@ -121,12 +121,12 @@ fn parseInner(p: *core.Parser, allocator: std.mem.Allocator) !network.Network {
             try inner_definitions.append(allocator, def);
         } else if (next == '(') {
             // Top-level entry invocation supporting the optional label
-            const parsed_entry = try p.parseEntryInvocation(label, name);
+            const parsed_entry = try statements.parseEntryInvocation(p, label, name);
             try entries.append(allocator, parsed_entry);
         } else return error.UnexpectedChar;
     }
 
-   // Run recursive canonicalization before freezing into immutable slices
+    // Run recursive canonicalization before freezing into immutable slices
     try canonicalizeNames(allocator, &inner_definitions);
 
     const net = network.Network{

@@ -3,6 +3,10 @@ const core = @import("core.zig");
 const network: type = @import("../network.zig");
 const arguments = @import("arguments.zig");
 const expressions = @import("expressions.zig");
+const directives = @import("directives.zig");
+const statements = @import("statements.zig");
+const groups = @import("groups.zig");
+
 const testing = std.testing;
 
 // ----------------------------------------------------------------
@@ -22,7 +26,7 @@ const testing = std.testing;
 ///
 /// Returns the fully constructed `network.Definition`.
 pub fn parseDefinition(p: *core.Parser) anyerror!network.Definition {
-    const name = try p.readCommaSeparatedName();
+    const name = try groups.readCommaSeparatedName(p);
     try p.expect('[');
 
     p.skipWhitespaceAndComments();
@@ -52,7 +56,7 @@ pub fn parseDefinition(p: *core.Parser) anyerror!network.Definition {
             p.skipWhitespaceAndComments();
         } else if (std.mem.eql(u8, directive, "generate")) {
             // parseNeighborhoodRuleBlock expects and consumes '{'
-            const rules = try p.parseNeighborhoodRulesBlock();
+            const rules = try directives.parseNeighborhoodRulesBlock(p);
             generate_block = network.GenerateBlock{
                 .domain = domain_spec,
                 .rules = rules,
@@ -148,7 +152,7 @@ pub fn parseContainedSection(p: *core.Parser, expected_segments: usize) anyerror
 
         if (std.ascii.isAlphanumeric(c) or c == '_') {
             const save = p.pos;
-            const names = p.readCommaSeparatedName() catch {
+            const names = groups.readCommaSeparatedName(p) catch {
                 p.pos = save;
                 break;
             };
@@ -240,7 +244,7 @@ pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
         if (c == ':' or c == ']') break;
 
         if (c == '<') {
-            try stmts.append(p.allocator, try p.parseSourceFill(""));
+            try stmts.append(p.allocator, try statements.parseSourceFill(p,""));
             continue;
         }
 
@@ -279,13 +283,13 @@ pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
 
         const next = p.peek() orelse return core.ParseError.UnexpectedEnd;
         if (next == '<') {
-            try stmts.append(p.allocator, try p.parseSourceFill(name));
+            try stmts.append(p.allocator, try statements.parseSourceFill(p, name));
         } else if (next == '(') {
             // Pass the label here!
-            try stmts.append(p.allocator, try p.parseInvocation(label, name));
+            try stmts.append(p.allocator, try statements.parseInvocation(p,label, name));
         } else if (next == ',') {
             p.pos = tok_start;
-            const full = try p.readCommaSeparatedName();
+            const full = try groups.readCommaSeparatedName(p);
             try stmts.append(p.allocator, .{ .pure_value = full });
         } else if (next == ':' or next == ']') {
             try stmts.append(p.allocator, .{ .pure_value = p.src[tok_start..p.pos] });

@@ -1,6 +1,7 @@
 const std = @import("std");
 const core = @import("core.zig");
 const network: type = @import("../network.zig");
+const groups = @import("groups.zig");
 
 /// Parses a sequence of arguments/places until `close_char` is encountered.
 fn parseArgSequence(p: *core.Parser, close_char: u8) ![]const network.Arg {
@@ -61,7 +62,7 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
 
     // 1. Check if argument begins with a group selector ({, [, or standalone parentheses)
     if (ch == '{' or ch == '(' or ch == '[') {
-        const grp = try p.parseGroup();
+        const grp = try groups.parseGroup(p);
         return network.Arg{
             .kind = .group,
             .group = grp,
@@ -107,7 +108,7 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
         // here before — this branch used to fall through with no
         // group parsed at all, then fail in readName below).
         p.pos = lt_pos;
-        const grp = try p.parseGroup();
+        const grp = try groups.parseGroup(p);
         return network.Arg{
             .kind = .group,
             .group = grp,
@@ -130,7 +131,7 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
 
     // A name immediately followed by '(' is a call/function expression
     if (p.peek() == '(') {
-        _ = try p.consumeBalanced('(', ')');
+        _ = try groups.consumeBalanced(p,'(', ')');
         return network.Arg{
             .kind = .expression,
             .name = name,
@@ -153,7 +154,7 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
         } else {
             // If it's a generic group modifier like <sub1, sub2>
             p.pos = lt_pos; // restore to '<' for generic group parsing
-            const grp = try p.parseGroup();
+            const grp = try groups.parseGroup(p);
             return network.Arg{
                 .kind = .group,
                 .name = name,
