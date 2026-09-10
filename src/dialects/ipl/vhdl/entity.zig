@@ -124,7 +124,7 @@ pub fn writeDefinition(
             defer allocator.free(child_scope);
             
             // Recursively write the child, passing its full scoped name as its def_id
-            try writeDefinition(allocator, writer, contained, child_scope);
+            try writeDefinition(allocator, writer, contained, def_id);
         }
 
         // 2. Then write the parent definition/architecture that instantiates them
