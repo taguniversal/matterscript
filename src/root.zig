@@ -12,6 +12,8 @@ pub const ipl_parser = @import("dialects/ipl/parser.zig");
 pub const ipl_export_vhdl = @import("dialects/ipl/vhdl/root.zig");
 pub const network = @import("dialects/ipl/network.zig");
 pub const entity = @import("dialects/ipl/vhdl/entity.zig");
+pub const directives = @import("dialects/ipl/parser/directives.zig");
+pub const core = @import("dialects/ipl/parser/core.zig");
 
 test {
     std.testing.refAllDecls(@This());

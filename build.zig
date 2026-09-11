@@ -184,6 +184,21 @@ pub fn build(b: *std.Build) void {
 
     const run_entity_tests = b.addRunArtifact(entity_tests);
 
+// --- Directive tests (src/dialects/ipl/parser/directives_test.zig) ---
+    const directive_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/directives_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+                .{ .name = "mkrand", .module = mkrand_mod },
+            },
+        }),
+    });
+
+    const run_directive_tests = b.addRunArtifact(directive_tests);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
@@ -194,6 +209,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_definition_tests.step);
     test_step.dependOn(&run_sanitizer_tests.step);
     test_step.dependOn(&run_entity_tests.step);
+    test_step.dependOn(&run_directive_tests.step);
     // ------------------------------------------------------------------------
     // 4. mdBook Build & Doc-Test Pipeline
     // ------------------------------------------------------------------------

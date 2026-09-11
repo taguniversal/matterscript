@@ -43,7 +43,7 @@ pub fn parseNeighborhoodRulesBlock(p: *core.Parser) ![]const network.Neighborhoo
     return rules.toOwnedSlice(p.allocator);
 }
 
-fn parseDomainDirective(p: *core.Parser) !network.DomainSpec {
+pub fn parseDomainDirective(p: *core.Parser) !network.DomainSpec {
     try p.consumeKeyword("@domain");
     try p.expect('(');
     p.skipWhitespaceAndComments();
@@ -61,16 +61,16 @@ fn parseDomainDirective(p: *core.Parser) !network.DomainSpec {
 
     // Parse "size:" parameter
     try p.consumeKeyword("size");
-    try p.expect(':');
+    
     p.skipWhitespaceAndComments();
 
     // Parse bounds array [width, height]
     try p.expect('[');
-    const size_x = try p.readInteger(usize);
+    const size_x: usize = @intCast(try p.readInteger());
     p.skipWhitespaceAndComments();
     try p.expect(',');
     p.skipWhitespaceAndComments();
-    const size_y = try p.readInteger(usize);
+    const size_y: usize = @intCast(try p.readInteger());
     p.skipWhitespaceAndComments();
     try p.expect(']');
 
@@ -81,5 +81,6 @@ fn parseDomainDirective(p: *core.Parser) !network.DomainSpec {
         .kind = kind,
         .size_x = size_x,
         .size_y = size_y,
+        .size_z = 0,  
     };
 }

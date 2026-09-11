@@ -88,7 +88,7 @@ pub const Parser = struct {
         const start = p.pos;
         while (p.pos < p.src.len) {
             const c = p.src[p.pos];
-            if (std.ascii.isAlphanumeric(c) or c == '_' or c == '$') {
+            if (std.ascii.isAlphanumeric(c) or c == '_' or c == '$' or c == '@') {
                 p.pos += 1;
             } else {
                 break;
@@ -98,7 +98,7 @@ pub const Parser = struct {
         return p.src[start..p.pos];
     }
 
-    fn readInteger(p: *Parser) !i64 {
+    pub fn readInteger(p: *Parser) !i64 {
         p.skipWhitespaceAndComments();
         const negative = p.tryConsume('-');
         const start = p.pos;
