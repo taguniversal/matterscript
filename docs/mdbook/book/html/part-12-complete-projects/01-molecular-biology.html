@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-74fa5384.js";
+            window.path_to_searchindex_js = "../searchindex-9794b3c5.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-4f8fecbe.js"></script>
@@ -205,31 +205,20 @@
 </ol>
 <p>The Problem: In many metabolic pathways, sequential enzymes cluster into “metabolons” to hand off intermediates directly without letting them diffuse away into the cytoplasm. Understanding the efficiency thresholds of spatial enzyme clustering vs. free diffusion is a major open question in synthetic biology.</p>
 <p>Why Digital Rules Fit: Instead of solving reaction-diffusion PDEs, you can treat metabolic intermediates as discrete particles diffusing on a 3D grid with probabilistic binding/reaction rules when colliding with enzyme nodes. This lets you optimize enzyme spatial configurations for synthetic biology constructs.</p>
-<p>Comparison of Biological Target Fit</p>
-<p>Target Problem</p>
-<p>Primary Rule Mechanics</p>
-<p>WebGPU Parallelism Advantage</p>
-<p>Key Insight Unlocked</p>
-<p>Biomolecular Condensates</p>
-<p>Multivalent valence matching &amp; sticky collisions</p>
-<p>3D grid / Voxel neighbor lookups</p>
-<p>Emergent phase boundaries &amp; stoichiometry</p>
-<p>Chromatin Loop Extrusion</p>
-<p>Directed stepping, stalling, &amp; link constraints</p>
-<p>Array/Buffer-driven parallel string updates</p>
-<p>Global 3D genome reconfiguration</p>
-<p>Ribosome Traffic Jams</p>
-<p>Asymmetric Simple Exclusion Process (ASEP)</p>
-<p>Parallel 1D array pipelines across cell transcripts</p>
-<p>Translational kinetics &amp; RQC trigger limits</p>
-<p>Capsid Self-Assembly</p>
-<p>State-machine shape matching &amp; local bonding</p>
-<p>Particle-agent state transitions</p>
-<p>Nucleation rates &amp; structural defect control</p>
-<p>Enzyme Channeling</p>
-<p>Random walks + discrete enzymatic state transitions</p>
-<p>Voxel-based particle movement &amp; collision checks</p>
-<p>Optimal spatial layout for synthetic pathways</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Target Problem</th><th style="text-align: left">Primary Rule Mechanics</th><th style="text-align: left">WebGPU Parallelism Advantage</th><th style="text-align: left">Key Insight Unlocked</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Biomolecular Condensates</strong></td><td style="text-align: left">Multivalent valence matching &amp; sticky collisions</td><td style="text-align: left">3D grid / Voxel neighbor lookups</td><td style="text-align: left">Emergent phase boundaries &amp; stoichiometry</td></tr>
+<tr><td style="text-align: left"><strong>Chromatin Loop Extrusion</strong></td><td style="text-align: left">Directed stepping, stalling, &amp; link constraints</td><td style="text-align: left">Array/Buffer-driven parallel string updates</td><td style="text-align: left">Global 3D genome reconfiguration</td></tr>
+<tr><td style="text-align: left"><strong>Ribosome Traffic Jams</strong></td><td style="text-align: left">Asymmetric Simple Exclusion Process (ASEP)</td><td style="text-align: left">Parallel 1D array pipelines across cell transcripts</td><td style="text-align: left">Translational kinetics &amp; RQC trigger limits</td></tr>
+<tr><td style="text-align: left"><strong>Capsid Self-Assembly</strong></td><td style="text-align: left">State-machine shape matching &amp; local bonding</td><td style="text-align: left">Particle-agent state transitions</td><td style="text-align: left">Nucleation rates &amp; structural defect control</td></tr>
+<tr><td style="text-align: left"><strong>Enzyme Channeling</strong></td><td style="text-align: left">Random walks + discrete enzymatic state transitions</td><td style="text-align: left">Voxel-based particle movement &amp; collision checks</td><td style="text-align: left">Optimal spatial layout for synthetic pathways</td></tr>
+</tbody>
+</table>
+</div>
 <p>Recommended Starting Point</p>
 <p>If you want the quickest proof-of-concept that yields striking visual and quantitative results on WebGPU, start with Biomolecular Phase Separation (LLPS).</p>
 <p>Because WebGPU natively maps 3D compute shaders to 3D textures, a 3D cellular automaton with multivalent binding rules will immediately produce visual condensates while letting you measure thermodynamic properties (like critical concentration and coarsening exponents) directly from compute buffers.</p>

@@ -36,55 +36,13 @@ The Problem: In many metabolic pathways, sequential enzymes cluster into "metabo
 
 Why Digital Rules Fit: Instead of solving reaction-diffusion PDEs, you can treat metabolic intermediates as discrete particles diffusing on a 3D grid with probabilistic binding/reaction rules when colliding with enzyme nodes. This lets you optimize enzyme spatial configurations for synthetic biology constructs.
 
-Comparison of Biological Target Fit
-
-Target Problem
-
-Primary Rule Mechanics
-
-WebGPU Parallelism Advantage
-
-Key Insight Unlocked
-
-Biomolecular Condensates
-
-Multivalent valence matching & sticky collisions
-
-3D grid / Voxel neighbor lookups
-
-Emergent phase boundaries & stoichiometry
-
-Chromatin Loop Extrusion
-
-Directed stepping, stalling, & link constraints
-
-Array/Buffer-driven parallel string updates
-
-Global 3D genome reconfiguration
-
-Ribosome Traffic Jams
-
-Asymmetric Simple Exclusion Process (ASEP)
-
-Parallel 1D array pipelines across cell transcripts
-
-Translational kinetics & RQC trigger limits
-
-Capsid Self-Assembly
-
-State-machine shape matching & local bonding
-
-Particle-agent state transitions
-
-Nucleation rates & structural defect control
-
-Enzyme Channeling
-
-Random walks + discrete enzymatic state transitions
-
-Voxel-based particle movement & collision checks
-
-Optimal spatial layout for synthetic pathways
+| Target Problem | Primary Rule Mechanics | WebGPU Parallelism Advantage | Key Insight Unlocked |
+| :--- | :--- | :--- | :--- |
+| **Biomolecular Condensates** | Multivalent valence matching & sticky collisions | 3D grid / Voxel neighbor lookups | Emergent phase boundaries & stoichiometry |
+| **Chromatin Loop Extrusion** | Directed stepping, stalling, & link constraints | Array/Buffer-driven parallel string updates | Global 3D genome reconfiguration |
+| **Ribosome Traffic Jams** | Asymmetric Simple Exclusion Process (ASEP) | Parallel 1D array pipelines across cell transcripts | Translational kinetics & RQC trigger limits |
+| **Capsid Self-Assembly** | State-machine shape matching & local bonding | Particle-agent state transitions | Nucleation rates & structural defect control |
+| **Enzyme Channeling** | Random walks + discrete enzymatic state transitions | Voxel-based particle movement & collision checks | Optimal spatial layout for synthetic pathways |
 
 Recommended Starting Point
 
