@@ -6,7 +6,8 @@ const network = matterscript.network;
 const parser = matterscript.ipl_parser;
 
 // Ensure internal tests run too
-const definitions = matterscript.ipl_parser.definitions;
+const definitions = parser.definitions;
+
 test {
     std.testing.refAllDecls(definitions);
 }

@@ -22,6 +22,10 @@
 //   Missing table entries remain NULL indefinitely — no error, no completion.
 
 const std = @import("std");
+const matterscript = @import("matterscript");
+
+const core = matterscript.core;
+const network = matterscript.network;
 
 pub const SpatialDomainKind = enum {
     spatial1d,
@@ -30,13 +34,108 @@ pub const SpatialDomainKind = enum {
     // future domains: spatial1d, etc.
 };
 
-pub const DomainSpec = struct {
-    kind: SpatialDomainKind,
-    size_x: usize,
-    size_y: usize,
-    size_z: usize,
+pub const ValueBounds = struct {
+    min: i64,
+    max: i64,
 };
 
+pub const DomainSpec = struct {
+    kind: SpatialDomainKind,
+    /// 2D grid dimensions [width, height] or spatial sizes
+    size: ?[2]usize = null,
+    /// Output state clamping range for generator evaluation
+    value_bounds: ?ValueBounds = null,
+};
+
+pub fn parseDomainSpec(p: *core.Parser) !network.DomainSpec {
+    // 1. Consume opening parenthesis: '('
+    try p.expect('(');
+    p.skipWhitespaceAndComments();
+
+    // 2. Read domain kind string: "spatial1d", "spatial2d", "spatial3d"
+    const kind_str = try p.readName();
+    const kind: network.SpatialDomainKind = if (std.mem.eql(u8, kind_str, "spatial1d"))
+        .spatial1d
+    else if (std.mem.eql(u8, kind_str, "spatial2d"))
+        .spatial2d
+    else if (std.mem.eql(u8, kind_str, "spatial3d"))
+        .spatial3d
+    else
+        return error.UnknownDomainKind;
+
+    p.skipWhitespaceAndComments();
+
+    var size: ?[2]usize = null;
+    var value_bounds: ?struct { min: i64, max: i64 } = null;
+
+    // 3. Parse optional named parameters (e.g., `, size: [300, 500]` or `, range: [0, 15]`)
+    while (p.peek() == ',') {
+        p.pos += 1; // Consume ','
+        p.skipWhitespaceAndComments();
+
+        // Handle trailing comma before ')'
+        if (p.peek() == ')') break;
+
+        const param_name = try p.readName();
+        p.skipWhitespaceAndComments();
+        try p.expect(':');
+        p.skipWhitespaceAndComments();
+
+        if (std.mem.eql(u8, param_name, "size")) {
+            try p.expect('[');
+            p.skipWhitespaceAndComments();
+
+            // Read X dimension (width)
+            const x_str = try p.readName();
+            const width = try std.fmt.parseInt(usize, x_str, 10);
+            p.skipWhitespaceAndComments();
+
+            try p.expect(',');
+            p.skipWhitespaceAndComments();
+
+            // Read Y dimension (height)
+            const y_str = try p.readName();
+            const height = try std.fmt.parseInt(usize, y_str, 10);
+            p.skipWhitespaceAndComments();
+
+            try p.expect(']');
+            p.skipWhitespaceAndComments();
+
+            size = .{ width, height };
+        } else if (std.mem.eql(u8, param_name, "range")) {
+            try p.expect('[');
+            p.skipWhitespaceAndComments();
+
+            // Read min bound
+            const min_str = try p.readName();
+            const min_val = try std.fmt.parseInt(i64, min_str, 10);
+            p.skipWhitespaceAndComments();
+
+            try p.expect(',');
+            p.skipWhitespaceAndComments();
+
+            // Read max bound
+            const max_str = try p.readName();
+            const max_val = try std.fmt.parseInt(i64, max_str, 10);
+            p.skipWhitespaceAndComments();
+
+            try p.expect(']');
+            p.skipWhitespaceAndComments();
+
+            value_bounds = .{ .min = min_val, .max = max_val };
+        } else {
+            return error.UnknownDomainParameter;
+        }
+    }
+
+    try p.expect(')');
+
+    return network.DomainSpec{
+        .kind = kind,
+        .size = size,
+        .value_bounds = value_bounds,
+    };
+}
 
 pub const PlaceKind = enum {
     /// source place: name<>
@@ -59,10 +158,10 @@ pub const Place = struct {
     group: ?*const PlaceGroup = null,
 };
 
-pub const PlaceGroupKind = enum { 
-    bundle,        // signal groups [..]
-    mutex,         // Mutually exclusive signals {..}
-    arbitration,   // Expresses nondeterministic flow competition {{...}}
+pub const PlaceGroupKind = enum {
+    bundle, // signal groups [..]
+    mutex, // Mutually exclusive signals {..}
+    arbitration, // Expresses nondeterministic flow competition {{...}}
 };
 
 pub const PlaceGroup = struct {
@@ -74,7 +173,7 @@ pub const Directive = struct {
     name: []const u8,
     args: []const u8, // raw text; empty if this directive used {} instead of ()
     rules: []const NeighborhoodRule = &.{}, // populated only for @name { ... } blocks
-};  
+};
 /// A single entry in an explicit key:value constant table.
 pub const TableEntry = struct {
     key: []const u8,
@@ -93,12 +192,6 @@ pub const ConstDecl = struct {
     name: []const u8,
     value: i64,
 };
-
-pub const NeighborhoodRule = struct {
-    pattern: []const []const u8, // e.g. ["*", "1", "5"] — "*" is wildcard
-    value: []const u8,
-};
-
 
 pub const BinaryOp = enum { add, sub, mul, div };
 
@@ -119,6 +212,11 @@ pub const Expr = struct {
     right: ?*Expr = null,
     func: []const u8 = "",
     args: []const *Expr = &.{},
+};
+
+pub const NeighborhoodRule = struct {
+    pattern: []const []const u8, // e.g. ["*", "1", "5"] — "*" is wildcard
+    value: []const u8,
 };
 
 pub const GenerateBlock = struct {

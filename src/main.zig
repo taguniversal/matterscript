@@ -1,16 +1,13 @@
 const std = @import("std");
 const Io = std.Io;
 
+const matterscript = @import("matterscript");
 const geo_parser = @import("dialects/geo/parser.zig");
-const state_parser = @import("dialects/fsm/parser.zig");
-const state_export_vhdl = @import("dialects/fsm/export_vhdl.zig");
-const state_export_tb = @import("dialects/fsm/export_tb.zig");
 const GeoProgram = @import("dialects/geo/program.zig").Program;
 const geo_build = @import("dialects/geo/geo_build.zig");
-const StateProgram = @import("dialects/fsm/program.zig").Program;
 const cell_runner = @import("dialects/geo/runner.zig");
-const il_parser = @import("dialects/ipl/parser.zig");
-const il_export_vhdl = @import("dialects/ipl/vhdl/root.zig");
+const ipl_parser = matterscript.ipl_parser;
+const ipl_export_vhdl = matterscript.ipl_export_vhdl;
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
@@ -39,31 +36,10 @@ pub fn main(init: std.process.Init) !void {
     try stdout_writer.print("MatterScript source: {s}\n\n", .{script_path});
     try stdout_writer.print("{s}\n", .{source});
 
-    if (std.mem.endsWith(u8, script_path, ".ms.fsm")) {
-        const m = try state_parser.parse(arena, source);
-        const state_program = StateProgram{
-            .namespace = "coffee",
-            .machine = m,
-            .export_path = "",
-        };
-
-        try stdout_writer.print("Parsed FSM: {s}\n", .{m.name});
-        try stdout_writer.print("  states:      {d}\n", .{m.states.len});
-        try stdout_writer.print("  events:      {d}\n", .{m.events.len});
-        try stdout_writer.print("  transitions: {d}\n\n", .{m.transitions.len});
-
-        try state_export_vhdl.writeVhdlMachine(io, arena, state_program, "machine.vhd");
-        try state_export_tb.writeTbMachine(io, arena, state_program, "tb_machine.cpp");
-
-        try stdout_writer.print("Wrote machine.vhd\n", .{});
-        try stdout_writer.print("Wrote tb_machine.cpp\n", .{});
-        try stdout_writer.flush();
-        return;
-    }
 
     // add this branch in main() alongside the .ms.fsm branch:
     if (std.mem.endsWith(u8, script_path, ".ms.ipl")) {
-        const net = try il_parser.parse(arena, source);
+        const net = try ipl_parser.parse(arena, source);
 
         try stdout_writer.print("Parsed IL network\n", .{});
         try stdout_writer.print("  definitions: {d}\n", .{net.definitions.len});
@@ -83,7 +59,7 @@ pub fn main(init: std.process.Init) !void {
             try stdout_writer.print("\nentry: {s} with {d} sources\n", .{ e.name, e.sources.len });
         }
 
-        try il_export_vhdl.writeVhdlNetwork(
+        try ipl_export_vhdl.writeVhdlNetwork(
             io,
             arena,
             "add", // namespace — matches workspace/add/

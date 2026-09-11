@@ -1,14 +1,30 @@
+//! Module: evaluator
+//!
+//! Responsibilities:
+//! - Evaluates and expands `GenerateBlock` constructs within the AST into explicit
+//!   generated truth-table entries (`GeneratedEntry`).
+//! - Executes recursive state-space exploration across input variable ranges (`InputDecl.min..max`)
+//!   to synthesize concrete output values from generator expressions.
+//! - AST Expression Evaluation (`evalExpr`): Recursively computes mathematical AST
+//!   expressions containing integers, variables, user constants, basic arithmetic
+//!   ops (+, -, *, /), and built-in functions (e.g., `clamp`, `avg`).
+//!
+//! Main Functions:
+//! - `enumerateGenerate`: Collects pattern-based symbolic rule entries directly from a generate block.
+//! - `enumerateRecursive`: Performs cartesian product iteration over input bounds and computes
+//!   clamped target output states via expression evaluation.
+//! - `evalExpr`: Evaluates an AST `network.Expr` node given symbol context hash maps.
+//!
+
 const std = @import("std");
 const network = @import("../network.zig");
 
-const GeneratedEntry = struct {
+pub const GeneratedEntry = struct {
     pattern: []const []const u8, // e.g. ["DE", "AK", "JD"] or ["2", "1", "5"]
     target_state: []const u8, // e.g. "JC" or "4"
 };
 
-
-
-fn enumerateGenerate(
+pub fn enumerateGenerate(
     allocator: std.mem.Allocator,
     gen: network.GenerateBlock,
 ) ![]const GeneratedEntry {
@@ -33,7 +49,7 @@ fn enumerateGenerate(
     return entries.toOwnedSlice(allocator);
 }
 
-fn enumerateRecursive(
+pub fn enumerateRecursive(
     allocator: std.mem.Allocator,
     gen: network.GenerateBlock,
     inputs: []const network.InputDecl,
@@ -44,15 +60,33 @@ fn enumerateRecursive(
     entries: *std.ArrayListUnmanaged(GeneratedEntry),
 ) !void {
     if (depth == inputs.len) {
-        const result = try evalExpr(gen.expr, var_map.*, const_map);
-        const clamped = @max(gen.output_min, @min(gen.output_max, result));
-        const vals_copy = try allocator.dupe(i64, current_vals);
+        const expr = gen.expr orelse return;
+        var result = try evalExpr(expr, var_map.*, const_map);
+
+        // Clamp using domain value bounds if defined
+        if (gen.domain) |dom| {
+            if (dom.value_bounds) |bounds| {
+                result = @max(bounds.min, @min(bounds.max, result));
+            }
+        }
+
+        // 1. Format input values into string pattern slices
+        var pattern_buf = try allocator.alloc([]const u8, current_vals.len);
+        for (current_vals, 0..) |val, i| {
+            pattern_buf[i] = try std.fmt.allocPrint(allocator, "{d}", .{val});
+        }
+
+        // 2. Format target output state into a string
+        const target_state_str = try std.fmt.allocPrint(allocator, "{d}", .{result});
+
+        // 3. Append to entries matching the GeneratedEntry field types
         try entries.append(allocator, .{
-            .input_values = vals_copy,
-            .output_value = clamped,
+            .pattern = pattern_buf,
+            .target_state = target_state_str,
         });
         return;
     }
+
     const inp = inputs[depth];
     var v = inp.min;
     while (v <= inp.max) : (v += 1) {
@@ -62,7 +96,7 @@ fn enumerateRecursive(
     }
 }
 
-fn evalExpr(
+pub fn evalExpr(
     expr: *const network.Expr,
     variables: std.StringHashMap(i64),
     constants: std.StringHashMap(i64),

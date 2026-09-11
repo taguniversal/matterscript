@@ -2,7 +2,7 @@ const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
+    const optimize = .Debug; // b.standardOptimizeOption(.{});
 
     // ------------------------------------------------------------------------
     // 1. Build the Tangle Helper Executable
@@ -198,6 +198,21 @@ pub fn build(b: *std.Build) void {
     });
 
     const run_directive_tests = b.addRunArtifact(directive_tests);
+    
+    const evaluator_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/evaluator_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+                .{ .name = "mkrand", .module = mkrand_mod },
+            },
+        }),
+    });
+
+    const run_evaluator_tests = b.addRunArtifact(evaluator_tests);
+   
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
@@ -210,6 +225,29 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_sanitizer_tests.step);
     test_step.dependOn(&run_entity_tests.step);
     test_step.dependOn(&run_directive_tests.step);
+    test_step.dependOn(&run_evaluator_tests.step);
+    
+    // --- Code Coverage Step (using kcov) ---
+    const coverage_step = b.step("coverage", "Generate code coverage report using kcov");
+
+    directive_tests.root_module.optimize = .Debug;
+    directive_tests.root_module.strip = false;
+    directive_tests.root_module.omit_frame_pointer = false;
+
+    const kcov_cmd = b.addSystemCommand(&.{
+        "kcov",
+        "--clean",
+    });
+
+    // Automatically prepends "--include-path=" to the absolute path of src
+    kcov_cmd.addPrefixedDirectoryArg("--include-path=", b.path("src"));
+
+    // Add output directory and artifact
+    kcov_cmd.addArg("zig-out/coverage");
+    kcov_cmd.addArtifactArg(directive_tests);
+
+    coverage_step.dependOn(&kcov_cmd.step);
+
     // ------------------------------------------------------------------------
     // 4. mdBook Build & Doc-Test Pipeline
     // ------------------------------------------------------------------------

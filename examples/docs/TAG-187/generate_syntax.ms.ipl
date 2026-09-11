@@ -1,7 +1,7 @@
 // Lineaer: TAG-187 Generate Directive
 ca100[()()
 
-@domain(spatial2d, size: [300, 500])
+@domain(spatial2d, size: [300, 500], range: [0, 15])
 
 @generate {
   // Format: [ Left , Center , Right ] -> New Center State

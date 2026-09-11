@@ -79,8 +79,6 @@ pub fn parseDomainDirective(p: *core.Parser) !network.DomainSpec {
 
     return network.DomainSpec{
         .kind = kind,
-        .size_x = size_x,
-        .size_y = size_y,
-        .size_z = 0,  
+        .size = .{ size_x, size_y },
     };
 }

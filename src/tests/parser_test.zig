@@ -43,12 +43,18 @@ test "TAG-187 parse 2D cellular automaton generate block and domain" {
     // Assert domain bounds (from gen.domain or def.domain_spec)
     if (gen.domain) |domain| {
         try testing.expectEqual(parser.network.SpatialDomainKind.spatial2d, domain.kind);
-        try testing.expectEqual(@as(usize, 300), domain.size_x);
-        try testing.expectEqual(@as(usize, 500), domain.size_y);
+
+        // Unwrap the optional size array [width, height]
+        if (domain.size) |size| {
+            try testing.expectEqual(@as(usize, 300), size[0]);
+            try testing.expectEqual(@as(usize, 500), size[1]);
+        } else {
+            return error.MissingDomainSize;
+        }
     } else {
         return error.MissingDomainSpec;
     }
-
+    
     // Assert rules
     try testing.expectEqual(@as(usize, 3), gen.rules.len);
     try testing.expectEqualStrings("2", gen.rules[0].pattern[0]);
@@ -436,8 +442,8 @@ test "TAG-192 Support Explicit Instance Labelling (prefixlabel: invocation) for 
     const allocator = arena.allocator();
 
     const src =
-       \\ TEST_NET[()()
-       \\
+        \\ TEST_NET[()()
+        \\
         \\     u1: AND($A $B)
         \\     u2: AND($C $D)
         \\:

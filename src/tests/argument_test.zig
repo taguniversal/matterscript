@@ -109,10 +109,9 @@ test "parseArg handles places, expressions, and group modifiers" {
         try testing.expectEqual(.group, arg2.kind);
         try testing.expectEqual(network.PlaceGroupKind.bundle, arg2.group.?.kind);
     }
-
-    // 5. Test place with an attached arbitration group modifier (e.g., 'signal_c{{sub1, sub2}}')
+// 5. Test place with an attached arbitration group modifier (e.g., 'signal_c{{$sub1, $sub2}}')
     {
-        var p = parser.core.Parser.init(allocator, "signal_c {{sub1, sub2}}");
+        var p = parser.core.Parser.init(allocator, "signal_c {{$sub1, $sub2}}");
         const arg = try parser.arguments.parseArg(&p);
         try testing.expectEqual(.literal, arg.kind);
         try testing.expectEqualStrings("signal_c", arg.name);
@@ -121,6 +120,19 @@ test "parseArg handles places, expressions, and group modifiers" {
         // Second argument is the group
         const arg2 = try parser.arguments.parseArg(&p);
         try testing.expectEqual(.group, arg2.kind);
-        try testing.expectEqual(network.PlaceGroupKind.arbitration, arg2.group.?.kind);
+        
+        const group = arg2.group.?;
+        try testing.expectEqual(network.PlaceGroupKind.arbitration, group.kind);
+
+        // Verify sub-elements contained within the arbitration group
+        try testing.expectEqual(@as(usize, 2), group.places.len);
+
+        // Verify first sub-element: $sub1
+        try testing.expectEqual(.place, group.places[0].kind);
+        try testing.expectEqualStrings("sub1", group.places[0].name);
+
+        // Verify second sub-element: $sub2
+        try testing.expectEqual(.place, group.places[1].kind);
+        try testing.expectEqualStrings("sub2", group.places[1].name);
     }
 }

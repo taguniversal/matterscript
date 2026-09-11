@@ -1,7 +1,8 @@
 const std = @import("std");
 const Program = @import("program.zig").Program;
 const ca1d = @import("ca1d.zig");
-const workspace = @import("../../common/workspace.zig");
+const matterscript = @import("matterscript");
+const workspace = matterscript.workspace;
 
 
 pub fn writeCaStateJsonl(io: std.Io, allocator: std.mem.Allocator, program: Program) !void {

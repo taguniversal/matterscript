@@ -316,48 +316,66 @@ pub fn parseDomainSpec(p: *core.Parser) !network.DomainSpec {
 
     p.skipWhitespaceAndComments();
 
-    var size_x: usize = 0;
-    var size_y: usize = 0;
-    var size_z: usize = 0;
-
-    // 3. Parse optional parameters (e.g. `, size: [300, 500]`)
-    if (p.peek() == ',') {
+    var size: ?[2]usize = null;
+    var value_bounds: ?network.ValueBounds = null;
+    
+    // 3. Parse optional named parameters (e.g., `, size: [300, 500]` or `, range: [0, 15]`)
+    while (p.peek() == ',') {
         p.pos += 1; // Consume ','
         p.skipWhitespaceAndComments();
 
+        // Handle trailing comma before ')'
+        if (p.peek() == ')') break;
+
         const param_name = try p.readName();
+        p.skipWhitespaceAndComments();
+        try p.expect(':');
+        p.skipWhitespaceAndComments();
+
         if (std.mem.eql(u8, param_name, "size")) {
-            p.skipWhitespaceAndComments();
-            try p.expect(':');
-            p.skipWhitespaceAndComments();
             try p.expect('[');
             p.skipWhitespaceAndComments();
 
-            // Read X dimension
+            // Read width (X dimension)
             const x_str = try p.readName();
-            size_x = try std.fmt.parseInt(usize, x_str, 10);
+            const width = try std.fmt.parseInt(usize, x_str, 10);
             p.skipWhitespaceAndComments();
 
-            // Read Y dimension if present
-            if (p.peek() == ',') {
-                p.pos += 1;
-                p.skipWhitespaceAndComments();
-                const y_str = try p.readName();
-                size_y = try std.fmt.parseInt(usize, y_str, 10);
-                p.skipWhitespaceAndComments();
-            }
+            try p.expect(',');
+            p.skipWhitespaceAndComments();
 
-            // Read Z dimension if present
-            if (p.peek() == ',') {
-                p.pos += 1;
-                p.skipWhitespaceAndComments();
-                const z_str = try p.readName();
-                size_z = try std.fmt.parseInt(usize, z_str, 10);
-                p.skipWhitespaceAndComments();
-            }
+            // Read height (Y dimension)
+            const y_str = try p.readName();
+            const height = try std.fmt.parseInt(usize, y_str, 10);
+            p.skipWhitespaceAndComments();
 
             try p.expect(']');
             p.skipWhitespaceAndComments();
+
+            size = .{ width, height };
+        } else if (std.mem.eql(u8, param_name, "range")) {
+            try p.expect('[');
+            p.skipWhitespaceAndComments();
+
+            // Read min bound
+            const min_str = try p.readName();
+            const min_val = try std.fmt.parseInt(i64, min_str, 10);
+            p.skipWhitespaceAndComments();
+
+            try p.expect(',');
+            p.skipWhitespaceAndComments();
+
+            // Read max bound
+            const max_str = try p.readName();
+            const max_val = try std.fmt.parseInt(i64, max_str, 10);
+            p.skipWhitespaceAndComments();
+
+            try p.expect(']');
+            p.skipWhitespaceAndComments();
+
+            value_bounds = .{ .min = min_val, .max = max_val };
+        } else {
+            return error.UnknownDomainParameter;
         }
     }
 
@@ -365,9 +383,8 @@ pub fn parseDomainSpec(p: *core.Parser) !network.DomainSpec {
 
     return network.DomainSpec{
         .kind = kind,
-        .size_x = size_x,
-        .size_y = size_y,
-        .size_z = size_z,
+        .size = size,
+        .value_bounds = value_bounds,
     };
 }
 

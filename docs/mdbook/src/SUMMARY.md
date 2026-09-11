@@ -40,6 +40,7 @@
 - [Name Composition](part-04-learning-matterscript/09-name-composition.md)
 - [Mutexes, Arbitration and Bundling](part-04-learning-matterscript/10-mutexes-arbitration-bundling.md)
 - [Generate Blocks](part-04-learning-matterscript/11-generate-blocks.md)
+- [Domains & Spatial Contexts](part-04-learning-matterscript/11b-domains-and-spatial-contexts.md)
 - [Integer Quantization](part-04-learning-matterscript/12-integer-quantization.md)
 - [The Runtime Boundary](part-04-learning-matterscript/13-runtime-boundary.md)
 - [Standard Library](part-04-learning-matterscript/14-standard-library.md)

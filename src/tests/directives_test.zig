@@ -34,8 +34,13 @@ test "parseDomainDirective - valid spatial2d" {
     const domain = try directives.parseDomainDirective(&p);
 
     try std.testing.expectEqual(domain.kind, .spatial2d);
-    try std.testing.expectEqual(domain.size_x, 64);
-    try std.testing.expectEqual(domain.size_y, 32);
+    
+    if (domain.size) |size| {
+        try std.testing.expectEqual(size[0], 64);
+        try std.testing.expectEqual(size[1], 32);
+    } else {
+        return error.MissingDomainSize;
+    }
 }
 
 test "parseDomainDirective - unknown domain kind" {
