@@ -116,7 +116,7 @@
 
 # Part XII: Complete Projects
 - [Introduction](part-12-complete-projects/index.md)
-- [Conway's Game of Life](part-12-complete-projects/01-conways-game-of-life.md)
+- [Molecular Biology](part-12-complete-projects/01-molecular-biology.md)
 - [Heat Plate](part-12-complete-projects/02-heat-plate.md)
 - [River Simulation](part-12-complete-projects/03-river-simulation.md)
 - [Wind Tunnel](part-12-complete-projects/04-wind-tunnel.md)

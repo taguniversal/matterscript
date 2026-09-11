@@ -37,10 +37,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-382afba8.js";
+            window.path_to_searchindex_js = "../searchindex-74fa5384.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0d291479.js"></script>
+        <script src="../toc-4f8fecbe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -182,13 +182,13 @@
 <hr>
 <h2 id="1-discrete-stencil-domains-spatial2d"><a class="header" href="#1-discrete-stencil-domains-spatial2d">1. Discrete Stencil Domains (<code>spatial2d</code>)</a></h2>
 <p>A <code>spatial2d</code> domain establishes a discrete, bounded coordinate space. It is typically paired with cellular automata, stencil kernels, or finite-difference solvers where state updates execute across a grid of uniform spatial registers.</p>
-<h3 id="key-mechanics"><a class="header" href="#key-mechanics">Key Mechanics</a></h3>
+<p><strong>Key Mechanics</strong></p>
 <ul>
 <li><strong>Explicit Bounding:</strong> Defines rigid bounding boxes via properties such as <code>size: [Width, Height]</code>.</li>
 <li><strong>State Generation:</strong> Coordinates input state tuples across localized neighborhood windows or coordinate offsets.</li>
 <li><strong>Boundary Conditions:</strong> Standardizes edge-wrapping rules (such as toroidal grids or clamped edges) at the domain boundaries.</li>
 </ul>
-<h3 id="compiler-role"><a class="header" href="#compiler-role">Compiler Role</a></h3>
+<p><strong>Compiler Role</strong></p>
 <p>When encountering a <code>spatial2d</code> domain, the compiler lowers the definitions into grid memory allocations, compute shaders (such as WGSL), or flattened two-dimensional arrays.</p>
 <pre><code class="language-matterscript">// Bind to a 2D spatial domain with explicit bounds
 @domain(spatial2d, size: [300, 500])

@@ -10,13 +10,13 @@ Although the `@domain(...)` syntax remains consistent across definitions, its se
 
 A `spatial2d` domain establishes a discrete, bounded coordinate space. It is typically paired with cellular automata, stencil kernels, or finite-difference solvers where state updates execute across a grid of uniform spatial registers.
 
-### Key Mechanics
+**Key Mechanics**
 
 * **Explicit Bounding:** Defines rigid bounding boxes via properties such as `size: [Width, Height]`.
 * **State Generation:** Coordinates input state tuples across localized neighborhood windows or coordinate offsets.
 * **Boundary Conditions:** Standardizes edge-wrapping rules (such as toroidal grids or clamped edges) at the domain boundaries.
 
-### Compiler Role
+**Compiler Role**
 
 When encountering a `spatial2d` domain, the compiler lowers the definitions into grid memory allocations, compute shaders (such as WGSL), or flattened two-dimensional arrays.
 
