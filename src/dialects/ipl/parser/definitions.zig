@@ -237,17 +237,20 @@ fn parseOneConstantTable(p: *core.Parser) !network.TableDef {
 
 pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
     var stmts: std.ArrayListUnmanaged(network.Statement) = .empty;
+    errdefer stmts.deinit(p.allocator);
 
     while (true) {
         p.skipWhitespaceAndComments();
         const c = p.peek() orelse break;
         if (c == ':' or c == ']') break;
 
+        // 1. Top-level Source Fill: "< $in >" (no destination variable prefix)
         if (c == '<') {
-            try stmts.append(p.allocator, try statements.parseSourceFill(p,""));
+            try stmts.append(p.allocator, try statements.parseSourceFill(p, ""));
             continue;
         }
 
+        // 2. Pure Expression: "$expr"
         if (c == '$') {
             const expr = try expressions.parseILExpr(p);
             try stmts.append(p.allocator, .{ .pure_value = expr });
@@ -256,46 +259,69 @@ pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
 
         const tok_start = p.pos;
 
-        // 1. Check for optional prefix label (e.g., "u1: AND(...)")
-        var label: ?[]const u8 = null;
-        const potential_label = p.readName() catch |err| {
-            // If it's not a valid name starting the statement, let it fall through 
-            // or handle whatever token error occurs.
+        // 3. Composed Key Ambiguity Check (TAG-190)
+        // If the segment contains multi-source keys without clear boundary delimiters, reject early.
+        if (try isAmbiguousComposedKey(p)) {
+            return error.AmbiguousComposedKey;
+        }
+
+        // 4. Try parsing optional prefix label (e.g., "u1: AND(...)") or regular identifier
+        const potential_name = p.readName() catch |err| {
             return err;
         };
         
         p.skipWhitespaceAndComments();
-        var name: []const u8 = undefined;
         
+        var label: ?[]const u8 = null;
+        var name: []const u8 = potential_name;
+
         if (p.peek() == ':') {
             p.pos += 1; // consume ':'
-            label = potential_label;
+            label = potential_name;
             p.skipWhitespaceAndComments();
-            // Now read the actual component/invocation name that follows the label
-            name = try p.readName();
-            p.skipWhitespaceAndComments();
-        } else {
-            // No colon, so `potential_label` was actually the regular name/identifier!
-            p.pos = tok_start; // backtrack to start
             name = try p.readName();
             p.skipWhitespaceAndComments();
         }
 
         const next = p.peek() orelse return core.ParseError.UnexpectedEnd;
+
         if (next == '<') {
+            // Source Fill with destination variable: "dest < $in >"
             try stmts.append(p.allocator, try statements.parseSourceFill(p, name));
         } else if (next == '(') {
-            // Pass the label here!
-            try stmts.append(p.allocator, try statements.parseInvocation(p,label, name));
+            // Component Invocation: "[label:] InstName(...)"
+            try stmts.append(p.allocator, try statements.parseInvocation(p, label, name));
         } else if (next == ',') {
+            // Multi-segment/Comma-separated keys
             p.pos = tok_start;
             const full = try groups.readCommaSeparatedName(p);
             try stmts.append(p.allocator, .{ .pure_value = full });
-        } else if (next == ':' or next == ']') {
-            try stmts.append(p.allocator, .{ .pure_value = p.src[tok_start..p.pos] });
-        } else return core.ParseError.UnexpectedChar;
+        } else if (next == ':' or next == ']' or std.ascii.isWhitespace(next)) {
+            // Standalone identifier / pure value
+            try stmts.append(p.allocator, .{ .pure_value = name });
+        } else {
+            return core.ParseError.UnexpectedChar;
+        }
     }
+
     return stmts.toOwnedSlice(p.allocator);
+}
+
+/// Helper function to detect concatenated multi-source keys that introduce ambiguity (TAG-190).
+fn isAmbiguousComposedKey(p: *core.Parser) !bool {
+    const saved_pos = p.pos;
+    defer p.pos = saved_pos;
+
+    // Scan ahead across the current segment to detect un-delimited multi-source keys
+    var segment_count: usize = 0;
+    while (p.pos < p.src.len) : (p.pos += 1) {
+        const ch = p.src[p.pos];
+        if (ch == ',' or ch == ':' or ch == ']' or ch == '<' or ch == '(') break;
+        if (ch == '$') segment_count += 1;
+    }
+
+    // A concatenated key with multiple source variables lacking explicit comma separators is ambiguous
+    return segment_count > 1;
 }
 
 pub fn parseDomainSpec(p: *core.Parser) !network.DomainSpec {

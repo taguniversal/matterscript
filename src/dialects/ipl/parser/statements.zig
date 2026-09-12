@@ -9,9 +9,13 @@ const expressions = @import("expressions.zig");
 // ----------------------------------------------------------------
 
 pub fn parseSourceFill(p: *core.Parser, name: []const u8) !network.Statement {
-    _ = p.advance(); // consume <
+    _ = p.advance(); // consume '<'
+    p.skipWhitespaceAndComments();
     const expr = try expressions.parseILExpr(p);
-    try p.expect('>');
+
+    p.skipWhitespaceAndComments();
+    try p.expect('>'); // expect() validates p.peek() == '>' AND advances p.pos
+
     return network.Statement{ .fill = .{
         .dest_name = name,
         .expr = expr,
@@ -20,45 +24,37 @@ pub fn parseSourceFill(p: *core.Parser, name: []const u8) !network.Statement {
 }
 
 pub fn parseInvocation(p: *core.Parser, label: ?[]const u8, name: []const u8) !network.Statement {
-    // Captured before parsing sources so the full "name(args)"
-    // span is available if this turns out to be a pure-value
-    // expression rather than a real invocation (see below). name
-    // is itself a slice into p.src (from readName), so its start
-    // offset within p.src locates where this statement began.
     const name_start = @intFromPtr(name.ptr) - @intFromPtr(p.src.ptr);
 
-    const sources = if (p.peek() == '(')
-        try arguments.parseArgList(p, ')')
-    else
-        &.{};
-
-    // Record the position right after parsing sources,
-    // before skipping any trailing whitespace or comments.
-    const end_pos = p.pos;
+    var sources: []const network.Arg = &.{};
+    var destinations: []const network.Arg = &.{};
 
     p.skipWhitespaceAndComments();
 
-    const destinations: []const network.Arg = if (p.peek() == '(')
-        try arguments.parseArgList(p, ')')
-    else
-        &.{}; // §12.3.4 — destination list omitted, implicit single unnamed return
+    if (p.peek() == '(') {
+        const first_list = try arguments.parseArgList(p, ')');
+        const end_pos_args = p.pos;
 
-    // An UNLABELED "name(args)" with no destinations list isn't a
-    // real component invocation — it's syntactically identical to
-    // the "$name(args)" pure-value pattern (e.g. dualfanin's
-    // "$steer()"), just naming a primitive function ("LT",
-    // "Equal") instead of a plain variable reference, and needs
-    // the same implicit-unnamed-result treatment. Without this,
-    // codegen tries to instantiate a nonexistent component for it
-    // (ghdl: "unit ..._lt not found in library work").
-    //
-    // A LABELED invocation with empty destinations is different
-    // and must stay a real .invoke: TAG-192's whole point is
-    // exactly this shape ("U1: AND($A $B)") — the label supplies
-    // a hygienic temporary name for the implicit result, which
-    // pure_value's "resolution deferred" semantics can't carry.
-    if (label == null and destinations.len == 0) {
-        return network.Statement{ .pure_value = p.src[name_start..end_pos] };
+        p.skipWhitespaceAndComments();
+
+        if (p.peek() == '(') {
+            // Two lists present: first is sources, second is destinations
+            sources = first_list;
+            destinations = try arguments.parseArgList(p, ')');
+            p.skipWhitespaceAndComments();
+        } else {
+            // One list present
+            if (label == null) {
+                // Unlabeled with one list decays to pure_value
+                if (first_list.len > 0) {
+                    p.allocator.free(first_list);
+                }
+                return network.Statement{ .pure_value = p.src[name_start..end_pos_args] };
+            } else {
+                // Labeled with one list: single list is sources
+                sources = first_list;
+            }
+        }
     }
 
     return network.Statement{ .invoke = .{
@@ -68,6 +64,7 @@ pub fn parseInvocation(p: *core.Parser, label: ?[]const u8, name: []const u8) !n
         .destinations = destinations,
     } };
 }
+
 
 pub fn parseEntryInvocation(p: *core.Parser, label: ?[]const u8, name: []const u8) !network.EntryInvocation {
     // Fant invocation order: sources first ($name/literal/groups), destinations second (name<>)

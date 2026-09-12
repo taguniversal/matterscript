@@ -206,6 +206,20 @@ pub fn build(b: *std.Build) void {
 
     const run_evaluator_tests = b.addRunArtifact(evaluator_tests);
    
+   const statements_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/statements_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+
+            },
+        }),
+    });
+
+    const run_statements_tests = b.addRunArtifact(statements_tests);
+
     const groups_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/tests/groups_test.zig"),
@@ -232,6 +246,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_entity_tests.step);
     test_step.dependOn(&run_directive_tests.step);
     test_step.dependOn(&run_evaluator_tests.step);
+    test_step.dependOn(&run_statements_tests.step);
     test_step.dependOn(&run_groups_tests.step);
 
     // --- Code Coverage Step (using kcov) ---
