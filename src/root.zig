@@ -16,7 +16,7 @@ pub const groups = @import("dialects/ipl/parser/groups.zig");
 pub const core = @import("dialects/ipl/parser/core.zig");
 pub const evaluator = @import("dialects/ipl/vhdl/evaluator.zig");
 pub const workspace = @import("common/workspace.zig");
-
+pub const lookup = @import("dialects/ipl/vhdl/lookup.zig");
 
 test {
     std.testing.refAllDecls(@This());

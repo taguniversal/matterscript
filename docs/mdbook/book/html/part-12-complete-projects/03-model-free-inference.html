@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>River Simulation - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
+        <title>Model-Free Inference - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
 
 
         <!-- Custom HTML head -->
@@ -37,10 +37,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-0db07809.js";
+            window.path_to_searchindex_js = "../searchindex-28cf993a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-d101051d.js"></script>
+        <script src="../toc-998e71fd.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,7 +176,29 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="river-simulation"><a class="header" href="#river-simulation">River Simulation</a></h1>
+                        <h1 id="model-free-inference"><a class="header" href="#model-free-inference">Model-Free Inference</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="images/model-free-inference.png" alt="Model-free Inference"><span class="img-wrapper"><img src="images/model-free-inference.png" alt="Model-free Inference"></span></label></p>
+<p>Theory-free (or model-free) inference in Cellular Automata (CA) involves discovering local update rules directly from observed spatial transitions, without assuming pre-existing equations, continuous physics, or domain models. Integrating this directly into <strong>MatterScript</strong>—where asynchronous computation, process expressions, and physical geometry merge—opens up powerful paradigms for self-adjusting hardware, autonomous spatial runtime, and generative architecture.</p>
+<p><strong>1. Dynamic Process Reconstruction from Spatial Observations</strong></p>
+<ul>
+<li><strong>Observed State to Invocation Syntax:</strong> Instead of hand-authoring process expressions or 2NCL (Null Convention Logic) transition tables, MatterScript can use spatial snapshots of physical/digital state updates ($C_t \rightarrow C_{t+1}$) to synthesize its local transition logic on the fly.</li>
+<li><strong>Agnostic Logic Synthesis:</strong> The compiler or runtime can treat unknown physical cellular environments as a black box, extracting the minimal spatial lookup table or asynchronous firing rules required to replicate observed state propagation.</li>
+</ul>
+<p><strong>2. Runtime Adaptive Hardware &amp; Self-Healing Logic</strong></p>
+<ul>
+<li><strong>In-Situ Reconfiguration:</strong> When deployed onto FPGAs or asynchronous hardware substrates, an integrated theory-free engine allows MatterScript modules to adapt to unmodeled physical variations, signal delays, or damaged routing channels.</li>
+<li><strong>Observation-Driven Calibration:</strong> By continuously sampling local neighborhood transitions, the runtime can infer corrected logic tables or phase-handshake rules dynamically, maintaining functional equivalence without needing an accurate physical model of the underlying hardware defect.</li>
+</ul>
+<p><strong>3. Inverse Geometry &amp; Material Synthesis</strong></p>
+<ul>
+<li><strong>Generative Spatial Rules:</strong> In MatterScript, where spatial geometry directly drives computational processes, theory-free inference enables “target-driven” design. You provide sequences of desired physical or topological evolutions (e.g., self-assembling structures or wave-front distributions), and the inference engine reverse-engineers the precise local CA rules needed to produce that macro-level geometry.</li>
+<li><strong>Emergent Behavior Extraction:</strong> Complex global behavior can be distilled down to simple, executable MatterScript process expressions, bypassing the need to solve complex systems of partial differential equations (PDEs) or continuous fluid dynamics.</li>
+</ul>
+<p><strong>4. Dual-Rail &amp; Asynchronous Constraint Inference</strong></p>
+<ul>
+<li><strong>Probabilistic to Deterministic Mapping:</strong> Since asynchronous logic relies on completion signals and valid/null state transitions, theory-free inference can observe raw spatial state sequences to identify valid neighborhood transitions and generate noise-tolerant, hazard-free asynchronous state machines automatically.</li>
+<li><strong>Neighborhood Scale Reduction:</strong> Inference algorithms can iteratively evaluate the minimal necessary spatial radius ($r$) and state depth ($k$) required for a local process expression, minimizing the fan-in and lookup table size on hardware target blocks.</li>
+</ul>
 <p><em>Drafting in progress…</em></p>
 
                     </main>

@@ -118,7 +118,7 @@
 - [Introduction](part-12-complete-projects/index.md)
 - [Molecular Biology](part-12-complete-projects/01-molecular-biology.md)
 - [Electrical Evolution](part-12-complete-projects/02-electrical-evolution.md)
-- [River Simulation](part-12-complete-projects/03-river-simulation.md)
+- [Model-Free Inference](part-12-complete-projects/03-model-free-inference.md)
 - [Wind Tunnel](part-12-complete-projects/04-wind-tunnel.md)
 - [Autonomous Vehicle Sensor Model](part-12-complete-projects/05-autonomous-vehicle-sensor-model.md)
 - [CPU Cache Simulation](part-12-complete-projects/06-cpu-cache-simulation.md)

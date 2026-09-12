@@ -233,6 +233,18 @@ pub fn build(b: *std.Build) void {
 
     const run_groups_tests = b.addRunArtifact(groups_tests);
    
+   const lookup_tests = b.addTest(.{
+       .root_module = b.createModule(.{
+        .root_source_file = b.path("src/tests/lookup_tests.zig"), // Adjust path relative to build.zig
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "matterscript", .module = matterscript_mod },
+        },
+       }),
+    });
+
+    const run_lookup_tests = b.addRunArtifact(lookup_tests);
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
@@ -248,6 +260,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_evaluator_tests.step);
     test_step.dependOn(&run_statements_tests.step);
     test_step.dependOn(&run_groups_tests.step);
+    test_step.dependOn(&run_lookup_tests.step);
 
     // --- Code Coverage Step (using kcov) ---
     const coverage_step = b.step("coverage", "Generate code coverage report using kcov");

@@ -4,8 +4,17 @@ const network = @import("../network.zig");
 const sanitizer = @import("sanitizer.zig");
 const sanitizeName = sanitizer.sanitizeName;
 const constants =   @import("constants.zig");
-const SIGNAL_WIDTH = constants.SIGNAL_WIDTH;
-const DATA_WIDTH = constants.DATA_WIDTH;
+
+
+fn requiredWidth(symbol_count: usize) usize {
+    var bits: usize = 0;
+    if (symbol_count > 1) {
+        var n: usize = symbol_count - 1;
+        while (n > 0) : (n >>= 1) bits += 1;
+    }
+    return bits + 1; // +1 reserved for the VALID/NULL flag
+}
+
 
 // Responsibility: Generates VHDL lookup tables, handles symbol interning,
 // constructs case-statement blocks, and emits VHDL for cellular automata networks.
@@ -141,6 +150,8 @@ fn writeLookupCaseBlock(
     const dest_id = try sanitizeName(allocator, dest_name);
     defer allocator.free(dest_id);
 
+    const width = requiredWidth(symbols.items.len);
+
     try writer.print("\n  -- lookup for {s}\n", .{dest_name});
     try writer.print("  process(", .{});
     for (def.sources, 0..) |source, i| {
@@ -157,7 +168,7 @@ fn writeLookupCaseBlock(
         const source_id = try sanitizeName(allocator, source.name);
         defer allocator.free(source_id);
         if (i > 0) try writer.print(" & ", .{});
-        try writer.print("{s}({d} downto 1)", .{ source_id, SIGNAL_WIDTH - 1 });
+        try writer.print("{s}({d} downto 1)", .{ source_id, width });
     }
     try writer.print(" is\n", .{});
 
@@ -180,7 +191,7 @@ fn writeLookupCaseBlock(
         var it = std.mem.splitScalar(u8, row.name, ',');
         while (it.next()) |seg| {
             const seg_value = try internSymbol(symbols, allocator, std.mem.trim(u8, seg, " \t\r\n"));
-            const piece = binStr(key_buf[key_pos..], seg_value, DATA_WIDTH);
+            const piece = binStr(key_buf[key_pos..], seg_value, width);
             key_pos += piece.len;
         }
         const key_str = key_buf[0..key_pos];
@@ -226,6 +237,10 @@ pub fn writeContainedLookupTable(
     if (!all_anonymous and !all_structured) return false;
 
     var symbols = try buildSharedSymbolTable(allocator, def.contained);
+    defer {
+        for (symbols.items) |s| allocator.free(s);
+        symbols.deinit(allocator);
+    }
 
     if (symbols.items.len > 0) {
         try writer.print("  -- symbol encoding: ", .{});
@@ -252,6 +267,8 @@ pub fn writeContainedLookupTable(
     }
 
     var covered: std.ArrayListUnmanaged([]const u8) = .empty;
+    defer covered.deinit(allocator);
+
     for (def.contained) |row| {
         for (row.resolution) |stmt| {
             const dname = stmt.fill.dest_name;
@@ -272,7 +289,6 @@ pub fn writeContainedLookupTable(
 }
 
 fn internSymbol(list: *std.ArrayListUnmanaged([]const u8), allocator: std.mem.Allocator, token: []const u8) !u64 {
-    if (std.fmt.parseInt(u64, token, 10)) |n| return n else |_| {}
     for (list.items, 0..) |existing, i| {
         if (std.mem.eql(u8, existing, token)) return @intCast(i);
     }
