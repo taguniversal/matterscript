@@ -29,13 +29,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
-    const mkrand_mod = b.addModule("mkrand", .{
-        .root_source_file = b.path("../mkrand/src/mkrand.zig"),
-        .target = target,
-    });
-
-    matterscript_mod.addImport("mkrand", mkrand_mod);
-
+  
     const exe = b.addExecutable(.{
         .name = "matterscript",
         .root_module = b.createModule(.{
@@ -44,7 +38,6 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-                .{ .name = "mkrand", .module = mkrand_mod },
             },
         }),
     });
@@ -92,7 +85,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-                .{ .name = "mkrand", .module = mkrand_mod },
+               
             },
         }),
     });
@@ -106,7 +99,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-                .{ .name = "mkrand", .module = mkrand_mod },
+                
             },
         }),
     });
@@ -120,7 +113,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-                .{ .name = "mkrand", .module = mkrand_mod },
+               
             },
         }),
     });
@@ -134,7 +127,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-                .{ .name = "mkrand", .module = mkrand_mod },
+              
             },
         }),
     });
@@ -148,7 +141,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-                .{ .name = "mkrand", .module = mkrand_mod },
+               
             },
         }),
     });
@@ -162,7 +155,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-                .{ .name = "mkrand", .module = mkrand_mod },
+              
             },
         }),
     });
@@ -177,7 +170,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-                .{ .name = "mkrand", .module = mkrand_mod },
+               
             },
         }),
     });
@@ -192,7 +185,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-                .{ .name = "mkrand", .module = mkrand_mod },
+               
             },
         }),
     });
@@ -206,7 +199,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-                .{ .name = "mkrand", .module = mkrand_mod },
+                
             },
         }),
     });
