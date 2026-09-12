@@ -17,7 +17,7 @@ jobs:
       - name: Setup Zig
         uses: mlugg/setup-zig@v1
         with:
-          version: 0.15.1  # Or "master" for nightly, or omit to read minimum_zig_version from build.zig.zon
+          version: 0.16.0  # Or "master" for nightly, or omit to read minimum_zig_version from build.zig.zon
 
       - name: Run Tests
         run: zig build test
