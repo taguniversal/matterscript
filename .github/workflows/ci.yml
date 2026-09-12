@@ -17,7 +17,7 @@ jobs:
       - name: Setup Zig
         uses: goto-bus-stop/setup-zig@v2
         with:
-          zig-version: master  # Or "master" for nightly, or omit to read minimum_zig_version from build.zig.zon
+          zig-version: 7db2ef610  # Or "master" for nightly, or omit to read minimum_zig_version from build.zig.zon
 
       - name: Run Tests
         run: zig build test
