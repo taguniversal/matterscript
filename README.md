@@ -24,10 +24,12 @@ Matter
 
 # Current Status
 ---
-[Linear Issue Documentation](docs/generated/linear/index.md)
-
+[![CI](https://github.com/taguniversal/matterscript/actions/workflows/ci.yml/badge.svg)](https://github.com/taguniversal/matterscript/actions/workflows/ci.yml)
 
 [Test Results](docs/generated/linear/verify_results.md)
+
+[Linear Issue Documentation](docs/generated/linear/index.md)
+
 
 Implemented:
 

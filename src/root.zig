@@ -2,8 +2,6 @@
 const std = @import("std");
 const Io = std.Io;
 
-pub const chain_fuzz =
-    @import("common/chain_fuzz.zig");
 
 // Re-exported so tools outside src/ (e.g. tools/verify_examples.zig)
 // can reuse the IL parser/emitter without crossing the module boundary

@@ -332,28 +332,16 @@ test "parse TAG-184 Pure Value Place of Resolution - explicit contained rows" {
 }
 
 test "TAG-190 concatenated multi-source keys are rejected as ambiguous" {
-    // The programmer's intent (confirmed): with more than one source,
-    // a contained row's key must comma-separate each source's value
-    // ("0,0[0]"), since symbolic values aren't fixed-width and a
-    // concatenated key ("00[0]") has no reliable split point. This
-    // used to parse "silently", then collapse downstream in the VHDL
-    // exporter into an undeclared "ab" signal reference (ghdl:
-    // `no declaration for "ab"`) — now it's rejected at parse time
-    // with a specific error instead.
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
 
     const src = "AND[(A<> B<>)<$A$B()>: 00[0] 01[0] 10[0] 11[1]]";
-    const result = parser.parse(allocator, src);
-
-    if (result) |_| {
-        std.debug.print("Expected parse error, but parsing succeeded!\n", .{});
-        return error.TestExpectedError;
-    } else |err| {
-        std.debug.print("Got actual error: {}\n", .{err});
-        try testing.expectEqual(parser.core.ParseError.AmbiguousComposedKey, err);
-    }
+    
+    try testing.expectError(
+        parser.core.ParseError.AmbiguousComposedKey, 
+        parser.parse(allocator, src)
+    );
 }
 
 test "TAG-160 comma-separated multi-source keys are not flagged as ambiguous" {
