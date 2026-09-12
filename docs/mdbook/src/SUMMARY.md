@@ -117,7 +117,7 @@
 # Part XII: Complete Projects
 - [Introduction](part-12-complete-projects/index.md)
 - [Molecular Biology](part-12-complete-projects/01-molecular-biology.md)
-- [Heat Plate](part-12-complete-projects/02-heat-plate.md)
+- [Electrical Evolution](part-12-complete-projects/02-electrical-evolution.md)
 - [River Simulation](part-12-complete-projects/03-river-simulation.md)
 - [Wind Tunnel](part-12-complete-projects/04-wind-tunnel.md)
 - [Autonomous Vehicle Sensor Model](part-12-complete-projects/05-autonomous-vehicle-sensor-model.md)

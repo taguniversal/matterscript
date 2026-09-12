@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9794b3c5.js";
+            window.path_to_searchindex_js = "searchindex-0db07809.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-4f8fecbe.js"></script>
+        <script src="toc-d101051d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -4778,7 +4778,373 @@ Target Backend
 <p>Because WebGPU natively maps 3D compute shaders to 3D textures, a 3D cellular automaton with multivalent binding rules will immediately produce visual condensates while letting you measure thermodynamic properties (like critical concentration and coarsening exponents) directly from compute buffers.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="heat-plate"><a class="header" href="#heat-plate">Heat Plate</a></h1>
+<h1 id="electrical-evolution"><a class="header" href="#electrical-evolution">Electrical Evolution</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-12-complete-projects/images/electrical-evolution.png" alt="Electrical Evolution"><span class="img-wrapper"><img src="part-12-complete-projects/images/electrical-evolution.png" alt="Electrical Evolution"></span></label></p>
+<h2 id="from-local-rules-to-real-world-circuits"><a class="header" href="#from-local-rules-to-real-world-circuits">From Local Rules to Real-World Circuits</a></h2>
+<p>Electricity is one of the places where conventional computation and physical reality have become deeply entangled.</p>
+<p>We normally describe electrical systems through equations: Ohm’s law, Kirchhoff’s laws, Maxwell’s equations, circuit models, differential equations, and numerical solvers. These descriptions are extraordinarily useful, but they begin with the behavior we want to describe and construct an abstract mathematical model of it.</p>
+<p>MatterScript suggests another approach:</p>
+<blockquote>
+<p><strong>Don’t begin with the equations. Begin with the local transformations.</strong></p>
+</blockquote>
+<p>Instead of explicitly programming voltage, current, resistance, or electromagnetic fields, construct a computational universe in which small discrete elements interact according to simple neighborhood rules. Then observe what larger-scale electrical behavior emerges.</p>
+<p>This makes electricity an ideal experimental domain for combining <strong>New Kind of Science</strong>, <strong>MatterScript</strong>, <strong>WebGPU</strong>, and the <strong>Invocation Language</strong>.</p>
+<hr>
+<h2 id="the-electrical-universe"><a class="header" href="#the-electrical-universe">The Electrical Universe</a></h2>
+<p>Imagine an electrical substrate composed of discrete places. Each place has a small state and interacts only with its local neighborhood.</p>
+<p>A simplified universe might contain states such as:</p>
+<pre><code class="language-text">EMPTY
+CHARGE
+CONDUCTOR
+INSULATOR
+FIELD
+DISCHARGING
+</code></pre>
+<p>The behavior of the system is determined not by a global equation, but by local transformations.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">             neighborhood
+                  │
+                  ▼
+        ┌──────────────────┐
+        │  local rule      │
+        │                  │
+        │ state + neighbors│
+        └────────┬─────────┘
+                 │
+                 ▼
+             next state
+</code></pre>
+<p>The important property is locality.</p>
+<p>A place does not need to know the state of the entire electrical system. It only needs to respond to the nearby places with which it can interact.</p>
+<p>This is the same fundamental idea used throughout MatterScript: <strong>global behavior is allowed to emerge from local causality.</strong></p>
+<hr>
+<h2 id="1-local-flow"><a class="header" href="#1-local-flow">1. Local Flow</a></h2>
+<p>The first experiment is deliberately simple.</p>
+<p>Place a source at one boundary and a sink at another. Populate the space with conductive and insulating regions and establish local rules governing propagation.</p>
+<pre><code class="language-text">SOURCE
+  │
+  ▼
+┌───┬───┬───┬───┬───┐
+│   │ → │ → │   │   │
+├───┼───┼───┼───┼───┤
+│   │ → │ → │ → │   │
+├───┼───┼───┼───┼───┤
+│   │   │ → │ → │   │
+└───┴───┴───┴───┴───┘
+                  │
+                  ▼
+                LOAD
+</code></pre>
+<p>No instruction says:</p>
+<pre><code class="language-text">current = voltage / resistance
+</code></pre>
+<p>Instead, the local rules determine how an electrical state propagates from place to place.</p>
+<p>The first question is simply:</p>
+<blockquote>
+<p><strong>Can stable electrical flow emerge from local transformations?</strong></p>
+</blockquote>
+<p>If it can, we have created the beginnings of an electrical computational universe without directly encoding the conventional abstraction of a circuit.</p>
+<hr>
+<h2 id="2-emergent-resistance"><a class="header" href="#2-emergent-resistance">2. Emergent Resistance</a></h2>
+<p>The next experiment changes the geometry.</p>
+<p>Introduce different arrangements of conductive and insulating places. Measure the resulting flow between the same source and sink.</p>
+<p>For example:</p>
+<pre><code class="language-text">Low resistance
+
+SOURCE ───────────────── LOAD
+
+
+Medium resistance
+
+SOURCE ────────┐
+               └───────── LOAD
+
+
+High resistance
+
+SOURCE ────┐
+           │
+           └───┐
+               └──────── LOAD
+</code></pre>
+<p>The local rules have not necessarily changed.</p>
+<p>The <strong>geometry</strong> has.</p>
+<p>If the resulting macroscopic behavior exhibits a stable relationship between the imposed conditions and the observed flow, we have something very interesting:</p>
+<blockquote>
+<p><strong>Resistance has emerged from local interactions and spatial structure.</strong></p>
+</blockquote>
+<p>We did not need to encode Ohm’s law as the governing rule.</p>
+<p>Ohm-like behavior becomes something we <strong>observe</strong> in the larger-scale system.</p>
+<p>This is a fundamental distinction.</p>
+<p>Traditional modeling often starts with:</p>
+<pre><code class="language-text">equation → simulation → behavior
+</code></pre>
+<p>The MatterScript experiment starts with:</p>
+<pre><code class="language-text">local rules → spatial evolution → behavior → measurement
+</code></pre>
+<p>The equation, if one appears, becomes a description of the observed behavior rather than the thing that generated it.</p>
+<hr>
+<h2 id="3-branching-discharge"><a class="header" href="#3-branching-discharge">3. Branching Discharge</a></h2>
+<p>The third experiment moves from ordinary circuit behavior into phenomena that are naturally spatial.</p>
+<p>Consider a highly charged region separated from ground:</p>
+<pre><code class="language-text">             HIGH POTENTIAL
+                   │
+                   │
+                   ?
+                   │
+                   │
+                 GROUND
+</code></pre>
+<p>Give each place simple rules describing charging, ionization, conduction, and discharge.</p>
+<p>Now let the system evolve.</p>
+<p>We do not specify the shape of the discharge.</p>
+<p>We do not tell the system to draw a lightning bolt.</p>
+<p>We provide the local transformations and the boundary conditions.</p>
+<p>If branching occurs, the familiar structure of lightning becomes an <strong>emergent spatial pattern</strong>.</p>
+<pre><code class="language-text">                 /
+                /
+        ───────●
+              / \
+             /   \
+            /     ───
+           /
+      ────●
+</code></pre>
+<p>Change the local rule and the branching morphology may change.</p>
+<p>Change the geometry and the preferred paths may change.</p>
+<p>Change the boundary conditions and the entire pattern may reorganize.</p>
+<p>This is precisely the kind of experiment associated with a <strong>New Kind of Science</strong> approach:</p>
+<blockquote>
+<p><strong>A complex natural phenomenon may be the large-scale consequence of remarkably simple local rules.</strong></p>
+</blockquote>
+<p>The objective is not necessarily to reproduce every detail of physical lightning immediately. The objective is to discover what kinds of electrical structures can emerge from small computational rules.</p>
+<hr>
+<h2 id="4-self-organizing-circuits"><a class="header" href="#4-self-organizing-circuits">4. Self-Organizing Circuits</a></h2>
+<p>The fourth experiment reverses the normal circuit-design process.</p>
+<p>Instead of designing a circuit and then simulating it, give the system a desired electrical behavior and allow the spatial system to search for configurations that produce it.</p>
+<p>For example:</p>
+<pre><code class="language-text">SOURCE ───────────────── LOAD
+</code></pre>
+<p>is the requirement.</p>
+<p>The internal geometry is unknown.</p>
+<p>The system explores possible arrangements of conductive, insulating, and stateful regions:</p>
+<pre><code class="language-text">┌───────────────────────────────┐
+│ ███   ··· ████   ···         │
+│   ████      ███   ███        │
+│ ···   ███      █████          │
+│      ███████        ███       │
+│ ███       ███████████         │
+└───────────────────────────────┘
+</code></pre>
+<p>The resulting topology might look nothing like a conventional circuit diagram.</p>
+<p>That is not a failure.</p>
+<p>It is the point.</p>
+<p>The system is not being asked to reproduce a human-designed circuit. It is being asked to discover a spatial organization capable of producing the desired behavior.</p>
+<p>This raises a deeper question:</p>
+<blockquote>
+<p><strong>Can computation discover electrical machinery rather than merely calculate its behavior?</strong></p>
+</blockquote>
+<hr>
+<h1 id="webgpu-scaling-the-electrical-universe"><a class="header" href="#webgpu-scaling-the-electrical-universe">WebGPU: Scaling the Electrical Universe</a></h1>
+<p>A major advantage of this approach is that local rules are naturally parallel.</p>
+<p>A conventional numerical simulation may ask a processor to repeatedly solve large systems of equations.</p>
+<p>A MatterScript electrical universe can instead be represented as a large collection of places:</p>
+<pre><code class="language-text">┌───┬───┬───┬───┬───┬───┐
+│   │   │   │   │   │   │
+├───┼───┼───┼───┼───┼───┤
+│   │   │   │   │   │   │
+├───┼───┼───┼───┼───┼───┤
+│   │   │   │   │   │   │
+├───┼───┼───┼───┼───┼───┤
+│   │   │   │   │   │   │
+└───┴───┴───┴───┴───┴───┘
+</code></pre>
+<p>Each place can apply the same neighborhood transformation independently.</p>
+<p>This maps naturally onto the grid and texture architecture of a GPU.</p>
+<p>Instead of thinking:</p>
+<blockquote>
+<p><strong>Solve one enormous equation.</strong></p>
+</blockquote>
+<p>we can think:</p>
+<blockquote>
+<p><strong>Apply one local transformation to millions of places simultaneously.</strong></p>
+</blockquote>
+<p>WebGPU therefore provides a practical computational substrate for exploring large MatterScript universes.</p>
+<p>The scale is important because many interesting physical phenomena are not visible in a tiny system. Large-scale structures emerge only after many local interactions have had an opportunity to interact.</p>
+<hr>
+<h1 id="from-model-to-machine"><a class="header" href="#from-model-to-machine">From Model to Machine</a></h1>
+<p>This is where the experiment becomes specifically <strong>MatterScript</strong>, rather than merely another cellular-automata simulation.</p>
+<p>The computational model can progress through several representations:</p>
+<pre><code class="language-text">       Local rules
+            │
+            ▼
+       MatterScript
+            │
+            ▼
+     WebGPU simulation
+            │
+            ▼
+   Emergent spatial structure
+            │
+            ▼
+   Compiled spatial machinery
+            │
+            ▼
+     Invocation Language
+            │
+            ▼
+       Physical target
+</code></pre>
+<p>The crucial idea is that the simulation and the deployed machinery do not have to be unrelated programs.</p>
+<p>The same description can have different targets.</p>
+<p>A simulation target can be used to explore the behavior.</p>
+<p>A computational target can be used to execute the resulting machinery.</p>
+<p>A hardware target can potentially turn the spatial organization into a physical implementation.</p>
+<p>The model therefore does not merely describe a circuit.</p>
+<p><strong>It can become the machinery from which the circuit is constructed.</strong></p>
+<hr>
+<h1 id="invocation-from-simulation-to-silicon"><a class="header" href="#invocation-from-simulation-to-silicon">Invocation: From Simulation to Silicon</a></h1>
+<p>The Invocation Language provides the boundary between the MatterScript computational universe and an external target.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">@target(...)
+</code></pre>
+<p>does not simply mean:</p>
+<blockquote>
+<p>“Run this program somewhere else.”</p>
+</blockquote>
+<p>It establishes a relationship between the spatial machinery described by MatterScript and another computational environment.</p>
+<p>This opens the possibility of a progression such as:</p>
+<pre><code class="language-text">MatterScript model
+       ↓
+simulation
+       ↓
+discover behavior
+       ↓
+freeze spatial organization
+       ↓
+compile machinery
+       ↓
+invoke target
+       ↓
+physical electrical system
+</code></pre>
+<p>The important concept here is <strong>placement</strong>.</p>
+<p>When a spatial arrangement has been discovered and compiled, its geometry can become a form of frozen knowledge.</p>
+<p>Instead of repeatedly calculating the same relationships at runtime, the relationships themselves become part of the machinery.</p>
+<p>This is one reason electrical systems are such an interesting target for MatterScript: <strong>electrical behavior is inherently spatial.</strong></p>
+<hr>
+<h1 id="simulation-and-reality-as-different-targets"><a class="header" href="#simulation-and-reality-as-different-targets">Simulation and Reality as Different Targets</a></h1>
+<p>The same computational description can therefore be viewed through different targets:</p>
+<pre><code class="language-text">                 MATTERSCRIPT
+                      │
+             local transformations
+                      │
+          ┌───────────┴───────────┐
+          │                       │
+      SIMULATION               HARDWARE
+          │                       │
+      observe                  operate
+      measure                  physically
+          │                       │
+          └───────────┬───────────┘
+                      │
+                 same machinery
+</code></pre>
+<p>The simulation is not necessarily the final product.</p>
+<p>It is one environment in which the machinery can be explored.</p>
+<p>The hardware is another environment in which that machinery can exist.</p>
+<p>This suggests a different relationship between simulation and engineering:</p>
+<blockquote>
+<p><strong>Simulation can become a stage in the compilation of physical machinery.</strong></p>
+</blockquote>
+<hr>
+<h1 id="what-this-demonstrates"><a class="header" href="#what-this-demonstrates">What This Demonstrates</a></h1>
+<p>The Electrical Evolution project is valuable not because it replaces electrical engineering overnight, but because it demonstrates a different way of asking electrical questions.</p>
+<h3 id="a-single-local-rule-set-may-produce-many-macroscopic-phenomena"><a class="header" href="#a-single-local-rule-set-may-produce-many-macroscopic-phenomena">A single local rule set may produce many macroscopic phenomena.</a></h3>
+<p>Rather than creating a separate mathematical abstraction for every phenomenon, we can search for simple transformations capable of producing families of behaviors.</p>
+<h3 id="complex-electrical-behavior-can-emerge-from-simple-interactions"><a class="header" href="#complex-electrical-behavior-can-emerge-from-simple-interactions">Complex electrical behavior can emerge from simple interactions.</a></h3>
+<p>Flow, resistance, breakdown, oscillation, branching, and other structures can become things we observe rather than things we explicitly prescribe.</p>
+<h3 id="geometry-becomes-part-of-computation"><a class="header" href="#geometry-becomes-part-of-computation">Geometry becomes part of computation.</a></h3>
+<p>A circuit is not merely a collection of equations. Its physical arrangement affects what it can do.</p>
+<p>MatterScript makes that arrangement computationally explicit.</p>
+<h3 id="massive-parallelism-becomes-natural"><a class="header" href="#massive-parallelism-becomes-natural">Massive parallelism becomes natural.</a></h3>
+<p>A neighborhood rule can be applied simultaneously across millions of places, making GPU architectures particularly appropriate for these experiments.</p>
+<h3 id="discovery-and-deployment-can-become-connected"><a class="header" href="#discovery-and-deployment-can-become-connected">Discovery and deployment can become connected.</a></h3>
+<p>The spatial organization discovered during computation can potentially become compiled machinery rather than merely a visualization of a solution.</p>
+<h3 id="invocation-provides-the-bridge"><a class="header" href="#invocation-provides-the-bridge">Invocation provides the bridge.</a></h3>
+<p>The computational universe does not have to end at the simulation boundary.</p>
+<p>The same machinery can be directed toward different computational and physical targets.</p>
+<hr>
+<h1 id="beyond-circuits"><a class="header" href="#beyond-circuits">Beyond Circuits</a></h1>
+<p>Once this framework exists, the electrical experiments can expand considerably.</p>
+<p>The same approach can investigate:</p>
+<pre><code class="language-text">Ohm-like behavior
+       ↓
+Kirchhoff-like conservation
+       ↓
+RC dynamics
+       ↓
+Inductive behavior
+       ↓
+Directional conduction
+       ↓
+Transistor-like interaction
+       ↓
+Oscillation
+       ↓
+Transmission phenomena
+       ↓
+Electrical breakdown
+       ↓
+Branching discharge
+       ↓
+Network dynamics
+       ↓
+Self-organizing circuits
+</code></pre>
+<p>The objective is not to encode each phenomenon independently.</p>
+<p>The more interesting objective is to discover whether <strong>families of electrical behavior can emerge from a comparatively small computational universe.</strong></p>
+<p>That is the New Kind of Science question applied to electricity.</p>
+<hr>
+<h1 id="the-larger-experiment"><a class="header" href="#the-larger-experiment">The Larger Experiment</a></h1>
+<p>Electrical Evolution ultimately asks a question that extends beyond electrical engineering:</p>
+<blockquote>
+<p><strong>Can a physical system be understood as a computational universe of local transformations, and can the resulting computational machinery be invoked back into the physical world?</strong></p>
+</blockquote>
+<p>If the answer is yes, then the boundary between simulation, programming, and physical construction begins to change.</p>
+<p>Traditional engineering often follows:</p>
+<pre><code class="language-text">physical phenomenon
+        ↓
+mathematical model
+        ↓
+numerical simulation
+        ↓
+engineering design
+        ↓
+physical implementation
+</code></pre>
+<p>MatterScript proposes an alternative path:</p>
+<pre><code class="language-text">physical phenomenon
+        ↓
+local transformations
+        ↓
+spatial computational universe
+        ↓
+emergent behavior
+        ↓
+compiled spatial machinery
+        ↓
+invocation
+        ↓
+physical implementation
+</code></pre>
+<p>The difference is subtle but fundamental.</p>
+<p><strong>The equations describe the behavior.</strong></p>
+<p><strong>The rules generate the behavior.</strong></p>
+<p>And in MatterScript, the spatial organization generated by those rules can itself become a form of computation.</p>
+<blockquote>
+<p><strong>Local rules. Global behavior. Physical machinery.</strong></p>
+</blockquote>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="river-simulation"><a class="header" href="#river-simulation">River Simulation</a></h1>
