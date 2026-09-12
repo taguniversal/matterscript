@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: 0.17.0-dev.1099+7db2ef610 # Or "master" for nightly, or omit to read minimum_zig_version from build.zig.zon
+
+      - name: Run Tests
+        run: zig build test
+
+      - name: Verify Build
+        run: zig build --summary all

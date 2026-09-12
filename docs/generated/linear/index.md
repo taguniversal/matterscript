@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 20  |  🟡 Partial: 5  |  ⬛ Spec only: 2  |  ⬜ Not started: 113  |  Total: 140
+✅ Implemented: 20  |  🟡 Partial: 5  |  ⬛ Spec only: 2  |  ⬜ Not started: 114  |  Total: 141
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
@@ -139,6 +139,7 @@
 - ⬜ Not started [writeDefinition unconditional recursion](TAG-191.md)
 - 🟡 Partial [Support Explicit Instance Labelling (`prefixlabel: invocation`) for Invocations](TAG-192.md)
 - ⬜ Not started [WebGPU Integration](TAG-193.md)
+- ⬜ Not started [Computational Biology](TAG-194.md)
 - ⬜ Not started [Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [The Completeness Dialogue](TAG-80.md)
