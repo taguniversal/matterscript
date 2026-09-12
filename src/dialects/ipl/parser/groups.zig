@@ -46,6 +46,7 @@ pub fn parseGroup(p: *core.Parser) anyerror!*const network.PlaceGroup {
     }
 
     var places: std.ArrayListUnmanaged(network.Arg) = .empty;
+    errdefer places.deinit(p.allocator); // <--- Add errdefer to cleanup on error
 
     while (true) {
         p.skipWhitespaceAndComments();
@@ -132,19 +133,27 @@ fn parseInvOutputList() ![]const network.Place {
 pub fn readCommaSeparatedName(p: *core.Parser) ![]const u8 {
     const start = p.pos;
     _ = try p.readName();
+
     while (true) {
         const save = p.pos;
         p.skipWhitespaceAndComments();
+
         if (p.peek() != ',') {
             p.pos = save;
             break;
         }
-        _ = p.advance(); // consume ','
+
+        _ = p.advance(); // Consume ','
         p.skipWhitespaceAndComments();
+
+        // Attempt to read the next segment.
+        // If it fails (e.g. unexpected character, EOF, or invalid name),
+        // backtrack to BEFORE the comma so the comma isn't consumed.
         _ = p.readName() catch {
             p.pos = save;
             break;
         };
     }
+
     return p.src[start..p.pos];
 }

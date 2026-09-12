@@ -206,6 +206,19 @@ pub fn build(b: *std.Build) void {
 
     const run_evaluator_tests = b.addRunArtifact(evaluator_tests);
    
+    const groups_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/groups_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+            },
+        }),
+    });
+
+    const run_groups_tests = b.addRunArtifact(groups_tests);
+   
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
@@ -219,13 +232,10 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_entity_tests.step);
     test_step.dependOn(&run_directive_tests.step);
     test_step.dependOn(&run_evaluator_tests.step);
-    
+    test_step.dependOn(&run_groups_tests.step);
+
     // --- Code Coverage Step (using kcov) ---
     const coverage_step = b.step("coverage", "Generate code coverage report using kcov");
-
-    directive_tests.root_module.optimize = .Debug;
-    directive_tests.root_module.strip = false;
-    directive_tests.root_module.omit_frame_pointer = false;
 
     const kcov_cmd = b.addSystemCommand(&.{
         "kcov",

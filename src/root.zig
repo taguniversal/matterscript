@@ -11,9 +11,11 @@ pub const ipl_export_vhdl = @import("dialects/ipl/vhdl/root.zig");
 pub const network = @import("dialects/ipl/network.zig");
 pub const entity = @import("dialects/ipl/vhdl/entity.zig");
 pub const directives = @import("dialects/ipl/parser/directives.zig");
+pub const groups = @import("dialects/ipl/parser/groups.zig");
 pub const core = @import("dialects/ipl/parser/core.zig");
 pub const evaluator = @import("dialects/ipl/vhdl/evaluator.zig");
 pub const workspace = @import("common/workspace.zig");
+
 
 test {
     std.testing.refAllDecls(@This());

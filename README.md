@@ -8,7 +8,7 @@ MatterScript is an experimental procedural geometry language inspired by Stephen
 See associated blog post :
 https://earthchronicles.substack.com/p/geometry-is-computation
 
-The goal of MatterScript is to transform simple computational rules into increasingly complex structures that can ultimately be rendered as images, meshes, and physical objects.
+The goal of MatterScript is to transform simple computational rules into increasingly complex structures that can ultimately be rendered as images, meshes, simulations, circuits, and physical objects.
 
 ```text
 MatterScript
