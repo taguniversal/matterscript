@@ -2,7 +2,7 @@ const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
-    const optimize = .Debug; // b.standardOptimizeOption(.{});
+    const optimize = b.standardOptimizeOption(.{});
 
     // ------------------------------------------------------------------------
     // 1. Build the Tangle Helper Executable
