@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-93078c5e.js";
+            window.path_to_searchindex_js = "searchindex-66181a7f.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-998e71fd.js"></script>
+        <script src="toc-12f9a3fc.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -5168,11 +5168,1068 @@ physical implementation
 <p><strong>4. Dual-Rail &amp; Asynchronous Constraint Inference</strong></p>
 <ul>
 <li><strong>Probabilistic to Deterministic Mapping:</strong> Since asynchronous logic relies on completion signals and valid/null state transitions, theory-free inference can observe raw spatial state sequences to identify valid neighborhood transitions and generate noise-tolerant, hazard-free asynchronous state machines automatically.</li>
-<li><strong>Neighborhood Scale Reduction:</strong> Inference algorithms can iteratively evaluate the minimal necessary spatial radius ((r)) and state depth ((k)) required for a local process expression, minimizing the fan-in and lookup table size on hardware target blocks.</li>
+<li><strong>Neighborhood Scale Reduction:</strong> Inference algorithms can iteratively evaluate the minimal necessary spatial radius (<em>r</em>) and state depth (<em>k</em>) required for a local process expression, minimizing the fan-in and lookup table size on hardware target blocks.</li>
 </ul>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="wind-tunnel"><a class="header" href="#wind-tunnel">Wind Tunnel</a></h1>
+<h1 id="matterscript-and-the-hacker-fab-spatial-hardware-synthesis-and-fabrication-integration"><a class="header" href="#matterscript-and-the-hacker-fab-spatial-hardware-synthesis-and-fabrication-integration">MatterScript and the Hacker Fab: Spatial Hardware Synthesis and Fabrication Integration</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-12-complete-projects/images/hackerfab.png" alt="HackerFab"><span class="img-wrapper"><img src="part-12-complete-projects/images/hackerfab.png" alt="HackerFab"></span></label></p>
+<p>MatterScript is designed around a premise that becomes especially powerful when applied to the Hacker Fab:</p>
+<blockquote>
+<p><strong>Physical structure is part of computation.</strong></p>
+</blockquote>
+<p>The Hacker Fab is an open-source semiconductor fabrication ecosystem whose goal is to make semiconductor fabrication accessible, reproducible, inexpensive, and understandable from first principles. Its workflow already spans electronic design automation, mask generation, fabrication tools, process development, device modeling, packaging, and electrical characterization. The project explicitly emphasizes rapid iteration, documentation, simple designs, in-situ sensing, and eventually a closed-loop process from wafer fabrication through measurement.</p>
+<p>MatterScript provides a natural computational language for this environment because its fundamental abstraction is neither the conventional software function nor the conventional circuit schematic.</p>
+<p>It is the <strong>space-time process</strong>.</p>
+<p>A MatterScript description can represent:</p>
+<ul>
+<li>where computational elements exist,</li>
+<li>how they are connected,</li>
+<li>how events propagate,</li>
+<li>how physical geometry constrains behavior,</li>
+<li>how local state changes,</li>
+<li>how measurements become inputs,</li>
+<li>and how a physical process can be represented as a computation.</li>
+</ul>
+<p>The Hacker Fab integration therefore does not treat MatterScript as another FPGA programming language.</p>
+<p>Instead, MatterScript becomes a <strong>spatial intermediate language connecting semiconductor design, fabrication, machine automation, and measurement.</strong></p>
+<pre><code class="language-text">                         MatterScript
+                              │
+                    Space-Time Model
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+          ▼                   ▼                   ▼
+      Circuit IR          Geometry IR        Process IR
+          │                   │                   │
+          ▼                   ▼                   ▼
+      SPICE/KiCad       PHIDL / GDSII       Fab Jobs
+          │                   │                   │
+          └──────────────┬────┴───────────────────┘
+                         ▼
+                  Hacker Fab Process
+                         │
+              ┌──────────┴──────────┐
+              ▼                     ▼
+        Fabricated Device       Metrology
+              │                     │
+              └──────────┬──────────┘
+                         ▼
+                  Measured Data
+                         │
+                         ▼
+                  Model / Inference
+                         │
+                         └──────────────↺
+</code></pre>
+<p>This creates the possibility of treating the entire fab as a programmable computational system.</p>
+<hr>
+<h1 id="1-the-hacker-fab-as-a-computational-substrate"><a class="header" href="#1-the-hacker-fab-as-a-computational-substrate">1. The Hacker Fab as a Computational Substrate</a></h1>
+<p>The Hacker Fab’s stated objective is not simply to reproduce conventional semiconductor manufacturing.</p>
+<p>Its design philosophy emphasizes inexpensive tools, simple designs, reproducibility, first-principles understanding, and rapid iteration. The documentation explicitly identifies fast hardware development and closed-loop operation as important design goals.</p>
+<p>That philosophy closely matches MatterScript.</p>
+<p>Traditional semiconductor design separates the workflow into specialized tools:</p>
+<pre><code class="language-text">Schematic
+   ↓
+Simulation
+   ↓
+Layout
+   ↓
+DRC
+   ↓
+Mask
+   ↓
+Fabrication
+   ↓
+Measurement
+</code></pre>
+<p>Each stage has its own representation.</p>
+<p>MatterScript proposes a different architecture:</p>
+<pre><code class="language-text">                 MatterScript
+                      │
+              spatial process model
+                      │
+        ┌─────────────┼─────────────┐
+        ▼             ▼             ▼
+     circuit       geometry       process
+        │             │             │
+        ▼             ▼             ▼
+      SPICE         GDSII        machine job
+        │             │             │
+        └─────────────┼─────────────┘
+                      ▼
+                  fabricated
+                    device
+                      │
+                      ▼
+                   measured
+                      │
+                      ▼
+                  new state
+</code></pre>
+<p>The representations still exist.</p>
+<p>MatterScript simply establishes a common semantic layer between them.</p>
+<hr>
+<h1 id="2-the-correct-integration-boundary"><a class="header" href="#2-the-correct-integration-boundary">2. The Correct Integration Boundary</a></h1>
+<p>MatterScript should not replace PHIDL, KiCad, ngspice, the Hacker Fab mask-generation software, or the machine-control infrastructure.</p>
+<p>Instead, each existing tool remains responsible for the domain it already handles.</p>
+<p>The integration boundary should look like this:</p>
+<pre><code class="language-text">MatterScript
+     │
+     ▼
+MatterScript Intermediate Representation
+     │
+     ├──────────────► Circuit Backend
+     │                    │
+     │                    ▼
+     │                 SPICE
+     │
+     ├──────────────► Layout Backend
+     │                    │
+     │                    ▼
+     │              PHIDL / GDSII
+     │
+     ├──────────────► Fabrication Backend
+     │                    │
+     │                    ▼
+     │             Hacker Fab Jobs API
+     │
+     └──────────────► Analysis Backend
+                          │
+                          ▼
+                    Measurement Data
+</code></pre>
+<p>This follows the Hacker Fab’s existing philosophy of using simple, composable tools rather than introducing unnecessary infrastructure.</p>
+<hr>
+<h1 id="3-matterscript-as-a-spatial-intermediate-representation"><a class="header" href="#3-matterscript-as-a-spatial-intermediate-representation">3. MatterScript as a Spatial Intermediate Representation</a></h1>
+<p>The most important component of the integration is the MatterScript intermediate representation, or <strong>Matter IR</strong>.</p>
+<p>A MatterScript source program describes processes:</p>
+<pre><code class="language-text">&lt;&gt;source
+    |
+    ▼
+&lt;&gt;transform
+    |
+    ▼
+$output
+</code></pre>
+<p>The compiler converts these into explicit objects:</p>
+<pre><code class="language-text">Place
+Process
+Token
+Event
+Connection
+Geometry
+Material
+Device
+Measurement
+</code></pre>
+<p>A simplified internal representation might look like:</p>
+<pre><code class="language-json">Cell {
+    name: "inverter"
+    position: (100um, 200um)
+    dimensions: (40um, 20um)
+
+    inputs:
+        A
+
+    outputs:
+        Y
+
+    devices:
+        NMOS
+        PMOS
+
+    processes:
+        evaluate
+        discharge
+        charge
+}
+</code></pre>
+<p>The important property is that the geometry is not added later.</p>
+<p>It exists in the intermediate representation from the beginning.</p>
+<p>That allows the same object to be interpreted as:</p>
+<ul>
+<li>a computational process,</li>
+<li>a circuit,</li>
+<li>a physical layout,</li>
+<li>a fabrication structure,</li>
+<li>and a measurable device.</li>
+</ul>
+<hr>
+<h1 id="4-mapping-matterscript-to-hacker-fab-eda"><a class="header" href="#4-mapping-matterscript-to-hacker-fab-eda">4. Mapping MatterScript to Hacker Fab EDA</a></h1>
+<p>The Hacker Fab already has an EDA effort divided into areas including device modeling and DRC/mask design. The mask automation work uses PHIDL and produces GDSII layouts, while the device-modeling work has explored KiCad and its embedded ngspice simulation environment.</p>
+<p>These become the first two major MatterScript compiler targets.</p>
+<pre><code class="language-text">MatterScript
+      │
+      ▼
+   Matter IR
+      │
+      ├──────────────┐
+      │              │
+      ▼              ▼
+ Circuit IR       Layout IR
+      │              │
+      ▼              ▼
+ KiCad/SPICE      PHIDL
+      │              │
+      ▼              ▼
+  simulation       GDSII
+</code></pre>
+<p>This means that a MatterScript program could eventually describe a physical circuit once and derive both:</p>
+<ol>
+<li>the electrical model used for simulation, and</li>
+<li>the physical geometry used to fabricate it.</li>
+</ol>
+<hr>
+<h1 id="5-the-matter-spice-backend"><a class="header" href="#5-the-matter-spice-backend">5. The <code>matter-spice</code> Backend</a></h1>
+<p>The first circuit-oriented backend should target SPICE.</p>
+<p>The purpose of <code>matter-spice</code> is to lower MatterScript processes into a conventional electrical simulation representation.</p>
+<p>For example:</p>
+<pre><code class="language-text">  input
+    |
+    ▼
+ inverter
+    |
+    ▼
+  output
+</code></pre>
+<p>could produce a SPICE-level representation containing:</p>
+<pre><code class="language-text">VIN
+ |
+ ├── PMOS
+ │
+ └── NMOS
+ |
+GND
+</code></pre>
+<p>The backend should generate a standard netlist rather than inventing a new simulator.</p>
+<p>This allows Hacker Fab developers to continue using existing SPICE infrastructure.</p>
+<p>The resulting pipeline becomes:</p>
+<pre><code class="language-text">main.ms
+   │
+   ▼
+matter-spice
+   │
+   ▼
+circuit.spice
+   │
+   ▼
+ngspice
+   │
+   ▼
+waveforms
+</code></pre>
+<p>The Hacker Fab device-modeling work already uses KiCad and ngspice for circuit simulation, making this a particularly natural integration point.</p>
+<hr>
+<h1 id="6-device-models-as-matterscript-components"><a class="header" href="#6-device-models-as-matterscript-components">6. Device Models as MatterScript Components</a></h1>
+<p>A physical MOSFET is more than a symbol.</p>
+<p>It has:</p>
+<ul>
+<li>geometry,</li>
+<li>material properties,</li>
+<li>process-dependent parameters,</li>
+<li>electrical behavior,</li>
+<li>fabrication constraints,</li>
+<li>and measured characteristics.</li>
+</ul>
+<p>MatterScript can represent this as a component whose behavioral and physical descriptions are connected.</p>
+<p>For example:</p>
+<pre><code class="language-text">device NMOS {
+    geometry {
+        channel_length = 10um
+        channel_width  = 10um
+    }
+
+    terminals {
+        gate
+        source
+        drain
+        body
+    }
+
+    behavior {
+        model = mosfet
+    }
+}
+</code></pre>
+<p>The SPICE backend can interpret <code>behavior</code>.</p>
+<p>The layout backend can interpret <code>geometry</code>.</p>
+<p>The fabrication backend can interpret the process requirements.</p>
+<p>The measurement system can associate measured device data back with the same device identifier.</p>
+<p>This produces a much stronger connection than the traditional separation between schematic symbols and physical layout cells.</p>
+<hr>
+<h1 id="7-the-matter-phidl-backend"><a class="header" href="#7-the-matter-phidl-backend">7. The <code>matter-phidl</code> Backend</a></h1>
+<p>The second major backend should target PHIDL.</p>
+<p>This is particularly appropriate because the Hacker Fab’s mask-generation work already uses PHIDL for programmable mask design. The project has explicitly explored automated component instances, parameterized dimensions, DRC rules, and GDSII export.</p>
+<p>MatterScript geometry can therefore map directly into PHIDL objects.</p>
+<p>For example:</p>
+<pre><code class="language-text">device inverter {
+    position = (100um, 200um)
+
+    nmos {
+        width = 10um
+        length = 2um
+    }
+
+    pmos {
+        width = 20um
+        length = 2um
+    }
+}
+</code></pre>
+<p>could produce a PHIDL cell containing the required polygons.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">MatterScript
+      │
+      ▼
+   Layout IR
+      │
+      ▼
+ matter-phidl
+      │
+      ▼
+ PHIDL geometry
+      │
+      ▼
+    GDSII
+</code></pre>
+<p>The resulting GDSII file becomes the artifact handed to the existing Hacker Fab mask workflow.</p>
+<hr>
+<h1 id="8-geometry-as-a-first-class-compiler-output"><a class="header" href="#8-geometry-as-a-first-class-compiler-output">8. Geometry as a First-Class Compiler Output</a></h1>
+<p>This is where MatterScript differs most strongly from conventional programming languages.</p>
+<p>Suppose the source contains:</p>
+<pre><code class="language-text">A @ (0,0)
+B @ (20um,0)
+C @ (40um,0)
+</code></pre>
+<p>A conventional compiler may regard these positions as irrelevant.</p>
+<p>MatterScript cannot.</p>
+<p>The positions can determine:</p>
+<ul>
+<li>transistor placement,</li>
+<li>routing,</li>
+<li>device spacing,</li>
+<li>proximity,</li>
+<li>mask geometry,</li>
+<li>fabrication constraints,</li>
+<li>process timing,</li>
+<li>and visualization.</li>
+</ul>
+<p>The compiler should therefore preserve them:</p>
+<pre><code class="language-text">Matter IR
+    │
+    ├── logical graph
+    │
+    ├── physical coordinates
+    │
+    ├── device dimensions
+    │
+    └── layer assignments
+</code></pre>
+<p>The PHIDL backend can then construct the corresponding geometry.</p>
+<hr>
+<h1 id="9-drc-as-a-compiler-phase"><a class="header" href="#9-drc-as-a-compiler-phase">9. DRC as a Compiler Phase</a></h1>
+<p>The Hacker Fab’s mask automation work specifically identifies DRC as a future component of the automated layout workflow.</p>
+<p>MatterScript should treat DRC not merely as an external post-processing step, but as a compilation phase.</p>
+<p>The pipeline becomes:</p>
+<pre><code class="language-text">MatterScript
+      │
+      ▼
+Layout IR
+      │
+      ▼
+Geometry generation
+      │
+      ▼
+DRC
+      │
+ ┌────┴────┐
+ │         │
+pass      fail
+ │         │
+ ▼         ▼
+GDSII     compiler error
+</code></pre>
+<p>For example:</p>
+<pre><code class="language-text">error: NMOS source/drain spacing violation
+
+device: M14
+layer: diffusion
+required: &gt;= 4.0um
+actual:    2.7um
+
+source:
+    src/amplifier.ms:184
+</code></pre>
+<p>This is much more useful than reporting an anonymous polygon violation.</p>
+<p>The compiler knows <strong>why the geometry exists</strong>.</p>
+<hr>
+<h1 id="10-from-drc-to-process-rules"><a class="header" href="#10-from-drc-to-process-rules">10. From DRC to Process Rules</a></h1>
+<p>The longer-term goal should be to make fabrication rules part of the MatterScript target description.</p>
+<p>For example:</p>
+<pre><code class="language-text">@process(hackerfab-v1)
+
+rule diffusion_spacing &gt;= 4um
+rule metal_spacing     &gt;= 3um
+rule contact_size      = 5um
+</code></pre>
+<p>These constraints can affect code generation before GDSII exists.</p>
+<p>That makes fabrication constraints analogous to type constraints in a programming language.</p>
+<p>A MatterScript program is not simply:</p>
+<blockquote>
+<p>syntactically valid</p>
+</blockquote>
+<p>It must eventually be:</p>
+<blockquote>
+<p>physically realizable under the selected fabrication process.</p>
+</blockquote>
+<hr>
+<h1 id="11-process-aware-compilation"><a class="header" href="#11-process-aware-compilation">11. Process-Aware Compilation</a></h1>
+<p>A MatterScript design should therefore identify its fabrication process.</p>
+<p>For example:</p>
+<pre><code class="language-text">project amplifier {
+    process = "hackerfab"
+}
+</code></pre>
+<p>The compiler loads the corresponding process description:</p>
+<pre><code class="language-text">process/
+├── layers
+├── dimensions
+├── materials
+├── spacing
+├── device_templates
+├── fabrication_steps
+└── measurement_requirements
+</code></pre>
+<p>The exact process schema can evolve as Hacker Fab’s process documentation evolves.</p>
+<p>This creates a clean separation:</p>
+<pre><code class="language-text">MatterScript design
+        │
+        ▼
+process-independent model
+        │
+        ▼
+Hacker Fab process definition
+        │
+        ▼
+fabricatable layout
+</code></pre>
+<p>The same design could eventually be retargeted to different process variants.</p>
+<hr>
+<h1 id="12-fabrication-as-a-build"><a class="header" href="#12-fabrication-as-a-build">12. Fabrication as a Build</a></h1>
+<p>A particularly powerful consequence is that <strong>fabrication itself can become part of the build graph</strong>.</p>
+<p>Today, a software build might look like:</p>
+<pre><code class="language-text">source
+  ↓
+compile
+  ↓
+link
+  ↓
+binary
+</code></pre>
+<p>A Hacker Fab MatterScript build could look like:</p>
+<pre><code class="language-text">MatterScript
+      ↓
+simulate
+      ↓
+generate layout
+      ↓
+     DRC
+      ↓
+    GDSII
+      ↓
+mask artifact
+      ↓
+fabrication job
+      ↓
+fabricated wafer
+      ↓
+measurement
+</code></pre>
+<p>This does not mean that <code>matter build</code> should automatically turn on a machine.</p>
+<p>Instead, fabrication should become an explicit artifact and job boundary:</p>
+<pre><code class="language-bash">matter build --target gds
+matter verify
+matter package
+matter submit
+</code></pre>
+<p>The final <code>submit</code> operation can create a Hacker Fab machine job.</p>
+<hr>
+<h1 id="13-integration-with-hacker-fab-machine-integration"><a class="header" href="#13-integration-with-hacker-fab-machine-integration">13. Integration With Hacker Fab Machine Integration</a></h1>
+<p>This is where the Hacker Fab’s existing infrastructure becomes especially valuable.</p>
+<p>The Hacker Fab machine-integration project already defines a generalized communication system between the web application and individual fabrication tools. The architecture uses a centralized job queue, APIs, file storage, and local Raspberry Pi controllers.</p>
+<p>The existing model is essentially:</p>
+<pre><code class="language-text">Web Application
+       │
+       ▼
+    Job API
+       │
+       ▼
+   Jobs Queue
+       │
+       ▼
+ Raspberry Pi
+       │
+       ▼
+    Machine
+</code></pre>
+<p>MatterScript can become a producer of those jobs.</p>
+<pre><code class="language-text">MatterScript
+       │
+       ▼
+Fabrication Artifact
+       │
+       ▼
+MatterScript Job Adapter
+       │
+       ▼
+Hacker Fab Jobs API
+       │
+       ▼
+Machine Queue
+       │
+       ▼
+Tool Controller
+       │
+       ▼
+Fabrication Tool
+</code></pre>
+<p>This is much more aligned with the actual Hacker Fab ecosystem than attempting to introduce a completely separate hardware-runtime architecture.</p>
+<hr>
+<h1 id="14-job-artifacts"><a class="header" href="#14-job-artifacts">14. Job Artifacts</a></h1>
+<p>A MatterScript fabrication job should contain both parameters and files.</p>
+<p>For example:</p>
+<pre><code class="language-json">{
+    "machine": "stepper",
+    "input_parameters": {
+        "design": "inverter_v3",
+        "process": "hackerfab-v1",
+        "wafer_id": "wafer-042",
+        "orientation": "default"
+    },
+    "artifacts": {
+        "gds": "uploads/abc123",
+        "manifest": "uploads/def456"
+    }
+}
+</code></pre>
+<p>This matches the Hacker Fab machine-integration architecture, where jobs contain machine-specific input parameters and larger files can be stored externally and referenced through an object-storage key. The documented stepper workflow already uses this general pattern for transferring image files to the machine.</p>
+<p>MatterScript should therefore reuse the same mechanism.</p>
+<p>It should <strong>not invent another file-transfer system</strong>.</p>
+<hr>
+<h1 id="15-the-matter-fab-adapter"><a class="header" href="#15-the-matter-fab-adapter">15. The <code>matter-fab</code> Adapter</a></h1>
+<p>A <code>matter-fab</code> backend can translate a MatterScript build into a Hacker Fab job.</p>
+<p>For example:</p>
+<pre><code class="language-bash">matter fab submit \
+    --machine stepper \
+    --design inverter_v3
+</code></pre>
+<p>The adapter would:</p>
+<ol>
+<li>validate the MatterScript project,</li>
+<li>generate the required layout,</li>
+<li>run DRC,</li>
+<li>generate GDSII,</li>
+<li>generate a fabrication manifest,</li>
+<li>upload large artifacts,</li>
+<li>create a machine job,</li>
+<li>receive the job ID,</li>
+<li>track completion.</li>
+</ol>
+<p>Conceptually:</p>
+<pre><code class="language-text">matter fab submit
+       │
+       ├── compile
+       ├── DRC
+       ├── generate GDSII
+       ├── upload
+       └── POST /jobs
+                    │
+                    ▼
+                 job_id
+</code></pre>
+<p>The Hacker Fab job system already defines concepts such as machine, status, input parameters, output parameters, timestamp, and priority.</p>
+<p>MatterScript can preserve those concepts rather than creating parallel infrastructure.</p>
+<hr>
+<h1 id="16-human-in-the-loop-is-a-feature"><a class="header" href="#16-human-in-the-loop-is-a-feature">16. Human-in-the-Loop Is a Feature</a></h1>
+<p>The Hacker Fab machine-integration documentation explicitly describes a deliberate human-in-the-loop design, including local GUI approval, physical controls, and offline operation.</p>
+<p>MatterScript should preserve this property.</p>
+<p>A submitted fabrication job should therefore have states such as:</p>
+<pre><code class="language-text">GENERATED
+    ↓
+VERIFIED
+    ↓
+QUEUED
+    ↓
+AWAITING_APPROVAL
+    ↓
+RUNNING
+    ↓
+COMPLETED
+</code></pre>
+<p>The compiler should never assume that:</p>
+<pre><code class="language-text">GDSII exists
+</code></pre>
+<p>means:</p>
+<pre><code class="language-text">chip is being fabricated
+</code></pre>
+<p>There is an important physical boundary between software intent and physical action.</p>
+<p>MatterScript can automate the former while leaving the latter explicitly controlled.</p>
+<hr>
+<h1 id="17-the-stepper-as-the-first-demonstration"><a class="header" href="#17-the-stepper-as-the-first-demonstration">17. The Stepper as the First Demonstration</a></h1>
+<p>The Hacker Fab lithography stepper is an especially useful first integration target because the existing machine-integration architecture already demonstrates file-based job submission to a patterning machine.</p>
+<p>The first MatterScript/Hacker Fab demonstration could therefore be extremely concrete:</p>
+<pre><code class="language-text">MatterScript
+     │
+     ▼
+simple transistor layout
+     │
+     ▼
+   PHIDL
+     │
+     ▼
+   GDSII
+     │
+     ▼
+    DRC
+     │
+     ▼
+stepper job
+     │
+     ▼
+physical pattern
+</code></pre>
+<p>This establishes the complete chain without requiring MatterScript to control the fabrication machine directly.</p>
+<hr>
+<h1 id="18-matterscript-and-the-fab-toolchain"><a class="header" href="#18-matterscript-and-the-fab-toolchain">18. MatterScript and the Fab Toolchain</a></h1>
+<p>The larger architecture becomes:</p>
+<pre><code class="language-text">                     MatterScript
+                          │
+                     Matter IR
+                          │
+        ┌─────────────────┼──────────────────┐
+        │                 │                  │
+        ▼                 ▼                  ▼
+    matter-spice     matter-phidl       matter-fab
+        │                 │                  │
+        ▼                 ▼                  ▼
+    KiCad/SPICE        GDSII             Job API
+        │                 │                  │
+        ▼                 ▼                  ▼
+   Device model        Mask data       Fab machine
+        │                 │                  │
+        └─────────────────┼──────────────────┘
+                          ▼
+                    Physical device
+                          │
+                          ▼
+                      Metrology
+                          │
+                          ▼
+                     Measurement
+</code></pre>
+<p>This is the central Hacker Fab integration architecture.</p>
+<hr>
+<h1 id="19-measurement-as-an-input-language"><a class="header" href="#19-measurement-as-an-input-language">19. Measurement as an Input Language</a></h1>
+<p>The final part of the loop is measurement.</p>
+<p>A fabricated transistor might produce:</p>
+<pre><code class="language-text">VGS
+VDS
+IDS
+</code></pre>
+<p>A conventional workflow exports those measurements as CSV files and analyzes them separately.</p>
+<p>MatterScript can instead treat them as a spatial state transition.</p>
+<p>For example:</p>
+<pre><code class="language-text">measurement {
+    device = M14
+
+    sweep {
+        VGS = 0..5V
+        VDS = 0..5V
+    }
+
+    outputs {
+        IDS
+    }
+}
+</code></pre>
+<p>The result can be represented as a MatterScript data structure:</p>
+<pre><code class="language-text">M14:
+    state_0 → state_1
+    state_1 → state_2
+    ...
+</code></pre>
+<p>This creates a direct connection between physical measurement and model inference.</p>
+<hr>
+<h1 id="20-closing-the-loop-with-device-modeling"><a class="header" href="#20-closing-the-loop-with-device-modeling">20. Closing the Loop With Device Modeling</a></h1>
+<p>The Hacker Fab device-modeling work already investigates extracting transistor parameters from electrical data and feeding those parameters back into SPICE models.</p>
+<p>MatterScript can formalize that loop.</p>
+<pre><code class="language-text">Fabricated transistor
+        │
+        ▼
+Electrical measurement
+        │
+        ▼
+Measurement dataset
+        │
+        ▼
+Parameter extraction
+        │
+        ▼
+MatterScript device model
+        │
+        ▼
+SPICE simulation
+        │
+        ▼
+New circuit design
+        │
+        ▼
+New layout
+        │
+        ▼
+New fabrication
+</code></pre>
+<p>This is precisely the sort of iterative, closed-loop hardware development that the Hacker Fab’s design philosophy encourages.</p>
+<hr>
+<h1 id="21-model-free-inference"><a class="header" href="#21-model-free-inference">21. Model-Free Inference</a></h1>
+<p>MatterScript adds another possibility beyond conventional parameter fitting.</p>
+<p>Instead of assuming that the device behavior must conform to a predetermined mathematical model, measured transitions can be treated as observations of a physical state machine.</p>
+<p>For example:</p>
+<pre><code class="language-text">Input State
+     │
+     ▼
+Physical Device
+     │
+     ▼
+Measured State
+</code></pre>
+<p>Repeated observations produce:</p>
+<pre><code class="language-text">A → B
+A → B
+A → C
+A → B
+</code></pre>
+<p>The system can determine:</p>
+<pre><code class="language-text">A → B
+</code></pre>
+<p>as the dominant observed transition while retaining uncertainty around the exceptional transition.</p>
+<p>This provides a bridge between MatterScript’s cellular-automata/model-free inference work and Hacker Fab’s empirical device characterization.</p>
+<p>The physical chip becomes a source of computational rules.</p>
+<hr>
+<h1 id="22-fabrication-tools-as-spatial-computers"><a class="header" href="#22-fabrication-tools-as-spatial-computers">22. Fabrication Tools as Spatial Computers</a></h1>
+<p>This perspective can be extended beyond the chip itself.</p>
+<p>The Hacker Fab consists of physical machines:</p>
+<pre><code class="language-text">Stepper
+Spin Coater
+Evaporator
+Sputtering System
+Furnace
+Etcher
+Probe Station
+</code></pre>
+<p>Each machine has:</p>
+<ul>
+<li>state,</li>
+<li>geometry,</li>
+<li>timing,</li>
+<li>inputs,</li>
+<li>outputs,</li>
+<li>sensors,</li>
+<li>and processes.</li>
+</ul>
+<p>The Hacker Fab’s machine-integration system already treats these tools as programmable devices with jobs and state transitions.</p>
+<p>MatterScript can provide a common representation for those transitions.</p>
+<p>For example:</p>
+<pre><code class="language-text">  wafer_loaded
+       ↓
+      spin
+       ↓
+  coat_complete
+       ↓
+      bake
+       ↓
+    pattern
+       ↓
+   wafer_ready
+</code></pre>
+<p>The same language that describes a computational circuit can therefore describe the workflow that creates that circuit.</p>
+<hr>
+<h1 id="23-from-machine-jobs-to-process-expressions"><a class="header" href="#23-from-machine-jobs-to-process-expressions">23. From Machine Jobs to Process Expressions</a></h1>
+<p>A machine job can be viewed as a MatterScript process.</p>
+<p>For example:</p>
+<pre><code class="language-text">process spin_coat {
+    input:
+        wafer
+
+    parameters:
+        rpm
+        duration
+
+    output:
+        coated_wafer
+}
+</code></pre>
+<p>The Hacker Fab adapter can lower this to:</p>
+<pre><code class="language-text">POST /jobs
+</code></pre>
+<p>with:</p>
+<pre><code class="language-json">{
+    "machine": "spincoater",
+    "input_parameters": {
+        "rpm": 3000,
+        "duration": 30
+    }
+}
+</code></pre>
+<p>The machine controller performs the physical operation and reports:</p>
+<pre><code class="language-text">COMPLETED
+</code></pre>
+<p>The MatterScript runtime then converts that completion into an event.</p>
+<pre><code class="language-text">machine completion
+        │
+        ▼
+  coat_complete
+        │
+        ▼
+  next process
+</code></pre>
+<p>This creates a unified language for both computation and fabrication workflow.</p>
+<hr>
+<h1 id="24-the-fabrication-graph"><a class="header" href="#24-the-fabrication-graph">24. The Fabrication Graph</a></h1>
+<p>At this point, the entire semiconductor-development process can be represented as a graph.</p>
+<pre><code class="language-text">              Device Design
+                   │
+                   ▼
+              Simulation
+                   │
+                   ▼
+                Layout
+                   │
+                   ▼
+                  DRC
+                   │
+                   ▼
+                 Mask
+                   │
+                   ▼
+             Lithography
+                   │
+                   ▼
+               Deposition
+                   │
+                   ▼
+                 Etch
+                   │
+                   ▼
+                Doping
+                   │
+                   ▼
+               Packaging
+                   │
+                   ▼
+              Measurement
+                   │
+                   ▼
+             Device Model
+                   │
+                   └──────────↺
+</code></pre>
+<p>MatterScript’s process model is naturally suited to expressing this graph.</p>
+<p>The difference is that the graph is not merely documentation.</p>
+<p>It becomes executable infrastructure.</p>
+<hr>
+<h1 id="25-repository-structure"><a class="header" href="#25-repository-structure">25. Repository Structure</a></h1>
+<p>A MatterScript project integrated into Hacker Fab should remain compatible with the organization’s existing open-source development practices.</p>
+<p>A proposed project structure is:</p>
+<pre><code class="language-text">project/
+│
+├── src/
+│   ├── devices.ms
+│   ├── circuits.ms
+│   ├── geometry.ms
+│   └── process.ms
+│
+├── process/
+│   ├── hackerfab-v1.toml
+│   ├── layers.toml
+│   └── rules.toml
+│
+├── layout/
+│   ├── generated/
+│   └── gds/
+│
+├── simulation/
+│   ├── spice/
+│   └── data/
+│
+├── fabrication/
+│   ├── manifests/
+│   └── jobs/
+│
+├── measurements/
+│   ├── raw/
+│   └── processed/
+│
+├── build.zig
+└── matter.toml
+</code></pre>
+<p>The generated artifacts should be distinguishable from source artifacts.</p>
+<p>For example:</p>
+<pre><code class="language-text">src/       ← human-authored MatterScript
+process/   ← fabrication knowledge
+layout/    ← generated physical design
+simulation/← generated/experimental electrical models
+fabrication/← machine-job artifacts
+measurements/← empirical results
+</code></pre>
+<hr>
+<h1 id="26-reproducibility"><a class="header" href="#26-reproducibility">26. Reproducibility</a></h1>
+<p>Reproducibility is especially important in semiconductor fabrication.</p>
+<p>Every MatterScript build should record:</p>
+<pre><code class="language-text">source revision
+compiler version
+process version
+DRC rules
+device models
+layout generator version
+GDSII checksum
+simulation parameters
+fabrication job ID
+wafer/device identifiers
+measurement dataset
+</code></pre>
+<p>A build manifest could therefore connect software and physical artifacts:</p>
+<pre><code class="language-json">{
+    "design": "inverter-v3",
+    "source_revision": "abc123",
+    "process": "hackerfab-v1",
+    "layout": "sha256:...",
+    "simulation": "sha256:...",
+    "fabrication_job": "HF-004281",
+    "wafer": "W12",
+    "devices": ["M14", "M15"],
+    "measurement_dataset": "measurements/W12.csv"
+}
+</code></pre>
+<p>This is important because the physical artifact cannot be reproduced merely from the source code if the process version and layout rules have changed.</p>
+<hr>
+<h1 id="27-open-source-compatibility"><a class="header" href="#27-open-source-compatibility">27. Open-Source Compatibility</a></h1>
+<p>The Hacker Fab uses a deliberately open licensing structure: hardware contributions default to CERN-OHL-W, software to MPL-2.0, and documentation to CC BY-SA 4.0, subject to the project’s contribution and provenance rules.</p>
+<p>MatterScript integration should respect that structure.</p>
+<p>The compiler itself can remain a software project.</p>
+<p>Generated hardware can carry appropriate attribution and licensing metadata.</p>
+<p>Documentation can reference the corresponding MatterScript source and generated artifacts.</p>
+<p>A generated design manifest could therefore contain:</p>
+<pre><code class="language-text">source_license
+hardware_license
+documentation_license
+upstream_components
+</code></pre>
+<p>This is especially important when MatterScript begins generating reusable physical components.</p>
+<hr>
+<h1 id="28-the-first-practical-prototype"><a class="header" href="#28-the-first-practical-prototype">28. The First Practical Prototype</a></h1>
+<p>The complete architecture is deliberately larger than the first implementation.</p>
+<p>The first Hacker Fab/MatterScript prototype should be much smaller.</p>
+<p>The recommended milestone is:</p>
+<pre><code class="language-text">MatterScript
+      │
+      ▼
+simple NMOS/inverter model
+      │
+      ├──────────────► SPICE
+      │                  │
+      │                  ▼
+      │              simulation
+      │
+      └──────────────► PHIDL
+                         │
+                         ▼
+                       GDSII
+                         │
+                         ▼
+                        DRC
+</code></pre>
+<p>Once this works, add:</p>
+<pre><code class="language-text">Phase 1
+    MatterScript → SPICE
+
+Phase 2
+    MatterScript → PHIDL → GDSII
+
+Phase 3
+    MatterScript → DRC-aware GDSII
+
+Phase 4
+    GDSII → Hacker Fab machine job
+
+Phase 5
+    Machine completion → MatterScript event
+
+Phase 6
+    Physical measurement → MatterScript dataset
+
+Phase 7
+    Measurement → model inference
+
+Phase 8
+    Model → next design iteration
+</code></pre>
+<p>The important thing is that every phase reuses the same semantic model.</p>
+<hr>
+<h1 id="29-the-complete-hacker-fabmatterscript-loop"><a class="header" href="#29-the-complete-hacker-fabmatterscript-loop">29. The Complete Hacker Fab/MatterScript Loop</a></h1>
+<p>The finished architecture looks like this:</p>
+<pre><code class="language-text">                         MatterScript
+                              │
+                              ▼
+                    Space-Time Model
+                              │
+                              ▼
+                    Matter Intermediate
+                       Representation
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+          ▼                   ▼                   ▼
+      Circuit IR          Layout IR          Process IR
+          │                   │                   │
+          ▼                   ▼                   ▼
+       SPICE              PHIDL/GDSII        Fab Jobs
+          │                   │                   │
+          ▼                   ▼                   ▼
+     Simulation             DRC             Hacker Fab
+                                                  │
+                                                  ▼
+                                             Fabrication
+                                                  │
+                                                  ▼
+                                              Metrology
+                                                  │
+                                                  ▼
+                                            Measurement
+                                                  │
+                                                  ▼
+                                         Model Inference
+                                                  │
+                                                  ▼
+                                           Device Model
+                                                  │
+                                                  └──────↺
+</code></pre>
+<p>This is the deeper purpose of the integration.</p>
+<p>MatterScript does not merely provide another way to draw a circuit.</p>
+<p>It provides a <strong>computational representation of the relationship between the circuit, its geometry, its fabrication process, and its observed physical behavior.</strong></p>
+<p>The Hacker Fab already supplies the physical infrastructure necessary to close that loop: programmable mask generation, simulation and device modeling, fabrication tools, machine integration, measurement, and a documentation culture centered around reproducible open hardware.</p>
+<p>MatterScript can provide the missing connective tissue.</p>
+<blockquote>
+<p><strong>The design is a process.
+The process has geometry.
+The geometry becomes a device.
+The device becomes a measurement.
+The measurement becomes knowledge.
+And the knowledge becomes the next design.</strong></p>
+</blockquote>
+<p>That is the Hacker Fab integration target for MatterScript.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="autonomous-vehicle-sensor-model"><a class="header" href="#autonomous-vehicle-sensor-model">Autonomous Vehicle Sensor Model</a></h1>

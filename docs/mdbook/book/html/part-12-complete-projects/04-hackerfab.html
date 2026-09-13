@@ -1,0 +1,1312 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>HackerFab - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Building Physically-Faithful Software and Hardware Systems">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-e96d0476.css">
+        <link rel="stylesheet" href="../css/chrome-d279d366.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-66181a7f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-12f9a3fc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="matterscript-and-the-hacker-fab-spatial-hardware-synthesis-and-fabrication-integration"><a class="header" href="#matterscript-and-the-hacker-fab-spatial-hardware-synthesis-and-fabrication-integration">MatterScript and the Hacker Fab: Spatial Hardware Synthesis and Fabrication Integration</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="images/hackerfab.png" alt="HackerFab"><span class="img-wrapper"><img src="images/hackerfab.png" alt="HackerFab"></span></label></p>
+<p>MatterScript is designed around a premise that becomes especially powerful when applied to the Hacker Fab:</p>
+<blockquote>
+<p><strong>Physical structure is part of computation.</strong></p>
+</blockquote>
+<p>The Hacker Fab is an open-source semiconductor fabrication ecosystem whose goal is to make semiconductor fabrication accessible, reproducible, inexpensive, and understandable from first principles. Its workflow already spans electronic design automation, mask generation, fabrication tools, process development, device modeling, packaging, and electrical characterization. The project explicitly emphasizes rapid iteration, documentation, simple designs, in-situ sensing, and eventually a closed-loop process from wafer fabrication through measurement.</p>
+<p>MatterScript provides a natural computational language for this environment because its fundamental abstraction is neither the conventional software function nor the conventional circuit schematic.</p>
+<p>It is the <strong>space-time process</strong>.</p>
+<p>A MatterScript description can represent:</p>
+<ul>
+<li>where computational elements exist,</li>
+<li>how they are connected,</li>
+<li>how events propagate,</li>
+<li>how physical geometry constrains behavior,</li>
+<li>how local state changes,</li>
+<li>how measurements become inputs,</li>
+<li>and how a physical process can be represented as a computation.</li>
+</ul>
+<p>The Hacker Fab integration therefore does not treat MatterScript as another FPGA programming language.</p>
+<p>Instead, MatterScript becomes a <strong>spatial intermediate language connecting semiconductor design, fabrication, machine automation, and measurement.</strong></p>
+<pre><code class="language-text">                         MatterScript
+                              │
+                    Space-Time Model
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+          ▼                   ▼                   ▼
+      Circuit IR          Geometry IR        Process IR
+          │                   │                   │
+          ▼                   ▼                   ▼
+      SPICE/KiCad       PHIDL / GDSII       Fab Jobs
+          │                   │                   │
+          └──────────────┬────┴───────────────────┘
+                         ▼
+                  Hacker Fab Process
+                         │
+              ┌──────────┴──────────┐
+              ▼                     ▼
+        Fabricated Device       Metrology
+              │                     │
+              └──────────┬──────────┘
+                         ▼
+                  Measured Data
+                         │
+                         ▼
+                  Model / Inference
+                         │
+                         └──────────────↺
+</code></pre>
+<p>This creates the possibility of treating the entire fab as a programmable computational system.</p>
+<hr>
+<h1 id="1-the-hacker-fab-as-a-computational-substrate"><a class="header" href="#1-the-hacker-fab-as-a-computational-substrate">1. The Hacker Fab as a Computational Substrate</a></h1>
+<p>The Hacker Fab’s stated objective is not simply to reproduce conventional semiconductor manufacturing.</p>
+<p>Its design philosophy emphasizes inexpensive tools, simple designs, reproducibility, first-principles understanding, and rapid iteration. The documentation explicitly identifies fast hardware development and closed-loop operation as important design goals.</p>
+<p>That philosophy closely matches MatterScript.</p>
+<p>Traditional semiconductor design separates the workflow into specialized tools:</p>
+<pre><code class="language-text">Schematic
+   ↓
+Simulation
+   ↓
+Layout
+   ↓
+DRC
+   ↓
+Mask
+   ↓
+Fabrication
+   ↓
+Measurement
+</code></pre>
+<p>Each stage has its own representation.</p>
+<p>MatterScript proposes a different architecture:</p>
+<pre><code class="language-text">                 MatterScript
+                      │
+              spatial process model
+                      │
+        ┌─────────────┼─────────────┐
+        ▼             ▼             ▼
+     circuit       geometry       process
+        │             │             │
+        ▼             ▼             ▼
+      SPICE         GDSII        machine job
+        │             │             │
+        └─────────────┼─────────────┘
+                      ▼
+                  fabricated
+                    device
+                      │
+                      ▼
+                   measured
+                      │
+                      ▼
+                  new state
+</code></pre>
+<p>The representations still exist.</p>
+<p>MatterScript simply establishes a common semantic layer between them.</p>
+<hr>
+<h1 id="2-the-correct-integration-boundary"><a class="header" href="#2-the-correct-integration-boundary">2. The Correct Integration Boundary</a></h1>
+<p>MatterScript should not replace PHIDL, KiCad, ngspice, the Hacker Fab mask-generation software, or the machine-control infrastructure.</p>
+<p>Instead, each existing tool remains responsible for the domain it already handles.</p>
+<p>The integration boundary should look like this:</p>
+<pre><code class="language-text">MatterScript
+     │
+     ▼
+MatterScript Intermediate Representation
+     │
+     ├──────────────► Circuit Backend
+     │                    │
+     │                    ▼
+     │                 SPICE
+     │
+     ├──────────────► Layout Backend
+     │                    │
+     │                    ▼
+     │              PHIDL / GDSII
+     │
+     ├──────────────► Fabrication Backend
+     │                    │
+     │                    ▼
+     │             Hacker Fab Jobs API
+     │
+     └──────────────► Analysis Backend
+                          │
+                          ▼
+                    Measurement Data
+</code></pre>
+<p>This follows the Hacker Fab’s existing philosophy of using simple, composable tools rather than introducing unnecessary infrastructure.</p>
+<hr>
+<h1 id="3-matterscript-as-a-spatial-intermediate-representation"><a class="header" href="#3-matterscript-as-a-spatial-intermediate-representation">3. MatterScript as a Spatial Intermediate Representation</a></h1>
+<p>The most important component of the integration is the MatterScript intermediate representation, or <strong>Matter IR</strong>.</p>
+<p>A MatterScript source program describes processes:</p>
+<pre><code class="language-text">&lt;&gt;source
+    |
+    ▼
+&lt;&gt;transform
+    |
+    ▼
+$output
+</code></pre>
+<p>The compiler converts these into explicit objects:</p>
+<pre><code class="language-text">Place
+Process
+Token
+Event
+Connection
+Geometry
+Material
+Device
+Measurement
+</code></pre>
+<p>A simplified internal representation might look like:</p>
+<pre><code class="language-json">Cell {
+    name: "inverter"
+    position: (100um, 200um)
+    dimensions: (40um, 20um)
+
+    inputs:
+        A
+
+    outputs:
+        Y
+
+    devices:
+        NMOS
+        PMOS
+
+    processes:
+        evaluate
+        discharge
+        charge
+}
+</code></pre>
+<p>The important property is that the geometry is not added later.</p>
+<p>It exists in the intermediate representation from the beginning.</p>
+<p>That allows the same object to be interpreted as:</p>
+<ul>
+<li>a computational process,</li>
+<li>a circuit,</li>
+<li>a physical layout,</li>
+<li>a fabrication structure,</li>
+<li>and a measurable device.</li>
+</ul>
+<hr>
+<h1 id="4-mapping-matterscript-to-hacker-fab-eda"><a class="header" href="#4-mapping-matterscript-to-hacker-fab-eda">4. Mapping MatterScript to Hacker Fab EDA</a></h1>
+<p>The Hacker Fab already has an EDA effort divided into areas including device modeling and DRC/mask design. The mask automation work uses PHIDL and produces GDSII layouts, while the device-modeling work has explored KiCad and its embedded ngspice simulation environment.</p>
+<p>These become the first two major MatterScript compiler targets.</p>
+<pre><code class="language-text">MatterScript
+      │
+      ▼
+   Matter IR
+      │
+      ├──────────────┐
+      │              │
+      ▼              ▼
+ Circuit IR       Layout IR
+      │              │
+      ▼              ▼
+ KiCad/SPICE      PHIDL
+      │              │
+      ▼              ▼
+  simulation       GDSII
+</code></pre>
+<p>This means that a MatterScript program could eventually describe a physical circuit once and derive both:</p>
+<ol>
+<li>the electrical model used for simulation, and</li>
+<li>the physical geometry used to fabricate it.</li>
+</ol>
+<hr>
+<h1 id="5-the-matter-spice-backend"><a class="header" href="#5-the-matter-spice-backend">5. The <code>matter-spice</code> Backend</a></h1>
+<p>The first circuit-oriented backend should target SPICE.</p>
+<p>The purpose of <code>matter-spice</code> is to lower MatterScript processes into a conventional electrical simulation representation.</p>
+<p>For example:</p>
+<pre><code class="language-text">  input
+    |
+    ▼
+ inverter
+    |
+    ▼
+  output
+</code></pre>
+<p>could produce a SPICE-level representation containing:</p>
+<pre><code class="language-text">VIN
+ |
+ ├── PMOS
+ │
+ └── NMOS
+ |
+GND
+</code></pre>
+<p>The backend should generate a standard netlist rather than inventing a new simulator.</p>
+<p>This allows Hacker Fab developers to continue using existing SPICE infrastructure.</p>
+<p>The resulting pipeline becomes:</p>
+<pre><code class="language-text">main.ms
+   │
+   ▼
+matter-spice
+   │
+   ▼
+circuit.spice
+   │
+   ▼
+ngspice
+   │
+   ▼
+waveforms
+</code></pre>
+<p>The Hacker Fab device-modeling work already uses KiCad and ngspice for circuit simulation, making this a particularly natural integration point.</p>
+<hr>
+<h1 id="6-device-models-as-matterscript-components"><a class="header" href="#6-device-models-as-matterscript-components">6. Device Models as MatterScript Components</a></h1>
+<p>A physical MOSFET is more than a symbol.</p>
+<p>It has:</p>
+<ul>
+<li>geometry,</li>
+<li>material properties,</li>
+<li>process-dependent parameters,</li>
+<li>electrical behavior,</li>
+<li>fabrication constraints,</li>
+<li>and measured characteristics.</li>
+</ul>
+<p>MatterScript can represent this as a component whose behavioral and physical descriptions are connected.</p>
+<p>For example:</p>
+<pre><code class="language-text">device NMOS {
+    geometry {
+        channel_length = 10um
+        channel_width  = 10um
+    }
+
+    terminals {
+        gate
+        source
+        drain
+        body
+    }
+
+    behavior {
+        model = mosfet
+    }
+}
+</code></pre>
+<p>The SPICE backend can interpret <code>behavior</code>.</p>
+<p>The layout backend can interpret <code>geometry</code>.</p>
+<p>The fabrication backend can interpret the process requirements.</p>
+<p>The measurement system can associate measured device data back with the same device identifier.</p>
+<p>This produces a much stronger connection than the traditional separation between schematic symbols and physical layout cells.</p>
+<hr>
+<h1 id="7-the-matter-phidl-backend"><a class="header" href="#7-the-matter-phidl-backend">7. The <code>matter-phidl</code> Backend</a></h1>
+<p>The second major backend should target PHIDL.</p>
+<p>This is particularly appropriate because the Hacker Fab’s mask-generation work already uses PHIDL for programmable mask design. The project has explicitly explored automated component instances, parameterized dimensions, DRC rules, and GDSII export.</p>
+<p>MatterScript geometry can therefore map directly into PHIDL objects.</p>
+<p>For example:</p>
+<pre><code class="language-text">device inverter {
+    position = (100um, 200um)
+
+    nmos {
+        width = 10um
+        length = 2um
+    }
+
+    pmos {
+        width = 20um
+        length = 2um
+    }
+}
+</code></pre>
+<p>could produce a PHIDL cell containing the required polygons.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">MatterScript
+      │
+      ▼
+   Layout IR
+      │
+      ▼
+ matter-phidl
+      │
+      ▼
+ PHIDL geometry
+      │
+      ▼
+    GDSII
+</code></pre>
+<p>The resulting GDSII file becomes the artifact handed to the existing Hacker Fab mask workflow.</p>
+<hr>
+<h1 id="8-geometry-as-a-first-class-compiler-output"><a class="header" href="#8-geometry-as-a-first-class-compiler-output">8. Geometry as a First-Class Compiler Output</a></h1>
+<p>This is where MatterScript differs most strongly from conventional programming languages.</p>
+<p>Suppose the source contains:</p>
+<pre><code class="language-text">A @ (0,0)
+B @ (20um,0)
+C @ (40um,0)
+</code></pre>
+<p>A conventional compiler may regard these positions as irrelevant.</p>
+<p>MatterScript cannot.</p>
+<p>The positions can determine:</p>
+<ul>
+<li>transistor placement,</li>
+<li>routing,</li>
+<li>device spacing,</li>
+<li>proximity,</li>
+<li>mask geometry,</li>
+<li>fabrication constraints,</li>
+<li>process timing,</li>
+<li>and visualization.</li>
+</ul>
+<p>The compiler should therefore preserve them:</p>
+<pre><code class="language-text">Matter IR
+    │
+    ├── logical graph
+    │
+    ├── physical coordinates
+    │
+    ├── device dimensions
+    │
+    └── layer assignments
+</code></pre>
+<p>The PHIDL backend can then construct the corresponding geometry.</p>
+<hr>
+<h1 id="9-drc-as-a-compiler-phase"><a class="header" href="#9-drc-as-a-compiler-phase">9. DRC as a Compiler Phase</a></h1>
+<p>The Hacker Fab’s mask automation work specifically identifies DRC as a future component of the automated layout workflow.</p>
+<p>MatterScript should treat DRC not merely as an external post-processing step, but as a compilation phase.</p>
+<p>The pipeline becomes:</p>
+<pre><code class="language-text">MatterScript
+      │
+      ▼
+Layout IR
+      │
+      ▼
+Geometry generation
+      │
+      ▼
+DRC
+      │
+ ┌────┴────┐
+ │         │
+pass      fail
+ │         │
+ ▼         ▼
+GDSII     compiler error
+</code></pre>
+<p>For example:</p>
+<pre><code class="language-text">error: NMOS source/drain spacing violation
+
+device: M14
+layer: diffusion
+required: &gt;= 4.0um
+actual:    2.7um
+
+source:
+    src/amplifier.ms:184
+</code></pre>
+<p>This is much more useful than reporting an anonymous polygon violation.</p>
+<p>The compiler knows <strong>why the geometry exists</strong>.</p>
+<hr>
+<h1 id="10-from-drc-to-process-rules"><a class="header" href="#10-from-drc-to-process-rules">10. From DRC to Process Rules</a></h1>
+<p>The longer-term goal should be to make fabrication rules part of the MatterScript target description.</p>
+<p>For example:</p>
+<pre><code class="language-text">@process(hackerfab-v1)
+
+rule diffusion_spacing &gt;= 4um
+rule metal_spacing     &gt;= 3um
+rule contact_size      = 5um
+</code></pre>
+<p>These constraints can affect code generation before GDSII exists.</p>
+<p>That makes fabrication constraints analogous to type constraints in a programming language.</p>
+<p>A MatterScript program is not simply:</p>
+<blockquote>
+<p>syntactically valid</p>
+</blockquote>
+<p>It must eventually be:</p>
+<blockquote>
+<p>physically realizable under the selected fabrication process.</p>
+</blockquote>
+<hr>
+<h1 id="11-process-aware-compilation"><a class="header" href="#11-process-aware-compilation">11. Process-Aware Compilation</a></h1>
+<p>A MatterScript design should therefore identify its fabrication process.</p>
+<p>For example:</p>
+<pre><code class="language-text">project amplifier {
+    process = "hackerfab"
+}
+</code></pre>
+<p>The compiler loads the corresponding process description:</p>
+<pre><code class="language-text">process/
+├── layers
+├── dimensions
+├── materials
+├── spacing
+├── device_templates
+├── fabrication_steps
+└── measurement_requirements
+</code></pre>
+<p>The exact process schema can evolve as Hacker Fab’s process documentation evolves.</p>
+<p>This creates a clean separation:</p>
+<pre><code class="language-text">MatterScript design
+        │
+        ▼
+process-independent model
+        │
+        ▼
+Hacker Fab process definition
+        │
+        ▼
+fabricatable layout
+</code></pre>
+<p>The same design could eventually be retargeted to different process variants.</p>
+<hr>
+<h1 id="12-fabrication-as-a-build"><a class="header" href="#12-fabrication-as-a-build">12. Fabrication as a Build</a></h1>
+<p>A particularly powerful consequence is that <strong>fabrication itself can become part of the build graph</strong>.</p>
+<p>Today, a software build might look like:</p>
+<pre><code class="language-text">source
+  ↓
+compile
+  ↓
+link
+  ↓
+binary
+</code></pre>
+<p>A Hacker Fab MatterScript build could look like:</p>
+<pre><code class="language-text">MatterScript
+      ↓
+simulate
+      ↓
+generate layout
+      ↓
+     DRC
+      ↓
+    GDSII
+      ↓
+mask artifact
+      ↓
+fabrication job
+      ↓
+fabricated wafer
+      ↓
+measurement
+</code></pre>
+<p>This does not mean that <code>matter build</code> should automatically turn on a machine.</p>
+<p>Instead, fabrication should become an explicit artifact and job boundary:</p>
+<pre><code class="language-bash">matter build --target gds
+matter verify
+matter package
+matter submit
+</code></pre>
+<p>The final <code>submit</code> operation can create a Hacker Fab machine job.</p>
+<hr>
+<h1 id="13-integration-with-hacker-fab-machine-integration"><a class="header" href="#13-integration-with-hacker-fab-machine-integration">13. Integration With Hacker Fab Machine Integration</a></h1>
+<p>This is where the Hacker Fab’s existing infrastructure becomes especially valuable.</p>
+<p>The Hacker Fab machine-integration project already defines a generalized communication system between the web application and individual fabrication tools. The architecture uses a centralized job queue, APIs, file storage, and local Raspberry Pi controllers.</p>
+<p>The existing model is essentially:</p>
+<pre><code class="language-text">Web Application
+       │
+       ▼
+    Job API
+       │
+       ▼
+   Jobs Queue
+       │
+       ▼
+ Raspberry Pi
+       │
+       ▼
+    Machine
+</code></pre>
+<p>MatterScript can become a producer of those jobs.</p>
+<pre><code class="language-text">MatterScript
+       │
+       ▼
+Fabrication Artifact
+       │
+       ▼
+MatterScript Job Adapter
+       │
+       ▼
+Hacker Fab Jobs API
+       │
+       ▼
+Machine Queue
+       │
+       ▼
+Tool Controller
+       │
+       ▼
+Fabrication Tool
+</code></pre>
+<p>This is much more aligned with the actual Hacker Fab ecosystem than attempting to introduce a completely separate hardware-runtime architecture.</p>
+<hr>
+<h1 id="14-job-artifacts"><a class="header" href="#14-job-artifacts">14. Job Artifacts</a></h1>
+<p>A MatterScript fabrication job should contain both parameters and files.</p>
+<p>For example:</p>
+<pre><code class="language-json">{
+    "machine": "stepper",
+    "input_parameters": {
+        "design": "inverter_v3",
+        "process": "hackerfab-v1",
+        "wafer_id": "wafer-042",
+        "orientation": "default"
+    },
+    "artifacts": {
+        "gds": "uploads/abc123",
+        "manifest": "uploads/def456"
+    }
+}
+</code></pre>
+<p>This matches the Hacker Fab machine-integration architecture, where jobs contain machine-specific input parameters and larger files can be stored externally and referenced through an object-storage key. The documented stepper workflow already uses this general pattern for transferring image files to the machine.</p>
+<p>MatterScript should therefore reuse the same mechanism.</p>
+<p>It should <strong>not invent another file-transfer system</strong>.</p>
+<hr>
+<h1 id="15-the-matter-fab-adapter"><a class="header" href="#15-the-matter-fab-adapter">15. The <code>matter-fab</code> Adapter</a></h1>
+<p>A <code>matter-fab</code> backend can translate a MatterScript build into a Hacker Fab job.</p>
+<p>For example:</p>
+<pre><code class="language-bash">matter fab submit \
+    --machine stepper \
+    --design inverter_v3
+</code></pre>
+<p>The adapter would:</p>
+<ol>
+<li>validate the MatterScript project,</li>
+<li>generate the required layout,</li>
+<li>run DRC,</li>
+<li>generate GDSII,</li>
+<li>generate a fabrication manifest,</li>
+<li>upload large artifacts,</li>
+<li>create a machine job,</li>
+<li>receive the job ID,</li>
+<li>track completion.</li>
+</ol>
+<p>Conceptually:</p>
+<pre><code class="language-text">matter fab submit
+       │
+       ├── compile
+       ├── DRC
+       ├── generate GDSII
+       ├── upload
+       └── POST /jobs
+                    │
+                    ▼
+                 job_id
+</code></pre>
+<p>The Hacker Fab job system already defines concepts such as machine, status, input parameters, output parameters, timestamp, and priority.</p>
+<p>MatterScript can preserve those concepts rather than creating parallel infrastructure.</p>
+<hr>
+<h1 id="16-human-in-the-loop-is-a-feature"><a class="header" href="#16-human-in-the-loop-is-a-feature">16. Human-in-the-Loop Is a Feature</a></h1>
+<p>The Hacker Fab machine-integration documentation explicitly describes a deliberate human-in-the-loop design, including local GUI approval, physical controls, and offline operation.</p>
+<p>MatterScript should preserve this property.</p>
+<p>A submitted fabrication job should therefore have states such as:</p>
+<pre><code class="language-text">GENERATED
+    ↓
+VERIFIED
+    ↓
+QUEUED
+    ↓
+AWAITING_APPROVAL
+    ↓
+RUNNING
+    ↓
+COMPLETED
+</code></pre>
+<p>The compiler should never assume that:</p>
+<pre><code class="language-text">GDSII exists
+</code></pre>
+<p>means:</p>
+<pre><code class="language-text">chip is being fabricated
+</code></pre>
+<p>There is an important physical boundary between software intent and physical action.</p>
+<p>MatterScript can automate the former while leaving the latter explicitly controlled.</p>
+<hr>
+<h1 id="17-the-stepper-as-the-first-demonstration"><a class="header" href="#17-the-stepper-as-the-first-demonstration">17. The Stepper as the First Demonstration</a></h1>
+<p>The Hacker Fab lithography stepper is an especially useful first integration target because the existing machine-integration architecture already demonstrates file-based job submission to a patterning machine.</p>
+<p>The first MatterScript/Hacker Fab demonstration could therefore be extremely concrete:</p>
+<pre><code class="language-text">MatterScript
+     │
+     ▼
+simple transistor layout
+     │
+     ▼
+   PHIDL
+     │
+     ▼
+   GDSII
+     │
+     ▼
+    DRC
+     │
+     ▼
+stepper job
+     │
+     ▼
+physical pattern
+</code></pre>
+<p>This establishes the complete chain without requiring MatterScript to control the fabrication machine directly.</p>
+<hr>
+<h1 id="18-matterscript-and-the-fab-toolchain"><a class="header" href="#18-matterscript-and-the-fab-toolchain">18. MatterScript and the Fab Toolchain</a></h1>
+<p>The larger architecture becomes:</p>
+<pre><code class="language-text">                     MatterScript
+                          │
+                     Matter IR
+                          │
+        ┌─────────────────┼──────────────────┐
+        │                 │                  │
+        ▼                 ▼                  ▼
+    matter-spice     matter-phidl       matter-fab
+        │                 │                  │
+        ▼                 ▼                  ▼
+    KiCad/SPICE        GDSII             Job API
+        │                 │                  │
+        ▼                 ▼                  ▼
+   Device model        Mask data       Fab machine
+        │                 │                  │
+        └─────────────────┼──────────────────┘
+                          ▼
+                    Physical device
+                          │
+                          ▼
+                      Metrology
+                          │
+                          ▼
+                     Measurement
+</code></pre>
+<p>This is the central Hacker Fab integration architecture.</p>
+<hr>
+<h1 id="19-measurement-as-an-input-language"><a class="header" href="#19-measurement-as-an-input-language">19. Measurement as an Input Language</a></h1>
+<p>The final part of the loop is measurement.</p>
+<p>A fabricated transistor might produce:</p>
+<pre><code class="language-text">VGS
+VDS
+IDS
+</code></pre>
+<p>A conventional workflow exports those measurements as CSV files and analyzes them separately.</p>
+<p>MatterScript can instead treat them as a spatial state transition.</p>
+<p>For example:</p>
+<pre><code class="language-text">measurement {
+    device = M14
+
+    sweep {
+        VGS = 0..5V
+        VDS = 0..5V
+    }
+
+    outputs {
+        IDS
+    }
+}
+</code></pre>
+<p>The result can be represented as a MatterScript data structure:</p>
+<pre><code class="language-text">M14:
+    state_0 → state_1
+    state_1 → state_2
+    ...
+</code></pre>
+<p>This creates a direct connection between physical measurement and model inference.</p>
+<hr>
+<h1 id="20-closing-the-loop-with-device-modeling"><a class="header" href="#20-closing-the-loop-with-device-modeling">20. Closing the Loop With Device Modeling</a></h1>
+<p>The Hacker Fab device-modeling work already investigates extracting transistor parameters from electrical data and feeding those parameters back into SPICE models.</p>
+<p>MatterScript can formalize that loop.</p>
+<pre><code class="language-text">Fabricated transistor
+        │
+        ▼
+Electrical measurement
+        │
+        ▼
+Measurement dataset
+        │
+        ▼
+Parameter extraction
+        │
+        ▼
+MatterScript device model
+        │
+        ▼
+SPICE simulation
+        │
+        ▼
+New circuit design
+        │
+        ▼
+New layout
+        │
+        ▼
+New fabrication
+</code></pre>
+<p>This is precisely the sort of iterative, closed-loop hardware development that the Hacker Fab’s design philosophy encourages.</p>
+<hr>
+<h1 id="21-model-free-inference"><a class="header" href="#21-model-free-inference">21. Model-Free Inference</a></h1>
+<p>MatterScript adds another possibility beyond conventional parameter fitting.</p>
+<p>Instead of assuming that the device behavior must conform to a predetermined mathematical model, measured transitions can be treated as observations of a physical state machine.</p>
+<p>For example:</p>
+<pre><code class="language-text">Input State
+     │
+     ▼
+Physical Device
+     │
+     ▼
+Measured State
+</code></pre>
+<p>Repeated observations produce:</p>
+<pre><code class="language-text">A → B
+A → B
+A → C
+A → B
+</code></pre>
+<p>The system can determine:</p>
+<pre><code class="language-text">A → B
+</code></pre>
+<p>as the dominant observed transition while retaining uncertainty around the exceptional transition.</p>
+<p>This provides a bridge between MatterScript’s cellular-automata/model-free inference work and Hacker Fab’s empirical device characterization.</p>
+<p>The physical chip becomes a source of computational rules.</p>
+<hr>
+<h1 id="22-fabrication-tools-as-spatial-computers"><a class="header" href="#22-fabrication-tools-as-spatial-computers">22. Fabrication Tools as Spatial Computers</a></h1>
+<p>This perspective can be extended beyond the chip itself.</p>
+<p>The Hacker Fab consists of physical machines:</p>
+<pre><code class="language-text">Stepper
+Spin Coater
+Evaporator
+Sputtering System
+Furnace
+Etcher
+Probe Station
+</code></pre>
+<p>Each machine has:</p>
+<ul>
+<li>state,</li>
+<li>geometry,</li>
+<li>timing,</li>
+<li>inputs,</li>
+<li>outputs,</li>
+<li>sensors,</li>
+<li>and processes.</li>
+</ul>
+<p>The Hacker Fab’s machine-integration system already treats these tools as programmable devices with jobs and state transitions.</p>
+<p>MatterScript can provide a common representation for those transitions.</p>
+<p>For example:</p>
+<pre><code class="language-text">  wafer_loaded
+       ↓
+      spin
+       ↓
+  coat_complete
+       ↓
+      bake
+       ↓
+    pattern
+       ↓
+   wafer_ready
+</code></pre>
+<p>The same language that describes a computational circuit can therefore describe the workflow that creates that circuit.</p>
+<hr>
+<h1 id="23-from-machine-jobs-to-process-expressions"><a class="header" href="#23-from-machine-jobs-to-process-expressions">23. From Machine Jobs to Process Expressions</a></h1>
+<p>A machine job can be viewed as a MatterScript process.</p>
+<p>For example:</p>
+<pre><code class="language-text">process spin_coat {
+    input:
+        wafer
+
+    parameters:
+        rpm
+        duration
+
+    output:
+        coated_wafer
+}
+</code></pre>
+<p>The Hacker Fab adapter can lower this to:</p>
+<pre><code class="language-text">POST /jobs
+</code></pre>
+<p>with:</p>
+<pre><code class="language-json">{
+    "machine": "spincoater",
+    "input_parameters": {
+        "rpm": 3000,
+        "duration": 30
+    }
+}
+</code></pre>
+<p>The machine controller performs the physical operation and reports:</p>
+<pre><code class="language-text">COMPLETED
+</code></pre>
+<p>The MatterScript runtime then converts that completion into an event.</p>
+<pre><code class="language-text">machine completion
+        │
+        ▼
+  coat_complete
+        │
+        ▼
+  next process
+</code></pre>
+<p>This creates a unified language for both computation and fabrication workflow.</p>
+<hr>
+<h1 id="24-the-fabrication-graph"><a class="header" href="#24-the-fabrication-graph">24. The Fabrication Graph</a></h1>
+<p>At this point, the entire semiconductor-development process can be represented as a graph.</p>
+<pre><code class="language-text">              Device Design
+                   │
+                   ▼
+              Simulation
+                   │
+                   ▼
+                Layout
+                   │
+                   ▼
+                  DRC
+                   │
+                   ▼
+                 Mask
+                   │
+                   ▼
+             Lithography
+                   │
+                   ▼
+               Deposition
+                   │
+                   ▼
+                 Etch
+                   │
+                   ▼
+                Doping
+                   │
+                   ▼
+               Packaging
+                   │
+                   ▼
+              Measurement
+                   │
+                   ▼
+             Device Model
+                   │
+                   └──────────↺
+</code></pre>
+<p>MatterScript’s process model is naturally suited to expressing this graph.</p>
+<p>The difference is that the graph is not merely documentation.</p>
+<p>It becomes executable infrastructure.</p>
+<hr>
+<h1 id="25-repository-structure"><a class="header" href="#25-repository-structure">25. Repository Structure</a></h1>
+<p>A MatterScript project integrated into Hacker Fab should remain compatible with the organization’s existing open-source development practices.</p>
+<p>A proposed project structure is:</p>
+<pre><code class="language-text">project/
+│
+├── src/
+│   ├── devices.ms
+│   ├── circuits.ms
+│   ├── geometry.ms
+│   └── process.ms
+│
+├── process/
+│   ├── hackerfab-v1.toml
+│   ├── layers.toml
+│   └── rules.toml
+│
+├── layout/
+│   ├── generated/
+│   └── gds/
+│
+├── simulation/
+│   ├── spice/
+│   └── data/
+│
+├── fabrication/
+│   ├── manifests/
+│   └── jobs/
+│
+├── measurements/
+│   ├── raw/
+│   └── processed/
+│
+├── build.zig
+└── matter.toml
+</code></pre>
+<p>The generated artifacts should be distinguishable from source artifacts.</p>
+<p>For example:</p>
+<pre><code class="language-text">src/       ← human-authored MatterScript
+process/   ← fabrication knowledge
+layout/    ← generated physical design
+simulation/← generated/experimental electrical models
+fabrication/← machine-job artifacts
+measurements/← empirical results
+</code></pre>
+<hr>
+<h1 id="26-reproducibility"><a class="header" href="#26-reproducibility">26. Reproducibility</a></h1>
+<p>Reproducibility is especially important in semiconductor fabrication.</p>
+<p>Every MatterScript build should record:</p>
+<pre><code class="language-text">source revision
+compiler version
+process version
+DRC rules
+device models
+layout generator version
+GDSII checksum
+simulation parameters
+fabrication job ID
+wafer/device identifiers
+measurement dataset
+</code></pre>
+<p>A build manifest could therefore connect software and physical artifacts:</p>
+<pre><code class="language-json">{
+    "design": "inverter-v3",
+    "source_revision": "abc123",
+    "process": "hackerfab-v1",
+    "layout": "sha256:...",
+    "simulation": "sha256:...",
+    "fabrication_job": "HF-004281",
+    "wafer": "W12",
+    "devices": ["M14", "M15"],
+    "measurement_dataset": "measurements/W12.csv"
+}
+</code></pre>
+<p>This is important because the physical artifact cannot be reproduced merely from the source code if the process version and layout rules have changed.</p>
+<hr>
+<h1 id="27-open-source-compatibility"><a class="header" href="#27-open-source-compatibility">27. Open-Source Compatibility</a></h1>
+<p>The Hacker Fab uses a deliberately open licensing structure: hardware contributions default to CERN-OHL-W, software to MPL-2.0, and documentation to CC BY-SA 4.0, subject to the project’s contribution and provenance rules.</p>
+<p>MatterScript integration should respect that structure.</p>
+<p>The compiler itself can remain a software project.</p>
+<p>Generated hardware can carry appropriate attribution and licensing metadata.</p>
+<p>Documentation can reference the corresponding MatterScript source and generated artifacts.</p>
+<p>A generated design manifest could therefore contain:</p>
+<pre><code class="language-text">source_license
+hardware_license
+documentation_license
+upstream_components
+</code></pre>
+<p>This is especially important when MatterScript begins generating reusable physical components.</p>
+<hr>
+<h1 id="28-the-first-practical-prototype"><a class="header" href="#28-the-first-practical-prototype">28. The First Practical Prototype</a></h1>
+<p>The complete architecture is deliberately larger than the first implementation.</p>
+<p>The first Hacker Fab/MatterScript prototype should be much smaller.</p>
+<p>The recommended milestone is:</p>
+<pre><code class="language-text">MatterScript
+      │
+      ▼
+simple NMOS/inverter model
+      │
+      ├──────────────► SPICE
+      │                  │
+      │                  ▼
+      │              simulation
+      │
+      └──────────────► PHIDL
+                         │
+                         ▼
+                       GDSII
+                         │
+                         ▼
+                        DRC
+</code></pre>
+<p>Once this works, add:</p>
+<pre><code class="language-text">Phase 1
+    MatterScript → SPICE
+
+Phase 2
+    MatterScript → PHIDL → GDSII
+
+Phase 3
+    MatterScript → DRC-aware GDSII
+
+Phase 4
+    GDSII → Hacker Fab machine job
+
+Phase 5
+    Machine completion → MatterScript event
+
+Phase 6
+    Physical measurement → MatterScript dataset
+
+Phase 7
+    Measurement → model inference
+
+Phase 8
+    Model → next design iteration
+</code></pre>
+<p>The important thing is that every phase reuses the same semantic model.</p>
+<hr>
+<h1 id="29-the-complete-hacker-fabmatterscript-loop"><a class="header" href="#29-the-complete-hacker-fabmatterscript-loop">29. The Complete Hacker Fab/MatterScript Loop</a></h1>
+<p>The finished architecture looks like this:</p>
+<pre><code class="language-text">                         MatterScript
+                              │
+                              ▼
+                    Space-Time Model
+                              │
+                              ▼
+                    Matter Intermediate
+                       Representation
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+          ▼                   ▼                   ▼
+      Circuit IR          Layout IR          Process IR
+          │                   │                   │
+          ▼                   ▼                   ▼
+       SPICE              PHIDL/GDSII        Fab Jobs
+          │                   │                   │
+          ▼                   ▼                   ▼
+     Simulation             DRC             Hacker Fab
+                                                  │
+                                                  ▼
+                                             Fabrication
+                                                  │
+                                                  ▼
+                                              Metrology
+                                                  │
+                                                  ▼
+                                            Measurement
+                                                  │
+                                                  ▼
+                                         Model Inference
+                                                  │
+                                                  ▼
+                                           Device Model
+                                                  │
+                                                  └──────↺
+</code></pre>
+<p>This is the deeper purpose of the integration.</p>
+<p>MatterScript does not merely provide another way to draw a circuit.</p>
+<p>It provides a <strong>computational representation of the relationship between the circuit, its geometry, its fabrication process, and its observed physical behavior.</strong></p>
+<p>The Hacker Fab already supplies the physical infrastructure necessary to close that loop: programmable mask generation, simulation and device modeling, fabrication tools, machine integration, measurement, and a documentation culture centered around reproducible open hardware.</p>
+<p>MatterScript can provide the missing connective tissue.</p>
+<blockquote>
+<p><strong>The design is a process.
+The process has geometry.
+The geometry becomes a device.
+The device becomes a measurement.
+The measurement becomes knowledge.
+And the knowledge becomes the next design.</strong></p>
+</blockquote>
+<p>That is the Hacker Fab integration target for MatterScript.</p>
+<p><em>Drafting in progress…</em></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part-12-complete-projects/03-model-free-inference.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../part-12-complete-projects/05-autonomous-vehicle-sensor-model.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part-12-complete-projects/03-model-free-inference.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../part-12-complete-projects/05-autonomous-vehicle-sensor-model.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-09f2665d.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../grammars/matterscript-ed785eae.js"></script>
+
+
+
+    </div>
+    </body>
+</html>
