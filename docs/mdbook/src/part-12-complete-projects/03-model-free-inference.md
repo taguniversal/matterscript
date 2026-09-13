@@ -7,7 +7,7 @@ Theory-free (or model-free) inference in Cellular Automata (CA) involves discove
 
 **1. Dynamic Process Reconstruction from Spatial Observations**
 
-* **Observed State to Invocation Syntax:** Instead of hand-authoring process expressions or 2NCL (Null Convention Logic) transition tables, MatterScript can use spatial snapshots of physical/digital state updates ($C_t \rightarrow C_{t+1}$) to synthesize its local transition logic on the fly.
+* **Observed State to Invocation Syntax:** Instead of hand-authoring process expressions or 2NCL (Null Convention Logic) transition tables, MatterScript can use spatial snapshots of physical/digital state updates (C<sub>t</sub> &rarr; C<sub>t+1</sub) to synthesize its local transition logic on the fly.
 * **Agnostic Logic Synthesis:** The compiler or runtime can treat unknown physical cellular environments as a black box, extracting the minimal spatial lookup table or asynchronous firing rules required to replicate observed state propagation.
 
 **2. Runtime Adaptive Hardware & Self-Healing Logic**
@@ -23,6 +23,6 @@ Theory-free (or model-free) inference in Cellular Automata (CA) involves discove
 **4. Dual-Rail & Asynchronous Constraint Inference**
 
 * **Probabilistic to Deterministic Mapping:** Since asynchronous logic relies on completion signals and valid/null state transitions, theory-free inference can observe raw spatial state sequences to identify valid neighborhood transitions and generate noise-tolerant, hazard-free asynchronous state machines automatically.
-* **Neighborhood Scale Reduction:** Inference algorithms can iteratively evaluate the minimal necessary spatial radius ($r$) and state depth ($k$) required for a local process expression, minimizing the fan-in and lookup table size on hardware target blocks.
+* **Neighborhood Scale Reduction:** Inference algorithms can iteratively evaluate the minimal necessary spatial radius (\(r\)) and state depth (\(k\))  required for a local process expression, minimizing the fan-in and lookup table size on hardware target blocks.
 
 *Drafting in progress...*
