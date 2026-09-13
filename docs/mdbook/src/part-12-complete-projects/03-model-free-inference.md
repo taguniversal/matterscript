@@ -23,6 +23,6 @@ Theory-free (or model-free) inference in Cellular Automata (CA) involves discove
 **4. Dual-Rail & Asynchronous Constraint Inference**
 
 * **Probabilistic to Deterministic Mapping:** Since asynchronous logic relies on completion signals and valid/null state transitions, theory-free inference can observe raw spatial state sequences to identify valid neighborhood transitions and generate noise-tolerant, hazard-free asynchronous state machines automatically.
-* **Neighborhood Scale Reduction:** Inference algorithms can iteratively evaluate the minimal necessary spatial radius (\(r\)) and state depth (\(k\))  required for a local process expression, minimizing the fan-in and lookup table size on hardware target blocks.
+* **Neighborhood Scale Reduction:** Inference algorithms can iteratively evaluate the minimal necessary spatial radius (\(r\)) and state depth (\(k\)) required for a local process expression, minimizing the fan-in and lookup table size on hardware target blocks.
 
 *Drafting in progress...*
