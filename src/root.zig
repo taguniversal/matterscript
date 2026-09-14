@@ -17,6 +17,7 @@ pub const core = @import("dialects/ipl/parser/core.zig");
 pub const evaluator = @import("dialects/ipl/vhdl/evaluator.zig");
 pub const workspace = @import("common/workspace.zig");
 pub const lookup = @import("dialects/ipl/vhdl/lookup.zig");
+pub const spatial  = @import("dialects/geo/spatial.zig");
 
 test {
     std.testing.refAllDecls(@This());
