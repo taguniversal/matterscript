@@ -1,6 +1,8 @@
 const std = @import("std");
 const matterscript = @import("matterscript");
 const directives = matterscript.directives;
+const network = matterscript.network;
+
 const core = matterscript.core;
 
 test "parseNeighborhoodRulesBlock - valid rules" {
@@ -28,13 +30,13 @@ test "parseNeighborhoodRulesBlock - valid rules" {
 
 test "parseDomainDirective - valid spatial2d" {
     const allocator = std.testing.allocator;
-    const src = "@domain(spatial2d, size: [64, 32])";
+    const src = "(spatial2d, size: [64, 32])";
     var p = core.Parser.init(allocator, src);
 
-    const domain = try directives.parseDomainDirective(&p);
+    const domain = try network.parseDomainSpec(&p);
 
     try std.testing.expectEqual(domain.kind, .spatial2d);
-    
+
     if (domain.size) |size| {
         try std.testing.expectEqual(size[0], 64);
         try std.testing.expectEqual(size[1], 32);
@@ -45,9 +47,9 @@ test "parseDomainDirective - valid spatial2d" {
 
 test "parseDomainDirective - unknown domain kind" {
     const allocator = std.testing.allocator;
-    const src = "@domain(hypercube, size: [10, 10])";
+    const src = "(hypercube, size: [10, 10])";
     var p = core.Parser.init(allocator, src);
 
-    const result = directives.parseDomainDirective(&p);
+    const result = network.parseDomainSpec(&p);
     try std.testing.expectError(error.UnknownDomainKind, result);
 }

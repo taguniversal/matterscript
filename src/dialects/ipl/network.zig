@@ -22,10 +22,8 @@
 //   Missing table entries remain NULL indefinitely — no error, no completion.
 
 const std = @import("std");
-const matterscript = @import("matterscript");
 
-const core = matterscript.core;
-const network = matterscript.network;
+const core = @import("parser/core.zig");
 
 pub const SpatialDomainKind = enum {
     spatial1d,
@@ -47,14 +45,14 @@ pub const DomainSpec = struct {
     value_bounds: ?ValueBounds = null,
 };
 
-pub fn parseDomainSpec(p: *core.Parser) !network.DomainSpec {
+pub fn parseDomainSpec(p: *core.Parser) !DomainSpec {
     // 1. Consume opening parenthesis: '('
     try p.expect('(');
     p.skipWhitespaceAndComments();
 
     // 2. Read domain kind string: "spatial1d", "spatial2d", "spatial3d"
     const kind_str = try p.readName();
-    const kind: network.SpatialDomainKind = if (std.mem.eql(u8, kind_str, "spatial1d"))
+    const kind: SpatialDomainKind = if (std.mem.eql(u8, kind_str, "spatial1d"))
         .spatial1d
     else if (std.mem.eql(u8, kind_str, "spatial2d"))
         .spatial2d
@@ -66,7 +64,7 @@ pub fn parseDomainSpec(p: *core.Parser) !network.DomainSpec {
     p.skipWhitespaceAndComments();
 
     var size: ?[2]usize = null;
-    var value_bounds: ?struct { min: i64, max: i64 } = null;
+    var value_bounds: ?ValueBounds = null;
 
     // 3. Parse optional named parameters (e.g., `, size: [300, 500]` or `, range: [0, 15]`)
     while (p.peek() == ',') {
@@ -107,16 +105,14 @@ pub fn parseDomainSpec(p: *core.Parser) !network.DomainSpec {
             p.skipWhitespaceAndComments();
 
             // Read min bound
-            const min_str = try p.readName();
-            const min_val = try std.fmt.parseInt(i64, min_str, 10);
+            const min_val = try p.readInteger();
             p.skipWhitespaceAndComments();
 
             try p.expect(',');
             p.skipWhitespaceAndComments();
 
             // Read max bound
-            const max_str = try p.readName();
-            const max_val = try std.fmt.parseInt(i64, max_str, 10);
+            const max_val = try p.readInteger();
             p.skipWhitespaceAndComments();
 
             try p.expect(']');
@@ -130,7 +126,7 @@ pub fn parseDomainSpec(p: *core.Parser) !network.DomainSpec {
 
     try p.expect(')');
 
-    return network.DomainSpec{
+    return DomainSpec{
         .kind = kind,
         .size = size,
         .value_bounds = value_bounds,

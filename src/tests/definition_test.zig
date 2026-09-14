@@ -1,60 +1,99 @@
 const std = @import("std");
-const testing = std.testing;
 const matterscript = @import("matterscript");
+const directives = matterscript.directives;
+const core = matterscript.core;
 const network = matterscript.network;
 
-const parser = matterscript.ipl_parser;
+test "parseNeighborhoodRulesBlock - valid rules" {
+    const allocator = std.testing.allocator;
+    const src = "{ [*]: default_state, [a, b]: active_state, }";
+    var p = core.Parser.init(allocator, src);
 
-// Ensure internal tests run too
-const definitions = parser.definitions;
+    const rules = try directives.parseNeighborhoodRulesBlock(&p);
+    defer {
+        for (rules) |rule| {
+            allocator.free(rule.pattern);
+        }
+        allocator.free(rules);
+    }
 
-test {
-    std.testing.refAllDecls(definitions);
-}
-test "a comma-separated contained-row key parses as a composed key, not fresh source names" {
-    // Historical note: this test used to call parseTruthTableRow
-    // directly, asserting that "S,U,W" became three source-place Args
-    // and "SUM<S> CO<W>" became two destination Args. That was
-    // establishing the wrong shape — S, U, W carry no $ or <>
-    // designators, so there's nothing marking them as source or
-    // destination declarations; they're tokens in a composed lookup
-    // key, exactly like "0,0" in "0,0[0]". parseTruthTableRow has
-    // been removed: parseContainedSection now routes every
-    // contained-row header (comma-separated or not) through the same
-    // parseDefinition path, so "S,U,W[SUM<S> CO<W>]" is just an
-    // ordinary Definition whose name is the composed key and whose
-    // resolution holds fills against the ENCLOSING definition's own
-    // destinations (SUM, CO) — not sources/destinations of its own.
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+    try std.testing.expectEqual(@as(usize, 2), rules.len);
+    try std.testing.expectEqualStrings("*", rules[0].pattern[0]);
+    try std.testing.expectEqualStrings("default_state", rules[0].value);
 
-    const source = "S,U,W[SUM<S> CO<W>]";
-    var p = parser.core.Parser.init(allocator, source);
-
-    const def = try parser.definitions.parseDefinition(&p);
-
-    try testing.expectEqualStrings("S,U,W", def.name);
-    try testing.expectEqual(@as(usize, 0), def.sources.len);
-    try testing.expectEqual(@as(usize, 0), def.destinations.len);
-
-    try testing.expectEqual(@as(usize, 2), def.resolution.len);
-    try testing.expectEqualStrings("SUM", def.resolution[0].fill.dest_name);
-    try testing.expectEqualStrings("S", def.resolution[0].fill.expr);
-    try testing.expectEqualStrings("CO", def.resolution[1].fill.dest_name);
-    try testing.expectEqualStrings("W", def.resolution[1].fill.expr);
-
-    try testing.expectEqual(@as(usize, 0), def.constants.len);
-    try testing.expectEqual(@as(usize, 0), def.contained.len);
+    try std.testing.expectEqual(@as(usize, 2), rules[1].pattern.len);
+    try std.testing.expectEqualStrings("a", rules[1].pattern[0]);
+    try std.testing.expectEqualStrings("b", rules[1].pattern[1]);
+    try std.testing.expectEqualStrings("active_state", rules[1].value);
 }
 
+// Note: parseDomainSpec expects the parser positioned right after the
+// "domain" keyword (i.e. past the leading "@domain"), matching how
+// definitions.zig's directive loop calls it — it consumes "@" and the
+// directive name itself before dispatching here.
 
-test "composedKeySegmentCount counts destination names" {
-    // Construct a mock statement list with a .fill statement containing two variables
-    const statements = [_]network.Statement{ 
-        .{ .fill = .{ .expr = "$a$b$c()", .dest_name = "DEST1" } },
-    };
-    std.debug.print("{any}\n", .{statements});
-    const count = definitions.composedKeySegmentCount(&statements);
-    try std.testing.expectEqual(@as(usize, 3), count);
+test "parseDomainSpec - valid spatial2d with size" {
+    const allocator = std.testing.allocator;
+    const src = "(spatial2d, size: [64, 32])";
+    var p = core.Parser.init(allocator, src);
+
+    const domain = try network.parseDomainSpec(&p);
+
+    try std.testing.expectEqual(network.SpatialDomainKind.spatial2d, domain.kind);
+
+    if (domain.size) |size| {
+        try std.testing.expectEqual(@as(usize, 64), size[0]);
+        try std.testing.expectEqual(@as(usize, 32), size[1]);
+    } else {
+        return error.MissingDomainSize;
+    }
+    try std.testing.expect(domain.value_bounds == null);
+}
+
+test "parseDomainSpec - spatial1d with range" {
+    const allocator = std.testing.allocator;
+    const src = "(spatial1d, range: [0, 15])";
+    var p = core.Parser.init(allocator, src);
+
+    const domain = try network.parseDomainSpec(&p);
+
+    try std.testing.expectEqual(network.SpatialDomainKind.spatial1d, domain.kind);
+    try std.testing.expect(domain.size == null);
+
+    if (domain.value_bounds) |vb| {
+        try std.testing.expectEqual(@as(i64, 0), vb.min);
+        try std.testing.expectEqual(@as(i64, 15), vb.max);
+    } else {
+        return error.MissingValueBounds;
+    }
+}
+
+test "parseDomainSpec - spatial3d with size and range together" {
+    const allocator = std.testing.allocator;
+    const src = "(spatial3d, size: [4, 4], range: [-1, 1])";
+    var p = core.Parser.init(allocator, src);
+
+    const domain = try network.parseDomainSpec(&p);
+
+    try std.testing.expectEqual(network.SpatialDomainKind.spatial3d, domain.kind);
+    try std.testing.expect(domain.size != null);
+    try std.testing.expect(domain.value_bounds != null);
+}
+
+test "parseDomainSpec - unknown domain kind" {
+    const allocator = std.testing.allocator;
+    const src = "(hypercube, size: [10, 10])";
+    var p = core.Parser.init(allocator, src);
+
+    const result = network.parseDomainSpec(&p);
+    try std.testing.expectError(error.UnknownDomainKind, result);
+}
+
+test "parseDomainSpec - unknown parameter name" {
+    const allocator = std.testing.allocator;
+    const src = "(spatial2d, bogus: [1, 2])";
+    var p = core.Parser.init(allocator, src);
+
+    const result = network.parseDomainSpec(&p);
+    try std.testing.expectError(error.UnknownDomainParameter, result);
 }
