@@ -47,7 +47,7 @@
 
 # Part V: Geometry Becomes Code
 - [Introduction](part-05-geometry-becomes-code/index.md)
-- [Meshes](part-05-geometry-becomes-code/01-meshes.md)
+- [Spatial Domains](part-05-geometry-becomes-code/01-spatial-domains.md)
 - [Vertices](part-05-geometry-becomes-code/02-vertices.md)
 - [Cell Placement](part-05-geometry-becomes-code/03-cell-placement.md)
 - [Conformal Projection](part-05-geometry-becomes-code/04-conformal-projection.md)

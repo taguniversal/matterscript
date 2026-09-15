@@ -1,3 +1,0 @@
-# Meshes
-
-*Drafting in progress...*

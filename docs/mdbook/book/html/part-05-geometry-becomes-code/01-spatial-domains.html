@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Meshes - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
+        <title>Spatial Domains - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
 
 
         <!-- Custom HTML head -->
@@ -37,10 +37,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-66181a7f.js";
+            window.path_to_searchindex_js = "../searchindex-c9c7cc5d.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-12f9a3fc.js"></script>
+        <script src="../toc-c4fc1cba.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,7 +176,186 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="meshes"><a class="header" href="#meshes">Meshes</a></h1>
+                        <h1 id="spatial-domains-geometry-construction-inside-ipl"><a class="header" href="#spatial-domains-geometry-construction-inside-ipl">Spatial Domains: Geometry Construction Inside IPL</a></h1>
+<h2 id="1-motivation"><a class="header" href="#1-motivation">1. Motivation</a></h2>
+<p>The Invocation Language describes causal relationships — completeness, fills,
+invocations — with no inherent notion of space. Some definitions, however,
+need to describe <em>where</em> things are: point coordinates, connectivity between
+points, and eventually surfaces and volumes. Rather than inventing a second
+language for this, MatterScript extends IPL’s existing <code>@domain</code> directive so
+that a definition can bring a small set of geometry-construction functions
+into scope, and lets those functions build up a <strong>parallel, loosely linked
+geometry graph</strong> alongside the definition’s ordinary causal-network AST.</p>
+<p>The two ASTs are kept deliberately separate:</p>
+<ul>
+<li>The <strong>IPL network AST</strong> (<code>network.Definition</code>, <code>network.Statement</code>, …)
+is unchanged by any of this. No new grammar, no new statement kinds.</li>
+<li>The <strong>spatial graph</strong> (<code>spatial.SpatialGraph</code> — points, edges, loops,
+faces) is built by a resolution pass that walks an already-parsed
+definition and interprets certain fills as geometry calls.</li>
+</ul>
+<p>How the two ASTs are eventually drawn together at emission time (VHDL or
+otherwise) is future work and is explicitly out of scope for this document.
+This article covers parsing and resolution only.</p>
+<h2 id="2-scoping-domain-brings-functions-into-scope"><a class="header" href="#2-scoping-domain-brings-functions-into-scope">2. Scoping: <code>@domain</code> brings functions into scope</a></h2>
+<p>A definition already declares its domain once, in its header:</p>
+<pre><code>Shape[
+  ()
+  ()
+  @domain(spatial3d)
+  ...
+]
+</code></pre>
+<p><code>@domain(spatial2d | spatial3d)</code> is existing IPL syntax
+(<code>network.parseDomainSpec</code>), previously used only to parametrize
+cellular-automata generate blocks. It now does double duty: when a
+definition’s <code>domain_spec.kind</code> is <code>spatial2d</code> or <code>spatial3d</code>, that
+definition’s resolution body is understood to have a set of
+domain-specific geometry functions in scope — currently <code>point</code> and
+<code>edge</code> (see §5 for what’s deliberately not covered yet).</p>
+<p>This means there is no per-statement annotation to sprinkle through a
+definition’s body. The domain is declared once, at the top, exactly like
+any other <code>@domain</code> usage already in the language.</p>
+<p><code>spatial1d</code> is <strong>not</strong> a geometry domain — it remains scoped to its
+existing cellular-automata usage and has no function registry. Declaring
+<code>@domain(spatial1d)</code> and then calling <code>point(...)</code> inside it is treated as
+an ordinary (undefined-function) fill, not a geometry binding.</p>
+<h2 id="3-binding-geometry-calls-are-ordinary-fills"><a class="header" href="#3-binding-geometry-calls-are-ordinary-fills">3. Binding: geometry calls are ordinary fills</a></h2>
+<p>No new syntax was introduced for defining a geometry entity. This is
+already-legal IPL:</p>
+<pre><code>p0&lt;point(0.0, 0.0, 0.0)&gt;
+</code></pre>
+<p>This is parsed today as an ordinary <code>Statement.fill</code>:</p>
+<pre><code>dest_name: "p0"
+expr:      "point(0.0, 0.0, 0.0)"
+parsed_expr: Expr{ kind: .call, func: "point", args: [...] }
+</code></pre>
+<p>The IPL parser (<code>expressions.parseILExpr</code>) already recognizes
+<code>name(args...)</code> inside <code>&lt;...&gt;</code> and produces a structured <code>.call</code>
+expression — this was true before any of the spatial-domain work began.
+The resolution pass (§6) is what gives that structure new meaning when
+the enclosing definition is domain-scoped to <code>spatial2d</code>/<code>spatial3d</code> and
+the call’s function name matches something in the registry; outside that
+context, the exact same syntax continues to behave exactly as it always
+has.</p>
+<h2 id="4-reference-name-connects-to-an-existing-binding"><a class="header" href="#4-reference-name-connects-to-an-existing-binding">4. Reference: <code>$name</code> connects to an existing binding</a></h2>
+<p>To connect a new geometry call to a point (or other entity) defined
+earlier in the same definition, use <code>$name</code> — the same sigil IPL already
+uses everywhere else to mean “look this up” rather than “declare this”
+(composed table keys, generate-block variables, ordinary fill
+expressions):</p>
+<pre><code>p0&lt;point(0.0, 0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0, 0.0)&gt;
+e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p><code>$p0</code> and <code>$p1</code> parse as <code>.variable</code> expression nodes (distinct from the
+<code>.constant</code> nodes that plain numeric literals produce — see §7), and the
+resolution pass looks them up in the definition’s geometry-binding table
+built so far.</p>
+<h2 id="5-binding-semantics-define-once-reference-many-times"><a class="header" href="#5-binding-semantics-define-once-reference-many-times">5. Binding semantics: define once, reference many times</a></h2>
+<p>A name may be bound to a geometry handle <strong>exactly once</strong>. After that
+first binding, it is immutable — later statements may reference it via
+<code>$name</code> as many times as needed (to build further edges, and eventually
+loops and faces through it), but nothing may redefine what <code>p0</code> refers to.</p>
+<p>Concretely:</p>
+<ul>
+<li>The first <code>p0&lt;point(...)&gt;</code> encountered binds <code>p0</code> to a new
+<code>spatial.PointId</code> in the resolution pass’s binding table.</li>
+<li>Any later <code>$p0</code> reference resolves to that same handle.</li>
+<li>A second <code>p0&lt;point(...)&gt;</code> statement — an attempt to rebind an
+already-bound name — is rejected with <code>error.DuplicateGeometryBinding</code>,
+not silently overwritten and not silently ignored.</li>
+</ul>
+<p>This mirrors ordinary single-assignment conventions and matches how a
+geometry graph is naturally authored: declare the points that matter,
+then wire connectivity between them by reference, without ever having to
+worry that a later statement quietly changed what an earlier name meant.</p>
+<h2 id="6-resolution-a-single-top-to-bottom-pass"><a class="header" href="#6-resolution-a-single-top-to-bottom-pass">6. Resolution: a single top-to-bottom pass</a></h2>
+<p>Geometry binding happens in a dedicated resolution pass
+(<code>spatial_domain.resolveSpatialBindings</code>), run over an already-parsed
+<code>network.Definition</code> — it does not run during parsing, and it does not
+alter the parser’s output. The pass:</p>
+<ol>
+<li>Confirms <code>def.domain_spec</code> is <code>spatial2d</code> or <code>spatial3d</code> (returns
+<code>error.UnsupportedSpatialDomain</code> for <code>spatial1d</code>, <code>error.MissingDomainSpec</code>
+if there’s no domain at all).</li>
+<li>Walks <code>def.resolution</code> in source order. For each <code>.fill</code> statement
+whose <code>parsed_expr</code> is a <code>.call</code> matching a name in the domain’s
+function registry, it dispatches to that function’s handler, which
+builds the corresponding entity in a <code>spatial.SpatialGraph</code> and
+returns a <code>GeometryHandle</code>.</li>
+<li>Records the handle against the fill’s <code>dest_name</code> in a
+<code>std.StringHashMapUnmanaged(GeometryHandle)</code> binding table — this
+table, together with the <code>SpatialGraph</code>, is the definition’s
+“geometry AST,” addressed by the same names the IPL source uses.</li>
+<li>Fill statements whose call name isn’t in the registry are left
+untouched, for ordinary fill-resolution logic elsewhere to handle.</li>
+</ol>
+<p>Because this is a single forward pass, <strong>a name must be bound before it
+is referenced</strong>. <code>edge($p0, $p1)</code> written before either point is defined
+is a forward reference and is not currently supported — <code>$p0</code> would
+resolve against an empty binding table and fail with
+<code>error.UndefinedGeometryReference</code>. This matches how CAD/geometry source
+is naturally written (points, then the things that connect them), so in
+practice it isn’t a real constraint on authoring — just documented here
+since it isn’t enforced by any grammar rule, only by pass order.</p>
+<h2 id="7-argument-shapes"><a class="header" href="#7-argument-shapes">7. Argument shapes</a></h2>
+<p>Two argument shapes matter for the currently-implemented functions:</p>
+<ul>
+<li><strong>Numeric literals</strong> (<code>point(0.0, 0.0, 0.0)</code>’s arguments) arrive as
+<code>Expr{ .kind = .constant, .name = "0.0" }</code> — the raw text, not a
+pre-parsed number. <code>resolveCoord</code> parses this with
+<code>std.fmt.parseFloat(f64, ...)</code>. This is a property of
+<code>parseILCallArgument</code>, not something specific to the spatial domain —
+worth knowing if you add a function whose arguments need different
+types.</li>
+<li><strong>Name references</strong> (<code>edge($p0, $p1)</code>’s arguments) arrive as
+<code>Expr{ .kind = .variable, .name = "p0" }</code>. <code>resolvePointRef</code> looks the
+name up in the binding table and type-checks that the bound handle is
+the kind the function expects (e.g. <code>edge</code> requires two <code>.point</code>
+handles, not <code>.edge</code> handles).</li>
+</ul>
+<h2 id="8-current-scope-and-whats-deliberately-not-decided-yet"><a class="header" href="#8-current-scope-and-whats-deliberately-not-decided-yet">8. Current scope and what’s deliberately not decided yet</a></h2>
+<p>Implemented today: <code>point</code> and <code>edge</code>, for <code>spatial2d</code> and <code>spatial3d</code>
+domains, with the binding/reference/immutability rules above.</p>
+<p>Explicitly <strong>not yet designed</strong>:</p>
+<ul>
+<li><strong><code>loop</code> and <code>face</code>.</strong> Fant-style nested calls already parse fine
+syntactically (<code>loop(edge(...), edge(...))</code> — arbitrarily deep nesting
+is already supported by <code>parseILCallArgument</code>), but whether <code>loop</code>
+should take inline anonymous edge calls versus <code>$</code>-references to
+previously bound edges (<code>loop($e0, $e1, $e2)</code>) is an open design
+question, not a parsing limitation. This will get its own pass once
+decided.</li>
+<li><strong>Emission.</strong> Nothing here produces VHDL or any other output yet. The
+geometry graph exists purely as an in-memory resolution artifact
+alongside the IPL network AST. How (or whether) the two get drawn
+together for hardware emission is separate, later work.</li>
+<li><strong>Cross-definition references.</strong> The binding table is scoped to a
+single definition’s resolution pass; there’s no mechanism yet for one
+definition’s geometry to reference another’s.</li>
+</ul>
+<h2 id="9-example-a-unit-square"><a class="header" href="#9-example-a-unit-square">9. Example: a unit square</a></h2>
+<pre><code>Shape[
+  ()
+  ($result)
+  @domain(spatial2d)
+
+  p0&lt;point(0.0, 0.0)&gt;
+  p1&lt;point(1.0, 0.0)&gt;
+  p2&lt;point(1.0, 1.0)&gt;
+  p3&lt;point(0.0, 1.0)&gt;
+
+  e0&lt;edge($p0, $p1)&gt;
+  e1&lt;edge($p1, $p2)&gt;
+  e2&lt;edge($p2, $p3)&gt;
+  e3&lt;edge($p3, $p0)&gt;
+]
+</code></pre>
+<p>After resolution, <code>SpatialGraph</code> holds 4 points and 4 edges, and the
+binding table maps <code>p0</code>–<code>p3</code> and <code>e0</code>–<code>e3</code> to their respective handles —
+ready for a future <code>loop</code>/<code>face</code> pass to close this into a boundary, once
+that design is settled.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>
