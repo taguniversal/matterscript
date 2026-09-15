@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c9c7cc5d.js";
+            window.path_to_searchindex_js = "../searchindex-eb089fe2.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-c4fc1cba.js"></script>
@@ -179,13 +179,11 @@
                         <h1 id="spatial-domains-geometry-construction-inside-ipl"><a class="header" href="#spatial-domains-geometry-construction-inside-ipl">Spatial Domains: Geometry Construction Inside IPL</a></h1>
 <h2 id="1-motivation"><a class="header" href="#1-motivation">1. Motivation</a></h2>
 <p>The Invocation Language describes causal relationships — completeness, fills,
-invocations — with no inherent notion of space. Some definitions, however,
-need to describe <em>where</em> things are: point coordinates, connectivity between
-points, and eventually surfaces and volumes. Rather than inventing a second
-language for this, MatterScript extends IPL’s existing <code>@domain</code> directive so
-that a definition can bring a small set of geometry-construction functions
-into scope, and lets those functions build up a <strong>parallel, loosely linked
-geometry graph</strong> alongside the definition’s ordinary causal-network AST.</p>
+invocations — with no inherent notion of space.
+Some definitions, however, need to describe <em>where</em> things are: point coordinates, connectivity between
+points, and eventually surfaces and volumes.
+Rather than inventing a second language for this, MatterScript introduces the <code>@domain</code> directive so
+that a definition can bring a set of domain specific functions into scope, in this case for geometry-construction, and lets those functions build up a <strong>parallel, loosely linked geometry graph</strong> alongside the definition’s ordinary causal-network AST.</p>
 <p>The two ASTs are kept deliberately separate:</p>
 <ul>
 <li>The <strong>IPL network AST</strong> (<code>network.Definition</code>, <code>network.Statement</code>, …)
@@ -318,15 +316,38 @@ handles, not <code>.edge</code> handles).</li>
 <h2 id="8-current-scope-and-whats-deliberately-not-decided-yet"><a class="header" href="#8-current-scope-and-whats-deliberately-not-decided-yet">8. Current scope and what’s deliberately not decided yet</a></h2>
 <p>Implemented today: <code>point</code> and <code>edge</code>, for <code>spatial2d</code> and <code>spatial3d</code>
 domains, with the binding/reference/immutability rules above.</p>
+<pre><code class="language-matterscript">  mobius_strip[()($f0, $f1, $f2, $f3) 
+    @domain(spatial3d)
+    // 1. Instantiating internal point sources (p0..p7)
+    p0&lt; point(1.0, 0.0, -0.2) &gt;
+    p1&lt; point(1.0, 0.0, 0.2) &gt;
+    p2&lt; point(0.0, 1.0, -0.2) &gt;
+    p3&lt; point(0.0, 0.2, 0.0) &gt;
+    p4&lt; point(-1.0, 0.0, -0.2) &gt;
+    p5&lt; point(-1.0, 0.0, 0.2) &gt;
+    p6&lt; point(0.0, -1.0, 0.0) &gt;
+    p7&lt; point(0.0, -0.2, -0.2) &gt;
+
+    e1&lt;edge($p0, $p1)&gt;
+    e2&lt;edge($p1, $p3)&gt;
+    e3&lt;edge($p3, $p2)&gt;
+    e4&lt;edge($p2, $p0)&gt;
+
+    l0&lt;loop($e1, $e2, $e3, $e4)&gt;
+    f0&lt;face($l0)&gt;
+    :
+]
+</code></pre>
+<ul>
+<li><strong><code>loop</code> and <code>face</code></strong> are implemented, following the exact same
+<code>name&lt;func(...)&gt;</code> define / <code>$name</code> reference discipline as <code>point</code> and
+<code>edge</code> — no exceptions, no inline/nested form. <code>loop</code> takes
+<code>$</code>-references to already-bound edges (<code>loop($e0, $e1, $e2)</code>); <code>face</code>
+takes a single <code>$</code>-reference to an already-bound loop (<code>face($l0)</code>).
+Every geometric element, at every level, is addressable the same way.</li>
+</ul>
 <p>Explicitly <strong>not yet designed</strong>:</p>
 <ul>
-<li><strong><code>loop</code> and <code>face</code>.</strong> Fant-style nested calls already parse fine
-syntactically (<code>loop(edge(...), edge(...))</code> — arbitrarily deep nesting
-is already supported by <code>parseILCallArgument</code>), but whether <code>loop</code>
-should take inline anonymous edge calls versus <code>$</code>-references to
-previously bound edges (<code>loop($e0, $e1, $e2)</code>) is an open design
-question, not a parsing limitation. This will get its own pass once
-decided.</li>
 <li><strong>Emission.</strong> Nothing here produces VHDL or any other output yet. The
 geometry graph exists purely as an in-memory resolution artifact
 alongside the IPL network AST. How (or whether) the two get drawn

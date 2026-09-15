@@ -3,13 +3,11 @@
 ## 1. Motivation
 
 The Invocation Language describes causal relationships — completeness, fills,
-invocations — with no inherent notion of space. Some definitions, however,
-need to describe *where* things are: point coordinates, connectivity between
-points, and eventually surfaces and volumes. Rather than inventing a second
-language for this, MatterScript extends IPL's existing `@domain` directive so
-that a definition can bring a small set of geometry-construction functions
-into scope, and lets those functions build up a **parallel, loosely linked
-geometry graph** alongside the definition's ordinary causal-network AST.
+invocations — with no inherent notion of space. 
+Some definitions, however, need to describe *where* things are: point coordinates, connectivity between
+points, and eventually surfaces and volumes. 
+Rather than inventing a second language for this, MatterScript introduces the `@domain` directive so
+that a definition can bring a set of domain specific functions into scope, in this case for geometry-construction, and lets those functions build up a **parallel, loosely linked geometry graph** alongside the definition's ordinary causal-network AST.
 
 The two ASTs are kept deliberately separate:
 
@@ -172,15 +170,39 @@ Two argument shapes matter for the currently-implemented functions:
 Implemented today: `point` and `edge`, for `spatial2d` and `spatial3d`
 domains, with the binding/reference/immutability rules above.
 
+```matterscript
+  mobius_strip[()($f0, $f1, $f2, $f3) 
+    @domain(spatial3d)
+    // 1. Instantiating internal point sources (p0..p7)
+    p0< point(1.0, 0.0, -0.2) >
+    p1< point(1.0, 0.0, 0.2) >
+    p2< point(0.0, 1.0, -0.2) >
+    p3< point(0.0, 0.2, 0.0) >
+    p4< point(-1.0, 0.0, -0.2) >
+    p5< point(-1.0, 0.0, 0.2) >
+    p6< point(0.0, -1.0, 0.0) >
+    p7< point(0.0, -0.2, -0.2) >
+
+    e1<edge($p0, $p1)>
+    e2<edge($p1, $p3)>
+    e3<edge($p3, $p2)>
+    e4<edge($p2, $p0)>
+
+    l0<loop($e1, $e2, $e3, $e4)>
+    f0<face($l0)>
+    :
+]
+```
+
+- **`loop` and `face`** are implemented, following the exact same
+  `name<func(...)>` define / `$name` reference discipline as `point` and
+  `edge` — no exceptions, no inline/nested form. `loop` takes
+  `$`-references to already-bound edges (`loop($e0, $e1, $e2)`); `face`
+  takes a single `$`-reference to an already-bound loop (`face($l0)`).
+  Every geometric element, at every level, is addressable the same way.
+
 Explicitly **not yet designed**:
 
-- **`loop` and `face`.** Fant-style nested calls already parse fine
-  syntactically (`loop(edge(...), edge(...))` — arbitrarily deep nesting
-  is already supported by `parseILCallArgument`), but whether `loop`
-  should take inline anonymous edge calls versus `$`-references to
-  previously bound edges (`loop($e0, $e1, $e2)`) is an open design
-  question, not a parsing limitation. This will get its own pass once
-  decided.
 - **Emission.** Nothing here produces VHDL or any other output yet. The
   geometry graph exists purely as an in-memory resolution artifact
   alongside the IPL network AST. How (or whether) the two get drawn

@@ -1,14 +1,20 @@
-// src/dialects/ipl/domains/spatial_domain.zig
-//
 // Resolves @domain(spatial2d|spatial3d)-scoped fill statements whose
-// expression is a call to a registered geometry function (point, edge, ...)
-// into a parallel SpatialGraph, keeping IPL's own AST completely untouched.
+// expression is a call to a registered geometry function (point, edge,
+// loop, face) into a parallel SpatialGraph, keeping IPL's own AST
+// completely untouched.
 //
 // Binding semantics: a name (a fill's dest_name) may be bound to a
 // geometry handle exactly once. Later occurrences of $name inside another
 // geometry call's arguments resolve to that same handle — they route
 // through it, they never redefine it. A second attempt to bind the same
 // name is a DuplicateGeometryBinding error, not a silent overwrite.
+//
+// Every geometric element — point, edge, loop, face — is bound and
+// referenced the same way: `name<func(...)>` to define, `$name` to refer
+// to an already-bound element elsewhere. There is no inline/nested form;
+// loop($e1, $e2, ...) and face($l0) take $-references to already-bound
+// edges/loops, not nested anonymous calls, so every element stays
+// individually addressable and no parser changes were needed to get here.
 //
 // Ordering: this is a single top-to-bottom pass over def.resolution in
 // source order, so a name must be bound before it's referenced by $name
@@ -22,11 +28,8 @@ const spatial = @import("../../geo/spatial.zig");
 pub const GeometryHandle = union(enum) {
     point: spatial.PointId,
     edge: spatial.EdgeId,
-    // loop / face intentionally not wired up yet — their argument shape
-    // (loop(edge(...), edge(...)) with calls nested inline, per the
-    // parser's existing comment) is different enough from point/edge's
-    // "resolve named args" shape that it deserves its own look before
-    // being bolted on here.
+    loop: spatial.LoopId,
+    face: spatial.FaceId,
 };
 
 pub const GeometryContext = struct {
@@ -48,6 +51,8 @@ const DomainFn = *const fn (
 const registry = std.StaticStringMap(DomainFn).initComptime(.{
     .{ "point", handlePoint },
     .{ "edge", handleEdge },
+    .{ "loop", handleLoop },
+    .{ "face", handleFace },
 });
 
 /// Only call this once `def.domain_spec` is confirmed to be a spatial2d
@@ -94,12 +99,29 @@ fn resolveCoord(arg: *const network.Expr) !f64 {
     if (arg.kind != .constant) return error.InvalidGeometryArgument;
     return std.fmt.parseFloat(f64, arg.name);
 }
-
-fn resolvePointRef(ctx: *const GeometryContext, arg: *const network.Expr) !spatial.PointId {
+fn resolvePointHandle(ctx: *const GeometryContext, arg: *const network.Expr) !spatial.PointId {
     if (arg.kind != .variable) return error.InvalidGeometryArgument;
     const handle = ctx.bindings.get(arg.name) orelse return error.UndefinedGeometryReference;
     return switch (handle) {
         .point => |id| id,
+        else => error.InvalidGeometryArgument,
+    };
+}
+
+fn resolveEdgeHandle(ctx: *const GeometryContext, arg: *const network.Expr) !spatial.EdgeId {
+    if (arg.kind != .variable) return error.InvalidGeometryArgument;
+    const handle = ctx.bindings.get(arg.name) orelse return error.UndefinedGeometryReference;
+    return switch (handle) {
+        .edge => |id| id,
+        else => error.InvalidGeometryArgument,
+    };
+}
+
+fn resolveLoopHandle(ctx: *const GeometryContext, arg: *const network.Expr) !spatial.LoopId {
+    if (arg.kind != .variable) return error.InvalidGeometryArgument;
+    const handle = ctx.bindings.get(arg.name) orelse return error.UndefinedGeometryReference;
+    return switch (handle) {
+        .loop => |id| id,
         else => error.InvalidGeometryArgument,
     };
 }
@@ -121,9 +143,37 @@ fn handleEdge(ctx: *GeometryContext, allocator: std.mem.Allocator, args: []const
     _ = allocator;
     if (args.len != 2) return error.InvalidGeometryArgument;
 
-    const start = try resolvePointRef(ctx, args[0]);
-    const end = try resolvePointRef(ctx, args[1]);
+    const start = try resolvePointHandle(ctx, args[0]);
+    const end = try resolvePointHandle(ctx, args[1]);
 
     const id = try spatial.addEdge(&ctx.graph, start, end);
     return .{ .edge = id };
+}
+
+fn handleLoop(ctx: *GeometryContext, allocator: std.mem.Allocator, args: []const *network.Expr) !GeometryHandle {
+    const edge_ids = try allocator.alloc(spatial.EdgeId, args.len);
+    defer allocator.free(edge_ids);
+
+    for (args, 0..) |arg, i| {
+        edge_ids[i] = try resolveEdgeHandle(ctx, arg);
+    }
+
+    // addLoop copies edge_ids into its own owned list (appendSlice) and
+    // validates closure (continuity + returning to the start point), so
+    // this temporary slice doesn't need to outlive the call, and a
+    // malformed loop surfaces as one of addLoop's own validation errors
+    // (error.DegenerateLoop / error.DiscontinuousLoop / error.UnclosedLoop)
+    // rather than anything the spatial domain needs to check itself.
+    const id = try spatial.addLoop(&ctx.graph, edge_ids);
+    return .{ .loop = id };
+}
+
+fn handleFace(ctx: *GeometryContext, allocator: std.mem.Allocator, args: []const *network.Expr) !GeometryHandle {
+    _ = allocator;
+    if (args.len != 1) return error.InvalidGeometryArgument;
+
+    const loop_id = try resolveLoopHandle(ctx, args[0]);
+
+    const id = try spatial.addFace(&ctx.graph, loop_id);
+    return .{ .face = id };
 }
