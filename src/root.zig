@@ -19,6 +19,7 @@ pub const workspace = @import("common/workspace.zig");
 pub const lookup = @import("dialects/ipl/vhdl/lookup.zig");
 pub const spatial  = @import("dialects/geo/spatial.zig");
 pub const spatial_domain = @import("dialects/ipl/domains/spatial_domain.zig");
+pub const ipl_export_mesh = @import("dialects/ipl/export/mesh.zig");
 
 test {
     std.testing.refAllDecls(@This());

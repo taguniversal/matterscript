@@ -20,9 +20,8 @@
 //       non-uniform or distorted spatial geometry.
 // ================================================================================
 
-mobius_strip[()($f0, $f1, $f2, $f3) 
+mobius_strip[()()
     @domain(spatial3d)
-    // 1. Instantiating internal point sources (p0..p7)
     p0< point(1.0, 0.0, -0.2) >
     p1< point(1.0, 0.0, 0.2) >
     p2< point(0.0, 1.0, -0.2) >
@@ -32,12 +31,37 @@ mobius_strip[()($f0, $f1, $f2, $f3)
     p6< point(0.0, -1.0, 0.0) >
     p7< point(0.0, -0.2, -0.2) >
 
+    // panel 0: rung0 -> rung1
     e1<edge($p0, $p1)>
     e2<edge($p1, $p3)>
     e3<edge($p3, $p2)>
     e4<edge($p2, $p0)>
-
     l0<loop($e1, $e2, $e3, $e4)>
     f0<face($l0)>
+
+    // panel 1: rung1 -> rung2
+    e5<edge($p2, $p3)>
+    e6<edge($p3, $p5)>
+    e7<edge($p5, $p4)>
+    e8<edge($p4, $p2)>
+    l1<loop($e5, $e6, $e7, $e8)>
+    f1<face($l1)>
+
+    // panel 2: rung2 -> rung3
+    e9<edge($p4, $p5)>
+    e10<edge($p5, $p7)>
+    e11<edge($p7, $p6)>
+    e12<edge($p6, $p4)>
+    l2<loop($e9, $e10, $e11, $e12)>
+    f2<face($l2)>
+
+    // panel 3 (closing seam, twisted): rung3 -> rung0,
+    // with p0/p1 swapped relative to how every other panel
+    // touches rung0 — this swap is the entire twist.
+    e13<edge($p6, $p7)>
+    e14<edge($p7, $p0)>
+    e15<edge($p1, $p6)>
+    l3<loop($e13, $e14, $e1, $e15)>
+    f3<face($l3)>
     :
 ]

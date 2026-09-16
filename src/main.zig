@@ -8,6 +8,7 @@ const geo_build = @import("dialects/geo/geo_build.zig");
 const cell_runner = @import("dialects/geo/runner.zig");
 const ipl_parser = matterscript.ipl_parser;
 const ipl_export_vhdl = matterscript.ipl_export_vhdl;
+const ipl_export_mesh = matterscript.ipl_export_mesh;
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
@@ -36,8 +37,7 @@ pub fn main(init: std.process.Init) !void {
     try stdout_writer.print("MatterScript source: {s}\n\n", .{script_path});
     try stdout_writer.print("{s}\n", .{source});
 
-
-    // add this branch in main() alongside the .ms.fsm branch:
+ 
     if (std.mem.endsWith(u8, script_path, ".ms.ipl")) {
         const net = try ipl_parser.parse(arena, source);
 
@@ -59,14 +59,10 @@ pub fn main(init: std.process.Init) !void {
             try stdout_writer.print("\nentry: {s} with {d} sources\n", .{ e.name, e.sources.len });
         }
 
-        try ipl_export_vhdl.writeVhdlNetwork(
-            io,
-            arena,
-            "add", // namespace — matches workspace/add/
-            net,
-            "add.vhd",
-        );
-        try stdout_writer.print("\nWrote add.vhd\n", .{});
+    
+        try ipl_export_mesh.writeNetworkMeshes(io, arena, "meshes", net);
+        try stdout_writer.print("Wrote mesh(es) for any spatial-domain definitions\n", .{});
+
         try stdout_writer.flush();
         return;
     }
@@ -96,11 +92,10 @@ pub fn main(init: std.process.Init) !void {
 fn usage(writer: anytype) !void {
     try writer.print(
         \\Usage:
-        \\  matterscript <script.ms>
+        \\  matterscript <script.ms.ipl>
         \\
         \\Examples:
-        \\  matterscript examples/coffee/coffee.ms.fsm
-        \\  matterscript examples/terrain.ms.geo
+        \\  matterscript examples/docs/TAG-112/mobius_ring.ms.ipl
         \\
     , .{});
 }
