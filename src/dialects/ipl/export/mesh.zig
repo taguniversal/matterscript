@@ -30,6 +30,7 @@ pub fn writeDefinitionMesh(
     const output_path = try workspace.artifactPath(allocator, .{ .namespace = namespace }, filename);
     defer allocator.free(output_path);
 
+    std.debug.print("Writing to path: {s}\n", .{output_path});
     var file = try std.Io.Dir.cwd().createFile(io, output_path, .{});
     defer file.close(io);
 

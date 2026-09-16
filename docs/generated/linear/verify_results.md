@@ -1,6 +1,6 @@
 # Example verification results
 
-16 expected outcomes, 9 unexpected outcomes.
+16 expected outcomes, 10 unexpected outcomes.
 
 | Issue | Example | Expected | Parse | GHDL | Simulate | Result |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -29,3 +29,4 @@
 | TAG-189 | example-12.14-arbitration.ms.ipl | Implemented | ok | ok | - | ✅ PASS |
 | TAG-190 | example-12.5.ms.ipl | Implemented | ok | ok | - | ✅ PASS |
 | TAG-192 | entity_labeling.ms.ipl | Partial | ok | ok | - | 🟡 unexpected pass |
+| TAG-196 | cube.ms.ipl | - | ok | ok | - | 🟡 unexpected pass |

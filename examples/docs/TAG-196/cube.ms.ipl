@@ -1,0 +1,72 @@
+cube[()()
+    @domain(spatial3d)
+
+    // 8 corners: b0..b3 form the bottom face (z=0),
+    // t0..t3 form the top face (z=1), directly above
+    // their b-counterparts.
+    p0< point(0.0, 0.0, 0.0) >  // b0
+    p1< point(1.0, 0.0, 0.0) >  // b1
+    p2< point(1.0, 1.0, 0.0) >  // b2
+    p3< point(0.0, 1.0, 0.0) >  // b3
+    p4< point(0.0, 0.0, 1.0) >  // t0
+    p5< point(1.0, 0.0, 1.0) >  // t1
+    p6< point(1.0, 1.0, 1.0) >  // t2
+    p7< point(0.0, 1.0, 1.0) >  // t3
+
+    // Each of the 6 faces owns its own 4 edges, even where an
+    // edge geometrically coincides with one used by a neighboring
+    // face (e.g. p0->p1 appears both here and in the front face).
+    // This keeps every loop closing in a single consistent
+    // direction with no reversed-edge traversal needed anywhere —
+    // unlike the Möbius example, an ordinary cube's faces never
+    // need to share a directed edge to stay correct.
+
+    // bottom face: b0 -> b1 -> b2 -> b3 -> b0
+    e_b0<edge($p0, $p1)>
+    e_b1<edge($p1, $p2)>
+    e_b2<edge($p2, $p3)>
+    e_b3<edge($p3, $p0)>
+    l_bottom<loop($e_b0, $e_b1, $e_b2, $e_b3)>
+    f_bottom<face($l_bottom)>
+
+    // top face: t0 -> t1 -> t2 -> t3 -> t0
+    e_t0<edge($p4, $p5)>
+    e_t1<edge($p5, $p6)>
+    e_t2<edge($p6, $p7)>
+    e_t3<edge($p7, $p4)>
+    l_top<loop($e_t0, $e_t1, $e_t2, $e_t3)>
+    f_top<face($l_top)>
+
+    // front face: b0 -> b1 -> t1 -> t0 -> b0
+    e_f0<edge($p0, $p1)>
+    e_f1<edge($p1, $p5)>
+    e_f2<edge($p5, $p4)>
+    e_f3<edge($p4, $p0)>
+    l_front<loop($e_f0, $e_f1, $e_f2, $e_f3)>
+    f_front<face($l_front)>
+
+    // right face: b1 -> b2 -> t2 -> t1 -> b1
+    e_r0<edge($p1, $p2)>
+    e_r1<edge($p2, $p6)>
+    e_r2<edge($p6, $p5)>
+    e_r3<edge($p5, $p1)>
+    l_right<loop($e_r0, $e_r1, $e_r2, $e_r3)>
+    f_right<face($l_right)>
+
+    // back face: b2 -> b3 -> t3 -> t2 -> b2
+    e_k0<edge($p2, $p3)>
+    e_k1<edge($p3, $p7)>
+    e_k2<edge($p7, $p6)>
+    e_k3<edge($p6, $p2)>
+    l_back<loop($e_k0, $e_k1, $e_k2, $e_k3)>
+    f_back<face($l_back)>
+
+    // left face: b3 -> b0 -> t0 -> t3 -> b3
+    e_l0<edge($p3, $p0)>
+    e_l1<edge($p0, $p4)>
+    e_l2<edge($p4, $p7)>
+    e_l3<edge($p7, $p3)>
+    l_left<loop($e_l0, $e_l1, $e_l2, $e_l3)>
+    f_left<face($l_left)>
+    :
+]
