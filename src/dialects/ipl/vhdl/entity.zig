@@ -24,6 +24,21 @@ pub fn writeDefinition(
     raw_def: network.Definition,
     scope: []const u8,
 ) !void {
+    // Geometry-only definitions (@domain(spatial2d|spatial3d)) describe
+    // physical structure, not hardware — they're emitted as meshes by
+    // ipl_export_mesh, never as VHDL. Skipping them here, before any of
+    // §12.3.4's destination normalization runs, avoids that logic
+    // mistaking geometry bindings (point/edge/loop/face fills with no
+    // real destinations) for an implicit hardware return value and
+    // synthesizing bogus output ports for them. @domain(spatial1d) is
+    // unaffected — it's still the existing CA-generate-block domain,
+    // which legitimately does produce VHDL.
+    if (raw_def.domain_spec) |spec| {
+        switch (spec.kind) {
+            .spatial2d, .spatial3d => return,
+            .spatial1d => {},
+        }
+    }
     // §12.3.4 "Single Return to Place of Invocation" — if this
     // definition has no destination list at all, its resolution's
     // top-level fill(s) express the implicit return(s) instead,

@@ -6,8 +6,8 @@ The Invocation Language describes causal relationships — completeness,
 fills, invocations — with no inherent notion of space. Some definitions,
 however, need to describe *where* things are: point coordinates,
 connectivity between points, and surfaces built from that connectivity.
-Rather than inventing a second language for this, MatterScript extends
-IPL's existing `@domain` directive so that a definition can bring a small
+Rather than inventing a second language for this, MatterScript introduces 
+the `@domain` directive so that a definition can bring a small
 set of geometry-construction functions into scope, and lets those
 functions build up a **parallel, loosely linked geometry graph** alongside
 the definition's ordinary causal-network AST.

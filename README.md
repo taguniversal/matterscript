@@ -8,6 +8,8 @@ MatterScript is an experimental procedural geometry language inspired by Stephen
 See associated blog post :
 https://earthchronicles.substack.com/p/geometry-is-computation
 
+This is a component of the [Digital Blockchain Portfolio](https://github.com/taguniversal/digital_blockchain_patents)
+
 The goal of MatterScript is to transform simple computational rules into increasingly complex structures that can ultimately be rendered as images, meshes, simulations, circuits, and physical objects.
 
 ```text
@@ -917,16 +919,16 @@ The IL's most distinctive feature is name composition. Destination place values 
 $a$b()
 ```
 
-When `$a` holds the value `1` and `$b` holds the value `3`, the composition `$a$b()` forms the name `13` and looks it up in the associated constant table. The constant table is defined after the `|` separator:
+When `$a` holds the value `1` and `$b` holds the value `3`, the composition `$a$b()` forms the name `13` and looks it up in the associated constant table. The constant table is defined after the `:` separator:
 
 ```
-$a$b() : 00:0 01:1 02:2 03:3
-          10:1 11:2 12:3 13:4
-          20:2 21:3 22:4 23:5
-          30:3 31:4 32:5 33:6
+$a$b() :  00[0] 01[1] 02[2] 03[3]
+          10[1] 11[2] 12[3] 13[4]
+          20[2] 21[3] 22[4] 23[5]
+          30[3] 31[4] 32[5] 33[6]
 ```
 
-Each entry is a `key:value` pair. The key is the composed name string. The value is the token that flows back to the invocation site. If no entry matches the composed name the invocation never resolves — it remains NULL indefinitely. This is not an error. It is how the IL expresses partial functions and conditional behavior without any conditional syntax.
+Each entry is a `key[value]` pair. The key is the composed name string. The value is the token that flows back to the invocation site. If no entry matches the composed name the invocation never resolves — it remains NULL indefinitely. This is not an error. It is how the IL expresses partial functions and conditional behavior without any conditional syntax.
 
 The constant table is simultaneously a lookup table, a truth table, and a ROM. In hardware it synthesizes directly to a combinational case statement or a block RAM.
 
