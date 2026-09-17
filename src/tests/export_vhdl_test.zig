@@ -118,6 +118,7 @@ test "a comma-keyed contained definition never produces consecutive underscores 
     const vhdl = try exportToString(allocator, src);
     try testing.expect(std.mem.indexOf(u8, vhdl, "__") == null);
 }
+
 test "a nested definition's declared entity name matches what its invocation instantiates" {
     // Regression test for a real bug: writeDefinition's recursion into
     // def.contained precomputed each child's full scoped name
@@ -177,4 +178,64 @@ test "an invocation's port map uses the target entity's real port names, not gen
     try testing.expect(std.mem.indexOf(u8, vhdl, "res => op1") != null);
     try testing.expect(std.mem.indexOf(u8, vhdl, "arg_0 => invocation_0_arg_0") == null);
     try testing.expect(std.mem.indexOf(u8, vhdl, "output_0 => op1") == null);
+}
+
+test "a geometry-domain definition (point/edge/loop/face, no @generate) produces no VHDL entity" {
+    // Regression test for the writeDefinition guard added alongside
+    // the spatial-domain geometry work: a @domain(spatial2d) definition
+    // whose resolution is entirely point/edge/loop/face bindings has
+    // no destinations and no generateBlock, so before the guard, this
+    // would silently fall into §12.3.4's implicit-single-return
+    // normalization and synthesize bogus VHDL ports for p0, f0, etc.
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\Shape[()()
+        \\  @domain(spatial2d)
+        \\  p0<point(0.0, 0.0)>
+        \\  p1<point(1.0, 0.0)>
+        \\  p2<point(1.0, 1.0)>
+        \\  p3<point(0.0, 1.0)>
+        \\  e0<edge($p0, $p1)>
+        \\  e1<edge($p1, $p2)>
+        \\  e2<edge($p2, $p3)>
+        \\  e3<edge($p3, $p0)>
+        \\  l0<loop($e0, $e1, $e2, $e3)>
+        \\  f0<face($l0)>
+        \\  :
+        \\]
+    ;
+
+    const vhdl = try exportToString(allocator, src);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "entity shape is") == null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "architecture rtl of shape is") == null);
+}
+
+test "a spatial2d @generate definition still emits VHDL (not treated as geometry)" {
+    // Companion to the test above: makes sure the generateBlock-based
+    // guard condition doesn't accidentally also swallow TAG-187's
+    // legitimate 2D cellular-automaton usage, which shares the same
+    // spatial2d domain kind for an unrelated purpose (parametrizing
+    // the generate block's grid, not describing geometry).
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\ca2d[()()
+        \\  @domain(spatial2d, size: [300, 500])
+        \\  @generate {
+        \\    [2, 1, 5]: 4
+        \\    [3, 2, 4]: 6
+        \\    [4, 4, 6]: 4
+        \\  }
+        \\  :
+        \\]
+    ;
+
+    const vhdl = try exportToString(allocator, src);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "entity ca2d is") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "architecture rtl of ca2d is") != null);
 }

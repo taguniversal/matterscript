@@ -1,4 +1,4 @@
-// Responsibility: Orchestrates the core writeDefinition loop, 
+// Responsibility: Orchestrates the core writeDefinition loop,
 // connecting the definitions, ROM lookups, and delegating to the modules in export/.
 
 const std = @import("std");
@@ -14,7 +14,6 @@ pub const network_entity = @import("export/network_entity.zig");
 
 const DATA_WIDTH = constants.DATA_WIDTH;
 
-
 /// Emits a VHDL entity and architecture body for a single MatterScript definition,
 /// normalizing destination defaults and identifiers, and recursively processing any
 /// nested child definitions.
@@ -24,19 +23,27 @@ pub fn writeDefinition(
     raw_def: network.Definition,
     scope: []const u8,
 ) !void {
-    // Geometry-only definitions (@domain(spatial2d|spatial3d)) describe
-    // physical structure, not hardware — they're emitted as meshes by
-    // ipl_export_mesh, never as VHDL. Skipping them here, before any of
-    // §12.3.4's destination normalization runs, avoids that logic
-    // mistaking geometry bindings (point/edge/loop/face fills with no
-    // real destinations) for an implicit hardware return value and
-    // synthesizing bogus output ports for them. @domain(spatial1d) is
-    // unaffected — it's still the existing CA-generate-block domain,
-    // which legitimately does produce VHDL.
-    if (raw_def.domain_spec) |spec| {
-        switch (spec.kind) {
-            .spatial2d, .spatial3d => return,
-            .spatial1d => {},
+    // Geometry-only definitions (@domain(spatial2d|spatial3d) with no
+    // @generate block) describe physical structure, not hardware —
+    // they're emitted as meshes by ipl_export_mesh, never as VHDL.
+    // Skipping them here, before any of §12.3.4's destination
+    // normalization runs, avoids that logic mistaking geometry
+    // bindings (point/edge/loop/face fills with no real destinations)
+    // for an implicit hardware return value.
+    //
+    // A @domain(spatial2d|spatial3d) definition that also carries a
+    // @generate block (e.g. TAG-187's 2D cellular-automaton case) is
+    // NOT geometry — there the domain parametrizes the generate
+    // block's grid, and legitimately does produce VHDL.
+    // generateBlock != null is what distinguishes that usage from a
+    // geometry definition; spatial_domain.zig never sets or reads
+    // that field.
+    if (raw_def.generateBlock == null) {
+        if (raw_def.domain_spec) |spec| {
+            switch (spec.kind) {
+                .spatial2d, .spatial3d => return,
+                .spatial1d => {},
+            }
         }
     }
     // §12.3.4 "Single Return to Place of Invocation" — if this

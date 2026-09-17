@@ -94,6 +94,7 @@ test "isWithinDistance relationship operator" {
     try testing.expect(spatial.isWithinDistance(&graph, p0, p1, 1.5));
     try testing.expect(!spatial.isWithinDistance(&graph, p0, p1, 1.0));
 }
+
 test "triangulation and binary PLY export" {
     var graph = spatial.SpatialGraph.init(testing.allocator, .spatial2d);
     defer graph.deinit();
@@ -128,4 +129,48 @@ test "triangulation and binary PLY export" {
     try testing.expect(std.mem.startsWith(u8, output, "ply\nformat binary_little_endian 1.0\n"));
     try testing.expect(std.mem.indexOf(u8, output, "element vertex 4") != null);
     try testing.expect(std.mem.indexOf(u8, output, "element face 2") != null);
+}
+
+test "PLY export/import round-trips a triangulated mesh exactly" {
+    var graph = spatial.SpatialGraph.init(testing.allocator, .spatial2d);
+    defer graph.deinit();
+
+    const p0 = try spatial.addPoint(&graph, .{ .x = 0.0, .y = 0.0, .z = 0.0 });
+    const p1 = try spatial.addPoint(&graph, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
+    const p2 = try spatial.addPoint(&graph, .{ .x = 1.0, .y = 1.0, .z = 0.0 });
+    const p3 = try spatial.addPoint(&graph, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
+
+    const e0 = try spatial.addEdge(&graph, p0, p1);
+    const e1 = try spatial.addEdge(&graph, p1, p2);
+    const e2 = try spatial.addEdge(&graph, p2, p3);
+    const e3 = try spatial.addEdge(&graph, p3, p0);
+
+    const edges = [_]spatial.EdgeId{ e0, e1, e2, e3 };
+    const loop_id = try spatial.addLoop(&graph, &edges);
+    _ = try spatial.addFace(&graph, loop_id);
+
+    var mesh = try spatial.triangulate(&graph, testing.allocator);
+    defer mesh.deinit(testing.allocator);
+
+    var aw: std.Io.Writer.Allocating = .init(testing.allocator);
+    defer aw.deinit();
+    try spatial.exportPly(&mesh, &aw.writer);
+
+    var imported = try spatial.importPly(testing.allocator, aw.written());
+    defer imported.deinit(testing.allocator);
+
+    try testing.expectEqual(mesh.vertices.items.len, imported.vertices.items.len);
+    try testing.expectEqual(mesh.indices.items.len, imported.indices.items.len);
+
+    for (mesh.vertices.items, imported.vertices.items) |orig, round| {
+        // exportPly narrows f64 -> f32; truncate both sides the same
+        // way so this is an exact check, not a fuzzy tolerance.
+        try testing.expectEqual(@as(f32, @floatCast(orig.x)), @as(f32, @floatCast(round.x)));
+        try testing.expectEqual(@as(f32, @floatCast(orig.y)), @as(f32, @floatCast(round.y)));
+        try testing.expectEqual(@as(f32, @floatCast(orig.z)), @as(f32, @floatCast(round.z)));
+    }
+
+    for (mesh.indices.items, imported.indices.items) |orig, round| {
+        try testing.expectEqualSlices(u32, &orig, &round);
+    }
 }

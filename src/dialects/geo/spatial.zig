@@ -257,6 +257,70 @@ pub fn exportPly(mesh: *const TriangulatedMesh, writer: *std.Io.Writer) !void {
     }
 }
 
+// Inverse of exportPly, above. Deliberately narrow: this parses exactly
+// the fixed header shape and binary layout exportPly itself produces
+// (binary_little_endian, float xyz, uchar-prefixed int triangle lists)
+// — it is not a general-purpose PLY reader. Its purpose is round-trip
+// verification of our own serialization, not reading arbitrary PLY
+// files from other tools.
+pub fn importPly(allocator: Allocator, bytes: []const u8) !TriangulatedMesh {
+    const header_marker = "end_header\n";
+    const header_end = std.mem.indexOf(u8, bytes, header_marker) orelse
+        return error.InvalidPlyHeader;
+    const header_text = bytes[0..header_end];
+    var payload = bytes[header_end + header_marker.len ..];
+
+    var vertex_count: ?usize = null;
+    var face_count: ?usize = null;
+
+    var lines = std.mem.splitScalar(u8, header_text, '\n');
+    while (lines.next()) |line| {
+        if (std.mem.startsWith(u8, line, "element vertex ")) {
+            vertex_count = try std.fmt.parseInt(usize, line["element vertex ".len..], 10);
+        } else if (std.mem.startsWith(u8, line, "element face ")) {
+            face_count = try std.fmt.parseInt(usize, line["element face ".len..], 10);
+        }
+    }
+
+    const vcount = vertex_count orelse return error.MissingVertexElement;
+    const fcount = face_count orelse return error.MissingFaceElement;
+
+    var mesh = TriangulatedMesh{ .vertices = .empty, .indices = .empty };
+    errdefer mesh.deinit(allocator);
+
+    const vertex_bytes = vcount * 12; // 3 x f32
+    if (payload.len < vertex_bytes) return error.UnexpectedEndOfData;
+
+    var offset: usize = 0;
+    for (0..vcount) |_| {
+        const x: f32 = @bitCast(std.mem.readInt(u32, payload[offset..][0..4], .little));
+        const y: f32 = @bitCast(std.mem.readInt(u32, payload[offset + 4 ..][0..4], .little));
+        const z: f32 = @bitCast(std.mem.readInt(u32, payload[offset + 8 ..][0..4], .little));
+        offset += 12;
+        try mesh.vertices.append(allocator, .{ .x = x, .y = y, .z = z });
+    }
+
+    for (0..fcount) |_| {
+        if (offset >= payload.len) return error.UnexpectedEndOfData;
+        const count = payload[offset];
+        offset += 1;
+        if (count != 3) return error.UnsupportedFaceArity; // exportPly always writes triangles
+        if (offset + 12 > payload.len) return error.UnexpectedEndOfData;
+
+        const idx0: i32 = std.mem.readInt(i32, payload[offset..][0..4], .little);
+        const idx1: i32 = std.mem.readInt(i32, payload[offset + 4 ..][0..4], .little);
+        const idx2: i32 = std.mem.readInt(i32, payload[offset + 8 ..][0..4], .little);
+        offset += 12;
+
+        try mesh.indices.append(allocator, .{
+            @intCast(idx0), @intCast(idx1), @intCast(idx2),
+        });
+    }
+    payload = payload[offset..];
+
+    return mesh;
+}
+
 /// Evaluates spatial relationship constraint: within(distance)
 pub fn isWithinDistance(graph: *const SpatialGraph, p1: PointId, p2: PointId, max_dist: f64) bool {
     const pt1 = graph.points.items[@intFromEnum(p1)].coords;
