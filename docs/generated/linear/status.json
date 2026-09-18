@@ -1,6 +1,6 @@
 {
   "TAG-196": {
-    "implementation_status": null,
+    "implementation_status": "Implemented",
     "simulation_requested": false,
     "workflow_state": "In Progress"
   },
@@ -57,7 +57,7 @@
   "TAG-185": {
     "implementation_status": "Implemented",
     "simulation_requested": false,
-    "workflow_state": "In Progress"
+    "workflow_state": "Done"
   },
   "TAG-184": {
     "implementation_status": "Implemented",
@@ -96,7 +96,7 @@
   },
   "TAG-177": {
     "implementation_status": "Implemented",
-    "simulation_requested": false,
+    "simulation_requested": true,
     "workflow_state": "In Progress"
   },
   "TAG-176": {

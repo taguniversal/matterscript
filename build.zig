@@ -2,6 +2,7 @@ const std = @import("std");
 const matterscript = @import("matterscript");
 const spatial = matterscript.spatial;
 
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -287,6 +288,19 @@ pub fn build(b: *std.Build) void {
 
     const run_golden_mesh_tests = b.addRunArtifact(golden_mesh_tests);
 
+    const pure_association_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/pure_association_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+            },
+        }),
+    });
+
+    const run_pure_association_tests = b.addRunArtifact(pure_association_tests);
+    
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
@@ -306,6 +320,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_spatial_tests.step);
     test_step.dependOn(&run_spatial_domain_tests.step);
     test_step.dependOn(&run_golden_mesh_tests.step);
+    test_step.dependOn(&run_pure_association_tests.step);
 
     // --- Code Coverage Step (using kcov) ---
     const coverage_step = b.step("coverage", "Generate code coverage report using kcov");

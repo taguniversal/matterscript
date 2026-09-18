@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 20  |  🟡 Partial: 5  |  ⬛ Spec only: 2  |  ⬜ Not started: 116  |  Total: 143
+✅ Implemented: 21  |  🟡 Partial: 5  |  ⬛ Spec only: 2  |  ⬜ Not started: 115  |  Total: 143
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
@@ -141,7 +141,7 @@
 - ⬜ Not started [WebGPU Integration](TAG-193.md)
 - ⬜ Not started [Computational Biology](TAG-194.md)
 - ⬜ Not started [Parser Invariants](TAG-195.md)
-- ⬜ Not started [Unit Cube Geometry](TAG-196.md)
+- ✅ Implemented [Unit Cube Geometry](TAG-196.md)
 - ⬜ Not started [Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [The Completeness Dialogue](TAG-80.md)

@@ -96,14 +96,12 @@ test "cube.ms.ipl matches golden PLY output" {
     try spatial.exportPly(&mesh, &aw.writer);
     const actual = aw.written();
 
-    // --- UNVERIFIED against this Zig snapshot — see note below ---
     const golden = try std.Io.Dir.cwd().readFileAlloc(
         testing.io,
         "src/tests/golden/cube.ply",
         allocator,
         @enumFromInt(16 * 1024 * 1024),
     );
-    // --- end unverified section ---
 
     try testing.expect(std.mem.eql(u8, golden, actual));
 }
