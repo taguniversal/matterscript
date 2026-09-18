@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27976757.js";
+            window.path_to_searchindex_js = "searchindex-baac33d1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-c4fc1cba.js"></script>
+        <script src="toc-726b3fdb.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -3610,6 +3610,448 @@ Hydrated Protein
 <p>Rather than writing logic that asks <em>what should happen?</em>, you simply describe the relationships that exist.</p>
 <p>The language allows those relationships to resolve themselves.</p>
 <p><em>Drafting in progress…</em></p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="pure-value-expressions"><a class="header" href="#pure-value-expressions">Pure Value Expressions</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-04-learning-matterscript/images/pure_value_expressions.png" alt="Pure Value Expressions"><span class="img-wrapper"><img src="part-04-learning-matterscript/images/pure_value_expressions.png" alt="Pure Value Expressions"></span></label></p>
+<p>A <strong>pure value expression</strong> is a MatterScript expression in which computation is expressed entirely through <strong>unique symbols, places, associations, and value transform rules</strong>. There is no conventional sequence of operations and no requirement that an intermediate value be explicitly stored or passed from one operation to another.</p>
+<p>The Boolean full-adder provides a useful example because the same logic can be represented in two fundamentally different ways.</p>
+<p>In an ordinary value-oriented representation, an <code>AND</code>, <code>OR</code>, or <code>NOT</code> operation can terminate in a <strong>value transform rule</strong>: a formed name selects a rule, and that rule produces a value. A pure value expression goes one step further. The expression itself becomes a population of symbols whose relationships progressively form the names of applicable rules.</p>
+<blockquote>
+<p><strong>Same logic. Different resolution.</strong>
+A pure value expression does not execute a sequence of Boolean operations. It establishes a space of possible associations and allows the arriving symbols to resolve the expression.</p>
+</blockquote>
+<hr>
+<h2 id="from-circuit-to-expression"><a class="header" href="#from-circuit-to-expression">From Circuit to Expression</a></h2>
+<p>Consider the binary full-adder. Its inputs are:</p>
+<ul>
+<li><code>X</code></li>
+<li><code>Y</code></li>
+<li><code>CI</code> — carry in</li>
+</ul>
+<p>and its outputs are:</p>
+<ul>
+<li><code>SUM</code></li>
+<li><code>CARRY</code></li>
+</ul>
+<p>A conventional circuit describes this in terms of gates and wires. MatterScript can instead map every association path in that circuit to a collection of unique symbols.</p>
+<p>For example:</p>
+<pre><code class="language-text">C means X = 0
+D means X = 1
+
+E means Y = 0
+F means Y = 1
+
+G means CI = 0
+H means CI = 1
+</code></pre>
+<p>The important point is that the symbols are <strong>unique to their places</strong>.</p>
+<p>The <code>0</code> associated with one path is not simply the same global <code>0</code> as every other occurrence of zero. It represents the particular condition associated with that particular place in the expression.</p>
+<p>Thus:</p>
+<pre><code class="language-text">C ≠ E
+</code></pre>
+<p>even though both may represent the logical value <code>0</code>.</p>
+<p>Likewise:</p>
+<pre><code class="language-text">D ≠ F
+</code></pre>
+<p>even though both represent the logical value <code>1</code>.</p>
+<p>This distinction allows the topology of the computation to remain encoded in the names themselves.</p>
+<hr>
+<h2 id="one-wire-two-symbols"><a class="header" href="#one-wire-two-symbols">One Wire, Two Symbols</a></h2>
+<p>Each association path can therefore be represented by two unique symbols:</p>
+<pre><code class="language-text">             wire
+              │
+          ┌───┴───┐
+          │       │
+          A       B
+          │       │
+        unique   unique
+        symbol   symbol
+</code></pre>
+<p>For the full-adder, this produces the initial fan-out relationships:</p>
+<pre><code class="language-text">A[g,k,o]
+B[h,l,p]
+C[G,K,O]
+D[H,L,P]
+E[I,M,Q]
+F[J,N,R]
+</code></pre>
+<p>These statements do not perform Boolean arithmetic.</p>
+<p>They establish <strong>name correspondence</strong>.</p>
+<p>For example:</p>
+<pre><code class="language-text">A[g,k,o]
+</code></pre>
+<p>means that content arriving at <code>A</code> is simultaneously associated with <code>g</code>, <code>k</code>, and <code>o</code>.</p>
+<p>The bracket list is therefore a compact representation of fan-out. It is equivalent in principle to expressing the same correspondence three times:</p>
+<pre><code class="language-text">A[g]
+A[k]
+A[o]
+</code></pre>
+<p>The comma-separated form simply makes the relationship explicit and compact.</p>
+<hr>
+<h2 id="value-transform-rules-as-resolution-points"><a class="header" href="#value-transform-rules-as-resolution-points">Value Transform Rules as Resolution Points</a></h2>
+<p>Once the symbols have been distributed through the expression, combinations of symbols begin to form names.</p>
+<p>For example:</p>
+<pre><code class="language-text">G,I[S]
+G,J[T]
+H,I[S]
+H,J[S]
+</code></pre>
+<p>These relationships define the next stage of resolution.</p>
+<p>A pair of symbols such as:</p>
+<pre><code class="language-text">G + I
+</code></pre>
+<p>can form the name:</p>
+<pre><code class="language-text">GI
+</code></pre>
+<p>and the association:</p>
+<pre><code class="language-text">GI[S]
+</code></pre>
+<p>states that the resulting relationship resolves toward <code>S</code>.</p>
+<p>The same process continues through the network:</p>
+<pre><code class="language-text">K,M[U]
+K,N[U]
+L,M[V]
+L,N[U]
+
+O,Q[W]
+O,R[W]
+P,Q[W]
+P,R[X]
+</code></pre>
+<p>The resulting expression is not a list of instructions such as:</p>
+<pre><code class="language-text">calculate this
+then calculate that
+then send the result here
+</code></pre>
+<p>Instead, it establishes a set of <strong>possible relationships</strong>. When the appropriate symbols coexist at a resolution place, the corresponding name becomes complete and its association becomes available.</p>
+<hr>
+<h2 id="the-shaking-bag-model"><a class="header" href="#the-shaking-bag-model">The Shaking-Bag Model</a></h2>
+<p>This is easiest to understand using the <strong>shaking bag</strong> model.</p>
+<p>Imagine that the place of resolution is a bag containing symbols. The bag is repeatedly populated as associations propagate through the expression.</p>
+<p>The initial input symbols might produce a population such as:</p>
+<pre><code class="language-text">B  F  C
+</code></pre>
+<p>After applying the first set of associations, the next population contains additional symbols:</p>
+<pre><code class="language-text">R  C  P  G  J  K  N
+</code></pre>
+<p>Further resolution produces another population:</p>
+<pre><code class="language-text">G  J  R  W  P  T  U
+</code></pre>
+<p>The important observation is that <strong>not every possible combination is meaningful</strong>.</p>
+<p>Only certain combinations form the names of value transform rules.</p>
+<p>For example:</p>
+<pre><code class="language-text">G,J[T]
+OR[W]
+KN[U]
+</code></pre>
+<p>identify particular combinations that become complete within that population.</p>
+<p>The resolution process therefore resembles a search through populations of symbols rather than a conventional instruction stream.</p>
+<h3 id="resolution-progression"><a class="header" href="#resolution-progression">Resolution progression</a></h3>
+<pre><code class="language-text">Input population
+      │
+      │  associations
+      ▼
+New population
+      │
+      │  associations
+      ▼
+New population
+      │
+      │  associations
+      ▼
+...
+      │
+      ▼
+Output symbols
+</code></pre>
+<p>The symbols that survive and propagate are determined by the structure of the expression itself.</p>
+<hr>
+<h2 id="from-the-first-half-adder-to-the-second"><a class="header" href="#from-the-first-half-adder-to-the-second">From the First Half-Adder to the Second</a></h2>
+<p>The first portion of the full-adder resolves into the intermediate symbols:</p>
+<pre><code class="language-text">S
+T
+U
+V
+W
+X
+</code></pre>
+<p>These symbols then become the input population for the next stage:</p>
+<pre><code class="language-text">S,U[a,c,e]
+S,V[b,d,f]
+T,U[b,d,f]
+T,V[b,d,f]
+</code></pre>
+<p>Again, these are associations rather than conventional assignments.</p>
+<p>The result of one resolution stage becomes the population from which the next set of names can form.</p>
+<p>The subsequent stages continue this process:</p>
+<pre><code class="language-text">g,a[i]
+g,b[j]
+h,a[i]
+h,b[i]
+
+k,c[m]
+k,d[m]
+l,c[n]
+l,d[m]
+
+o,e[q]
+o,f[q]
+p,e[q]
+p,f[r]
+</code></pre>
+<p>and finally:</p>
+<pre><code class="language-text">i,m[s]
+i,n[t]
+j,m[t]
+j,n[t]
+
+q,W[u]
+q,X[v]
+r,W[v]
+r,X[v]
+</code></pre>
+<p>The entire Boolean full-adder has therefore been transformed into a network of symbolic associations.</p>
+<hr>
+<h2 id="the-pure-value-expression"><a class="header" href="#the-pure-value-expression">The Pure Value Expression</a></h2>
+<p>The complete MatterScript expression is:</p>
+<pre><code class="language-matterscript">FULLADD($A,$B,$C)(&lt;&gt; CARRYOUT&lt;&gt;)
+
+FULLADD[(X&lt;&gt;Y&lt;&gt;CI&lt;&gt;)( $SUM $CARRY)
+  $X $Y $CI:
+
+  //"fan-out input symbols"
+  A[g,k,o]
+  B[h,l,p]
+  C[G,K,O]
+  D[H,L,P]
+  E[I,M,Q]
+  F[J,N,R]
+
+  //"define combinational resolution stages"
+  G,I[S]
+  G,J[T]
+  H,I[S]
+  H,J[S]
+
+  K,M[U]
+  K,N[U]
+  L,M[V]
+  L,N[U]
+
+  O,Q[W]
+  O,R[W]
+  P,Q[W]
+  P,R[X]
+
+  //"fan out input to second half-adder"
+  S,U[a,c,e]
+  S,V[b,d,f]
+  T,U[b,d,f]
+  T,V[b,d,f]
+
+  g,a[i]
+  g,b[j]
+  h,a[i]
+  h,b[i]
+
+  k,c[m]
+  k,d[m]
+  l,c[n]
+  l,d[m]
+
+  o,e[q]
+  o,f[q]
+  p,e[q]
+  p,f[r]
+
+  //"sum"
+  i,m[s]
+  i,n[t]
+  j,m[t]
+  j,n[t]
+
+  //"carry"
+  q,W[u]
+  q,X[v]
+  r,W[v]
+  r,X[v]
+
+  //"output"
+  s[SUM&lt;s&gt;]
+  t[SUM&lt;t&gt;]
+  u[CARRY&lt;u&gt;]
+  v[CARRY&lt;v&gt;]
+]
+</code></pre>
+<p>Notice what is absent.</p>
+<p>There is no expression such as:</p>
+<pre><code class="language-text">SUM = X XOR Y XOR CI
+</code></pre>
+<p>There is no procedural sequence:</p>
+<pre><code class="language-text">a = ...
+b = ...
+c = ...
+</code></pre>
+<p>There are no explicit intermediate Boolean values.</p>
+<p>Instead, the program describes <strong>which symbols can associate with which other symbols</strong>.</p>
+<hr>
+<h2 id="no-invocation-is-required"><a class="header" href="#no-invocation-is-required">No Invocation Is Required</a></h2>
+<p>This distinction is particularly important in MatterScript.</p>
+<p>A conventional invocation might explicitly name a computational operation:</p>
+<pre><code class="language-text">some_gate(input1, input2)
+</code></pre>
+<p>A pure value expression does not require that form.</p>
+<p>The input content is simply introduced into the place of resolution:</p>
+<pre><code class="language-text">$X $Y $CI:
+</code></pre>
+<p>From there, the content begins forming names through the associations defined in the expression.</p>
+<p>The expression is therefore closer to a <strong>declarative topology of possible resolution</strong> than to an imperative program.</p>
+<p>The computational behavior emerges from the relationships.</p>
+<hr>
+<h2 id="final-symbols-become-output-associations"><a class="header" href="#final-symbols-become-output-associations">Final Symbols Become Output Associations</a></h2>
+<p>At the end of the resolution process, the surviving symbols are:</p>
+<pre><code class="language-text">s
+t
+u
+v
+</code></pre>
+<p>These are associated with the external result places:</p>
+<pre><code class="language-text">s[SUM&lt;s&gt;]
+t[SUM&lt;t&gt;]
+
+u[CARRY&lt;u&gt;]
+v[CARRY&lt;v&gt;]
+</code></pre>
+<p>The <code>&lt;...&gt;</code> notation identifies the destination place and the corresponding content.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">             ┌── SUM
+s ───────────┤
+t ───────────┘
+
+             ┌── CARRY
+u ───────────┤
+v ───────────┘
+</code></pre>
+<p>In the shaking-bag model, these final symbols can be thought of as causing the destination definition to open: the appropriate destination association becomes complete and the resulting content can propagate outward.</p>
+<hr>
+<h2 id="pure-values-versus-value-transforms"><a class="header" href="#pure-values-versus-value-transforms">Pure Values Versus Value Transforms</a></h2>
+<p>It is useful to distinguish two ways an expression can terminate.</p>
+<h3 id="value-transform-resolution"><a class="header" href="#value-transform-resolution">Value-transform resolution</a></h3>
+<p>A formed name identifies a value transform rule:</p>
+<pre><code class="language-text">symbols
+   ↓
+formed name
+   ↓
+value transform
+   ↓
+value
+</code></pre>
+<p>This is the model used by the earlier full-adder example.</p>
+<h3 id="pure-association-resolution"><a class="header" href="#pure-association-resolution">Pure association resolution</a></h3>
+<p>A formed name identifies an association:</p>
+<pre><code class="language-text">symbols
+   ↓
+formed name
+   ↓
+association
+   ↓
+new symbol/place
+</code></pre>
+<p>The second form does not require the computation to terminate in a conventional stored value.</p>
+<p>This distinction is fundamental to MatterScript because <strong>the same logical function can be represented by different kinds of resolution</strong>.</p>
+<p>A Boolean full-adder can therefore be expressed using explicit value transforms, or it can be expressed as a network of primitive symbolic relationships.</p>
+<hr>
+<h2 id="why-this-matters-for-matterscript"><a class="header" href="#why-this-matters-for-matterscript">Why This Matters for MatterScript</a></h2>
+<p>Pure value expressions demonstrate an important property of the MatterScript model:</p>
+<blockquote>
+<p><strong>Computation does not have to be represented as the transformation of values. It can be represented as the formation and propagation of relationships.</strong></p>
+</blockquote>
+<p>Once computation is expressed in this form, several familiar distinctions begin to collapse.</p>
+<p>The boundary between:</p>
+<ul>
+<li>data and connectivity,</li>
+<li>value and identity,</li>
+<li>computation and wiring,</li>
+<li>expression and topology,</li>
+<li>software and hardware,</li>
+</ul>
+<p>becomes much less rigid.</p>
+<p>The expression already contains the connectivity information that a hardware implementation requires.</p>
+<p>For example:</p>
+<pre><code class="language-text">A[g,k,o]
+</code></pre>
+<p>is simultaneously:</p>
+<ol>
+<li>a symbolic relationship,</li>
+<li>a fan-out description,</li>
+<li>a piece of computational topology, and</li>
+<li>a potential hardware wiring relationship.</li>
+</ol>
+<p>The MatterScript compiler can therefore lower the same semantic structure into different physical representations without requiring the programmer to rewrite the computation as a conventional hardware description.</p>
+<hr>
+<h2 id="pure-value-expressions-and-physical-computation"><a class="header" href="#pure-value-expressions-and-physical-computation">Pure Value Expressions and Physical Computation</a></h2>
+<p>This is particularly significant for asynchronous and spatial computation.</p>
+<p>A conventional program generally describes <strong>what operation happens next</strong>.</p>
+<p>A pure value expression describes <strong>what relationships are possible where</strong>.</p>
+<p>That distinction becomes increasingly useful as computation moves toward:</p>
+<ul>
+<li>asynchronous logic,</li>
+<li>NULL Convention Logic,</li>
+<li>spatially distributed computation,</li>
+<li>FPGA fabrics,</li>
+<li>hardware synthesis,</li>
+<li>sensor networks,</li>
+<li>edge computation, and</li>
+<li>physically embedded computation.</li>
+</ul>
+<p>In these systems, locality and connectivity are not merely implementation details. They are part of the computational structure.</p>
+<p>Pure value expressions provide a language-level mechanism for expressing that structure directly.</p>
+<hr>
+<h2 id="a-useful-mental-model"><a class="header" href="#a-useful-mental-model">A Useful Mental Model</a></h2>
+<p>When reading a pure value expression, resist the temptation to read it as a sequence of assignments.</p>
+<p>Instead, read it as a <strong>field of possible associations</strong>.</p>
+<pre><code class="language-text">             symbols arrive
+                    │
+                    ▼
+          ┌──────────────────┐
+          │ resolution place │
+          │                  │
+          │   B  F  C        │
+          │      G  J        │
+          │   P       K      │
+          └──────────────────┘
+                    │
+             names become
+               complete
+                    │
+                    ▼
+             new associations
+                    │
+                    ▼
+          next resolution place
+</code></pre>
+<p>The expression is not telling the runtime to <em>execute</em> each line.</p>
+<p>It is defining the relationships that allow symbols to propagate and form complete names.</p>
+<p>That is why the full-adder can be described without an explicit chain of Boolean operations.</p>
+<hr>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<p>A pure value expression:</p>
+<ul>
+<li>represents computation through <strong>unique symbols and associations</strong>;</li>
+<li>assigns distinct symbols to the distinct paths of a computation;</li>
+<li>allows symbols to propagate through <strong>name correspondence</strong>;</li>
+<li>forms names when the required symbols coexist;</li>
+<li>uses value transform rules or associations as resolution points;</li>
+<li>progresses through populations of symbols rather than a procedural instruction sequence;</li>
+<li>can express fan-out directly through constructs such as <code>A[g,k,o]</code>;</li>
+<li>can terminate in destination associations such as <code>s[SUM&lt;s&gt;]</code>; and</li>
+<li>preserves the topology of the computation as part of the expression itself.</li>
+</ul>
+<p>The Boolean full-adder demonstrates the central idea:</p>
+<blockquote>
+<p><strong>The logic does not need to be described as a sequence of value transformations. The relationships that make the logic possible can themselves constitute the expression.</strong></p>
+</blockquote>
+<p>This is one of the steps by which MatterScript moves from describing <strong>what a computation calculates</strong> toward describing <strong>where computation exists, what can associate with what, and how information propagates through physical structure</strong>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="mutexes-arbitration-and-bundling"><a href="#mutexes-arbitration-and-bundling" class="header">Mutexes, Arbitration and Bundling</a></h1>
 <h2 id="bundles-mutexes-and-arbitration"><a class="header" href="#bundles-mutexes-and-arbitration">Bundles, Mutexes, and Arbitration</a></h2>

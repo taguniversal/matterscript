@@ -38,6 +38,7 @@
 - [Transform Rules](part-04-learning-matterscript/07-transform-rules.md)
 - [Invocation](part-04-learning-matterscript/08-invocation.md)
 - [Name Composition](part-04-learning-matterscript/09-name-composition.md)
+- [Pure Value Expressions](part-04-learning-matterscript/09b-pure-value-expressions.md)
 - [Mutexes, Arbitration and Bundling](part-04-learning-matterscript/10-mutexes-arbitration-bundling.md)
 - [Generate Blocks](part-04-learning-matterscript/11-generate-blocks.md)
 - [Domains & Spatial Contexts](part-04-learning-matterscript/11b-domains-and-spatial-contexts.md)
