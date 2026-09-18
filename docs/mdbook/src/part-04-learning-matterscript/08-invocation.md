@@ -1,4 +1,5 @@
 # Invocation
+![Invocation](images/invocation.png)
 
 Every definition describes a local piece of computation.
 

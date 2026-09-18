@@ -1,4 +1,5 @@
 # Name Composition
+![Name Composition](images/name_composition.png)
 
 Names are one of MatterScript's most powerful concepts.
 
