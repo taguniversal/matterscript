@@ -14,6 +14,43 @@ pub const network_entity = @import("export/network_entity.zig");
 
 const DATA_WIDTH = constants.DATA_WIDTH;
 
+/// A "pure association" definition (Fant §12.3.4/12.9, e.g. `A[g,k,o]`,
+/// `GI[S]`) carries no sources/destinations of its own — its entire
+/// content is a single pure_value fan-out list. It represents plain
+/// name-correspondence wiring (content flowing through `A` also flows to
+/// `g`, `k`, and `o`), not a computational entity, and must never become
+/// a standalone VHDL entity — see TAG-177.
+///
+/// The digit-prefix exclusion mirrors the existing filter a few lines
+/// below in the "write children" loop: numeric lookup-table rows
+/// ("0", "1", "0,0") share this exact AST shape (zero sources/
+/// destinations, one pure_value resolution) but mean something entirely
+/// different — a stored constant, not a fan-out alias — and are already
+/// handled by writeContainedLookupTable's own, more rigorous, arity-based
+/// disambiguation. This is a practical, currently-sufficient heuristic,
+/// not a fully general one: a hypothetical symbolically-keyed (non-digit)
+/// lookup-table row could still collide with it. Nothing in the codebase
+/// does that today.
+fn isPureAssociation(def: network.Definition) bool {
+    if (def.name.len == 0 or std.ascii.isDigit(def.name[0])) return false;
+    if (def.sources.len != 0 or def.destinations.len != 0) return false;
+    if (def.resolution.len != 1) return false;
+    return def.resolution[0] == .pure_value;
+}
+
+/// Splits a pure-association's fan-out list ("g,k,o") into its
+/// individual destination names. A single-target association (e.g.
+/// `GI[S]`, pure_value == "S") degenerates to a one-element list.
+fn pureAssociationTargets(allocator: std.mem.Allocator, pure_value: []const u8) ![]const []const u8 {
+    var targets: std.ArrayListUnmanaged([]const u8) = .empty;
+    var it = std.mem.splitScalar(u8, pure_value, ',');
+    while (it.next()) |raw| {
+        const trimmed = std.mem.trim(u8, raw, " \t\r\n");
+        if (trimmed.len > 0) try targets.append(allocator, trimmed);
+    }
+    return targets.toOwnedSlice(allocator);
+}
+
 /// Emits a VHDL entity and architecture body for a single MatterScript definition,
 /// normalizing destination defaults and identifiers, and recursively processing any
 /// nested child definitions.
@@ -23,6 +60,14 @@ pub fn writeDefinition(
     raw_def: network.Definition,
     scope: []const u8,
 ) !void {
+    // Pure-association definitions (TAG-177, e.g. A[g,k,o], GI[S]) are
+    // plain name-correspondence wiring, not computational entities —
+    // their fan-out is folded into the *containing* definition's
+    // architecture instead (see "pure association wiring" below).
+    // Emitting them here would produce a spurious empty entity per
+    // fan-out alias, which is exactly the bug TAG-177 fixes.
+    if (isPureAssociation(raw_def)) return;
+
     // Geometry-only definitions (@domain(spatial2d|spatial3d) with no
     // @generate block) describe physical structure, not hardware —
     // they're emitted as meshes by ipl_export_mesh, never as VHDL.
@@ -130,6 +175,7 @@ pub fn writeDefinition(
         // 1. Write children/contained definitions first (so they are declared before instantiation)
         for (def.contained) |contained| {
             if (contained.name.len == 0 or std.ascii.isDigit(contained.name[0])) continue;
+            if (isPureAssociation(contained)) continue; // folded into this architecture's wiring instead — see below
             try writer.print("\n", .{});
 
             // Compute this child's full scoped name using the current entity's name (def_id) as the parent scope
@@ -188,6 +234,19 @@ pub fn writeDefinition(
                 .directive => |d| {
                     try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
                 },
+            }
+        }
+
+        // Pure-association children (TAG-177): their source name and
+        // every fan-out target need a real signal in *this* (the
+        // containing) architecture, since writeDefinition never emits
+        // an entity for them to declare their own ports.
+        for (def.contained) |contained| {
+            if (!isPureAssociation(contained)) continue;
+            try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, contained.name);
+            const targets = try pureAssociationTargets(allocator, contained.resolution[0].pure_value);
+            for (targets) |target| {
+                try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, target);
             }
         }
 
@@ -336,6 +395,25 @@ pub fn writeDefinition(
             try writer.print("      end case;\n    end if;\n  end process;\n", .{});
         }
 
+        // pure association wiring (TAG-177): fold each fan-out child's
+        // name-correspondence directly into this architecture as plain
+        // signal assignments — dest <= source for every target. Since
+        // ncl_signal already carries payload+validity together, a
+        // straight assignment is the correct, complete representation;
+        // there is nothing else to compute.
+        try writer.print("\n  -- pure association wiring\n", .{});
+        for (def.contained) |contained| {
+            if (!isPureAssociation(contained)) continue;
+            const source_id = try sanitizeName(allocator, contained.name);
+            defer allocator.free(source_id);
+            const targets = try pureAssociationTargets(allocator, contained.resolution[0].pure_value);
+            for (targets) |target| {
+                const target_id = try sanitizeName(allocator, target);
+                defer allocator.free(target_id);
+                try writer.print("  {s} <= {s};\n", .{ target_id, source_id });
+            }
+        }
+
         // destination fills (outputs)
         try writer.print("\n  -- destination fills (outputs)\n", .{});
         if (!try lookup.writeContainedLookupTable(allocator, writer, def)) {
@@ -357,7 +435,17 @@ pub fn writeDefinition(
                         _ = inv;
                     },
                     .pure_value => |v| {
-                        try writer.print("  -- TODO: pure value expression {s} (not a recognized lookup-table shape)\n", .{v});
+                        // A bare $name pure-value (e.g. $X, $Y, $CI) is a
+                        // reference to an already-existing source place —
+                        // its port already exists via def.sources, so
+                        // there is nothing to declare or assign here.
+                        // Genuine fan-out associations (A[g,k,o]) never
+                        // reach this branch: they're always separate
+                        // `contained` definitions, handled above in
+                        // "pure association wiring" instead.
+                        if (v.len == 0 or v[0] != '$') {
+                            try writer.print("  -- TODO: pure value expression {s} (not a recognized lookup-table shape)\n", .{v});
+                        }
                     },
                     .directive => |d| {
                         try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });

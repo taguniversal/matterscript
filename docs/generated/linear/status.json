@@ -372,7 +372,7 @@
   "TAG-111": {
     "implementation_status": null,
     "simulation_requested": false,
-    "workflow_state": "Backlog"
+    "workflow_state": "Done"
   },
   "TAG-110": {
     "implementation_status": null,

@@ -1,19 +1,17 @@
-// Linear: TAG-177 Example 12.26 Pure Value Expression of Boolean Full Adder
-
 FULLADD($A,$B,$C)(<> CARRYOUT<>)
 FULLADD[(X<>Y<>CI<>)( $SUM $CARRY)
   $X $Y $CI:
 ///"fan-out input symbols"
 A[g,k,o] B[h,l,p] C[G,K,O] D[H,L,P] E[I,M,Q] F[J,N,R]
 //"define combinational resolution stages"
-GI[S] GJ[T] HI[S] HJ[S]
-KM[U] KN[U] LM[V] LN[U]
-OQ[W] OR[W] PQ[W] PR[X]
-SU[a,c,e] SV[b,d,f] TU[b,d,f] TV[b,d,f] //"fan out input to second half-adder"
-ga[i] gb[j] ha[i] hb[i]
-kc[m] kd[m] lc[n] ld[m]
-oe[q] of[q] pe[q] pf[r]
-im[s] in[t] jm[t] jn[t] //"sum"
-qW[u] qX[v] rW[v] rX[v] //"carry"
+G,I[S] G,J[T] H,I[S] H,J[S]
+K,M[U] K,N[U] L,M[V] L,N[U]
+O,Q[W] O,R[W] P,Q[W] P,R[X]
+S,U[a,c,e] S,V[b,d,f] T,U[b,d,f] T,V[b,d,f] //"fan out input to second half-adder"
+g,a[i] g,b[j] h,a[i] h,b[i]
+k,c[m] k,d[m] l,c[n] l,d[m]
+o,e[q] o,f[q] p,e[q] p,f[r]
+i,m[s] i,n[t] j,m[t] j,n[t] //"sum"
+q,W[u] q,X[v] r,W[v] r,X[v] //"carry"
 s[SUM<s>] t[SUM<t>] u[CARRY<u>] v[CARRY<v>] //"output"
 ]
