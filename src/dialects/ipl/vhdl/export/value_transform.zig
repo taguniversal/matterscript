@@ -122,8 +122,8 @@ pub fn writeTransformRules(
     allocator: std.mem.Allocator,
     writer: anytype,
     def: network.Definition,
+    rules: []const ValueTransformRule,
 ) !void {
-    const rules = try collectValueTransformRules(allocator, def);
     try assertNoTransformRuleSymbolCollidesWithPort(def, rules);
 
     try writer.print("\n  -- value transform rules\n", .{});

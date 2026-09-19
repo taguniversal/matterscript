@@ -184,7 +184,7 @@ pub fn writeDefinition(
     try rom_lookup.writeKeyComposition(allocator, writer, def);
     try rom_lookup.writeRomLookupProcess(allocator, writer, def);
 
-    try value_transform.writeTransformRules(allocator, writer, def);
+    try value_transform.writeTransformRules(allocator, writer, def, transform_rules);
 
     try signal.writeDestinationFills(allocator, writer, def);
 
