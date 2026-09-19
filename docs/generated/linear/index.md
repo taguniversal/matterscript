@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 20  |  🟡 Partial: 6  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 115  |  Total: 143
+✅ Implemented: 20  |  🟡 Partial: 5  |  🔴 Blocked: 1  |  ⬛ Spec only: 2  |  ⬜ Not started: 115  |  Total: 143
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
@@ -125,7 +125,7 @@
 - ⬜ Not started [VHDL Numeric table emission](TAG-172.md)
 - ⬜ Not started [Domain Layers](TAG-174.md)
 - ⬜ Not started [VHDL emission produces invalid syntax for unnamed/abbreviated destination places](TAG-175.md)
-- 🟡 Partial [Example 12.26 Pure Value Expression of Boolean Full Adder](TAG-177.md)
+- 🔴 Blocked [Example 12.26 Pure Value Expression of Boolean Full Adder](TAG-177.md)
 - ✅ Implemented [Example 12.10 Conditional Input Expression](TAG-180.md)
 - ✅ Implemented [Example 12.11 Controlled Fan-out Expression](TAG-181.md)
 - ⬜ Not started [IPL Generate keyword](TAG-183.md)

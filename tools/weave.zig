@@ -13,7 +13,7 @@ const LINEAR_ENDPOINT = "https://api.linear.app/graphql";
 const SOFTWARE_NOTES_MARKER = "## Software Notes";
 const REFERENCE_MARKER = "## Reference";
 const NOT_YET_WRITTEN = "_(not yet written)_";
-const STATUS_PRIORITY = [_][]const u8{ "Implemented", "Partial", "Spec Only" };
+const STATUS_PRIORITY = [_][]const u8{ "Implemented", "Partial", "Spec Only", "Blocked"};
 
 const IMAGE_DIR = "docs/generated/linear/images";
 
