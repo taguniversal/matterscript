@@ -14,41 +14,108 @@ pub const network_entity = @import("export/network_entity.zig");
 
 const DATA_WIDTH = constants.DATA_WIDTH;
 
-/// A "pure association" definition (Fant §12.3.4/12.9, e.g. `A[g,k,o]`,
-/// `GI[S]`) carries no sources/destinations of its own — its entire
-/// content is a single pure_value fan-out list. It represents plain
-/// name-correspondence wiring (content flowing through `A` also flows to
-/// `g`, `k`, and `o`), not a computational entity, and must never become
-/// a standalone VHDL entity — see TAG-177.
+/// A "value transform rule" (Fant §12.8.8, e.g. `A[g,k,o]`, `G,I[S]`) is a
+/// contained definition with no sources/destinations of its own, whose
+/// entire content is a single pure_value target list. Its NAME is itself
+/// a comma-separated list of the input symbols that must be simultaneously
+/// present for the rule to fire; its bracket content is the comma-
+/// separated list of symbols the rule asserts when it does.
 ///
-/// The digit-prefix exclusion mirrors the existing filter a few lines
-/// below in the "write children" loop: numeric lookup-table rows
-/// ("0", "1", "0,0") share this exact AST shape (zero sources/
-/// destinations, one pure_value resolution) but mean something entirely
-/// different — a stored constant, not a fan-out alias — and are already
-/// handled by writeContainedLookupTable's own, more rigorous, arity-based
-/// disambiguation. This is a practical, currently-sufficient heuristic,
-/// not a fully general one: a hypothetical symbolically-keyed (non-digit)
-/// lookup-table row could still collide with it. Nothing in the codebase
-/// does that today.
-fn isPureAssociation(def: network.Definition) bool {
+/// The digit-prefix exclusion mirrors the filter in the "write children"
+/// loop below: numeric lookup-table rows ("0", "1", "0,0") share this
+/// exact AST shape but mean something entirely different — a stored
+/// constant — and are already handled by writeContainedLookupTable's own,
+/// more rigorous, source-arity-based disambiguation. This is a practical,
+/// currently-sufficient heuristic, not a fully general one.
+fn isValueTransformRule(def: network.Definition) bool {
     if (def.name.len == 0 or std.ascii.isDigit(def.name[0])) return false;
     if (def.sources.len != 0 or def.destinations.len != 0) return false;
     if (def.resolution.len != 1) return false;
     return def.resolution[0] == .pure_value;
 }
 
-/// Splits a pure-association's fan-out list ("g,k,o") into its
-/// individual destination names. A single-target association (e.g.
-/// `GI[S]`, pure_value == "S") degenerates to a one-element list.
-fn pureAssociationTargets(allocator: std.mem.Allocator, pure_value: []const u8) ![]const []const u8 {
-    var targets: std.ArrayListUnmanaged([]const u8) = .empty;
-    var it = std.mem.splitScalar(u8, pure_value, ',');
+/// Splits a comma-separated symbol list ("g,k,o" or "G,I") into its
+/// individual names, trimming whitespace around each. A single symbol
+/// with no comma ("A", "S") degenerates to a one-element list.
+fn splitSymbolList(allocator: std.mem.Allocator, text: []const u8) ![]const []const u8 {
+    var names: std.ArrayListUnmanaged([]const u8) = .empty;
+    var it = std.mem.splitScalar(u8, text, ',');
     while (it.next()) |raw| {
         const trimmed = std.mem.trim(u8, raw, " \t\r\n");
-        if (trimmed.len > 0) try targets.append(allocator, trimmed);
+        if (trimmed.len > 0) try names.append(allocator, trimmed);
     }
-    return targets.toOwnedSlice(allocator);
+    return names.toOwnedSlice(allocator);
+}
+
+const ValueTransformRule = struct {
+    inputs: []const []const u8,
+    targets: []const []const u8,
+};
+
+fn collectValueTransformRules(
+    allocator: std.mem.Allocator,
+    def: network.Definition,
+) ![]const ValueTransformRule {
+    var rules: std.ArrayListUnmanaged(ValueTransformRule) = .empty;
+    for (def.contained) |contained| {
+        if (!isValueTransformRule(contained)) continue;
+        try rules.append(allocator, .{
+            .inputs = try splitSymbolList(allocator, contained.name),
+            .targets = try splitSymbolList(allocator, contained.resolution[0].pure_value),
+        });
+    }
+    return rules.toOwnedSlice(allocator);
+}
+
+fn checkNoTransformRuleSymbolCollidesWithPort(def: network.Definition, name: []const u8) !void {
+    for (def.sources) |arg| {
+        if (std.ascii.eqlIgnoreCase(arg.name, name)) return error.SymbolCollidesWithBoundaryPort;
+    }
+    for (def.destinations) |arg| {
+        if (std.ascii.eqlIgnoreCase(arg.name, name)) return error.SymbolCollidesWithBoundaryPort;
+    }
+}
+
+fn assertNoTransformRuleSymbolCollidesWithPort(
+    def: network.Definition,
+    rules: []const ValueTransformRule,
+) !void {
+    for (rules) |rule| {
+        for (rule.inputs) |name| try checkNoTransformRuleSymbolCollidesWithPort(def, name);
+        for (rule.targets) |name| try checkNoTransformRuleSymbolCollidesWithPort(def, name);
+    }
+}
+
+/// Groups rules by shared target, in first-seen order (not hashmap
+/// iteration order — this keeps generated VHDL deterministic and
+/// diffable, matching the golden-file testing approach used elsewhere).
+/// A target asserted by several rules (e.g. "S" from both G,I[S] and
+/// H,I[S]) collects every contributing rule's input list here, so the
+/// emitter can combine them into one assignment instead of several
+/// independent drivers on the same signal.
+const RuleGroup = struct {
+    target: []const u8,
+    contributing_inputs: std.ArrayListUnmanaged([]const []const u8),
+};
+
+fn groupRulesByTarget(
+    allocator: std.mem.Allocator,
+    rules: []const ValueTransformRule,
+) ![]const RuleGroup {
+    var order: std.ArrayListUnmanaged(RuleGroup) = .empty;
+    var index_of: std.StringHashMapUnmanaged(usize) = .empty;
+
+    for (rules) |rule| {
+        for (rule.targets) |target| {
+            const gop = try index_of.getOrPut(allocator, target);
+            if (!gop.found_existing) {
+                gop.value_ptr.* = order.items.len;
+                try order.append(allocator, .{ .target = target, .contributing_inputs = .empty });
+            }
+            try order.items[gop.value_ptr.*].contributing_inputs.append(allocator, rule.inputs);
+        }
+    }
+    return order.toOwnedSlice(allocator);
 }
 
 /// Emits a VHDL entity and architecture body for a single MatterScript definition,
@@ -66,7 +133,7 @@ pub fn writeDefinition(
     // architecture instead (see "pure association wiring" below).
     // Emitting them here would produce a spurious empty entity per
     // fan-out alias, which is exactly the bug TAG-177 fixes.
-    if (isPureAssociation(raw_def)) return;
+    if (isValueTransformRule(raw_def)) return;
 
     // Geometry-only definitions (@domain(spatial2d|spatial3d) with no
     // @generate block) describe physical structure, not hardware —
@@ -137,7 +204,6 @@ pub fn writeDefinition(
     // distinct in assignments, expression references, and intermediate
     // signals as well as in the entity interface.
     def = try sanitizer.normalizeDefinitionIdentifiers(allocator, def);
-
     {
         const def_id = try invocation.scopedDefinitionName(allocator, scope, def.name);
         defer allocator.free(def_id);
@@ -175,7 +241,7 @@ pub fn writeDefinition(
         // 1. Write children/contained definitions first (so they are declared before instantiation)
         for (def.contained) |contained| {
             if (contained.name.len == 0 or std.ascii.isDigit(contained.name[0])) continue;
-            if (isPureAssociation(contained)) continue; // folded into this architecture's wiring instead — see below
+            if (isValueTransformRule(contained)) continue;  // asserted via value transform rules in this architecture instead — see below
             try writer.print("\n", .{});
 
             // Compute this child's full scoped name using the current entity's name (def_id) as the parent scope
@@ -237,18 +303,14 @@ pub fn writeDefinition(
             }
         }
 
-        // Pure-association children (TAG-177): their source name and
-        // every fan-out target need a real signal in *this* (the
-        // containing) architecture, since writeDefinition never emits
-        // an entity for them to declare their own ports.
-        for (def.contained) |contained| {
-            if (!isPureAssociation(contained)) continue;
-            try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, contained.name);
-            const targets = try pureAssociationTargets(allocator, contained.resolution[0].pure_value);
-            for (targets) |target| {
-                try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, target);
-            }
+        const transform_rules = try collectValueTransformRules(allocator, def);
+        try assertNoTransformRuleSymbolCollidesWithPort(def, transform_rules);
+        
+        for (transform_rules) |rule| {
+            for (rule.inputs) |name| try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, name);
+            for (rule.targets) |name| try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, name);
         }
+
 
         var component_names: std.ArrayListUnmanaged([]const u8) = .empty;
         for (def.resolution) |stmt| {
@@ -395,23 +457,31 @@ pub fn writeDefinition(
             try writer.print("      end case;\n    end if;\n  end process;\n", .{});
         }
 
-        // pure association wiring (TAG-177): fold each fan-out child's
-        // name-correspondence directly into this architecture as plain
-        // signal assignments — dest <= source for every target. Since
-        // ncl_signal already carries payload+validity together, a
-        // straight assignment is the correct, complete representation;
-        // there is nothing else to compute.
-        try writer.print("\n  -- pure association wiring\n", .{});
-        for (def.contained) |contained| {
-            if (!isPureAssociation(contained)) continue;
-            const source_id = try sanitizeName(allocator, contained.name);
-            defer allocator.free(source_id);
-            const targets = try pureAssociationTargets(allocator, contained.resolution[0].pure_value);
-            for (targets) |target| {
-                const target_id = try sanitizeName(allocator, target);
-                defer allocator.free(target_id);
-                try writer.print("  {s} <= {s};\n", .{ target_id, source_id });
+        // value transform rules (Fant §12.8.8): each rule fires when all
+        // of its input symbols are simultaneously valid, asserting its
+        // target(s) with a freshly assigned identity. A target shared by
+        // multiple rules (e.g. S from both G,I and H,I) is combined into
+        // one OR-of-ANDs assignment rather than several independent
+        // drivers on the same signal.
+        try writer.print("\n  -- value transform rules\n", .{});
+        var transform_symbols: std.ArrayListUnmanaged([]const u8) = .empty;
+        const rule_groups = try groupRulesByTarget(allocator, transform_rules);
+        for (rule_groups) |group| {
+            const target_idx = try lookup.internSymbol(&transform_symbols, allocator, group.target);
+            const target_id = try sanitizeName(allocator, group.target);
+            defer allocator.free(target_id);
+
+            try writer.print("  {s} <= data_value({d}) when (", .{ target_id, target_idx });
+            for (group.contributing_inputs.items, 0..) |inputs, i| {
+                if (i > 0) try writer.print(") or (", .{});
+                for (inputs, 0..) |input, j| {
+                    if (j > 0) try writer.print(" and ", .{});
+                    const input_id = try sanitizeName(allocator, input);
+                    defer allocator.free(input_id);
+                    try writer.print("valid_of({s}) = '1'", .{input_id});
+                }
             }
+            try writer.print(") else null_value;\n", .{});
         }
 
         // destination fills (outputs)

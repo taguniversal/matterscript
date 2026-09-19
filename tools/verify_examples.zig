@@ -277,7 +277,7 @@ fn runGhdlSyntaxCheck(allocator: std.mem.Allocator, io: std.Io, vhd_path: []cons
     }
 
     const result = std.process.run(allocator, io, .{
-        .argv = &.{ "ghdl", "-s", "--std=08", vhd_path },
+        .argv = &.{ "ghdl", "-a", "--std=08", vhd_path },
     }) catch |err| {
         std.debug.print("  [{s}] failed to spawn ghdl for syntax check: {s}\n", .{ vhd_path, @errorName(err) });
         return false;

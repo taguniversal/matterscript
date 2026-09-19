@@ -288,7 +288,7 @@ pub fn writeContainedLookupTable(
     return true;
 }
 
-fn internSymbol(list: *std.ArrayListUnmanaged([]const u8), allocator: std.mem.Allocator, token: []const u8) !u64 {
+pub fn internSymbol(list: *std.ArrayListUnmanaged([]const u8), allocator: std.mem.Allocator, token: []const u8) !u64 {
     for (list.items, 0..) |existing, i| {
         if (std.mem.eql(u8, existing, token)) return @intCast(i);
     }

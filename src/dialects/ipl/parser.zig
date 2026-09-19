@@ -22,6 +22,7 @@ pub const arguments = @import("parser/arguments.zig");
 pub const expressions = @import("parser/expressions.zig");
 pub const directives = @import("parser/directives.zig");
 pub const statements = @import("parser/statements.zig");
+const validate = @import("validate.zig");
 
 // ----------------------------------------------------------------
 // Public API
@@ -134,7 +135,7 @@ fn parseInner(p: *core.Parser, allocator: std.mem.Allocator) !network.Network {
         .entries = try entries.toOwnedSlice(allocator),
         .free_destinations = try free_refs.toOwnedSlice(allocator),
     };
-
+    try validate.validate(allocator, net);
     return net;
 }
 
