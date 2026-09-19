@@ -11,112 +11,9 @@ pub const boundary = @import("export/boundary.zig");
 pub const invocation = @import("export/invocation.zig");
 const signal = @import("export/expression_signals.zig");
 pub const network_entity = @import("export/network_entity.zig");
-
-const DATA_WIDTH = constants.DATA_WIDTH;
-
-/// A "value transform rule" (Fant §12.8.8, e.g. `A[g,k,o]`, `G,I[S]`) is a
-/// contained definition with no sources/destinations of its own, whose
-/// entire content is a single pure_value target list. Its NAME is itself
-/// a comma-separated list of the input symbols that must be simultaneously
-/// present for the rule to fire; its bracket content is the comma-
-/// separated list of symbols the rule asserts when it does.
-///
-/// The digit-prefix exclusion mirrors the filter in the "write children"
-/// loop below: numeric lookup-table rows ("0", "1", "0,0") share this
-/// exact AST shape but mean something entirely different — a stored
-/// constant — and are already handled by writeContainedLookupTable's own,
-/// more rigorous, source-arity-based disambiguation. This is a practical,
-/// currently-sufficient heuristic, not a fully general one.
-fn isValueTransformRule(def: network.Definition) bool {
-    if (def.name.len == 0 or std.ascii.isDigit(def.name[0])) return false;
-    if (def.sources.len != 0 or def.destinations.len != 0) return false;
-    if (def.resolution.len != 1) return false;
-    return def.resolution[0] == .pure_value;
-}
-
-/// Splits a comma-separated symbol list ("g,k,o" or "G,I") into its
-/// individual names, trimming whitespace around each. A single symbol
-/// with no comma ("A", "S") degenerates to a one-element list.
-fn splitSymbolList(allocator: std.mem.Allocator, text: []const u8) ![]const []const u8 {
-    var names: std.ArrayListUnmanaged([]const u8) = .empty;
-    var it = std.mem.splitScalar(u8, text, ',');
-    while (it.next()) |raw| {
-        const trimmed = std.mem.trim(u8, raw, " \t\r\n");
-        if (trimmed.len > 0) try names.append(allocator, trimmed);
-    }
-    return names.toOwnedSlice(allocator);
-}
-
-const ValueTransformRule = struct {
-    inputs: []const []const u8,
-    targets: []const []const u8,
-};
-
-fn collectValueTransformRules(
-    allocator: std.mem.Allocator,
-    def: network.Definition,
-) ![]const ValueTransformRule {
-    var rules: std.ArrayListUnmanaged(ValueTransformRule) = .empty;
-    for (def.contained) |contained| {
-        if (!isValueTransformRule(contained)) continue;
-        try rules.append(allocator, .{
-            .inputs = try splitSymbolList(allocator, contained.name),
-            .targets = try splitSymbolList(allocator, contained.resolution[0].pure_value),
-        });
-    }
-    return rules.toOwnedSlice(allocator);
-}
-
-fn checkNoTransformRuleSymbolCollidesWithPort(def: network.Definition, name: []const u8) !void {
-    for (def.sources) |arg| {
-        if (std.ascii.eqlIgnoreCase(arg.name, name)) return error.SymbolCollidesWithBoundaryPort;
-    }
-    for (def.destinations) |arg| {
-        if (std.ascii.eqlIgnoreCase(arg.name, name)) return error.SymbolCollidesWithBoundaryPort;
-    }
-}
-
-fn assertNoTransformRuleSymbolCollidesWithPort(
-    def: network.Definition,
-    rules: []const ValueTransformRule,
-) !void {
-    for (rules) |rule| {
-        for (rule.inputs) |name| try checkNoTransformRuleSymbolCollidesWithPort(def, name);
-        for (rule.targets) |name| try checkNoTransformRuleSymbolCollidesWithPort(def, name);
-    }
-}
-
-/// Groups rules by shared target, in first-seen order (not hashmap
-/// iteration order — this keeps generated VHDL deterministic and
-/// diffable, matching the golden-file testing approach used elsewhere).
-/// A target asserted by several rules (e.g. "S" from both G,I[S] and
-/// H,I[S]) collects every contributing rule's input list here, so the
-/// emitter can combine them into one assignment instead of several
-/// independent drivers on the same signal.
-const RuleGroup = struct {
-    target: []const u8,
-    contributing_inputs: std.ArrayListUnmanaged([]const []const u8),
-};
-
-fn groupRulesByTarget(
-    allocator: std.mem.Allocator,
-    rules: []const ValueTransformRule,
-) ![]const RuleGroup {
-    var order: std.ArrayListUnmanaged(RuleGroup) = .empty;
-    var index_of: std.StringHashMapUnmanaged(usize) = .empty;
-
-    for (rules) |rule| {
-        for (rule.targets) |target| {
-            const gop = try index_of.getOrPut(allocator, target);
-            if (!gop.found_existing) {
-                gop.value_ptr.* = order.items.len;
-                try order.append(allocator, .{ .target = target, .contributing_inputs = .empty });
-            }
-            try order.items[gop.value_ptr.*].contributing_inputs.append(allocator, rule.inputs);
-        }
-    }
-    return order.toOwnedSlice(allocator);
-}
+const component = @import("export/component.zig");
+pub const value_transform = @import("export/value_transform.zig");
+pub const rom_lookup = @import("export/rom_lookup.zig");
 
 /// Emits a VHDL entity and architecture body for a single MatterScript definition,
 /// normalizing destination defaults and identifiers, and recursively processing any
@@ -127,428 +24,169 @@ pub fn writeDefinition(
     raw_def: network.Definition,
     scope: []const u8,
 ) !void {
-    // Pure-association definitions (TAG-177, e.g. A[g,k,o], GI[S]) are
-    // plain name-correspondence wiring, not computational entities —
-    // their fan-out is folded into the *containing* definition's
-    // architecture instead (see "pure association wiring" below).
-    // Emitting them here would produce a spurious empty entity per
-    // fan-out alias, which is exactly the bug TAG-177 fixes.
-    if (isValueTransformRule(raw_def)) return;
+    if (value_transform.isValueTransformRule(raw_def)) return;
+    if (boundary.shouldSkipSpatialGeometry(raw_def)) return;
 
-    // Geometry-only definitions (@domain(spatial2d|spatial3d) with no
-    // @generate block) describe physical structure, not hardware —
-    // they're emitted as meshes by ipl_export_mesh, never as VHDL.
-    // Skipping them here, before any of §12.3.4's destination
-    // normalization runs, avoids that logic mistaking geometry
-    // bindings (point/edge/loop/face fills with no real destinations)
-    // for an implicit hardware return value.
-    //
-    // A @domain(spatial2d|spatial3d) definition that also carries a
-    // @generate block (e.g. TAG-187's 2D cellular-automaton case) is
-    // NOT geometry — there the domain parametrizes the generate
-    // block's grid, and legitimately does produce VHDL.
-    // generateBlock != null is what distinguishes that usage from a
-    // geometry definition; spatial_domain.zig never sets or reads
-    // that field.
-    if (raw_def.generateBlock == null) {
-        if (raw_def.domain_spec) |spec| {
-            switch (spec.kind) {
-                .spatial2d, .spatial3d => return,
-                .spatial1d => {},
-            }
-        }
-    }
-    // §12.3.4 "Single Return to Place of Invocation" — if this
-    // definition has no destination list at all, its resolution's
-    // top-level fill(s) express the implicit return(s) instead,
-    // whether unnamed (synthesize "result") or already named (e.g.
-    // "out1" in "A[out1< $in >]"). Normalized ONCE here, into a
-    // corrected copy of `def`, so every downstream use — component
-    // declarations, intermediate signals, lookup tables, fill
-    // emission — sees consistent data, instead of patching each call
-    // site individually and risking missing one.
-    var def = raw_def;
-    if (def.destinations.len == 0) {
-        var names: std.ArrayListUnmanaged([]const u8) = .empty;
-        var normalized: std.ArrayListUnmanaged(network.Statement) = .empty;
-        for (def.resolution) |stmt| {
-            switch (stmt) {
-                .fill => |raw_f| {
-                    var f = raw_f;
-                    if (f.dest_name.len == 0) f.dest_name = "result";
-                    var have = false;
-                    for (names.items) |n| {
-                        if (std.mem.eql(u8, n, f.dest_name)) {
-                            have = true;
-                            break;
-                        }
-                    }
-                    if (!have) try names.append(allocator, f.dest_name);
-                    try normalized.append(allocator, .{ .fill = f });
-                },
-                else => try normalized.append(allocator, stmt),
-            }
-        }
-        if (names.items.len > 0) {
-            var dests: std.ArrayListUnmanaged(network.Arg) = .empty;
-            for (names.items) |n| try dests.append(allocator, .{ .kind = .place, .name = n });
-            def.destinations = try dests.toOwnedSlice(allocator);
-            def.resolution = try normalized.toOwnedSlice(allocator);
-        }
-    }
-
-    // IPL names are case-sensitive, whereas VHDL identifiers are not.  Give
-    // every exact IPL spelling a stable, lowercase VHDL spelling before any
-    // declaration or reference is emitted.  This is deliberately done to the
-    // whole definition, rather than only to ports: `a` and `A` must remain
-    // distinct in assignments, expression references, and intermediate
-    // signals as well as in the entity interface.
+    var def = try boundary.normalizeReturnDestinations(allocator, raw_def);
     def = try sanitizer.normalizeDefinitionIdentifiers(allocator, def);
-    {
-        const def_id = try invocation.scopedDefinitionName(allocator, scope, def.name);
-        defer allocator.free(def_id);
-        try writer.print(
-            \\-- generated by MatterScript IPL
-            \\-- definition: {s}
-            \\library ieee;
-            \\use ieee.std_logic_1164.all;
-            \\use ieee.numeric_std.all;
-            \\use work.matterscript_ncl.all;
-            \\
-            \\
-        , .{def.name});
 
-        // entity
-        const boundary_count = boundary.boundaryCount(def.sources) + boundary.boundaryCount(def.destinations);
-        if (boundary_count == 0) {
-            try writer.print("entity {s} is\nend {s};\n\n", .{ def_id, def_id });
-        } else {
-            try writer.print("entity {s} is\n  port(\n", .{def_id});
-            // sources → inputs (tokens flow IN to the definition)
-            var port_index: usize = 0;
-            var port_names: std.ArrayListUnmanaged([]const u8) = .empty;
-            for (def.sources) |src| {
-                try boundary.writeBoundaryPorts(allocator, writer, src, "in", &port_index, boundary_count, &port_names);
-            }
+    const def_id = try invocation.scopedDefinitionName(allocator, scope, def.name);
+    defer allocator.free(def_id);
 
-            // destinations → outputs (tokens flow OUT of the definition)
-            for (def.destinations) |dest| {
-                try boundary.writeBoundaryPorts(allocator, writer, dest, "out", &port_index, boundary_count, &port_names);
-            }
-            try writer.print("  );\nend {s};\n\n", .{def_id});
-        }
+    try writer.print(
+        \\-- generated by MatterScript IPL
+        \\-- definition: {s}
+        \\library ieee;
+        \\use ieee.std_logic_1164.all;
+        \\use ieee.numeric_std.all;
+        \\use work.matterscript_ncl.all;
+        \\
+        \\
+    , .{def.name});
 
-        // 1. Write children/contained definitions first (so they are declared before instantiation)
-        for (def.contained) |contained| {
-            if (contained.name.len == 0 or std.ascii.isDigit(contained.name[0])) continue;
-            if (isValueTransformRule(contained)) continue;  // asserted via value transform rules in this architecture instead — see below
-            try writer.print("\n", .{});
+    try network_entity.writeEntityHeader(allocator, writer, def, def_id);
 
-            // Compute this child's full scoped name using the current entity's name (def_id) as the parent scope
-            const child_scope = try invocation.scopedDefinitionName(allocator, def_id, contained.name);
-            defer allocator.free(child_scope);
+    // 1. Write children/contained definitions first (so they are declared before instantiation)
+    for (def.contained) |contained| {
+        if (contained.name.len == 0 or std.ascii.isDigit(contained.name[0])) continue;
+        if (value_transform.isValueTransformRule(contained)) continue;
+        try writer.print("\n", .{});
 
-            // Recursively write the child, passing its full scoped name as its def_id
-            try writeDefinition(allocator, writer, contained, def_id);
-        }
+        const child_scope = try invocation.scopedDefinitionName(allocator, def_id, contained.name);
+        defer allocator.free(child_scope);
 
-        // 2. Then write the parent definition/architecture that instantiates them
-        try writer.print("architecture rtl of {s} is\n", .{def_id});
+        try writeDefinition(allocator, writer, contained, def_id);
+    }
 
-        // valid signals — one per source (input)
-        for (def.sources) |src| {
-            try boundary.writeBoundaryValidDeclarations(allocator, writer, src);
-        }
-        try writer.print("  signal complete   : std_logic;\n", .{});
+    // 2. Then write the parent definition/architecture that instantiates them
+    try writer.print("architecture rtl of {s} is\n", .{def_id});
 
-        // per-table signals
-        for (def.constants) |tbl| {
-            const tbl_id = try sanitizeName(allocator, tbl.composed_name);
-            defer allocator.free(tbl_id);
-            const key_bits = lookup.countSources(tbl.composed_name) * DATA_WIDTH;
-            const val_bits = try lookup.tableValueWidth(allocator, tbl);
-            try writer.print("  signal {s}_key   : std_logic_vector({d} downto 0);\n", .{ tbl_id, key_bits - 1 });
-            try writer.print("  signal {s}_data  : std_logic_vector({d} downto 0);\n", .{ tbl_id, val_bits - 1 });
-            try writer.print("  signal {s}_valid : std_logic;\n", .{tbl_id});
-        }
+    // valid signals — one per source (input)
+    for (def.sources) |src| {
+        try boundary.writeBoundaryValidDeclarations(allocator, writer, src);
+    }
+    try writer.print("  signal complete   : std_logic;\n", .{});
 
-        var intermediate_names: std.ArrayListUnmanaged([]const u8) = .empty;
-        for (def.resolution) |stmt| {
-            switch (stmt) {
-                .fill => |fill| {
-                    // A fill's destination (e.g. "p0" in "p0<point(...)>")
-                    // is only a boundary port when it's actually
-                    // declared in sources/destinations — otherwise it's
-                    // a purely internal place that still needs a
-                    // signal declared for it, or ghdl reports "no
-                    // declaration for <name>" on the assignment below.
-                    // Any $-referenced names inside the expression
-                    // itself need the same treatment (mirroring the
-                    // .invoke and .pure_value cases here).
-                    try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, fill.dest_name);
-                    try signal.writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, fill.expr);
-                },
-                .invoke => |inv| {
-                    for (inv.destinations) |dest| {
-                        try signal.writeIntermediatePlaceSignal(allocator, writer, def, &intermediate_names, dest);
-                    }
-                    for (inv.sources) |src| {
-                        try signal.writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, invocation.argToText(src));
-                    }
-                },
-                .pure_value => |value| try signal.writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, value),
-                .directive => |d| {
-                    try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
-                },
-            }
-        }
+    // per-table signals
+    for (def.constants) |tbl| {
+        const tbl_id = try sanitizeName(allocator, tbl.composed_name);
+        defer allocator.free(tbl_id);
+        const key_bits = lookup.countSources(tbl.composed_name) * constants.DATA_WIDTH;
+        const val_bits = try lookup.tableValueWidth(allocator, tbl);
+        try writer.print("  signal {s}_key   : std_logic_vector({d} downto 0);\n", .{ tbl_id, key_bits - 1 });
+        try writer.print("  signal {s}_data  : std_logic_vector({d} downto 0);\n", .{ tbl_id, val_bits - 1 });
+        try writer.print("  signal {s}_valid : std_logic;\n", .{tbl_id});
+    }
 
-        const transform_rules = try collectValueTransformRules(allocator, def);
-        try assertNoTransformRuleSymbolCollidesWithPort(def, transform_rules);
-        
-        for (transform_rules) |rule| {
-            for (rule.inputs) |name| try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, name);
-            for (rule.targets) |name| try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, name);
-        }
-
-
-        var component_names: std.ArrayListUnmanaged([]const u8) = .empty;
-        for (def.resolution) |stmt| {
-            if (stmt != .invoke) continue;
-            const inv = stmt.invoke;
-            var already_declared = false;
-            for (component_names.items) |name| {
-                if (std.ascii.eqlIgnoreCase(name, inv.name)) {
-                    already_declared = true;
-                    break;
+    var intermediate_names: std.ArrayListUnmanaged([]const u8) = .empty;
+    for (def.resolution) |stmt| {
+        switch (stmt) {
+            .fill => |fill| {
+                try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, fill.dest_name);
+                try signal.writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, fill.expr);
+            },
+            .invoke => |inv| {
+                for (inv.destinations) |dest| {
+                    try signal.writeIntermediatePlaceSignal(allocator, writer, def, &intermediate_names, dest);
                 }
-            }
-            if (already_declared) continue;
-            const name = try allocator.dupe(u8, inv.name);
-            try component_names.append(allocator, name);
-            const component_id = try invocation.invocationDefinitionName(allocator, def, scope, inv.name);
-            defer allocator.free(component_id);
-            try writeComponentDeclaration(writer, inv, component_id);
-        }
-
-        for (def.resolution, 0..) |stmt, invocation_index| {
-            if (stmt != .invoke) continue;
-            const inv = stmt.invoke;
-            for (inv.sources, 0..) |_, argument_index| {
-                try writer.print("  signal invocation_{d}_arg_{d} : ncl_signal;\n", .{ invocation_index, argument_index });
-            }
-            for (inv.destinations, 0..) |output, output_index| {
-                if (output.group == null and output.name.len != 0) continue;
-                try writer.print("  signal invocation_{d}_output_{d} : ncl_signal;\n", .{ invocation_index, output_index });
-            }
-        }
-        try writer.print("begin\n\n", .{});
-
-        for (def.resolution, 0..) |stmt, invocation_index| {
-            if (stmt != .invoke) continue;
-            const inv = stmt.invoke;
-            for (inv.sources, 0..) |arg, argument_index| {
-                try invocation.writeInvocationArgument(allocator, writer, invocation_index, argument_index, arg);
-            }
-            for (inv.destinations, 0..) |output, output_index| {
-                if (output.group == null and output.name.len != 0) continue;
-                try writer.print("  invocation_{d}_output_{d} <= null_value;\n", .{ invocation_index, output_index });
-            }
-            try invocation.writeInvocationInstance(allocator, writer, def, def_id, inv, invocation_index);
-        }
-
-        // valid extraction from source places (inputs)
-        try writer.print("  -- extract valid bits from source places (inputs)\n", .{});
-        for (def.sources) |src| {
-            try boundary.writeBoundaryValidAssignments(allocator, writer, src);
-        }
-
-        // completeness: AND of all source valids
-        try writer.print("\n  -- complete when all source places are valid\n", .{});
-
-        var valid_exprs: std.ArrayListUnmanaged([]const u8) = .empty;
-        defer {
-            for (valid_exprs.items) |expr| allocator.free(expr);
-            valid_exprs.deinit(allocator);
-        }
-
-        for (def.sources) |src| {
-            var aw: std.Io.Writer.Allocating = .init(allocator);
-            defer aw.deinit();
-
-            try boundary.writeBoundaryValidExpression(allocator, &aw.writer, src);
-
-            const trimmed = std.mem.trim(u8, aw.written(), " \t\r\n");
-            if (trimmed.len > 0) {
-                try valid_exprs.append(allocator, try allocator.dupe(u8, trimmed));
-            }
-        }
-
-        if (valid_exprs.items.len == 0) {
-            try writer.print("  complete <= '1';\n", .{});
-        } else {
-            try writer.print("  complete <= ", .{});
-            for (valid_exprs.items, 0..) |expr, i| {
-                if (i > 0) try writer.print(" and ", .{});
-                try writer.print("{s}", .{expr});
-            }
-            try writer.print(";\n", .{});
-        }
-
-        // key composition
-        for (def.constants) |tbl| {
-            const tbl_id = try sanitizeName(allocator, tbl.composed_name);
-            defer allocator.free(tbl_id);
-            try writer.print("\n  -- key composition for {s}\n", .{tbl.composed_name});
-            try writer.print("  {s}_key <= ", .{tbl_id});
-            var i: usize = 0;
-            var first = true;
-            const cn = tbl.composed_name;
-            while (i < cn.len) {
-                if (cn[i] == '$') {
-                    i += 1;
-                    const start = i;
-                    while (i < cn.len and cn[i] != '$' and cn[i] != '(') i += 1;
-                    const sname = cn[start..i];
-                    if (!first) try writer.print(" & ", .{});
-                    try writer.print("{s}(7 downto 1)", .{sname});
-                    first = false;
-                } else i += 1;
-            }
-            try writer.print(";\n", .{});
-        }
-
-        // ROM lookups
-        for (def.constants) |tbl| {
-            const tbl_id = try sanitizeName(allocator, tbl.composed_name);
-            defer allocator.free(tbl_id);
-            const val_bits = try lookup.tableValueWidth(allocator, tbl);
-
-            try writer.print("\n  -- ROM lookup for {s}\n", .{tbl.composed_name});
-            try writer.print("  process({s}_key, complete) begin\n", .{tbl_id});
-            try writer.print("    {s}_data  <= (others => '0');\n", .{tbl_id});
-            try writer.print("    {s}_valid <= '0';\n", .{tbl_id});
-            try writer.print("    if complete = '1' then\n", .{});
-            try writer.print("      case {s}_key is\n", .{tbl_id});
-
-            switch (tbl.kind) {
-                .explicit => |entries| {
-                    var key_buf: [128]u8 = undefined;
-                    var val_buf: [64]u8 = undefined;
-                    for (entries) |entry| {
-                        var key_pos: usize = 0;
-                        for (entry.key) |ch| {
-                            const dv: u64 = ch - '0';
-                            const seg = lookup.binStr(key_buf[key_pos..], dv, DATA_WIDTH);
-                            key_pos += seg.len;
-                        }
-                        const key_str = key_buf[0..key_pos];
-                        const val_int = std.fmt.parseInt(u64, entry.value, 10) catch 0;
-                        const val_str = lookup.binStr(&val_buf, val_int, val_bits);
-                        try writer.print("        when \"{s}\" => {s}_data <= \"{s}\"; {s}_valid <= '1';\n", .{ key_str, tbl_id, val_str, tbl_id });
-                    }
-                },
-                .generate => {
-                    // TODO
-                },
-            }
-
-            try writer.print("        when others => null;\n", .{});
-            try writer.print("      end case;\n    end if;\n  end process;\n", .{});
-        }
-
-        // value transform rules (Fant §12.8.8): each rule fires when all
-        // of its input symbols are simultaneously valid, asserting its
-        // target(s) with a freshly assigned identity. A target shared by
-        // multiple rules (e.g. S from both G,I and H,I) is combined into
-        // one OR-of-ANDs assignment rather than several independent
-        // drivers on the same signal.
-        try writer.print("\n  -- value transform rules\n", .{});
-        var transform_symbols: std.ArrayListUnmanaged([]const u8) = .empty;
-        const rule_groups = try groupRulesByTarget(allocator, transform_rules);
-        for (rule_groups) |group| {
-            const target_idx = try lookup.internSymbol(&transform_symbols, allocator, group.target);
-            const target_id = try sanitizeName(allocator, group.target);
-            defer allocator.free(target_id);
-
-            try writer.print("  {s} <= data_value({d}) when (", .{ target_id, target_idx });
-            for (group.contributing_inputs.items, 0..) |inputs, i| {
-                if (i > 0) try writer.print(") or (", .{});
-                for (inputs, 0..) |input, j| {
-                    if (j > 0) try writer.print(" and ", .{});
-                    const input_id = try sanitizeName(allocator, input);
-                    defer allocator.free(input_id);
-                    try writer.print("valid_of({s}) = '1'", .{input_id});
+                for (inv.sources) |src| {
+                    try signal.writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, invocation.argToText(src));
                 }
-            }
-            try writer.print(") else null_value;\n", .{});
+            },
+            .pure_value => |value| try signal.writeDollarReferenceSignals(allocator, writer, def, &intermediate_names, value),
+            .directive => |d| {
+                try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
+            },
         }
+    }
 
-        // destination fills (outputs)
-        try writer.print("\n  -- destination fills (outputs)\n", .{});
-        if (!try lookup.writeContainedLookupTable(allocator, writer, def)) {
-            for (def.resolution) |stmt| {
-                switch (stmt) {
-                    .fill => |f| {
-                        const literal = std.fmt.parseInt(u64, std.mem.trim(u8, f.expr, " \t\r\n"), 10) catch null;
-                        if (literal) |value| {
-                            const dest_id = try sanitizeName(allocator, f.dest_name);
-                            defer allocator.free(dest_id);
-                            try writer.print("  {s} <= data_value({d});\n", .{ dest_id, value });
-                        } else if (!try signal.writeExpressionFill(allocator, writer, f)) {
-                            const dest_id = try sanitizeName(allocator, f.dest_name);
-                            defer allocator.free(dest_id);
-                            try writer.print("  {s} <= null_value;\n", .{dest_id});
-                        }
-                    },
-                    .invoke => |inv| {
-                        _ = inv;
-                    },
-                    .pure_value => |v| {
-                        // A bare $name pure-value (e.g. $X, $Y, $CI) is a
-                        // reference to an already-existing source place —
-                        // its port already exists via def.sources, so
-                        // there is nothing to declare or assign here.
-                        // Genuine fan-out associations (A[g,k,o]) never
-                        // reach this branch: they're always separate
-                        // `contained` definitions, handled above in
-                        // "pure association wiring" instead.
-                        if (v.len == 0 or v[0] != '$') {
-                            try writer.print("  -- TODO: pure value expression {s} (not a recognized lookup-table shape)\n", .{v});
-                        }
-                    },
-                    .directive => |d| {
-                        try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
-                    },
-                }
+    const transform_rules = try value_transform.collectValueTransformRules(allocator, def);
+    try value_transform.assertNoTransformRuleSymbolCollidesWithPort(def, transform_rules);
+
+    for (transform_rules) |rule| {
+        for (rule.inputs) |name| try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, name);
+        for (rule.targets) |name| try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, name);
+    }
+
+    var component_names: std.ArrayListUnmanaged([]const u8) = .empty;
+    for (def.resolution) |stmt| {
+        if (stmt != .invoke) continue;
+        const inv = stmt.invoke;
+        var already_declared = false;
+        for (component_names.items) |name| {
+            if (std.ascii.eqlIgnoreCase(name, inv.name)) {
+                already_declared = true;
+                break;
             }
         }
-
-        try writer.print("\nend rtl;\n", .{});
-    }
-}
-
-fn writeComponentDeclaration(
-    writer: anytype,
-    inv: network.Invocation,
-    component_id: []const u8,
-) !void {
-    const port_count = inv.sources.len + inv.destinations.len;
-    if (port_count == 0) {
-        try writer.print("  component {s}\n  end component;\n\n", .{component_id});
-        return;
+        if (already_declared) continue;
+        const name = try allocator.dupe(u8, inv.name);
+        try component_names.append(allocator, name);
+        const component_id = try invocation.invocationDefinitionName(allocator, def, scope, inv.name);
+        defer allocator.free(component_id);
+        try component.writeComponentDeclaration(writer, inv, component_id);
     }
 
-    try writer.print("  component {s}\n    port(\n", .{component_id});
+    try invocation.writeInvocationSignals(writer, def);
 
-    for (inv.sources, 0..) |_, i| {
-        const last = (i + 1 == port_count);
-        try writer.print("      arg_{d} : in ncl_signal{s}\n", .{ i, if (last) "" else ";" });
+    try writer.print("begin\n\n", .{});
+
+    for (def.resolution, 0..) |stmt, invocation_index| {
+        if (stmt != .invoke) continue;
+        const inv = stmt.invoke;
+        for (inv.sources, 0..) |arg, argument_index| {
+            try invocation.writeInvocationArgument(allocator, writer, invocation_index, argument_index, arg);
+        }
+        for (inv.destinations, 0..) |output, output_index| {
+            if (output.group == null and output.name.len != 0) continue;
+            try writer.print("  invocation_{d}_output_{d} <= null_value;\n", .{ invocation_index, output_index });
+        }
+        try invocation.writeInvocationInstance(allocator, writer, def, def_id, inv, invocation_index);
     }
-    for (inv.destinations, 0..) |_, i| {
-        const absolute_i = i + inv.sources.len;
-        const last = (absolute_i + 1 == port_count);
-        try writer.print("      output_{d} : out ncl_signal{s}\n", .{ i, if (last) "" else ";" });
+
+    // valid extraction from source places (inputs)
+    try writer.print("  -- extract valid bits from source places (inputs)\n", .{});
+    for (def.sources) |src| {
+        try boundary.writeBoundaryValidAssignments(allocator, writer, src);
     }
-    try writer.print("    );\n  end component;\n\n", .{});
+
+    // completeness: AND of all source valids
+    try writer.print("\n  -- complete when all source places are valid\n", .{});
+    var valid_exprs: std.ArrayListUnmanaged([]const u8) = .empty;
+    defer {
+        for (valid_exprs.items) |expr| allocator.free(expr);
+        valid_exprs.deinit(allocator);
+    }
+
+    for (def.sources) |src| {
+        var aw: std.Io.Writer.Allocating = .init(allocator);
+        defer aw.deinit();
+
+        try boundary.writeBoundaryValidExpression(allocator, &aw.writer, src);
+
+        const trimmed = std.mem.trim(u8, aw.written(), " \t\r\n");
+        if (trimmed.len > 0) {
+            try valid_exprs.append(allocator, try allocator.dupe(u8, trimmed));
+        }
+    }
+
+    if (valid_exprs.items.len == 0) {
+        try writer.print("  complete <= '1';\n", .{});
+    } else {
+        try writer.print("  complete <= ", .{});
+        for (valid_exprs.items, 0..) |expr, i| {
+            if (i > 0) try writer.print(" and ", .{});
+            try writer.print("{s}", .{expr});
+        }
+        try writer.print(";\n", .{});
+    }
+
+    try rom_lookup.writeKeyComposition(allocator, writer, def);
+    try rom_lookup.writeRomLookupProcess(allocator, writer, def);
+
+    try value_transform.writeTransformRules(allocator, writer, def);
+
+    try signal.writeDestinationFills(allocator, writer, def);
+
+    try writer.print("\nend rtl;\n", .{});
 }

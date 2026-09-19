@@ -301,6 +301,19 @@ pub fn build(b: *std.Build) void {
 
     const run_pure_value_test = b.addRunArtifact(pure_value_test);
     
+    const boundary_test = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/boundary_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+            },
+        }),
+    });
+
+    const run_boundary_test = b.addRunArtifact(boundary_test);
+    
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
@@ -321,6 +334,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_spatial_domain_tests.step);
     test_step.dependOn(&run_golden_mesh_tests.step);
     test_step.dependOn(&run_pure_value_test.step);
+    test_step.dependOn(&run_boundary_test.step);
 
     // --- Code Coverage Step (using kcov) ---
     const coverage_step = b.step("coverage", "Generate code coverage report using kcov");

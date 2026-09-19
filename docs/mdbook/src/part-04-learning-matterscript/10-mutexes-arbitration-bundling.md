@@ -153,7 +153,7 @@ If only one place contains content, no competition occurs and the content flows 
 The effect is to transform multiple independent, uncoordinated flows into a single coordinated flow.
 
 ```text
-place1 ─┐
+place1  ─┐
          │
 place2 ──┼──► Arbiter ───► next<>
          │

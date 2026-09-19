@@ -93,6 +93,23 @@ pub fn writeInvocationArgument(
     }
 }
 
+pub fn writeInvocationSignals(
+    writer: anytype,
+    def: network.Definition,
+) !void {
+    for (def.resolution, 0..) |stmt, invocation_index| {
+        if (stmt != .invoke) continue;
+        const inv = stmt.invoke;
+        for (inv.sources, 0..) |_, argument_index| {
+            try writer.print("  signal invocation_{d}_arg_{d} : ncl_signal;\n", .{ invocation_index, argument_index });
+        }
+        for (inv.destinations, 0..) |output, output_index| {
+            if (output.group == null and output.name.len != 0) continue;
+            try writer.print("  signal invocation_{d}_output_{d} : ncl_signal;\n", .{ invocation_index, output_index });
+        }
+    }
+}
+
 
 pub fn invocationDefinitionName(
     allocator: std.mem.Allocator,

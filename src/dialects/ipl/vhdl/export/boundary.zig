@@ -7,6 +7,48 @@ const sanitizer = @import("../sanitizer.zig");
 const sanitizeName = sanitizer.sanitizeName;
 
 // Boundary Helpers
+pub fn normalizeReturnDestinations(
+    allocator: std.mem.Allocator,
+    raw_def: network.Definition,
+) !network.Definition {
+    if (raw_def.destinations.len != 0) return raw_def;
+
+    var names: std.ArrayListUnmanaged([]const u8) = .empty;
+    defer names.deinit(allocator);
+    var normalized: std.ArrayListUnmanaged(network.Statement) = .empty;
+
+    for (raw_def.resolution) |stmt| {
+        switch (stmt) {
+            .fill => |raw_f| {
+                var f = raw_f;
+                if (f.dest_name.len == 0) f.dest_name = "result";
+                var have = false;
+                for (names.items) |n| {
+                    if (std.mem.eql(u8, n, f.dest_name)) {
+                        have = true;
+                        break;
+                    }
+                }
+                if (!have) try names.append(allocator, f.dest_name);
+                try normalized.append(allocator, .{ .fill = f });
+            },
+            else => try normalized.append(allocator, stmt),
+        }
+    }
+
+    if (names.items.len > 0) {
+        var dests: std.ArrayListUnmanaged(network.Arg) = .empty;
+        for (names.items) |n| try dests.append(allocator, .{ .kind = .place, .name = n });
+
+        var def = raw_def;
+        def.destinations = try dests.toOwnedSlice(allocator);
+        def.resolution = try normalized.toOwnedSlice(allocator);
+        return def;
+    }
+
+    return raw_def;
+}
+
 
 pub fn argContainsName(arg: network.Arg, name: []const u8) bool {
     switch (arg.kind) {
@@ -186,4 +228,20 @@ pub fn collectBoundaryPortNamesInto(
         .place => try out.append(allocator, try sanitizeName(allocator, arg.name)),
         else => {},
     }
+}
+
+/// Geometry-only definitions (@domain(spatial2d|spatial3d) with no @generate block)
+/// describe physical structure, not hardware — they are emitted as meshes by ipl_export_mesh,
+/// never as VHDL. Skipping them before destination normalization avoids mistaking geometry
+/// bindings (point/edge/loop/face fills with no real destinations) for an implicit hardware return value.
+pub fn shouldSkipSpatialGeometry(def: network.Definition) bool {
+    if (def.generateBlock == null) {
+        if (def.domain_spec) |spec| {
+            switch (spec.kind) {
+                .spatial2d, .spatial3d => return true,
+                .spatial1d => {},
+            }
+        }
+    }
+    return false;
 }

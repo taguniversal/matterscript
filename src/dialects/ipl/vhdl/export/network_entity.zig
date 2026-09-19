@@ -221,3 +221,31 @@ fn writeNetworkDestMapping(
         else => {},
     }
 }
+
+
+pub fn writeEntityHeader(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    def: network.Definition,
+    def_id: []const u8,
+) !void {
+    const boundary_count = boundary.boundaryCount(def.sources) + boundary.boundaryCount(def.destinations);
+    if (boundary_count == 0) {
+        try writer.print("entity {s} is\nend {s};\n\n", .{ def_id, def_id });
+    } else {
+        try writer.print("entity {s} is\n  port(\n", .{def_id});
+        
+        // sources → inputs (tokens flow IN to the definition)
+        var port_index: usize = 0;
+        var port_names: std.ArrayListUnmanaged([]const u8) = .empty;
+        for (def.sources) |src| {
+            try boundary.writeBoundaryPorts(allocator, writer, src, "in", &port_index, boundary_count, &port_names);
+        }
+
+        // destinations → outputs (tokens flow OUT of the definition)
+        for (def.destinations) |dest| {
+            try boundary.writeBoundaryPorts(allocator, writer, dest, "out", &port_index, boundary_count, &port_names);
+        }
+        try writer.print("  );\nend {s};\n\n", .{def_id});
+    }
+}

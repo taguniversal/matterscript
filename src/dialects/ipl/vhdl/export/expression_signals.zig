@@ -5,6 +5,7 @@ const network = @import("../../network.zig");
 const boundary = @import("boundary.zig");
 const sanitizer = @import("../sanitizer.zig");
 const sanitizeName = sanitizer.sanitizeName;
+const lookup = @import("../lookup.zig");
 
 fn argListContainsName(args: []const network.Arg, name: []const u8) bool {
     // Mirrors writeBoundaryPorts/boundaryCount's own recursion —
@@ -144,4 +145,41 @@ pub fn writeExpressionFill(
     return false;
 }
 
+
+pub fn writeDestinationFills(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    def: network.Definition,
+) !void {
+    try writer.print("\n  -- destination fills (outputs)\n", .{});
+    if (!try lookup.writeContainedLookupTable(allocator, writer, def)) {
+        for (def.resolution) |stmt| {
+            switch (stmt) {
+                .fill => |f| {
+                    const literal = std.fmt.parseInt(u64, std.mem.trim(u8, f.expr, " \t\r\n"), 10) catch null;
+                    if (literal) |value| {
+                        const dest_id = try sanitizeName(allocator, f.dest_name);
+                        defer allocator.free(dest_id);
+                        try writer.print("  {s} <= data_value({d});\n", .{ dest_id, value });
+                    } else if (!try writeExpressionFill(allocator, writer, f)) {
+                        const dest_id = try sanitizeName(allocator, f.dest_name);
+                        defer allocator.free(dest_id);
+                        try writer.print("  {s} <= null_value;\n", .{dest_id});
+                    }
+                },
+                .invoke => |inv| {
+                    _ = inv;
+                },
+                .pure_value => |v| {
+                    if (v.len == 0 or v[0] != '$') {
+                        try writer.print("  -- TODO: pure value expression {s} (not a recognized lookup-table shape)\n", .{v});
+                    }
+                },
+                .directive => |d| {
+                    try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
+                },
+            }
+        }
+    }
+}
 
