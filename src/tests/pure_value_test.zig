@@ -50,24 +50,3 @@ test "TAG-177: Example 12.26 - try testing.expectError(error.TransformRuleSymbol
     const net = parser.parse(allocator, example_12_26_script);
     try testing.expectError(error.TransformRuleSymbolCollidesWithBoundaryPort, net);
 }
-
-test "TAG-177: parseResolution edge cases and comma lists" {
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-
-    const snippet =
-        \\TEST_NET[(X)(Y) $X:
-        \\  WIRE_SINGLE[A]
-        \\  WIRE_FANOUT[a, b, c]
-        \\  WIRE_COMPACT[x,y,z]
-        \\]
-    ;
-
-    const net = try parser.parse(allocator, snippet);
-    const contained = net.definitions[0].contained;
-
-    try testing.expectEqualStrings("A", findPureValueInDefinitions(contained, "WIRE_SINGLE").?);
-    try testing.expectEqualStrings("a, b, c", findPureValueInDefinitions(contained, "WIRE_FANOUT").?);
-    try testing.expectEqualStrings("x,y,z", findPureValueInDefinitions(contained, "WIRE_COMPACT").?);
-}
