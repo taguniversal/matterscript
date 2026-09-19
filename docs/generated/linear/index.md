@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 20  |  🟡 Partial: 6  |  ⬛ Spec only: 2  |  ⬜ Not started: 115  |  Total: 143
+✅ Implemented: 20  |  🟡 Partial: 6  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 115  |  Total: 143
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
