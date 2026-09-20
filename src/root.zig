@@ -22,6 +22,7 @@ pub const spatial_domain = @import("dialects/ipl/domains/spatial_domain.zig");
 pub const ipl_export_mesh = @import("dialects/ipl/export/mesh.zig");
 pub const definition = @import("dialects/ipl/vhdl/export/definition.zig");
 pub const boundary = @import("dialects/ipl/vhdl/export/boundary.zig");
+pub const ipl_value_transform = @import("dialects/ipl/value_transform.zig");
 
 test {
     std.testing.refAllDecls(@This());

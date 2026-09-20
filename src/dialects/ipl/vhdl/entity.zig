@@ -12,7 +12,8 @@ pub const invocation = @import("export/invocation.zig");
 const signal = @import("export/expression_signals.zig");
 pub const network_entity = @import("export/network_entity.zig");
 const component = @import("export/component.zig");
-pub const value_transform = @import("export/value_transform.zig");
+pub const value_transform = @import("../value_transform.zig"); // shared: AST shape + validation
+const transform_emit = @import("export/value_transform.zig");  // VHDL-specific emission only
 pub const rom_lookup = @import("export/rom_lookup.zig");
 
 /// Emits a VHDL entity and architecture body for a single MatterScript definition,
@@ -101,7 +102,8 @@ pub fn writeDefinition(
     }
 
     const transform_rules = try value_transform.collectValueTransformRules(allocator, def);
-    try value_transform.assertNoTransformRuleSymbolCollidesWithPort(def, transform_rules);
+    // boundary-port-collision check no longer needed here — validate.zig
+    // already enforces it at parse time via this same shared module.
 
     for (transform_rules) |rule| {
         for (rule.inputs) |name| try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, name);
@@ -184,7 +186,7 @@ pub fn writeDefinition(
     try rom_lookup.writeKeyComposition(allocator, writer, def);
     try rom_lookup.writeRomLookupProcess(allocator, writer, def);
 
-    try value_transform.writeTransformRules(allocator, writer, def, transform_rules);
+    try transform_emit.writeTransformRules(allocator, writer, transform_rules);
 
     try signal.writeDestinationFills(allocator, writer, def);
 
