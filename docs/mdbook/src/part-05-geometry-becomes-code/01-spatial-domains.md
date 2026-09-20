@@ -1,5 +1,6 @@
 # Spatial Domains: Geometry Construction Inside IPL
 
+![Spatial Domains](images/spatial_domains.png)
 ## 1. Motivation
 
 The Invocation Language describes causal relationships — completeness,

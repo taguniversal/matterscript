@@ -37,10 +37,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-baac33d1.js";
+            window.path_to_searchindex_js = "../searchindex-e88e15cb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-726b3fdb.js"></script>
+        <script src="../toc-6782d51a.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -177,6 +177,533 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="vertices"><a class="header" href="#vertices">Vertices</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="images/vertices.png" alt="Vertices"><span class="img-wrapper"><img src="images/vertices.png" alt="Vertices"></span></label></p>
+<p>A spatial structure has to begin somewhere.</p>
+<p>Before there can be an edge, there must be something for the edge to connect. Before there can be a loop, there must be edges to arrange. Before there can be a face, there must be a closed boundary.</p>
+<p>In MatterScript, that foundation is the <strong>vertex</strong>.</p>
+<p>A vertex is introduced with the <code>point(...)</code> geometry function:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+</code></pre>
+<p>At first glance, this looks like nothing more than a coordinate declaration. But the important part of the MatterScript model is that the coordinate is not left as anonymous numerical data. The statement gives the point a <strong>name</strong>, and that name becomes the way the rest of the geometry refers to it.</p>
+<p>The progression is therefore:</p>
+<pre><code class="language-text">coordinate
+    ↓
+point
+    ↓
+named binding
+    ↓
+PointId
+    ↓
+SpatialGraph vertex
+    ↓
+topological reference
+</code></pre>
+<p>The vertex is where numerical position becomes an addressable piece of geometry.</p>
+<hr>
+<h2 id="1-a-point-is-a-named-geometric-entity"><a class="header" href="#1-a-point-is-a-named-geometric-entity">1. A Point Is a Named Geometric Entity</a></h2>
+<p>The simplest spatial definition can introduce a point directly:</p>
+<pre><code class="language-matterscript">Shape[
+  ()
+  ()
+
+  @domain(spatial2d)
+
+  p0&lt;point(0.0, 0.0)&gt;
+
+]
+</code></pre>
+<p>The <code>p0</code> on the left is not merely a variable in the conventional programming-language sense. It establishes a binding between the MatterScript name and a geometry entity.</p>
+<p>During parsing, the statement is still an ordinary IPL fill:</p>
+<pre><code class="language-text">destination: p0
+expression:  point(0.0, 0.0)
+</code></pre>
+<p>The parser does not need to understand what a geometric point means.</p>
+<p>The spatial resolution pass interprets the <code>point(...)</code> call because the enclosing definition has declared a spatial domain.</p>
+<p>This separation is deliberate:</p>
+<pre><code class="language-text">MatterScript source
+       │
+       ▼
+    IPL parser
+       │
+       ▼
+ordinary Statement.fill
+       │
+       ▼
+spatial resolution
+       │
+       ▼
+    SpatialGraph
+</code></pre>
+<p>Geometry therefore does not require a second language or a special geometry-specific grammar.</p>
+<p>The same IPL expression machinery is reused.</p>
+<hr>
+<h2 id="2-the-spatial-domain-gives-point-its-meaning"><a class="header" href="#2-the-spatial-domain-gives-point-its-meaning">2. The Spatial Domain Gives <code>point</code> Its Meaning</a></h2>
+<p>Geometry functions are brought into scope by the definition’s domain:</p>
+<pre><code class="language-matterscript">@domain(spatial2d)
+</code></pre>
+<p>or:</p>
+<pre><code class="language-matterscript">@domain(spatial3d)
+</code></pre>
+<p>Within those domains, the spatial resolver recognizes:</p>
+<pre><code class="language-text">point
+edge
+loop
+face
+</code></pre>
+<p>The important distinction is that the syntax itself does not change.</p>
+<p>This:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+</code></pre>
+<p>is syntactically an ordinary fill regardless of where it appears.</p>
+<p>Its interpretation depends on the surrounding domain.</p>
+<p>That means the geometry system follows the same general principle as the rest of MatterScript:</p>
+<blockquote>
+<p><strong>Context gives structure meaning.</strong></p>
+</blockquote>
+<p>A <code>point(...)</code> call inside a spatial definition becomes a geometric binding. Outside that context, it remains an ordinary expression rather than being silently interpreted as geometry.</p>
+<hr>
+<h2 id="3-coordinates-define-position"><a class="header" href="#3-coordinates-define-position">3. Coordinates Define Position</a></h2>
+<p>A point’s arguments are numerical coordinates.</p>
+<p>In two dimensions:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+p2&lt;point(1.0, 1.0)&gt;
+p3&lt;point(0.0, 1.0)&gt;
+</code></pre>
+<p>These four points describe the corners of a unit square:</p>
+<pre><code class="language-text">p3 ───────── p2
+│             │
+│             │
+│             │
+p0 ───────── p1
+</code></pre>
+<p>In three dimensions, the same construction simply receives a third coordinate:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0, 0.0)&gt;
+p2&lt;point(1.0, 1.0, 0.0)&gt;
+p3&lt;point(0.0, 1.0, 0.0)&gt;
+
+p4&lt;point(0.0, 0.0, 1.0)&gt;
+p5&lt;point(1.0, 0.0, 1.0)&gt;
+p6&lt;point(1.0, 1.0, 1.0)&gt;
+p7&lt;point(0.0, 1.0, 1.0)&gt;
+</code></pre>
+<p>The first four points form the lower layer of a cube. The second four form the corresponding upper layer.</p>
+<p>The spatial resolver currently parses these numeric arguments as floating-point values.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">point(x, y)
+point(x, y, z)
+</code></pre>
+<p>becomes a spatial point located at those coordinates.</p>
+<hr>
+<h2 id="4-coordinates-are-not-identity"><a class="header" href="#4-coordinates-are-not-identity">4. Coordinates Are Not Identity</a></h2>
+<p>A useful distinction appears immediately when two geometric entities occupy the same location.</p>
+<p>The coordinate describes <strong>position</strong>.</p>
+<p>The MatterScript binding provides <strong>identity</strong>.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+</code></pre>
+<p>does two things:</p>
+<ol>
+<li>It specifies a location: <code>(0.0, 0.0)</code>.</li>
+<li>It gives that geometric entity the name <code>p0</code>.</li>
+</ol>
+<p>The name is what later geometry uses:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>The edge does not repeat the coordinates.</p>
+<p>It does not say:</p>
+<pre><code class="language-matterscript">edge(0.0, 0.0, 1.0, 0.0)
+</code></pre>
+<p>Instead, it refers to previously established geometric entities:</p>
+<pre><code class="language-text">$p0 ────────&gt; first endpoint
+$p1 ────────&gt; second endpoint
+</code></pre>
+<p>This is an important part of the MatterScript geometry model.</p>
+<p><strong>Coordinates establish where. Names establish what. References establish relationships.</strong></p>
+<hr>
+<h2 id="5-define-once-reference-many"><a class="header" href="#5-define-once-reference-many">5. Define Once, Reference Many</a></h2>
+<p>Geometry bindings follow the same single-assignment discipline established elsewhere in IPL.</p>
+<p>A name is bound once:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+</code></pre>
+<p>After that, the name can be referenced repeatedly:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+e3&lt;edge($p3, $p0)&gt;
+</code></pre>
+<p>Both references resolve to the same geometric point.</p>
+<p>The binding is not replaced by a later statement.</p>
+<p>A second definition such as:</p>
+<pre><code class="language-matterscript">p0&lt;point(5.0, 5.0)&gt;
+</code></pre>
+<p>is therefore not interpreted as “move <code>p0</code>.”</p>
+<p>It is an attempt to bind an already-bound name again and is rejected as a duplicate geometry binding.</p>
+<p>This distinction is important because the geometry graph is intended to remain structurally understandable after resolution.</p>
+<p>Once:</p>
+<pre><code class="language-text">p0 → PointId
+</code></pre>
+<p>has been established, every occurrence of:</p>
+<pre><code class="language-text">$p0
+</code></pre>
+<p>means that same point.</p>
+<p>There is no hidden reassignment.</p>
+<hr>
+<h2 id="6-the--reference-connects-geometry"><a class="header" href="#6-the--reference-connects-geometry">6. The <code>$</code> Reference Connects Geometry</a></h2>
+<p>The <code>$</code> sigil is the bridge between independent geometry declarations.</p>
+<p>Consider:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>The first two statements create geometric entities.</p>
+<p>The third does not create new points.</p>
+<p>Instead, it retrieves the existing bindings:</p>
+<pre><code class="language-text">$p0 → p0 → PointId
+$p1 → p1 → PointId
+</code></pre>
+<p>and uses those handles to construct an edge.</p>
+<p>The same pattern continues upward through the geometry hierarchy:</p>
+<pre><code class="language-matterscript">p0&lt;point(...)&gt;
+p1&lt;point(...)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+
+l0&lt;loop($e0, ...)&gt;
+
+f0&lt;face($l0)&gt;
+</code></pre>
+<p>Each level references an entity that already exists.</p>
+<pre><code class="language-text">POINT
+  │
+  │ $p0
+  ▼
+EDGE
+  │
+  │ $e0
+  ▼
+LOOP
+  │
+  │ $l0
+  ▼
+FACE
+</code></pre>
+<p>This gives the geometry graph a uniform binding discipline.</p>
+<hr>
+<h2 id="7-resolution-is-ordered"><a class="header" href="#7-resolution-is-ordered">7. Resolution Is Ordered</a></h2>
+<p>Spatial bindings are resolved in a single top-to-bottom pass.</p>
+<p>That means a point must exist before another geometric element can reference it.</p>
+<p>This works:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>This does not:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+
+p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+</code></pre>
+<p>At the time <code>e0</code> is resolved, neither <code>p0</code> nor <code>p1</code> exists in the geometry binding table.</p>
+<p>The resolver therefore reports an undefined geometry reference.</p>
+<p>This gives spatial source code a natural construction order:</p>
+<pre><code class="language-text">points
+  ↓
+edges
+  ↓
+loops
+  ↓
+faces
+</code></pre>
+<p>The source order mirrors the dependency structure of the geometry.</p>
+<hr>
+<h2 id="8-from-coordinates-to-pointid"><a class="header" href="#8-from-coordinates-to-pointid">8. From Coordinates to <code>PointId</code></a></h2>
+<p>Internally, the point does not remain merely a line of source code.</p>
+<p>During spatial resolution, the <code>point(...)</code> handler creates a point in the <code>SpatialGraph</code> and returns a geometry handle representing that entity.</p>
+<p>The binding table then associates the MatterScript name with that handle:</p>
+<pre><code class="language-text">"p0"
+  │
+  ▼
+PointId
+  │
+  ▼
+SpatialGraph
+</code></pre>
+<p>Conceptually, the source:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+</code></pre>
+<p>becomes something like:</p>
+<pre><code class="language-text">p0 ──────► PointId(0)
+             │
+             └──► (0.0, 0.0)
+</code></pre>
+<p>The exact internal identifier is an implementation detail.</p>
+<p>The important abstraction is that MatterScript has transformed a textual name and a coordinate into an addressable entity within a geometric graph.</p>
+<p>That graph is then available to subsequent spatial operations.</p>
+<hr>
+<h2 id="9-vertices-are-the-foundation-of-topology"><a class="header" href="#9-vertices-are-the-foundation-of-topology">9. Vertices Are the Foundation of Topology</a></h2>
+<p>A point by itself has no connectivity.</p>
+<p>It simply establishes a location.</p>
+<p>An edge introduces the first topological relationship:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>Now two vertices have become connected.</p>
+<p>Multiple edges can then form a boundary:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>And the closed boundary can become a face:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>The progression is therefore:</p>
+<pre><code class="language-text">                    GEOMETRY
+
+                 ┌───────────┐
+                 │   FACE    │
+                 └─────▲─────┘
+                       │
+                     loop
+                       │
+                 ┌─────┴─────┐
+                 │    LOOP   │
+                 └─────▲─────┘
+                       │
+                     edges
+                       │
+                 ┌─────┴─────┐
+                 │   EDGES   │
+                 └─────▲─────┘
+                       │
+                    points
+                       │
+                 ┌─────┴─────┐
+                 │  VERTICES │
+                 └───────────┘
+</code></pre>
+<p>The vertex is therefore not merely the smallest drawable object.</p>
+<p>It is the <strong>reference point from which topology is constructed</strong>.</p>
+<hr>
+<h2 id="10-a-vertex-can-participate-in-many-relationships"><a class="header" href="#10-a-vertex-can-participate-in-many-relationships">10. A Vertex Can Participate in Many Relationships</a></h2>
+<p>Because bindings are immutable and references can be reused, a single point can participate in many geometric structures.</p>
+<p>Consider the corner of a cube:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0, 0.0)&gt;
+</code></pre>
+<p>That same vertex can be referenced by several edges:</p>
+<pre><code class="language-matterscript">e_b0&lt;edge($p0, $p1)&gt;
+e_f3&lt;edge($p4, $p0)&gt;
+e_l1&lt;edge($p0, $p4)&gt;
+</code></pre>
+<p>The point is not copied each time.</p>
+<p>Each <code>$p0</code> resolves to the same underlying point handle.</p>
+<p>This creates a distinction between <strong>geometric identity</strong> and <strong>topological participation</strong>:</p>
+<pre><code class="language-text">                     p0
+                  PointId
+                     │
+          ┌──────────┼──────────┐
+          │          │          │
+          ▼          ▼          ▼
+        edge       edge       edge
+          │          │          │
+          ▼          ▼          ▼
+        face       face       face
+</code></pre>
+<p>The vertex can therefore become a shared anchor for multiple structures without changing its own definition.</p>
+<hr>
+<h2 id="11-the-vertex-list-survives-triangulation"><a class="header" href="#11-the-vertex-list-survives-triangulation">11. The Vertex List Survives Triangulation</a></h2>
+<p>The spatial graph is not necessarily the final representation consumed by downstream tools.</p>
+<p>After spatial resolution, a geometry graph can be triangulated:</p>
+<pre><code class="language-text">SpatialGraph
+     │
+     ▼
+triangulate
+     │
+     ▼
+TriangulatedMesh
+</code></pre>
+<p>For example, a quadrilateral face can become two triangles while continuing to use the same four vertices.</p>
+<pre><code class="language-text">Before:
+
+p3 ───────── p2
+│             │
+│    FACE     │
+│             │
+p0 ───────── p1
+
+
+After triangulation:
+
+p3 ───────── p2
+│ \           │
+│   \         │
+│     \       │
+p0 ───────── p1
+</code></pre>
+<p>The topology changes at the face representation level, but the underlying vertex positions remain the same.</p>
+<p>This distinction becomes important when the geometry is exported.</p>
+<p>A four-vertex quad can become:</p>
+<pre><code class="language-text">Vertices:
+    p0
+    p1
+    p2
+    p3
+
+Triangles:
+    (p0, p1, p2)
+    (p0, p2, p3)
+</code></pre>
+<p>The vertices are therefore fundamental data, not merely temporary construction syntax.</p>
+<hr>
+<h2 id="12-vertices-and-the-mesh-boundary"><a class="header" href="#12-vertices-and-the-mesh-boundary">12. Vertices and the Mesh Boundary</a></h2>
+<p>Eventually the geometry can cross the runtime boundary into a conventional mesh format.</p>
+<p>The current pipeline is:</p>
+<pre><code class="language-text">.ms.ipl source
+      │
+      ▼
+ IPL parser
+      │
+      ▼
+SpatialGraph
+      │
+      ▼
+TriangulatedMesh
+      │
+      ▼
+ binary PLY
+      │
+      ▼
+ MeshLab / mesh tools
+</code></pre>
+<p>A simple spatial definition containing four points, four edges, one loop, and one face can therefore become a mesh containing four vertices and two triangular faces.</p>
+<p>The important thing is that the original MatterScript source remains the description from which that structure was constructed.</p>
+<p>The PLY file is an output representation.</p>
+<p>The MatterScript source describes the geometry at the level of named entities and relationships.</p>
+<hr>
+<h2 id="13-geometry-begins-with-addressable-position"><a class="header" href="#13-geometry-begins-with-addressable-position">13. Geometry Begins with Addressable Position</a></h2>
+<p>The significance of the vertex becomes clearer when viewed from the entire spatial model.</p>
+<p>MatterScript does not begin with a mesh.</p>
+<p>It begins with <strong>named geometric facts</strong>:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0, 0.0)&gt;
+p2&lt;point(1.0, 1.0, 0.0)&gt;
+p3&lt;point(0.0, 1.0, 0.0)&gt;
+</code></pre>
+<p>Those facts are then connected:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+</code></pre>
+<p>The connections are organized:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>And the boundary is promoted into a surface:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>Nothing in that sequence requires an external geometry editor.</p>
+<p>The geometry emerges from the same fundamental mechanism used elsewhere in IPL:</p>
+<pre><code class="language-text">name
+  +
+expression
+  +
+reference
+  =
+structure
+</code></pre>
+<hr>
+<h2 id="14-why-vertices-matter-to-matterscript"><a class="header" href="#14-why-vertices-matter-to-matterscript">14. Why Vertices Matter to MatterScript</a></h2>
+<p>The vertex is the first place where MatterScript’s abstract binding model acquires physical position.</p>
+<p>An ordinary IPL relationship might establish that one thing is connected to another.</p>
+<p>A spatial relationship can establish something more:</p>
+<pre><code class="language-text">this entity
+     │
+     └── exists at this position
+</code></pre>
+<p>Once positions become named and addressable, those names can participate in larger structures.</p>
+<p>That makes the spatial graph compatible with the broader MatterScript philosophy:</p>
+<blockquote>
+<p><strong>Geometry is not an artifact produced after computation. Geometry can itself be described as computation.</strong></p>
+</blockquote>
+<p>The current implementation keeps the causal-network AST and spatial graph as separate structures. That separation is intentional. But the spatial domain demonstrates that the same language can already describe both kinds of structure using the same fundamental ideas:</p>
+<ul>
+<li>definitions,</li>
+<li>fills,</li>
+<li>names,</li>
+<li>references,</li>
+<li>domains,</li>
+<li>resolution,</li>
+<li>immutable bindings.</li>
+</ul>
+<p>The vertex is the simplest concrete example of that unification.</p>
+<hr>
+<h2 id="15-complete-example"><a class="header" href="#15-complete-example">15. Complete Example</a></h2>
+<p>A minimal spatial definition containing four vertices can be written as:</p>
+<pre><code class="language-matterscript">Square[
+  ()
+  ()
+
+  @domain(spatial2d)
+
+  p0&lt;point(0.0, 0.0)&gt;
+  p1&lt;point(1.0, 0.0)&gt;
+  p2&lt;point(1.0, 1.0)&gt;
+  p3&lt;point(0.0, 1.0)&gt;
+]
+</code></pre>
+<p>At this stage, there is no topology yet.</p>
+<p>There are simply four named geometric entities:</p>
+<pre><code class="language-text">p3 ───────── p2
+│             │
+│             │
+│             │
+p0 ───────── p1
+</code></pre>
+<p>Adding edges establishes connectivity:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+</code></pre>
+<p>The edges can then form a loop:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>And the loop can become a face:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>The complete progression is:</p>
+<pre><code class="language-text">  p0  p1  p2  p3
+   │   │   │   │
+   └───┴───┴───┘
+       edges
+         │
+         ▼
+        loop
+         │
+         ▼
+        face
+         │
+         ▼
+   triangulated mesh
+         │
+         ▼
+       PLY file
+</code></pre>
+<p>The vertex is where this entire chain begins.</p>
+<hr>
+<h2 id="16-looking-ahead-edges"><a class="header" href="#16-looking-ahead-edges">16. Looking Ahead: Edges</a></h2>
+<p>A vertex establishes <strong>position</strong>.</p>
+<p>An edge establishes <strong>connection</strong>.</p>
+<p>That is the next step in the spatial construction model.</p>
+<p>Once two named vertices exist:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+</code></pre>
+<p>MatterScript can express their relationship directly:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>The edge does not need to know the coordinates independently.</p>
+<p>It only needs to know which vertices it connects.</p>
+<p>This is the fundamental transition from <strong>geometry as position</strong> to <strong>geometry as topology</strong>.</p>
+<p>The next chapter examines that transition in detail.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>
@@ -187,7 +714,7 @@
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../part-05-geometry-becomes-code/03-cell-placement.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../part-05-geometry-becomes-code/02.1-edges.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -201,7 +728,7 @@
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../part-05-geometry-becomes-code/03-cell-placement.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../part-05-geometry-becomes-code/02.1-edges.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
