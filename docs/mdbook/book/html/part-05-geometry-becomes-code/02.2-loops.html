@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-e88e15cb.js";
+            window.path_to_searchindex_js = "../searchindex-b0284014.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6782d51a.js"></script>
@@ -177,6 +177,644 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="loops-boundaries-as-ordered-structure"><a class="header" href="#loops-boundaries-as-ordered-structure">Loops: Boundaries as Ordered Structure</a></h1>
+<p>An edge connects two vertices.</p>
+<p>A loop turns a sequence of connected edges into a <strong>boundary</strong>.</p>
+<p>In MatterScript, a loop is constructed by referencing previously defined edges:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>The important detail is that a loop is not simply a collection of edges. The edges are supplied <strong>in order</strong>, and that order defines how the boundary is traversed.</p>
+<p>For example:</p>
+<pre><code class="language-text">p0 ──e0──► p1
+             │
+             e1
+             ▼
+             p2
+             │
+             e2
+             ▼
+             p3
+             │
+             e3
+             ▼
+             p0
+</code></pre>
+<p>The loop represents the closed path:</p>
+<pre><code class="language-text">p0 → p1 → p2 → p3 → p0
+</code></pre>
+<p>This establishes the next level of MatterScript’s geometric hierarchy:</p>
+<pre><code class="language-text">POINT
+   │
+   │ position
+   ▼
+EDGE
+   │
+   │ connectivity
+   ▼
+LOOP
+   │
+   │ boundary
+   ▼
+FACE
+   │
+   │ surface
+   ▼
+MESH
+</code></pre>
+<p>A vertex establishes <strong>where</strong>.</p>
+<p>An edge establishes <strong>between</strong>.</p>
+<p>A loop establishes <strong>around</strong>.</p>
+<hr>
+<h2 id="1-a-loop-is-an-ordered-boundary"><a class="header" href="#1-a-loop-is-an-ordered-boundary">1. A Loop Is an Ordered Boundary</a></h2>
+<p>The simplest loop consists of three or more edges whose endpoints form a continuous closed path.</p>
+<p>A square can be described as:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+p2&lt;point(1.0, 1.0)&gt;
+p3&lt;point(0.0, 1.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+
+l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>The four edges are not passed to <code>loop(...)</code> in arbitrary order.</p>
+<p>They describe a traversal:</p>
+<pre><code class="language-text">e0 → e1 → e2 → e3
+</code></pre>
+<p>which corresponds to:</p>
+<pre><code class="language-text">p0 → p1 → p2 → p3 → p0
+</code></pre>
+<p>The loop therefore carries more information than the existence of four edges.</p>
+<p>It carries their <strong>ordered connectivity</strong>.</p>
+<hr>
+<h2 id="2-loops-use-the-same-binding-model"><a class="header" href="#2-loops-use-the-same-binding-model">2. Loops Use the Same Binding Model</a></h2>
+<p>No new reference mechanism is needed for loops.</p>
+<p>The edges are already named:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+</code></pre>
+<p>The loop simply references them:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>This follows the same define-once, reference-many discipline used by vertices and edges.</p>
+<pre><code class="language-text">point
+  │
+  └── named binding
+
+edge
+  │
+  └── named binding
+
+loop
+  │
+  └── named binding
+</code></pre>
+<p>Each level can therefore be addressed independently.</p>
+<p>The <code>$</code> sigil always means the same thing:</p>
+<blockquote>
+<p><strong>Look up an existing binding.</strong></p>
+</blockquote>
+<p>There is no special syntax for geometry composition.</p>
+<hr>
+<h2 id="3-a-loop-consumes-edges"><a class="header" href="#3-a-loop-consumes-edges">3. A Loop Consumes Edges</a></h2>
+<p>The type relationship between the primitives is straightforward:</p>
+<pre><code class="language-text">point(...)
+    ↓
+edge(point, point)
+    ↓
+loop(edge, edge, edge, ...)
+    ↓
+face(loop)
+</code></pre>
+<p>An edge requires two point handles.</p>
+<p>A loop requires edge handles.</p>
+<p>A face will require a loop handle.</p>
+<p>This creates a progressively richer structure without requiring the higher-level primitive to duplicate the lower-level geometry.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>does not copy <code>p0</code> or <code>p1</code>.</p>
+<p>Likewise:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>does not copy the edges.</p>
+<p>The loop is a new geometric entity whose structure is defined by its references to existing edges.</p>
+<hr>
+<h2 id="4-closure-is-the-essential-property"><a class="header" href="#4-closure-is-the-essential-property">4. Closure Is the Essential Property</a></h2>
+<p>The defining characteristic of a loop is closure.</p>
+<p>For:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>the resolver checks that each edge connects correctly to the next.</p>
+<p>If:</p>
+<pre><code class="language-text">e0 = p0 → p1
+e1 = p1 → p2
+e2 = p2 → p3
+e3 = p3 → p0
+</code></pre>
+<p>then the boundary is continuous and closed:</p>
+<pre><code class="language-text">p0 → p1 → p2 → p3 → p0
+</code></pre>
+<p>The final edge returns to the starting point of the first edge.</p>
+<p>That final connection is what turns a path into a loop.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">OPEN PATH
+
+p0 → p1 → p2 → p3
+
+
+CLOSED PATH
+
+p0 → p1 → p2 → p3
+↑               │
+└───────────────┘
+</code></pre>
+<p>A loop is therefore not simply “some edges.”</p>
+<p>It is an edge sequence that successfully returns to where it began.</p>
+<hr>
+<h2 id="5-continuity-between-edges"><a class="header" href="#5-continuity-between-edges">5. Continuity Between Edges</a></h2>
+<p>For a loop to be continuous, the endpoint of each edge must match the starting point of the next.</p>
+<p>Consider:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+</code></pre>
+<p>These edges connect correctly:</p>
+<pre><code class="language-text">p0 → p1 → p2
+</code></pre>
+<p>The endpoint of <code>e0</code> is <code>p1</code>.</p>
+<p>The starting point of <code>e1</code> is also <code>p1</code>.</p>
+<p>Now consider:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p2, $p3)&gt;
+</code></pre>
+<p>These do not form a continuous path:</p>
+<pre><code class="language-text">p0 → p1
+
+p2 → p3
+</code></pre>
+<p>There is no connection between <code>p1</code> and <code>p2</code>.</p>
+<p>When the loop resolver encounters such a sequence, it reports:</p>
+<pre><code class="language-text">error.DiscontinuousLoop
+</code></pre>
+<p>The loop primitive therefore performs an important piece of structural validation.</p>
+<p>It does not merely record the author’s intention.</p>
+<p>It verifies that the referenced edges actually form the boundary being claimed.</p>
+<hr>
+<h2 id="6-the-final-edge-must-close-the-loop"><a class="header" href="#6-the-final-edge-must-close-the-loop">6. The Final Edge Must Close the Loop</a></h2>
+<p>Continuity between adjacent edges is not enough.</p>
+<p>The final edge must also return to the first edge’s starting point.</p>
+<p>Consider:</p>
+<pre><code class="language-text">e0 = p0 → p1
+e1 = p1 → p2
+e2 = p2 → p3
+e3 = p3 → p4
+</code></pre>
+<p>This is continuous:</p>
+<pre><code class="language-text">p0 → p1 → p2 → p3 → p4
+</code></pre>
+<p>But it is not closed.</p>
+<p>The path ends at <code>p4</code>.</p>
+<p>It began at <code>p0</code>.</p>
+<p>If the final edge does not return to <code>p0</code>, the resolver reports:</p>
+<pre><code class="language-text">error.UnclosedLoop
+</code></pre>
+<p>The distinction is useful:</p>
+<pre><code class="language-text">continuous ≠ closed
+</code></pre>
+<p>A continuous path can remain open.</p>
+<p>A loop must be both <strong>continuous and closed</strong>.</p>
+<hr>
+<h2 id="7-a-loop-needs-at-least-three-edges"><a class="header" href="#7-a-loop-needs-at-least-three-edges">7. A Loop Needs at Least Three Edges</a></h2>
+<p>The current implementation also rejects loops containing fewer than three edges.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1)&gt;
+</code></pre>
+<p>is not a valid loop.</p>
+<p>It produces:</p>
+<pre><code class="language-text">error.DegenerateLoop
+</code></pre>
+<p>The minimum valid structure is therefore three edges, such as a triangle:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+p2&lt;point(0.5, 1.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p0)&gt;
+
+l0&lt;loop($e0, $e1, $e2)&gt;
+</code></pre>
+<p>The resulting traversal is:</p>
+<pre><code class="language-text">p0 → p1 → p2 → p0
+</code></pre>
+<p>This is the smallest ordinary closed polygonal boundary represented by the current loop primitive.</p>
+<hr>
+<h2 id="8-source-order-becomes-geometric-order"><a class="header" href="#8-source-order-becomes-geometric-order">8. Source Order Becomes Geometric Order</a></h2>
+<p>MatterScript geometry is resolved in source order.</p>
+<p>That means the normal construction sequence is:</p>
+<pre><code class="language-text">points
+  ↓
+edges
+  ↓
+loops
+  ↓
+faces
+</code></pre>
+<p>For a loop, the referenced edges must already exist:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+
+l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>The resolver walks the already-parsed definition from top to bottom.</p>
+<p>When it reaches <code>l0</code>, the four edge bindings are already available in the geometry binding table.</p>
+<p>This is the same forward-resolution rule used by the lower-level geometry primitives.</p>
+<p>A loop cannot currently refer to an edge that has not yet been bound.</p>
+<hr>
+<h2 id="9-the-order-of-edges-matters"><a class="header" href="#9-the-order-of-edges-matters">9. The Order of Edges Matters</a></h2>
+<p>Consider these edges:</p>
+<pre><code class="language-text">e0 = p0 → p1
+e1 = p1 → p2
+e2 = p2 → p3
+e3 = p3 → p0
+</code></pre>
+<p>The natural loop is:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>because the edges form:</p>
+<pre><code class="language-text">p0 → p1 → p2 → p3 → p0
+</code></pre>
+<p>The loop therefore contains an ordered boundary.</p>
+<p>This is different from treating the edges as an unordered set.</p>
+<p>The same four edges contain enough information to describe the square, but the loop declaration tells the resolver <strong>how those edges are intended to be traversed</strong>.</p>
+<p>This ordering is what allows closure to be checked locally.</p>
+<hr>
+<h2 id="10-loops-turn-connectivity-into-topology"><a class="header" href="#10-loops-turn-connectivity-into-topology">10. Loops Turn Connectivity into Topology</a></h2>
+<p>An edge tells us that two points are connected.</p>
+<p>A loop tells us that several such connections form a boundary.</p>
+<p>That is an important conceptual transition.</p>
+<pre><code class="language-text">POINT
+
+"I exist here."
+
+
+EDGE
+
+"I connect these two positions."
+
+
+LOOP
+
+"I traverse these connections and return to where I started."
+</code></pre>
+<p>The geometry is becoming topological structure.</p>
+<p>The coordinates are still present, but they are no longer the whole description.</p>
+<p>The relationship between entities has become part of the model.</p>
+<p>MatterScript can therefore move from numerical geometry toward structural geometry using the same mechanism throughout:</p>
+<pre><code class="language-text">coordinates
+    ↓
+named entities
+    ↓
+named relationships
+    ↓
+ordered boundaries
+</code></pre>
+<hr>
+<h2 id="11-a-loop-does-not-recreate-its-edges"><a class="header" href="#11-a-loop-does-not-recreate-its-edges">11. A Loop Does Not Recreate Its Edges</a></h2>
+<p>The loop:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>does not contain four new line segments.</p>
+<p>It refers to four existing edge bindings.</p>
+<p>This distinction matters because the same underlying points can participate in many different geometric relationships.</p>
+<p>For example, a point can belong to multiple edges:</p>
+<pre><code class="language-text">        e1
+       /
+      p1
+     /  \
+   e0    e2
+   /      \
+ p0        p2
+</code></pre>
+<p>Likewise, a geometry definition can contain many loops built from different edge sequences.</p>
+<p>The graph remains compositional because each entity is defined once and referenced thereafter.</p>
+<hr>
+<h2 id="12-shared-edges-an-important-current-design-choice"><a class="header" href="#12-shared-edges-an-important-current-design-choice">12. Shared Edges: An Important Current Design Choice</a></h2>
+<p>When two faces meet, their boundaries can contain geometrically coincident edges.</p>
+<p>A conventional watertight mesh often treats such a segment as a shared edge traversed in opposite directions by neighboring faces.</p>
+<p>The current MatterScript spatial implementation takes a simpler approach.</p>
+<p>Each face should have its <strong>own edge binding</strong> for a shared physical segment.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">e_front&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>and elsewhere:</p>
+<pre><code class="language-matterscript">e_back&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>These edges are geometrically coincident, but they are separate source-level bindings.</p>
+<p>This is deliberate.</p>
+<p>The current loop closure logic validates one loop at a time. It does not reason about two neighboring loops needing to traverse a shared edge in opposite directions.</p>
+<p>Giving each loop its own edge binding keeps the closure problem local:</p>
+<pre><code class="language-text">Face A
+  └── e_a0
+      e_a1
+      e_a2
+      e_a3
+          ↓
+        loop A
+
+
+Face B
+  └── e_b0
+      e_b1
+      e_b2
+      e_b3
+          ↓
+        loop B
+</code></pre>
+<p>This avoids introducing a separate concept of “reverse this edge” into the current geometry model.</p>
+<p>It is a small amount of deliberate duplication in exchange for simple, independently verifiable loops.</p>
+<hr>
+<h2 id="13-loops-are-independent-geometry-entities"><a class="header" href="#13-loops-are-independent-geometry-entities">13. Loops Are Independent Geometry Entities</a></h2>
+<p>Once resolved, the loop receives its own geometry handle and is recorded in the geometry binding table under its source name.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">MatterScript
+
+l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+          │
+          ▼
+   geometry resolver
+          │
+          ▼
+     SpatialGraph
+          │
+          ▼
+       LoopId
+</code></pre>
+<p>The source-level name remains important:</p>
+<pre><code class="language-text">$l0
+</code></pre>
+<p>can subsequently be used by a face:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>The face does not need to reconstruct the boundary.</p>
+<p>It simply references the already validated loop.</p>
+<p>This gives the geometry hierarchy a clean separation of responsibilities:</p>
+<pre><code class="language-text">edge
+  └── establishes connectivity
+
+loop
+  └── validates and names the boundary
+
+face
+  └── gives that boundary surface meaning
+</code></pre>
+<hr>
+<h2 id="14-the-loop-is-the-boundary-between-geometry-and-surface"><a class="header" href="#14-the-loop-is-the-boundary-between-geometry-and-surface">14. The Loop Is the Boundary Between Geometry and Surface</a></h2>
+<p>Before a loop exists, we have connected line segments.</p>
+<p>After a loop exists, we have a closed boundary that can enclose a surface.</p>
+<p>This is why <code>loop(...)</code> occupies such an important place in the geometry hierarchy.</p>
+<pre><code class="language-text">Points
+  ↓
+positions
+
+
+Edges
+  ↓
+connections
+
+
+Loops
+  ↓
+boundaries
+
+
+Faces
+  ↓
+surfaces
+</code></pre>
+<p>The loop is therefore the structural bridge between <strong>wire-like connectivity</strong> and <strong>surface geometry</strong>.</p>
+<p>A face can now be defined simply:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>The face does not need the points again.</p>
+<p>It does not need the edges again.</p>
+<p>The loop already contains the ordered boundary relationship.</p>
+<hr>
+<h2 id="15-from-loop-to-face"><a class="header" href="#15-from-loop-to-face">15. From Loop to Face</a></h2>
+<p>Consider the complete sequence:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+p2&lt;point(1.0, 1.0)&gt;
+p3&lt;point(0.0, 1.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+
+l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+
+f0&lt;face($l0)&gt;
+</code></pre>
+<p>The construction can be read as a sequence of increasingly meaningful statements:</p>
+<pre><code class="language-text">p0, p1, p2, p3
+        │
+        ▼
+   four positions
+        │
+        ▼
+e0, e1, e2, e3
+        │
+        ▼
+   four connections
+        │
+        ▼
+        l0
+        │
+        ▼
+   closed boundary
+        │
+        ▼
+        f0
+        │
+        ▼
+      surface
+</code></pre>
+<p>Each layer uses the result of the previous layer.</p>
+<p>That is the central construction pattern of MatterScript spatial geometry.</p>
+<hr>
+<h2 id="16-loops-in-three-dimensions"><a class="header" href="#16-loops-in-three-dimensions">16. Loops in Three Dimensions</a></h2>
+<p>The loop primitive is not limited to flat two-dimensional examples.</p>
+<p>The same construction applies to boundaries of faces in three-dimensional geometry.</p>
+<p>For example, a cube face can be described by four three-dimensional points:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0, 0.0)&gt;
+p2&lt;point(1.0, 1.0, 0.0)&gt;
+p3&lt;point(0.0, 1.0, 0.0)&gt;
+</code></pre>
+<p>followed by:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+</code></pre>
+<p>and then:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>The loop itself still represents the same kind of object: an ordered, closed boundary.</p>
+<p>The coordinates happen to live in three-dimensional space.</p>
+<p>This is one reason the same primitive vocabulary can serve both <code>spatial2d</code> and <code>spatial3d</code>.</p>
+<hr>
+<h2 id="17-the-complete-geometry-pipeline"><a class="header" href="#17-the-complete-geometry-pipeline">17. The Complete Geometry Pipeline</a></h2>
+<p>At this point, the construction pipeline is becoming explicit:</p>
+<pre><code class="language-text">.ms.ipl source
+      │
+      ▼
+ IPL parser
+      │
+      ▼
+Spatial binding resolution
+      │
+      ├── points
+      ├── edges
+      ├── loops
+      └── faces
+      │
+      ▼
+SpatialGraph
+      │
+      ▼
+Triangulation
+      │
+      ▼
+TriangulatedMesh
+      │
+      ▼
+PLY
+</code></pre>
+<p>The loop is resolved before triangulation.</p>
+<p>That matters because triangulation operates on the higher-level geometry structure rather than asking the mesh exporter to infer boundaries from an unstructured collection of segments.</p>
+<p>The boundary is established explicitly in the MatterScript source.</p>
+<hr>
+<h2 id="18-a-complete-loop-example"><a class="header" href="#18-a-complete-loop-example">18. A Complete Loop Example</a></h2>
+<p>Here is a complete triangular boundary:</p>
+<pre><code class="language-matterscript">Triangle[()()
+    @domain(spatial2d)
+
+    p0&lt;point(0.0, 0.0)&gt;
+    p1&lt;point(1.0, 0.0)&gt;
+    p2&lt;point(0.5, 1.0)&gt;
+
+    e0&lt;edge($p0, $p1)&gt;
+    e1&lt;edge($p1, $p2)&gt;
+    e2&lt;edge($p2, $p0)&gt;
+
+    l0&lt;loop($e0, $e1, $e2)&gt;
+
+    f0&lt;face($l0)&gt;
+]
+</code></pre>
+<p>The structure is:</p>
+<pre><code class="language-text">          p2
+         /  \
+       e1    e2
+       /      \
+     p1──e0──►p0
+</code></pre>
+<p>with traversal:</p>
+<pre><code class="language-text">p0 → p1 → p2 → p0
+</code></pre>
+<p>The three edges form a continuous path.</p>
+<p>The final edge returns to the starting point.</p>
+<p>The loop is therefore valid.</p>
+<p>The face can then consume the loop.</p>
+<hr>
+<h2 id="19-why-loops-matter-to-matterscript"><a class="header" href="#19-why-loops-matter-to-matterscript">19. Why Loops Matter to MatterScript</a></h2>
+<p>A generic geometry library could treat a polygon as simply a list of coordinates.</p>
+<p>MatterScript instead exposes the intermediate structures explicitly:</p>
+<pre><code class="language-text">Point
+Edge
+Loop
+Face
+</code></pre>
+<p>That choice makes the construction process visible.</p>
+<p>The programmer can see:</p>
+<ul>
+<li>where positions are established,</li>
+<li>where connectivity is introduced,</li>
+<li>where closure is validated,</li>
+<li>where a boundary becomes a surface.</li>
+</ul>
+<p>The geometry is therefore not just an output format.</p>
+<p>It is represented as a hierarchy of named, composable relationships.</p>
+<p>This is particularly important to MatterScript’s larger goal of bringing physical structure into the same language used to describe computation.</p>
+<p>A loop is not merely something needed to draw a polygon.</p>
+<p>It is an explicit statement about <strong>boundary structure</strong>.</p>
+<hr>
+<h2 id="20-from-boundaries-to-surfaces"><a class="header" href="#20-from-boundaries-to-surfaces">20. From Boundaries to Surfaces</a></h2>
+<p>The geometric progression is now complete enough to state directly:</p>
+<blockquote>
+<p><strong>Vertices define position.</strong></p>
+<p><strong>Edges define connectivity.</strong></p>
+<p><strong>Loops define boundaries.</strong></p>
+<p><strong>Faces define surfaces.</strong></p>
+</blockquote>
+<p>The loop is the point at which connectivity becomes a meaningful enclosed structure.</p>
+<p>That structure can then be consumed by <code>face(...)</code>:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>and ultimately participate in triangulation and mesh generation.</p>
+<p>The hierarchy is:</p>
+<pre><code class="language-text">          FACE
+            ▲
+            │
+          LOOP
+            ▲
+            │
+           EDGE
+            ▲
+            │
+          POINT
+</code></pre>
+<p>Each layer adds structure without abandoning the entities below it.</p>
+<hr>
+<h2 id="21-looking-ahead-faces"><a class="header" href="#21-looking-ahead-faces">21. Looking Ahead: Faces</a></h2>
+<p>A loop establishes a closed boundary.</p>
+<p>The next question is what that boundary encloses.</p>
+<p>That is the role of a <strong>face</strong>.</p>
+<p>In MatterScript:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>takes the named loop and promotes its boundary into a surface-level geometric entity.</p>
+<p>The construction sequence has therefore reached the next conceptual boundary:</p>
+<pre><code class="language-text">POINT
+  │
+  │ position
+  ▼
+EDGE
+  │
+  │ connectivity
+  ▼
+LOOP
+  │
+  │ boundary
+  ▼
+FACE
+  │
+  │ surface
+  ▼
+MESH
+</code></pre>
+<p>A point tells us <strong>where</strong>.</p>
+<p>An edge tells us <strong>between</strong>.</p>
+<p>A loop tells us <strong>around</strong>.</p>
+<p>A face will tell us <strong>across</strong>.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>

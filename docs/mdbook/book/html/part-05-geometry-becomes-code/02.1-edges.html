@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-e88e15cb.js";
+            window.path_to_searchindex_js = "../searchindex-b0284014.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6782d51a.js"></script>
@@ -177,6 +177,557 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="edges---connectivity-as-geometry"><a class="header" href="#edges---connectivity-as-geometry">Edges - Connectivity as Geometry</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="images/edges.png" alt="Edges"><span class="img-wrapper"><img src="images/edges.png" alt="Edges"></span></label></p>
+<p>A vertex gives geometry a position.</p>
+<p>An edge gives two positions a relationship.</p>
+<p>In MatterScript, an edge is not introduced as an independent line segment with its own coordinates. It is constructed by referencing two previously defined vertices:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>The important idea is that the edge does not duplicate the geometry of its endpoints. It <strong>connects existing geometric entities by name</strong>.</p>
+<p>This is the next step in the progression established by vertices:</p>
+<pre><code class="language-text">        point
+          │
+          ▼
+     named position
+          │
+          ▼
+        edge
+          │
+          ▼
+   named connectivity
+</code></pre>
+<p>MatterScript therefore builds geometry incrementally. Points establish <em>where</em>. Edges establish <em>between</em>.</p>
+<hr>
+<h2 id="1-an-edge-connects-existing-vertices"><a class="header" href="#1-an-edge-connects-existing-vertices">1. An Edge Connects Existing Vertices</a></h2>
+<p>The <code>edge</code> function takes two geometry references:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>Here:</p>
+<ul>
+<li><code>p0</code> is an existing point binding.</li>
+<li><code>p1</code> is an existing point binding.</li>
+<li><code>$p0</code> and <code>$p1</code> refer to those bindings.</li>
+<li><code>e0</code> becomes the name of the resulting edge.</li>
+</ul>
+<p>The edge does not contain a second copy of the coordinates.</p>
+<p>Instead, its structure can be understood conceptually as:</p>
+<pre><code class="language-text">p0 ─────────────────── p1
+        │
+        │
+       e0
+</code></pre>
+<p>The geometry graph now contains three named entities:</p>
+<pre><code class="language-text">p0 ──────────────── p1
+        e0
+</code></pre>
+<p>The two vertices provide the positions. The edge provides the relationship between them.</p>
+<p>This is a recurring MatterScript principle: <strong>relationships are constructed through references rather than by duplicating the things being related.</strong></p>
+<hr>
+<h2 id="2-edge-is-a-domain-function"><a class="header" href="#2-edge-is-a-domain-function">2. <code>edge(...)</code> Is a Domain Function</a></h2>
+<p>Edges use the same mechanism introduced by the spatial-domain system.</p>
+<p>A definition first establishes its spatial domain:</p>
+<pre><code class="language-matterscript">Shape[
+    ()
+    ()
+    @domain(spatial2d)
+
+    ...
+]
+</code></pre>
+<p>Within a <code>spatial2d</code> or <code>spatial3d</code> definition, the geometry functions</p>
+<pre><code class="language-text">point(...)
+edge(...)
+loop(...)
+face(...)
+</code></pre>
+<p>are brought into scope.</p>
+<p>There is no separate geometry grammar for edges.</p>
+<p>The following is simply an IPL fill whose expression happens to be a call:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>The parser already understands the general form:</p>
+<pre><code class="language-text">name(arguments...)
+</code></pre>
+<p>as a structured call expression. The spatial resolution pass is what gives <code>edge(...)</code> its geometric meaning when the enclosing definition has a supported spatial domain.</p>
+<p>This separation is important.</p>
+<p>The parser does not need to know that <code>edge</code> represents geometry. The geometry resolver interprets the already-parsed expression and constructs the corresponding entity in the <code>SpatialGraph</code>.</p>
+<hr>
+<h2 id="3--means-reference"><a class="header" href="#3--means-reference">3. <code>$</code> Means Reference</a></h2>
+<p>The arguments to <code>edge(...)</code> are not new points.</p>
+<p>They are references to points that have already been bound.</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>The <code>$</code> sigil tells MatterScript to look up an existing binding.</p>
+<p>This is the same reference convention used elsewhere in IPL. Geometry does not introduce a second mechanism for connecting things.</p>
+<p>The progression is therefore uniform:</p>
+<pre><code class="language-matterscript">p0&lt;point(...)&gt;
+p1&lt;point(...)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>followed by:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>and eventually:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>Every geometric level uses the same rule:</p>
+<blockquote>
+<p><strong>Define an entity once. Reference it by name thereafter.</strong></p>
+</blockquote>
+<hr>
+<h2 id="4-an-edge-requires-points"><a class="header" href="#4-an-edge-requires-points">4. An Edge Requires Points</a></h2>
+<p>The geometry resolver does not merely look up names. It also checks that the referenced geometry has the expected kind.</p>
+<p>An <code>edge</code> requires two <code>.point</code> handles.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">edge(
+    Point,
+    Point
+)
+</code></pre>
+<p>So this is valid:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>while an edge cannot be constructed by passing an unrelated geometry handle where a point is expected.</p>
+<p>The same type relationship will appear again as geometry grows:</p>
+<pre><code class="language-text">point ──► edge ──► loop ──► face
+</code></pre>
+<p>Each level consumes the geometry constructed by the level below it.</p>
+<p>This gives the spatial graph a simple structural hierarchy without requiring a separate type declaration for every geometric object.</p>
+<hr>
+<h2 id="5-binding-happens-in-source-order"><a class="header" href="#5-binding-happens-in-source-order">5. Binding Happens in Source Order</a></h2>
+<p>Spatial geometry is resolved in a single forward pass.</p>
+<p>The resolver walks the definition in source order, constructs each recognized geometry element, and records its resulting handle in the geometry binding table.</p>
+<p>That means a point must exist before an edge can reference it.</p>
+<p>This is valid:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>This is not currently valid:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+
+p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+</code></pre>
+<p>The second form attempts to use forward references. At the time <code>e0</code> is resolved, neither point has been entered into the geometry binding table.</p>
+<p>The result is:</p>
+<pre><code class="language-text">error.UndefinedGeometryReference
+</code></pre>
+<p>This is not a special syntactic restriction on <code>edge</code>. It follows directly from the implementation of the spatial resolution pass.</p>
+<p>The natural authoring order is therefore also the resolution order:</p>
+<pre><code class="language-text">points
+  ↓
+edges
+  ↓
+loops
+  ↓
+faces
+</code></pre>
+<hr>
+<h2 id="6-define-once-reference-many"><a class="header" href="#6-define-once-reference-many">6. Define Once, Reference Many</a></h2>
+<p>An edge binding follows the same single-assignment rule established for vertices.</p>
+<p>Once:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>has bound the name <code>e0</code>, subsequent geometry may reference it:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>The meaning of <code>e0</code> does not change.</p>
+<p>A second attempt to bind the same name is rejected as a duplicate geometry binding rather than silently replacing the original entity.</p>
+<p>This gives the geometry graph a useful property:</p>
+<pre><code class="language-text">        e0
+       /  \
+     p0    p1
+
+e0 always means this edge.
+</code></pre>
+<p>The name becomes an address for the geometric entity.</p>
+<p>This is particularly important once a model contains many edges. Geometry remains understandable because connectivity is expressed through stable names rather than through repeated coordinate data.</p>
+<hr>
+<h2 id="7-edge-direction-is-part-of-its-construction"><a class="header" href="#7-edge-direction-is-part-of-its-construction">7. Edge Direction Is Part of Its Construction</a></h2>
+<p>An edge is written with an ordered pair:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>The source establishes the edge from <code>p0</code> to <code>p1</code>.</p>
+<p>That ordering becomes important when edges are assembled into loops.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+</code></pre>
+<p>These edges form the sequence:</p>
+<pre><code class="language-text">p0 → p1 → p2 → p3 → p0
+</code></pre>
+<p>The edges are not merely four unrelated segments. Their endpoint relationships provide the information from which a closed boundary can be recognized.</p>
+<p>That is why the next geometric primitive, <code>loop(...)</code>, takes <strong>ordered edge references</strong> rather than simply receiving a collection of points.</p>
+<p>The edge is where connectivity begins to acquire topology.</p>
+<hr>
+<h2 id="8-building-a-boundary-from-edges"><a class="header" href="#8-building-a-boundary-from-edges">8. Building a Boundary from Edges</a></h2>
+<p>Consider a square:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+p2&lt;point(1.0, 1.0)&gt;
+p3&lt;point(0.0, 1.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+</code></pre>
+<p>The resulting structure can be visualized as:</p>
+<pre><code class="language-text">p3 ─────────────── p2
+│                   │
+│                   │
+│                   │
+p0 ─────────────── p1
+
+e3                  e1
+        e0     e2
+</code></pre>
+<p>More precisely, the directed sequence is:</p>
+<pre><code class="language-text">p0 ──e0──► p1
+             │
+             e1
+             ▼
+             p2
+             │
+             e2
+             ▼
+             p3
+             │
+             e3
+             ▼
+             p0
+</code></pre>
+<p>Nothing new had to be invented to describe this boundary.</p>
+<p>The points already existed.</p>
+<p>The edges simply expressed how those points are connected.</p>
+<p>This is one of the central advantages of constructing geometry through references: <strong>topology emerges from the relationships between named entities.</strong></p>
+<hr>
+<h2 id="9-edges-belong-to-the-spatial-graph"><a class="header" href="#9-edges-belong-to-the-spatial-graph">9. Edges Belong to the Spatial Graph</a></h2>
+<p>During resolution, each recognized geometry call produces an entity in the <code>spatial.SpatialGraph</code>.</p>
+<p>The geometry binding table associates the source-level name with the resulting geometry handle.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">MatterScript source
+        │
+        ▼
+e0&lt;edge($p0, $p1)&gt;
+        │
+        ▼
+Geometry resolver
+        │
+        ├── lookup p0
+        ├── lookup p1
+        │
+        ▼
+   SpatialGraph
+        │
+        ▼
+     EdgeId
+</code></pre>
+<p>The important separation is that the source name and the graph’s internal representation serve different purposes.</p>
+<p>The MatterScript author works with:</p>
+<pre><code class="language-text">$p0
+$p1
+$e0
+</code></pre>
+<p>while the spatial implementation can work with its internal geometry handles.</p>
+<p>The binding table connects those two worlds.</p>
+<p>This is the same pattern established for vertices: source-level names provide stable addresses into the constructed geometry graph.</p>
+<hr>
+<h2 id="10-coincident-edges-and-shared-geometry"><a class="header" href="#10-coincident-edges-and-shared-geometry">10. Coincident Edges and Shared Geometry</a></h2>
+<p>There is an important detail in the current implementation when multiple faces meet.</p>
+<p>Two faces may contain an edge occupying exactly the same geometric segment. For example, both may contain an edge corresponding to:</p>
+<pre><code class="language-text">p0 → p1
+</code></pre>
+<p>The current spatial model does not require those two faces to share one edge binding.</p>
+<p>Instead, each face can have its own edge binding for the geometrically identical segment.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">e_front&lt;edge($p0, $p1)&gt;
+...
+e_back&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>These are distinct bindings even though the underlying endpoints describe the same geometric segment.</p>
+<p>This is deliberate in the current implementation.</p>
+<p>A loop validates its own continuity by examining the ordered edges supplied to it. It does not currently reason about neighboring loops traversing a shared edge in the opposite direction.</p>
+<p>Giving each face its own edge binding therefore keeps each loop’s boundary self-contained and avoids requiring a separate reversed-edge traversal mechanism.</p>
+<p>The distinction is worth remembering:</p>
+<pre><code class="language-text">same coordinates
+      ≠
+same binding
+</code></pre>
+<p>Two edges can describe geometrically coincident segments while still being separately named entities in the source.</p>
+<hr>
+<h2 id="11-why-not-just-connect-coordinates-directly"><a class="header" href="#11-why-not-just-connect-coordinates-directly">11. Why Not Just Connect Coordinates Directly?</a></h2>
+<p>It would be possible to imagine a geometry syntax in which a loop simply contained raw coordinates:</p>
+<pre><code class="language-text">loop(
+    (0,0),
+    (1,0),
+    (1,1),
+    (0,1)
+)
+</code></pre>
+<p>That is not how MatterScript’s spatial construction works.</p>
+<p>Instead:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+p2&lt;point(1.0, 1.0)&gt;
+p3&lt;point(0.0, 1.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+</code></pre>
+<p>Each level remains independently addressable.</p>
+<p>The advantage is not merely syntactic.</p>
+<p>The graph now knows that:</p>
+<pre><code class="language-text">p0
+</code></pre>
+<p>is an entity that can participate in multiple relationships.</p>
+<p>Likewise:</p>
+<pre><code class="language-text">e0
+</code></pre>
+<p>is an entity that can participate in a loop.</p>
+<p>The geometry is therefore constructed from <strong>named relationships</strong>, not from repeatedly embedded coordinate descriptions.</p>
+<hr>
+<h2 id="12-edges-scale-naturally"><a class="header" href="#12-edges-scale-naturally">12. Edges Scale Naturally</a></h2>
+<p>The same mechanism used for one line segment scales to complete structures.</p>
+<p>A four-edge boundary:</p>
+<pre><code class="language-text">p0 → p1 → p2 → p3 → p0
+</code></pre>
+<p>can become a loop.</p>
+<p>Multiple loops can become multiple faces.</p>
+<p>Multiple faces can describe a three-dimensional structure.</p>
+<p>The syntax does not change as the model becomes larger:</p>
+<pre><code class="language-text">point(...)
+edge(...)
+loop(...)
+face(...)
+</code></pre>
+<p>Nor does the reference mechanism change:</p>
+<pre><code class="language-text">$p0
+$p1
+$e0
+$l0
+</code></pre>
+<p>The graph simply becomes larger.</p>
+<p>This is the same principle that makes the spatial domain useful as a language feature rather than merely as a geometry-export convenience: <strong>the complexity of the structure grows without requiring a different representation for every scale.</strong></p>
+<hr>
+<h2 id="13-from-edges-to-loops"><a class="header" href="#13-from-edges-to-loops">13. From Edges to Loops</a></h2>
+<p>An edge is the first geometric primitive that describes connectivity.</p>
+<p>But connectivity alone does not yet define a surface.</p>
+<p>Four edges such as:</p>
+<pre><code class="language-text">e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+</code></pre>
+<p>still need to be interpreted as an ordered, closed boundary.</p>
+<p>That is the job of <code>loop(...)</code>:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>The loop resolver verifies that the edges form a continuous path and that the path closes back on itself.</p>
+<p>The progression is now explicit:</p>
+<pre><code class="language-text">POINT
+  │
+  │ position
+  ▼
+EDGE
+  │
+  │ connectivity
+  ▼
+LOOP
+  │
+  │ boundary
+  ▼
+FACE
+  │
+  │ surface
+  ▼
+MESH
+</code></pre>
+<p>The edge is therefore the bridge between <strong>position</strong> and <strong>topology</strong>.</p>
+<hr>
+<h2 id="14-the-geometry-graph-is-built-incrementally"><a class="header" href="#14-the-geometry-graph-is-built-incrementally">14. The Geometry Graph Is Built Incrementally</a></h2>
+<p>A complete spatial definition can be read almost like a construction sequence:</p>
+<pre><code class="language-matterscript">@domain(spatial3d)
+
+// 1. Positions
+p0&lt;point(0.0, 0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0, 0.0)&gt;
+p2&lt;point(1.0, 1.0, 0.0)&gt;
+p3&lt;point(0.0, 1.0, 0.0)&gt;
+
+// 2. Connectivity
+e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+
+// 3. Boundary
+l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+
+// 4. Surface
+f0&lt;face($l0)&gt;
+</code></pre>
+<p>Each statement adds another layer of structure.</p>
+<p>Nothing at the edge level needs to know how a face will eventually use it.</p>
+<p>Nothing at the point level needs to know that it will eventually participate in a face.</p>
+<p>The graph is assembled through references, one relationship at a time.</p>
+<p>This is the same <strong>loosely linked geometry graph</strong> introduced by the spatial-domain architecture: geometry is constructed alongside the ordinary IPL network without changing the underlying parser or requiring a second language.</p>
+<hr>
+<h2 id="15-edges-and-the-mesh-pipeline"><a class="header" href="#15-edges-and-the-mesh-pipeline">15. Edges and the Mesh Pipeline</a></h2>
+<p>Once the geometry has been resolved, the edge itself does not need to be exported directly as a mesh primitive.</p>
+<p>Instead, edges contribute to the higher-level topology from which a mesh can be generated.</p>
+<p>The pipeline is:</p>
+<pre><code class="language-text">MatterScript
+     │
+     ▼
+IPL Parser
+     │
+     ▼
+Spatial Binding Resolution
+     │
+     ├── Points
+     ├── Edges
+     ├── Loops
+     └── Faces
+     │
+     ▼
+Triangulation
+     │
+     ▼
+TriangulatedMesh
+     │
+     ▼
+PLY
+</code></pre>
+<p>For example, a single quadrilateral face can be constructed from four points, four edges, one loop, and one face. Triangulation then turns that face into two triangles over the same four vertices.</p>
+<p>The edge therefore occupies an important middle layer:</p>
+<pre><code class="language-text">coordinates
+     ↓
+vertices
+     ↓
+edges
+     ↓
+topological boundary
+     ↓
+surface
+     ↓
+triangles
+</code></pre>
+<p>It is the structure that makes the transition from isolated positions to connected geometry possible.</p>
+<hr>
+<h2 id="16-a-complete-edge-example"><a class="header" href="#16-a-complete-edge-example">16. A Complete Edge Example</a></h2>
+<p>Here is the complete construction of a simple square:</p>
+<pre><code class="language-matterscript">Square[()()
+    @domain(spatial2d)
+
+    p0&lt;point(0.0, 0.0)&gt;
+    p1&lt;point(1.0, 0.0)&gt;
+    p2&lt;point(1.0, 1.0)&gt;
+    p3&lt;point(0.0, 1.0)&gt;
+
+    e0&lt;edge($p0, $p1)&gt;
+    e1&lt;edge($p1, $p2)&gt;
+    e2&lt;edge($p2, $p3)&gt;
+    e3&lt;edge($p3, $p0)&gt;
+
+    l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+
+    f0&lt;face($l0)&gt;
+]
+</code></pre>
+<p>The construction reads from the bottom of the geometric hierarchy upward:</p>
+<pre><code class="language-text">p0 ─────────────── p1
+│                   │
+│                   │
+│                   │
+p3 ─────────────── p2
+
+  Points
+     ↓
+  Edges
+     ↓
+  Loop
+     ↓
+  Face
+</code></pre>
+<p>The important part is not the square itself. The important part is that every stage uses the same language mechanisms:</p>
+<ul>
+<li><code>@domain</code> establishes the spatial context.</li>
+<li><code>point(...)</code> creates named positions.</li>
+<li><code>edge(...)</code> connects named positions.</li>
+<li><code>$name</code> references existing entities.</li>
+<li><code>loop(...)</code> consumes named edges.</li>
+<li><code>face(...)</code> consumes a named loop.</li>
+</ul>
+<p>No separate geometry language is necessary.</p>
+<hr>
+<h2 id="17-connectivity-becomes-structure"><a class="header" href="#17-connectivity-becomes-structure">17. Connectivity Becomes Structure</a></h2>
+<p>The vertex chapter established a fundamental distinction:</p>
+<blockquote>
+<p><strong>A coordinate is not yet an entity until it has an identity in the geometry graph.</strong></p>
+</blockquote>
+<p>Edges establish the next distinction:</p>
+<blockquote>
+<p><strong>Two entities are not yet connected merely because they occupy related coordinates. The relationship itself must be represented.</strong></p>
+</blockquote>
+<p>That representation is the edge.</p>
+<p>MatterScript therefore treats connectivity as something that can be named, referenced, validated, and composed.</p>
+<p>The result is a progression from numerical data toward structure:</p>
+<pre><code class="language-text">coordinate
+    ↓
+named point
+    ↓
+named edge
+    ↓
+ordered loop
+    ↓
+face
+    ↓
+mesh
+</code></pre>
+<p>Each level adds information without discarding the level below it.</p>
+<p>This is what makes the spatial graph useful as a computational representation rather than merely as an intermediate format for drawing geometry.</p>
+<hr>
+<h2 id="18-looking-ahead-loops"><a class="header" href="#18-looking-ahead-loops">18. Looking Ahead: Loops</a></h2>
+<p>An edge establishes a connection between two vertices.</p>
+<p>A collection of appropriately ordered edges can establish something more important: a <strong>closed boundary</strong>.</p>
+<p>That is the role of <code>loop(...)</code>.</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>The loop takes the connectivity already established by the edges and verifies that it forms a continuous, closed structure.</p>
+<p>The next step in MatterScript’s geometric hierarchy is therefore:</p>
+<blockquote>
+<p><strong>Edges establish connectivity. Loops establish boundaries.</strong></p>
+</blockquote>
+<p>Once a boundary exists, it can become a surface through <code>face(...)</code>.</p>
+<p>The geometry hierarchy is now complete enough to see the larger pattern:</p>
+<pre><code class="language-text">              FACE
+               ▲
+               │
+             LOOP
+               ▲
+               │
+              EDGE
+               ▲
+               │
+             POINT
+</code></pre>
+<p>Geometry is being constructed not by embedding ever-larger descriptions inside one another, but by <strong>naming each level and composing those names into the next level of structure</strong>.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>
