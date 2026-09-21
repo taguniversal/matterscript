@@ -23,6 +23,7 @@ pub const ipl_export_mesh = @import("dialects/ipl/export/mesh.zig");
 pub const definition = @import("dialects/ipl/vhdl/export/definition.zig");
 pub const boundary = @import("dialects/ipl/vhdl/export/boundary.zig");
 pub const ipl_value_transform = @import("dialects/ipl/value_transform.zig");
+pub const ipl_runtime = @import("dialects/ipl/runtime/root.zig");
 
 test {
     std.testing.refAllDecls(@This());

@@ -2,7 +2,6 @@ const std = @import("std");
 const matterscript = @import("matterscript");
 const spatial = matterscript.spatial;
 
-
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -32,7 +31,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
-  
     const exe = b.addExecutable(.{
         .name = "matterscript",
         .root_module = b.createModule(.{
@@ -88,7 +86,6 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-               
             },
         }),
     });
@@ -102,7 +99,6 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-                
             },
         }),
     });
@@ -116,7 +112,6 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-               
             },
         }),
     });
@@ -130,7 +125,6 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-              
             },
         }),
     });
@@ -144,7 +138,6 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-               
             },
         }),
     });
@@ -158,7 +151,6 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-              
             },
         }),
     });
@@ -173,14 +165,13 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-               
             },
         }),
     });
 
     const run_entity_tests = b.addRunArtifact(entity_tests);
 
-// --- Directive tests (src/dialects/ipl/parser/directives_test.zig) ---
+    // --- Directive tests (src/dialects/ipl/parser/directives_test.zig) ---
     const directive_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/tests/directives_test.zig"),
@@ -188,13 +179,12 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-               
             },
         }),
     });
 
     const run_directive_tests = b.addRunArtifact(directive_tests);
-    
+
     const evaluator_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/tests/evaluator_test.zig"),
@@ -202,21 +192,19 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-                
             },
         }),
     });
 
     const run_evaluator_tests = b.addRunArtifact(evaluator_tests);
-   
-   const statements_tests = b.addTest(.{
+
+    const statements_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/tests/statements_test.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "matterscript", .module = matterscript_mod },
-
             },
         }),
     });
@@ -235,16 +223,16 @@ pub fn build(b: *std.Build) void {
     });
 
     const run_groups_tests = b.addRunArtifact(groups_tests);
-   
-   const lookup_tests = b.addTest(.{
-       .root_module = b.createModule(.{
-        .root_source_file = b.path("src/tests/lookup_tests.zig"), // Adjust path relative to build.zig
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "matterscript", .module = matterscript_mod },
-        },
-       }),
+
+    const lookup_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/lookup_tests.zig"), // Adjust path relative to build.zig
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+            },
+        }),
     });
 
     const run_lookup_tests = b.addRunArtifact(lookup_tests);
@@ -275,7 +263,7 @@ pub fn build(b: *std.Build) void {
 
     const run_spatial_domain_tests = b.addRunArtifact(spatial_domain_tests);
 
-     const golden_mesh_tests = b.addTest(.{
+    const golden_mesh_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/tests/golden_mesh_test.zig"),
             .target = target,
@@ -300,7 +288,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const run_pure_value_test = b.addRunArtifact(pure_value_test);
-    
+
     const boundary_test = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/tests/boundary_test.zig"),
@@ -313,7 +301,19 @@ pub fn build(b: *std.Build) void {
     });
 
     const run_boundary_test = b.addRunArtifact(boundary_test);
-    
+
+    const runtime_test = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/runtime_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+            },
+        }),
+    });
+
+    const run_runtime_test = b.addRunArtifact(runtime_test);
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
@@ -335,6 +335,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_golden_mesh_tests.step);
     test_step.dependOn(&run_pure_value_test.step);
     test_step.dependOn(&run_boundary_test.step);
+    test_step.dependOn(&run_runtime_test.step);
 
     // --- Code Coverage Step (using kcov) ---
     const coverage_step = b.step("coverage", "Generate code coverage report using kcov");

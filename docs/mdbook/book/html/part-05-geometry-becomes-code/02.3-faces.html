@@ -37,10 +37,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b0284014.js";
+            window.path_to_searchindex_js = "../searchindex-a3d8c040.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-6782d51a.js"></script>
+        <script src="../toc-723adea2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -177,6 +177,490 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="faces-surfaces-as-geometry"><a class="header" href="#faces-surfaces-as-geometry">Faces: Surfaces as Geometry</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="images/faces.png" alt="Faces"><span class="img-wrapper"><img src="images/faces.png" alt="Faces"></span></label></p>
+<p>A loop establishes a boundary.</p>
+<p>A face gives that boundary a <strong>surface</strong>.</p>
+<p>In MatterScript, a face is constructed by referencing a previously defined loop:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>The important idea is that a face does not redefine its edges, points, or coordinates.</p>
+<p>It references an existing boundary and promotes that boundary into a geometric region.</p>
+<p>This completes the core hierarchy of MatterScript spatial geometry:</p>
+<pre><code class="language-text">POINT
+   │
+   │ position
+   ▼
+EDGE
+   │
+   │ connectivity
+   ▼
+LOOP
+   │
+   │ boundary
+   ▼
+FACE
+   │
+   │ surface
+   ▼
+MESH
+</code></pre>
+<p>A vertex establishes <strong>where</strong>.</p>
+<p>An edge establishes <strong>between</strong>.</p>
+<p>A loop establishes <strong>around</strong>.</p>
+<p>A face establishes <strong>across</strong>.</p>
+<hr>
+<h2 id="1-a-face-is-a-surface"><a class="header" href="#1-a-face-is-a-surface">1. A Face Is a Surface</a></h2>
+<p>Consider a square boundary:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+p2&lt;point(1.0, 1.0)&gt;
+p3&lt;point(0.0, 1.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+
+l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>The loop establishes a closed boundary:</p>
+<pre><code class="language-text">p0 → p1 → p2 → p3 → p0
+</code></pre>
+<p>But a boundary is not yet a surface.</p>
+<p>The face provides that final step:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>Conceptually:</p>
+<pre><code class="language-text">Before:
+
+p0 ───────── p1
+│            │
+│            │
+│            │
+p3 ───────── p2
+
+Boundary only
+
+
+After:
+
+┌───────────────┐
+│               │
+│     FACE      │
+│               │
+└───────────────┘
+</code></pre>
+<p>A face therefore answers a simple question:</p>
+<blockquote>
+<p>What region is enclosed by this loop?</p>
+</blockquote>
+<hr>
+<h2 id="2-faces-consume-loops"><a class="header" href="#2-faces-consume-loops">2. Faces Consume Loops</a></h2>
+<p>The geometric hierarchy is intentionally simple:</p>
+<pre><code class="language-text">point(...)
+    ↓
+edge(point, point)
+    ↓
+loop(edge, edge, ...)
+    ↓
+face(loop)
+</code></pre>
+<p>A face consumes loops.</p>
+<p>It does not consume points directly.</p>
+<p>It does not consume edges directly.</p>
+<p>This separation keeps each primitive responsible for one level of structure:</p>
+<pre><code class="language-text">Point
+  └── position
+
+Edge
+  └── connectivity
+
+Loop
+  └── boundary
+
+Face
+  └── surface
+</code></pre>
+<p>Each layer builds on the previous layer without duplicating information.</p>
+<hr>
+<h2 id="3-faces-use-the-same-binding-model"><a class="header" href="#3-faces-use-the-same-binding-model">3. Faces Use the Same Binding Model</a></h2>
+<p>No special geometry syntax is introduced for surfaces.</p>
+<p>A loop receives a name:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>A face references that name:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>The same rule applies throughout MatterScript:</p>
+<blockquote>
+<p>Define once. Reference many.</p>
+</blockquote>
+<p>The <code>$</code> sigil continues to mean:</p>
+<blockquote>
+<p>Look up an existing binding.</p>
+</blockquote>
+<p>This consistency is important.</p>
+<p>The language does not introduce a separate way of describing surfaces.</p>
+<p>Faces participate in the same naming and composition system as every other entity.</p>
+<hr>
+<h2 id="4-faces-become-geometry-entities"><a class="header" href="#4-faces-become-geometry-entities">4. Faces Become Geometry Entities</a></h2>
+<p>When a face is resolved, it becomes a new geometry entity inside the <code>SpatialGraph</code>.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">MatterScript
+
+f0&lt;face($l0)&gt;
+        │
+        ▼
+Geometry Resolver
+        │
+        ▼
+ SpatialGraph
+        │
+        ▼
+    FaceId
+</code></pre>
+<p>The source-level name:</p>
+<pre><code class="language-text">$f0
+</code></pre>
+<p>provides a stable reference to that geometric surface.</p>
+<p>This allows faces to participate in later processing stages:</p>
+<ul>
+<li>triangulation</li>
+<li>mesh generation</li>
+<li>placement</li>
+<li>delay synthesis</li>
+<li>sensor mapping</li>
+<li>hardware projection</li>
+</ul>
+<p>The face is therefore more than a drawing primitive.</p>
+<p>It becomes a named region within the geometry graph.</p>
+<hr>
+<h2 id="5-a-face-is-more-than-a-polygon"><a class="header" href="#5-a-face-is-more-than-a-polygon">5. A Face Is More Than a Polygon</a></h2>
+<p>Traditional graphics systems often describe surfaces as lists of coordinates:</p>
+<pre><code class="language-text">[(0,0), (1,0), (1,1), (0,1)]
+</code></pre>
+<p>MatterScript takes a different approach.</p>
+<p>The surface is constructed gradually:</p>
+<pre><code class="language-text">coordinates
+      ↓
+points
+      ↓
+edges
+      ↓
+loops
+      ↓
+faces
+</code></pre>
+<p>The advantage is that every intermediate structure remains visible and addressable.</p>
+<p>The language can therefore express:</p>
+<ul>
+<li>position,</li>
+<li>connectivity,</li>
+<li>boundary,</li>
+<li>and surface</li>
+</ul>
+<p>as separate concepts.</p>
+<p>This makes geometry compositional rather than monolithic.</p>
+<hr>
+<h2 id="6-a-face-does-not-reconstruct-its-boundary"><a class="header" href="#6-a-face-does-not-reconstruct-its-boundary">6. A Face Does Not Reconstruct Its Boundary</a></h2>
+<p>The face:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>does not create new edges.</p>
+<p>It does not recreate points.</p>
+<p>It simply refers to an already validated loop.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">Face
+  │
+  ▼
+Loop
+  │
+  ▼
+Edges
+  │
+  ▼
+Points
+</code></pre>
+<p>Each level owns a specific responsibility.</p>
+<p>The face assumes that the loop already forms a valid boundary.</p>
+<p>This keeps the system modular.</p>
+<hr>
+<h2 id="7-surface-identity"><a class="header" href="#7-surface-identity">7. Surface Identity</a></h2>
+<p>Two faces may occupy neighboring regions.</p>
+<p>For example:</p>
+<pre><code class="language-text">+-----+-----+
+|  F0 |  F1 |
++-----+-----+
+</code></pre>
+<p>Each face has its own identity:</p>
+<pre><code class="language-text">f0
+f1
+</code></pre>
+<p>Even if they share geometric boundaries, the surfaces remain distinct entities.</p>
+<p>This is important because surfaces often represent meaningful regions:</p>
+<ul>
+<li>walls,</li>
+<li>floors,</li>
+<li>sensor zones,</li>
+<li>computational cells,</li>
+<li>hardware regions,</li>
+<li>physical materials.</li>
+</ul>
+<p>The face is therefore not merely geometry.</p>
+<p>It is a named spatial object.</p>
+<hr>
+<h2 id="8-faces-compose-larger-structures"><a class="header" href="#8-faces-compose-larger-structures">8. Faces Compose Larger Structures</a></h2>
+<p>A single face describes one surface.</p>
+<p>Many faces can describe more complex structures.</p>
+<p>For example:</p>
+<pre><code class="language-text">Cube
+
+   +------+
+  /|     /|
+ +------+ |
+ | |    | |
+ | +----|-+
+ |/     |/
+ +------+
+</code></pre>
+<p>The cube is not a special primitive.</p>
+<p>It is composed from faces:</p>
+<pre><code class="language-text">Face
+ + Face
+ + Face
+ + Face
+ + Face
+ + Face
+</code></pre>
+<p>The same construction applies at larger scales:</p>
+<pre><code class="language-text">faces
+   ↓
+shells
+   ↓
+objects
+   ↓
+assemblies
+</code></pre>
+<p>The language scales through composition.</p>
+<p>No new syntax is required.</p>
+<hr>
+<h2 id="9-faces-in-three-dimensions"><a class="header" href="#9-faces-in-three-dimensions">9. Faces in Three Dimensions</a></h2>
+<p>A face is not limited to flat two-dimensional examples.</p>
+<p>The same primitive applies in three-dimensional geometry.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">p0&lt;point(0,0,0)&gt;
+p1&lt;point(1,0,0)&gt;
+p2&lt;point(1,1,0)&gt;
+p3&lt;point(0,1,0)&gt;
+
+...
+
+f0&lt;face($l0)&gt;
+</code></pre>
+<p>The face still represents:</p>
+<blockquote>
+<p>A surface enclosed by a loop.</p>
+</blockquote>
+<p>The coordinates simply happen to exist in three-dimensional space.</p>
+<p>This is why the same vocabulary works for both:</p>
+<pre><code class="language-text">spatial2d
+spatial3d
+</code></pre>
+<p>The underlying ideas remain unchanged.</p>
+<hr>
+<h2 id="10-faces-and-triangulation"><a class="header" href="#10-faces-and-triangulation">10. Faces and Triangulation</a></h2>
+<p>Most rendering systems ultimately operate on triangles.</p>
+<p>MatterScript intentionally does not expose triangles directly.</p>
+<p>Instead:</p>
+<pre><code class="language-text">Face
+   ↓
+Triangulation
+   ↓
+Triangles
+</code></pre>
+<p>For example:</p>
+<pre><code class="language-text">Quadrilateral Face
+
++---------+
+|         |
+|         |
++---------+
+</code></pre>
+<p>may become:</p>
+<pre><code class="language-text">+---------+
+|\        |
+| \       |
+|  \      |
++---------+
+</code></pre>
+<p>The triangulation step converts high-level surfaces into low-level mesh primitives.</p>
+<p>This is important because the programmer works with meaningful geometry while the exporter produces efficient representations.</p>
+<hr>
+<h2 id="11-faces-and-mesh-generation"><a class="header" href="#11-faces-and-mesh-generation">11. Faces and Mesh Generation</a></h2>
+<p>The geometry pipeline is now complete:</p>
+<pre><code class="language-text">MatterScript Source
+        │
+        ▼
+IPL Parser
+        │
+        ▼
+Spatial Resolver
+        │
+        ├── Points
+        ├── Edges
+        ├── Loops
+        └── Faces
+        │
+        ▼
+Triangulation
+        │
+        ▼
+TriangulatedMesh
+        │
+        ▼
+PLY
+</code></pre>
+<p>The face is the final topological primitive before mesh generation.</p>
+<p>Everything below it becomes implementation detail.</p>
+<hr>
+<h2 id="12-faces-and-physical-computation"><a class="header" href="#12-faces-and-physical-computation">12. Faces and Physical Computation</a></h2>
+<p>Faces become particularly interesting when geometry is connected to computation.</p>
+<p>A face can represent:</p>
+<ul>
+<li>a sensor region,</li>
+<li>a hardware tile,</li>
+<li>an FPGA area,</li>
+<li>a robotic workspace,</li>
+<li>a simulation cell,</li>
+<li>a thermal region,</li>
+<li>a biological membrane.</li>
+</ul>
+<p>For example:</p>
+<pre><code class="language-text">Face
+   ↓
+Computational Region
+</code></pre>
+<p>This allows geometry to become part of the execution model rather than merely an output format.</p>
+<p>A face is no longer just something that can be drawn.</p>
+<p>It becomes a region where relationships exist.</p>
+<hr>
+<h2 id="13-faces-and-placement"><a class="header" href="#13-faces-and-placement">13. Faces and Placement</a></h2>
+<p>Later chapters will use faces as targets for placement:</p>
+<pre><code class="language-text">cell
+   ↓
+face
+   ↓
+physical location
+</code></pre>
+<p>This enables statements such as:</p>
+<blockquote>
+<p>Place this computation within this region.</p>
+</blockquote>
+<p>The face becomes part of the bridge between:</p>
+<pre><code class="language-text">geometry
+      ↔
+computation
+</code></pre>
+<p>This is one of MatterScript’s central goals.</p>
+<hr>
+<h2 id="14-the-complete-example"><a class="header" href="#14-the-complete-example">14. The Complete Example</a></h2>
+<pre><code class="language-matterscript">Square[()()
+    @domain(spatial2d)
+
+    p0&lt;point(0.0, 0.0)&gt;
+    p1&lt;point(1.0, 0.0)&gt;
+    p2&lt;point(1.0, 1.0)&gt;
+    p3&lt;point(0.0, 1.0)&gt;
+
+    e0&lt;edge($p0, $p1)&gt;
+    e1&lt;edge($p1, $p2)&gt;
+    e2&lt;edge($p2, $p3)&gt;
+    e3&lt;edge($p3, $p0)&gt;
+
+    l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+
+    f0&lt;face($l0)&gt;
+]
+</code></pre>
+<p>The structure is:</p>
+<pre><code class="language-text">Points
+   ↓
+Edges
+   ↓
+Loop
+   ↓
+Face
+   ↓
+Mesh
+</code></pre>
+<p>Each layer adds meaning:</p>
+<pre><code class="language-text">Point
+  = position
+
+Edge
+  = connectivity
+
+Loop
+  = boundary
+
+Face
+  = surface
+</code></pre>
+<hr>
+<h2 id="15-why-faces-matter"><a class="header" href="#15-why-faces-matter">15. Why Faces Matter</a></h2>
+<p>A graphics system might stop at triangles.</p>
+<p>MatterScript stops at relationships.</p>
+<p>The programmer does not describe:</p>
+<blockquote>
+<p>How should this be triangulated?</p>
+</blockquote>
+<p>Instead they describe:</p>
+<blockquote>
+<p>What surfaces exist?</p>
+</blockquote>
+<p>The system derives the implementation details.</p>
+<p>This allows geometry to remain:</p>
+<ul>
+<li>meaningful,</li>
+<li>compositional,</li>
+<li>reusable,</li>
+<li>physically interpretable.</li>
+</ul>
+<p>The face therefore becomes an important bridge between:</p>
+<pre><code class="language-text">space
+geometry
+computation
+hardware
+</code></pre>
+<hr>
+<h2 id="16-looking-ahead"><a class="header" href="#16-looking-ahead">16. Looking Ahead</a></h2>
+<p>With faces, the core topological hierarchy is complete:</p>
+<pre><code class="language-text">POINT
+   ↓
+EDGE
+   ↓
+LOOP
+   ↓
+FACE
+</code></pre>
+<p>From here, the system can move toward:</p>
+<pre><code class="language-text">faces
+   ↓
+meshes
+   ↓
+placement
+   ↓
+hardware
+</code></pre>
+<p>The next chapters explore how geometry becomes physical computation:</p>
+<ul>
+<li>Cell Placement</li>
+<li>Conformal Projection</li>
+<li>Delay Synthesis</li>
+<li>Sensor Placement</li>
+<li>Hardware Fidelity</li>
+</ul>
+<p>The geometric language is now complete enough to describe not only shapes, but the physical structure of computation itself.</p>
 <p><em>Drafting in progress…</em></p>
 
                     </main>
@@ -187,7 +671,7 @@
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../part-05-geometry-becomes-code/03-cell-placement.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../part-05-geometry-becomes-code/02.4-meshes.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -201,7 +685,7 @@
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../part-05-geometry-becomes-code/03-cell-placement.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../part-05-geometry-becomes-code/02.4-meshes.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

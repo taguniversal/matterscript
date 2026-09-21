@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b0284014.js";
+            window.path_to_searchindex_js = "searchindex-a3d8c040.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-6782d51a.js"></script>
+        <script src="toc-723adea2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -6184,6 +6184,7 @@ mesh
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="loops-boundaries-as-ordered-structure"><a class="header" href="#loops-boundaries-as-ordered-structure">Loops: Boundaries as Ordered Structure</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-05-geometry-becomes-code/images/loops.png" alt="Loops"><span class="img-wrapper"><img src="part-05-geometry-becomes-code/images/loops.png" alt="Loops"></span></label></p>
 <p>An edge connects two vertices.</p>
 <p>A loop turns a sequence of connected edges into a <strong>boundary</strong>.</p>
 <p>In MatterScript, a loop is constructed by referencing previously defined edges:</p>
@@ -6630,22 +6631,22 @@ l0&lt;loop($e0, $e1, $e2, $e3)&gt;
 f0&lt;face($l0)&gt;
 </code></pre>
 <p>The construction can be read as a sequence of increasingly meaningful statements:</p>
-<pre><code class="language-text">p0, p1, p2, p3
+<pre><code class="language-text"> p0, p1, p2, p3
         │
         ▼
    four positions
         │
         ▼
-e0, e1, e2, e3
+ e0, e1, e2, e3
         │
         ▼
-   four connections
+ four connections
         │
         ▼
         l0
         │
         ▼
-   closed boundary
+ closed boundary
         │
         ▼
         f0
@@ -6825,6 +6826,1226 @@ MESH
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="faces-surfaces-as-geometry"><a class="header" href="#faces-surfaces-as-geometry">Faces: Surfaces as Geometry</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-05-geometry-becomes-code/images/faces.png" alt="Faces"><span class="img-wrapper"><img src="part-05-geometry-becomes-code/images/faces.png" alt="Faces"></span></label></p>
+<p>A loop establishes a boundary.</p>
+<p>A face gives that boundary a <strong>surface</strong>.</p>
+<p>In MatterScript, a face is constructed by referencing a previously defined loop:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>The important idea is that a face does not redefine its edges, points, or coordinates.</p>
+<p>It references an existing boundary and promotes that boundary into a geometric region.</p>
+<p>This completes the core hierarchy of MatterScript spatial geometry:</p>
+<pre><code class="language-text">POINT
+   │
+   │ position
+   ▼
+EDGE
+   │
+   │ connectivity
+   ▼
+LOOP
+   │
+   │ boundary
+   ▼
+FACE
+   │
+   │ surface
+   ▼
+MESH
+</code></pre>
+<p>A vertex establishes <strong>where</strong>.</p>
+<p>An edge establishes <strong>between</strong>.</p>
+<p>A loop establishes <strong>around</strong>.</p>
+<p>A face establishes <strong>across</strong>.</p>
+<hr>
+<h2 id="1-a-face-is-a-surface"><a class="header" href="#1-a-face-is-a-surface">1. A Face Is a Surface</a></h2>
+<p>Consider a square boundary:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+p2&lt;point(1.0, 1.0)&gt;
+p3&lt;point(0.0, 1.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+e1&lt;edge($p1, $p2)&gt;
+e2&lt;edge($p2, $p3)&gt;
+e3&lt;edge($p3, $p0)&gt;
+
+l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>The loop establishes a closed boundary:</p>
+<pre><code class="language-text">p0 → p1 → p2 → p3 → p0
+</code></pre>
+<p>But a boundary is not yet a surface.</p>
+<p>The face provides that final step:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>Conceptually:</p>
+<pre><code class="language-text">Before:
+
+p0 ───────── p1
+│            │
+│            │
+│            │
+p3 ───────── p2
+
+Boundary only
+
+
+After:
+
+┌───────────────┐
+│               │
+│     FACE      │
+│               │
+└───────────────┘
+</code></pre>
+<p>A face therefore answers a simple question:</p>
+<blockquote>
+<p>What region is enclosed by this loop?</p>
+</blockquote>
+<hr>
+<h2 id="2-faces-consume-loops"><a class="header" href="#2-faces-consume-loops">2. Faces Consume Loops</a></h2>
+<p>The geometric hierarchy is intentionally simple:</p>
+<pre><code class="language-text">point(...)
+    ↓
+edge(point, point)
+    ↓
+loop(edge, edge, ...)
+    ↓
+face(loop)
+</code></pre>
+<p>A face consumes loops.</p>
+<p>It does not consume points directly.</p>
+<p>It does not consume edges directly.</p>
+<p>This separation keeps each primitive responsible for one level of structure:</p>
+<pre><code class="language-text">Point
+  └── position
+
+Edge
+  └── connectivity
+
+Loop
+  └── boundary
+
+Face
+  └── surface
+</code></pre>
+<p>Each layer builds on the previous layer without duplicating information.</p>
+<hr>
+<h2 id="3-faces-use-the-same-binding-model"><a class="header" href="#3-faces-use-the-same-binding-model">3. Faces Use the Same Binding Model</a></h2>
+<p>No special geometry syntax is introduced for surfaces.</p>
+<p>A loop receives a name:</p>
+<pre><code class="language-matterscript">l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+</code></pre>
+<p>A face references that name:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>The same rule applies throughout MatterScript:</p>
+<blockquote>
+<p>Define once. Reference many.</p>
+</blockquote>
+<p>The <code>$</code> sigil continues to mean:</p>
+<blockquote>
+<p>Look up an existing binding.</p>
+</blockquote>
+<p>This consistency is important.</p>
+<p>The language does not introduce a separate way of describing surfaces.</p>
+<p>Faces participate in the same naming and composition system as every other entity.</p>
+<hr>
+<h2 id="4-faces-become-geometry-entities"><a class="header" href="#4-faces-become-geometry-entities">4. Faces Become Geometry Entities</a></h2>
+<p>When a face is resolved, it becomes a new geometry entity inside the <code>SpatialGraph</code>.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">MatterScript
+
+f0&lt;face($l0)&gt;
+        │
+        ▼
+Geometry Resolver
+        │
+        ▼
+ SpatialGraph
+        │
+        ▼
+    FaceId
+</code></pre>
+<p>The source-level name:</p>
+<pre><code class="language-text">$f0
+</code></pre>
+<p>provides a stable reference to that geometric surface.</p>
+<p>This allows faces to participate in later processing stages:</p>
+<ul>
+<li>triangulation</li>
+<li>mesh generation</li>
+<li>placement</li>
+<li>delay synthesis</li>
+<li>sensor mapping</li>
+<li>hardware projection</li>
+</ul>
+<p>The face is therefore more than a drawing primitive.</p>
+<p>It becomes a named region within the geometry graph.</p>
+<hr>
+<h2 id="5-a-face-is-more-than-a-polygon"><a class="header" href="#5-a-face-is-more-than-a-polygon">5. A Face Is More Than a Polygon</a></h2>
+<p>Traditional graphics systems often describe surfaces as lists of coordinates:</p>
+<pre><code class="language-text">[(0,0), (1,0), (1,1), (0,1)]
+</code></pre>
+<p>MatterScript takes a different approach.</p>
+<p>The surface is constructed gradually:</p>
+<pre><code class="language-text">coordinates
+      ↓
+points
+      ↓
+edges
+      ↓
+loops
+      ↓
+faces
+</code></pre>
+<p>The advantage is that every intermediate structure remains visible and addressable.</p>
+<p>The language can therefore express:</p>
+<ul>
+<li>position,</li>
+<li>connectivity,</li>
+<li>boundary,</li>
+<li>and surface</li>
+</ul>
+<p>as separate concepts.</p>
+<p>This makes geometry compositional rather than monolithic.</p>
+<hr>
+<h2 id="6-a-face-does-not-reconstruct-its-boundary"><a class="header" href="#6-a-face-does-not-reconstruct-its-boundary">6. A Face Does Not Reconstruct Its Boundary</a></h2>
+<p>The face:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>does not create new edges.</p>
+<p>It does not recreate points.</p>
+<p>It simply refers to an already validated loop.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">Face
+  │
+  ▼
+Loop
+  │
+  ▼
+Edges
+  │
+  ▼
+Points
+</code></pre>
+<p>Each level owns a specific responsibility.</p>
+<p>The face assumes that the loop already forms a valid boundary.</p>
+<p>This keeps the system modular.</p>
+<hr>
+<h2 id="7-surface-identity"><a class="header" href="#7-surface-identity">7. Surface Identity</a></h2>
+<p>Two faces may occupy neighboring regions.</p>
+<p>For example:</p>
+<pre><code class="language-text">+-----+-----+
+|  F0 |  F1 |
++-----+-----+
+</code></pre>
+<p>Each face has its own identity:</p>
+<pre><code class="language-text">f0
+f1
+</code></pre>
+<p>Even if they share geometric boundaries, the surfaces remain distinct entities.</p>
+<p>This is important because surfaces often represent meaningful regions:</p>
+<ul>
+<li>walls,</li>
+<li>floors,</li>
+<li>sensor zones,</li>
+<li>computational cells,</li>
+<li>hardware regions,</li>
+<li>physical materials.</li>
+</ul>
+<p>The face is therefore not merely geometry.</p>
+<p>It is a named spatial object.</p>
+<hr>
+<h2 id="8-faces-compose-larger-structures"><a class="header" href="#8-faces-compose-larger-structures">8. Faces Compose Larger Structures</a></h2>
+<p>A single face describes one surface.</p>
+<p>Many faces can describe more complex structures.</p>
+<p>For example:</p>
+<pre><code class="language-text">Cube
+
+   +------+
+  /|     /|
+ +------+ |
+ | |    | |
+ | +----|-+
+ |/     |/
+ +------+
+</code></pre>
+<p>The cube is not a special primitive.</p>
+<p>It is composed from faces:</p>
+<pre><code class="language-text">Face
+ + Face
+ + Face
+ + Face
+ + Face
+ + Face
+</code></pre>
+<p>The same construction applies at larger scales:</p>
+<pre><code class="language-text">faces
+   ↓
+shells
+   ↓
+objects
+   ↓
+assemblies
+</code></pre>
+<p>The language scales through composition.</p>
+<p>No new syntax is required.</p>
+<hr>
+<h2 id="9-faces-in-three-dimensions"><a class="header" href="#9-faces-in-three-dimensions">9. Faces in Three Dimensions</a></h2>
+<p>A face is not limited to flat two-dimensional examples.</p>
+<p>The same primitive applies in three-dimensional geometry.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">p0&lt;point(0,0,0)&gt;
+p1&lt;point(1,0,0)&gt;
+p2&lt;point(1,1,0)&gt;
+p3&lt;point(0,1,0)&gt;
+
+...
+
+f0&lt;face($l0)&gt;
+</code></pre>
+<p>The face still represents:</p>
+<blockquote>
+<p>A surface enclosed by a loop.</p>
+</blockquote>
+<p>The coordinates simply happen to exist in three-dimensional space.</p>
+<p>This is why the same vocabulary works for both:</p>
+<pre><code class="language-text">spatial2d
+spatial3d
+</code></pre>
+<p>The underlying ideas remain unchanged.</p>
+<hr>
+<h2 id="10-faces-and-triangulation"><a class="header" href="#10-faces-and-triangulation">10. Faces and Triangulation</a></h2>
+<p>Most rendering systems ultimately operate on triangles.</p>
+<p>MatterScript intentionally does not expose triangles directly.</p>
+<p>Instead:</p>
+<pre><code class="language-text">Face
+   ↓
+Triangulation
+   ↓
+Triangles
+</code></pre>
+<p>For example:</p>
+<pre><code class="language-text">Quadrilateral Face
+
++---------+
+|         |
+|         |
++---------+
+</code></pre>
+<p>may become:</p>
+<pre><code class="language-text">+---------+
+|\        |
+| \       |
+|  \      |
++---------+
+</code></pre>
+<p>The triangulation step converts high-level surfaces into low-level mesh primitives.</p>
+<p>This is important because the programmer works with meaningful geometry while the exporter produces efficient representations.</p>
+<hr>
+<h2 id="11-faces-and-mesh-generation"><a class="header" href="#11-faces-and-mesh-generation">11. Faces and Mesh Generation</a></h2>
+<p>The geometry pipeline is now complete:</p>
+<pre><code class="language-text">MatterScript Source
+        │
+        ▼
+IPL Parser
+        │
+        ▼
+Spatial Resolver
+        │
+        ├── Points
+        ├── Edges
+        ├── Loops
+        └── Faces
+        │
+        ▼
+Triangulation
+        │
+        ▼
+TriangulatedMesh
+        │
+        ▼
+PLY
+</code></pre>
+<p>The face is the final topological primitive before mesh generation.</p>
+<p>Everything below it becomes implementation detail.</p>
+<hr>
+<h2 id="12-faces-and-physical-computation"><a class="header" href="#12-faces-and-physical-computation">12. Faces and Physical Computation</a></h2>
+<p>Faces become particularly interesting when geometry is connected to computation.</p>
+<p>A face can represent:</p>
+<ul>
+<li>a sensor region,</li>
+<li>a hardware tile,</li>
+<li>an FPGA area,</li>
+<li>a robotic workspace,</li>
+<li>a simulation cell,</li>
+<li>a thermal region,</li>
+<li>a biological membrane.</li>
+</ul>
+<p>For example:</p>
+<pre><code class="language-text">Face
+   ↓
+Computational Region
+</code></pre>
+<p>This allows geometry to become part of the execution model rather than merely an output format.</p>
+<p>A face is no longer just something that can be drawn.</p>
+<p>It becomes a region where relationships exist.</p>
+<hr>
+<h2 id="13-faces-and-placement"><a class="header" href="#13-faces-and-placement">13. Faces and Placement</a></h2>
+<p>Later chapters will use faces as targets for placement:</p>
+<pre><code class="language-text">cell
+   ↓
+face
+   ↓
+physical location
+</code></pre>
+<p>This enables statements such as:</p>
+<blockquote>
+<p>Place this computation within this region.</p>
+</blockquote>
+<p>The face becomes part of the bridge between:</p>
+<pre><code class="language-text">geometry
+      ↔
+computation
+</code></pre>
+<p>This is one of MatterScript’s central goals.</p>
+<hr>
+<h2 id="14-the-complete-example"><a class="header" href="#14-the-complete-example">14. The Complete Example</a></h2>
+<pre><code class="language-matterscript">Square[()()
+    @domain(spatial2d)
+
+    p0&lt;point(0.0, 0.0)&gt;
+    p1&lt;point(1.0, 0.0)&gt;
+    p2&lt;point(1.0, 1.0)&gt;
+    p3&lt;point(0.0, 1.0)&gt;
+
+    e0&lt;edge($p0, $p1)&gt;
+    e1&lt;edge($p1, $p2)&gt;
+    e2&lt;edge($p2, $p3)&gt;
+    e3&lt;edge($p3, $p0)&gt;
+
+    l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+
+    f0&lt;face($l0)&gt;
+]
+</code></pre>
+<p>The structure is:</p>
+<pre><code class="language-text">Points
+   ↓
+Edges
+   ↓
+Loop
+   ↓
+Face
+   ↓
+Mesh
+</code></pre>
+<p>Each layer adds meaning:</p>
+<pre><code class="language-text">Point
+  = position
+
+Edge
+  = connectivity
+
+Loop
+  = boundary
+
+Face
+  = surface
+</code></pre>
+<hr>
+<h2 id="15-why-faces-matter"><a class="header" href="#15-why-faces-matter">15. Why Faces Matter</a></h2>
+<p>A graphics system might stop at triangles.</p>
+<p>MatterScript stops at relationships.</p>
+<p>The programmer does not describe:</p>
+<blockquote>
+<p>How should this be triangulated?</p>
+</blockquote>
+<p>Instead they describe:</p>
+<blockquote>
+<p>What surfaces exist?</p>
+</blockquote>
+<p>The system derives the implementation details.</p>
+<p>This allows geometry to remain:</p>
+<ul>
+<li>meaningful,</li>
+<li>compositional,</li>
+<li>reusable,</li>
+<li>physically interpretable.</li>
+</ul>
+<p>The face therefore becomes an important bridge between:</p>
+<pre><code class="language-text">space
+geometry
+computation
+hardware
+</code></pre>
+<hr>
+<h2 id="16-looking-ahead"><a class="header" href="#16-looking-ahead">16. Looking Ahead</a></h2>
+<p>With faces, the core topological hierarchy is complete:</p>
+<pre><code class="language-text">POINT
+   ↓
+EDGE
+   ↓
+LOOP
+   ↓
+FACE
+</code></pre>
+<p>From here, the system can move toward:</p>
+<pre><code class="language-text">faces
+   ↓
+meshes
+   ↓
+placement
+   ↓
+hardware
+</code></pre>
+<p>The next chapters explore how geometry becomes physical computation:</p>
+<ul>
+<li>Cell Placement</li>
+<li>Conformal Projection</li>
+<li>Delay Synthesis</li>
+<li>Sensor Placement</li>
+<li>Hardware Fidelity</li>
+</ul>
+<p>The geometric language is now complete enough to describe not only shapes, but the physical structure of computation itself.</p>
+<p><em>Drafting in progress…</em></p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="meshes"><a class="header" href="#meshes">Meshes</a></h1>
+<p>Vertices establish position.</p>
+<p>Edges establish connectivity.</p>
+<p>Loops establish boundaries.</p>
+<p>Faces establish surfaces.</p>
+<p>A <strong>mesh</strong> turns those surfaces into a discrete representation that can be processed, exported, inspected, and eventually used as the foundation for physical computation.</p>
+<p>In MatterScript, the mesh is not the starting point.</p>
+<p>It is the result of lowering the higher-level geometric structure into a collection of computational primitives:</p>
+<pre><code class="language-text">POINT
+   │
+   │ position
+   ▼
+EDGE
+   │
+   │ connectivity
+   ▼
+LOOP
+   │
+   │ boundary
+   ▼
+FACE
+   │
+   │ surface
+   ▼
+MESH
+   │
+   │ discretization
+   ▼
+PLY
+</code></pre>
+<p>This distinction is fundamental.</p>
+<p>MatterScript describes geometry in terms of meaningful structures. The mesh is generated afterward as a representation of that structure.</p>
+<blockquote>
+<p><strong>A face describes a surface. A mesh discretizes that surface into computable primitives.</strong></p>
+</blockquote>
+<hr>
+<h2 id="1-why-have-a-mesh"><a class="header" href="#1-why-have-a-mesh">1. Why Have a Mesh?</a></h2>
+<p>A face is a useful geometric concept:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>It tells us that a particular loop represents a surface.</p>
+<p>But many downstream systems do not operate directly on arbitrary surfaces.</p>
+<p>They operate on discrete elements.</p>
+<p>A mesh provides that discrete representation.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">High-level geometry
+
+       FACE
+        │
+        ▼
+   continuous
+    surface
+        │
+        ▼
+   triangulation
+        │
+        ▼
+Low-level geometry
+
+   ▲───────▲
+   │\      │
+   │ \     │
+   │  \    │
+   │   \   │
+   ▲───────▲
+</code></pre>
+<p>The mesh therefore acts as an interface between the geometric model and systems that need explicit vertices and triangles.</p>
+<hr>
+<h2 id="2-matterscript-does-not-start-with-triangles"><a class="header" href="#2-matterscript-does-not-start-with-triangles">2. MatterScript Does Not Start with Triangles</a></h2>
+<p>A conventional mesh-oriented workflow might begin with something like:</p>
+<pre><code class="language-text">vertices
++
+triangle indices
+</code></pre>
+<p>MatterScript starts higher up.</p>
+<p>The programmer describes:</p>
+<pre><code class="language-text">points
+edges
+loops
+faces
+</code></pre>
+<p>and the system derives the triangle representation.</p>
+<p>This gives the source language a more meaningful vocabulary.</p>
+<p>Instead of writing:</p>
+<blockquote>
+<p>Split this quadrilateral into these two triangles.</p>
+</blockquote>
+<p>the programmer writes:</p>
+<blockquote>
+<p>This is a surface bounded by this loop.</p>
+</blockquote>
+<p>Triangulation becomes an implementation step.</p>
+<pre><code class="language-text">MatterScript
+
+face
+  │
+  ▼
+triangulate
+  │
+  ▼
+triangles
+</code></pre>
+<p>The distinction allows the source representation to remain independent of the particular mesh representation eventually produced.</p>
+<hr>
+<h2 id="3-the-spatial-graph-is-the-source-geometry"><a class="header" href="#3-the-spatial-graph-is-the-source-geometry">3. The Spatial Graph Is the Source Geometry</a></h2>
+<p>The geometry resolver builds a <code>SpatialGraph</code>.</p>
+<p>That graph contains the geometric entities constructed from the MatterScript source:</p>
+<pre><code class="language-text">SpatialGraph
+
+  Points
+     │
+     ├── Edges
+     │
+     ├── Loops
+     │
+     └── Faces
+</code></pre>
+<p>The source-level names remain associated with the corresponding geometry handles through the geometry binding table.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0)&gt;
+
+e0&lt;edge($p0, $p1)&gt;
+</code></pre>
+<p>becomes part of the graph as actual geometry entities rather than remaining merely as source text.</p>
+<p>The mesh is generated <strong>from this graph</strong>.</p>
+<p>That makes the architecture:</p>
+<pre><code class="language-text">MatterScript
+     │
+     ▼
+SpatialGraph
+     │
+     ▼
+TriangulatedMesh
+</code></pre>
+<p>rather than:</p>
+<pre><code class="language-text">MatterScript
+     │
+     ▼
+triangle list
+</code></pre>
+<p>This is an important architectural distinction.</p>
+<hr>
+<h2 id="4-triangulation-is-a-lowering-step"><a class="header" href="#4-triangulation-is-a-lowering-step">4. Triangulation Is a Lowering Step</a></h2>
+<p>The current implementation provides a <code>spatial.triangulate</code> stage:</p>
+<pre><code class="language-text">SpatialGraph
+     │
+     ▼
+spatial.triangulate
+     │
+     ▼
+TriangulatedMesh
+</code></pre>
+<p>Triangulation converts the higher-level surfaces into triangles.</p>
+<p>For a simple quadrilateral face:</p>
+<pre><code class="language-text">+---------+
+|         |
+|         |
++---------+
+</code></pre>
+<p>the resulting mesh can contain:</p>
+<pre><code class="language-text">+---------+
+|\        |
+| \       |
+|  \      |
+|   \     |
++---------+
+</code></pre>
+<p>The important point is that the diagonal is an artifact of triangulation.</p>
+<p>It was not part of the original MatterScript geometry description.</p>
+<p>The source described a face.</p>
+<p>The mesh generator chose a discrete representation of that face.</p>
+<hr>
+<h2 id="5-a-simple-example"><a class="header" href="#5-a-simple-example">5. A Simple Example</a></h2>
+<p>Consider the smallest useful surface:</p>
+<pre><code class="language-matterscript">Square[()()
+    @domain(spatial2d)
+
+    p0&lt;point(0.0, 0.0)&gt;
+    p1&lt;point(1.0, 0.0)&gt;
+    p2&lt;point(1.0, 1.0)&gt;
+    p3&lt;point(0.0, 1.0)&gt;
+
+    e0&lt;edge($p0, $p1)&gt;
+    e1&lt;edge($p1, $p2)&gt;
+    e2&lt;edge($p2, $p3)&gt;
+    e3&lt;edge($p3, $p0)&gt;
+
+    l0&lt;loop($e0, $e1, $e2, $e3)&gt;
+
+    f0&lt;face($l0)&gt;
+]
+</code></pre>
+<p>The source describes:</p>
+<pre><code class="language-text">4 points
+4 edges
+1 loop
+1 face
+</code></pre>
+<p>The triangulation stage turns the single quadrilateral face into:</p>
+<pre><code class="language-text">2 triangles
+</code></pre>
+<p>over the same four vertices.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">Face
+
+p0 ───────── p1
+│          /  │
+│        /    │
+│      /      │
+│    /        │
+p3 ───────── p2
+
+
+Mesh
+
+Triangle 1: p0, p1, p3
+Triangle 2: p1, p2, p3
+</code></pre>
+<p>The exact triangulation strategy is an implementation concern. The important architectural fact is that the surface existed before the triangles did.</p>
+<hr>
+<h2 id="6-the-vertices-survive-the-conversion"><a class="header" href="#6-the-vertices-survive-the-conversion">6. The Vertices Survive the Conversion</a></h2>
+<p>The mesh does not need to invent a new set of positions for every triangle.</p>
+<p>In the simple quadrilateral example, triangulation produces two triangles <strong>over the same four vertices</strong>.</p>
+<p>That means:</p>
+<pre><code class="language-text">SpatialGraph
+    │
+    ├── p0
+    ├── p1
+    ├── p2
+    └── p3
+         │
+         ▼
+TriangulatedMesh
+    │
+    ├── Triangle
+    └── Triangle
+</code></pre>
+<p>The triangles reference the mesh’s vertex representation.</p>
+<p>This is one reason it is useful to distinguish the geometric graph from the triangulated representation.</p>
+<p>The graph expresses the geometry.</p>
+<p>The mesh expresses a discrete computational representation of that geometry.</p>
+<hr>
+<h2 id="7-a-mesh-is-not-just-a-collection-of-points"><a class="header" href="#7-a-mesh-is-not-just-a-collection-of-points">7. A Mesh Is Not Just a Collection of Points</a></h2>
+<p>A point list alone does not tell a mesh viewer how surfaces are connected.</p>
+<p>For example:</p>
+<pre><code class="language-text">p0
+p1
+p2
+p3
+</code></pre>
+<p>contains positions, but not topology.</p>
+<p>A mesh adds relationships between those positions:</p>
+<pre><code class="language-text">vertices
+   +
+triangle connectivity
+</code></pre>
+<p>Conceptually:</p>
+<pre><code class="language-text">Vertices:
+
+p0    p1
+       
+p3    p2
+
+
+Triangles:
+
+p0 ───── p1
+ │      / │
+ │    /   │
+ │  /     │
+ p3 ───── p2
+</code></pre>
+<p>The mesh therefore combines geometric position with explicit discrete surface connectivity.</p>
+<p>This makes it suitable for systems that need to process individual elements rather than reason about an abstract face.</p>
+<hr>
+<h2 id="8-from-face-to-triangles"><a class="header" href="#8-from-face-to-triangles">8. From Face to Triangles</a></h2>
+<p>The complete lowering process can be summarized as:</p>
+<pre><code class="language-text">Face
+  │
+  │ bounded by
+  ▼
+Loop
+  │
+  │ composed of
+  ▼
+Edges
+  │
+  │ connecting
+  ▼
+Points
+</code></pre>
+<p>and then, in the opposite direction for representation:</p>
+<pre><code class="language-text">Points + Faces
+       │
+       ▼
+ Triangulation
+       │
+       ▼
+Triangles
+</code></pre>
+<p>The source geometry and the mesh therefore describe the same physical structure at different levels.</p>
+<pre><code class="language-text">HIGH LEVEL
+
+"this region is a surface"
+
+
+LOW LEVEL
+
+"these vertices and triangles represent that surface"
+</code></pre>
+<p>MatterScript keeps those levels separate.</p>
+<hr>
+<h2 id="9-the-complete-pipeline"><a class="header" href="#9-the-complete-pipeline">9. The Complete Pipeline</a></h2>
+<p>The actual implementation pipeline is deliberately divided into independently testable stages:</p>
+<pre><code class="language-text">.ms.ipl source
+      │
+      ▼
+ipl_parser.parse
+      │
+      ▼
+spatial_domain.resolveSpatialBindings
+      │
+      ▼
+SpatialGraph
+      │
+      ▼
+spatial.triangulate
+      │
+      ▼
+TriangulatedMesh
+      │
+      ▼
+spatial.exportPly
+      │
+      ▼
+binary PLY
+</code></pre>
+<p>The parser itself remains ordinary IPL parsing.</p>
+<p>The spatial resolution pass interprets recognized geometry calls and constructs the spatial graph.</p>
+<p>Triangulation converts that graph into a mesh.</p>
+<p>PLY export serializes the mesh.</p>
+<p>Each stage therefore has a clearly defined responsibility.</p>
+<hr>
+<h2 id="10-parsing-does-not-produce-the-mesh"><a class="header" href="#10-parsing-does-not-produce-the-mesh">10. Parsing Does Not Produce the Mesh</a></h2>
+<p>This separation is worth emphasizing.</p>
+<p>When MatterScript encounters:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0)&gt;
+</code></pre>
+<p>the parser does not immediately create a mesh vertex.</p>
+<p>It parses an ordinary IPL fill whose expression is a structured call.</p>
+<p>Likewise:</p>
+<pre><code class="language-matterscript">f0&lt;face($l0)&gt;
+</code></pre>
+<p>is initially just parsed syntax.</p>
+<p>The spatial resolution pass gives those calls their geometry-specific meaning when the enclosing definition is scoped to <code>spatial2d</code> or <code>spatial3d</code>.</p>
+<p>The architecture is therefore:</p>
+<pre><code class="language-text">        Syntax
+          │
+          ▼
+       IPL AST
+          │
+          ▼
+   Spatial Resolution
+          │
+          ▼
+    Spatial Graph
+          │
+          ▼
+      Triangulation
+          │
+          ▼
+         Mesh
+</code></pre>
+<p>The mesh is several semantic levels downstream from parsing.</p>
+<hr>
+<h2 id="11-mesh-generation-is-domain-specific"><a class="header" href="#11-mesh-generation-is-domain-specific">11. Mesh Generation Is Domain-Specific</a></h2>
+<p>Spatial geometry functions are available when the definition declares:</p>
+<pre><code class="language-matterscript">@domain(spatial2d)
+</code></pre>
+<p>or:</p>
+<pre><code class="language-matterscript">@domain(spatial3d)
+</code></pre>
+<p>The mesh exporter uses that same domain information to determine which definitions should be processed as geometry.</p>
+<p>Definitions without a spatial domain are not sent through the mesh path.</p>
+<p>Likewise, <code>spatial1d</code> is not currently a geometry domain.</p>
+<p>This means one <code>.ms.ipl</code> source file can contain different kinds of definitions:</p>
+<pre><code class="language-text">MatterScript file
+       │
+       ├── causal definitions
+       │       ↓
+       │     VHDL path
+       │
+       └── spatial definitions
+               ↓
+            mesh path
+</code></pre>
+<p>The routing is determined by the definition’s domain.</p>
+<hr>
+<h2 id="12-mesh-export"><a class="header" href="#12-mesh-export">12. Mesh Export</a></h2>
+<p>Once the <code>TriangulatedMesh</code> exists, it can be serialized.</p>
+<p>The current implementation provides:</p>
+<pre><code class="language-text">spatial.exportPly
+</code></pre>
+<p>which produces binary PLY data.</p>
+<p>The resulting file contains the mesh representation:</p>
+<pre><code class="language-text">vertices
++
+triangular faces
+</code></pre>
+<p>For the simple quadrilateral example, the exported mesh contains:</p>
+<pre><code class="language-text">4 vertices
+2 triangular faces
+</code></pre>
+<p>and can be opened by mesh inspection tools such as MeshLab.</p>
+<p>The important distinction is:</p>
+<pre><code class="language-text">MatterScript
+    ↓
+SpatialGraph
+    ↓
+TriangulatedMesh
+    ↓
+PLY
+</code></pre>
+<p>PLY is an <strong>output representation</strong>.</p>
+<p>It is not the language’s fundamental geometry model.</p>
+<hr>
+<h2 id="13-why-ply"><a class="header" href="#13-why-ply">13. Why PLY?</a></h2>
+<p>PLY provides a convenient interchange boundary between MatterScript and external geometry tools.</p>
+<p>The MatterScript pipeline can produce an actual binary mesh file:</p>
+<pre><code class="language-text">&lt;definition-name&gt;.ply
+</code></pre>
+<p>under the run’s workspace.</p>
+<p>That means the generated geometry can leave the compiler/runtime environment and enter an ordinary mesh-processing workflow.</p>
+<p>For example:</p>
+<pre><code class="language-text">MatterScript
+     ↓
+    PLY
+     ↓
+  MeshLab
+     ↓
+inspection / validation
+</code></pre>
+<p>This gives the spatial compiler a concrete artifact that can be examined independently of the compiler itself.</p>
+<hr>
+<h2 id="14-meshes-make-geometry-testable"><a class="header" href="#14-meshes-make-geometry-testable">14. Meshes Make Geometry Testable</a></h2>
+<p>A particularly useful property of the mesh boundary is that it creates an observable artifact.</p>
+<p>A MatterScript definition can be transformed into a PLY file and then inspected independently.</p>
+<p>The pipeline can therefore be tested at multiple levels:</p>
+<pre><code class="language-text">Source
+  │
+  ├── parser tests
+  │
+  ├── geometry-resolution tests
+  │
+  ├── topology tests
+  │
+  ├── triangulation tests
+  │
+  └── PLY export tests
+</code></pre>
+<p>This is valuable because each stage can be verified without requiring the entire system to be treated as one opaque operation.</p>
+<p>The mesh becomes a concrete boundary between <strong>semantic geometry</strong> and <strong>external representation</strong>.</p>
+<hr>
+<h2 id="15-geometry-only-definitions"><a class="header" href="#15-geometry-only-definitions">15. Geometry-Only Definitions</a></h2>
+<p>A geometry definition does not need ordinary IPL sources or destinations.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">Cube[()()
+    @domain(spatial3d)
+
+    ...
+]
+</code></pre>
+<p>can exist specifically to produce geometry.</p>
+<p>The mesh exporter does not require the definition to have ordinary causal destinations.</p>
+<p>This reflects an important distinction:</p>
+<pre><code class="language-text">Causal definition
+
+inputs → computation → outputs
+
+
+Geometry definition
+
+positions → topology → surface → mesh
+</code></pre>
+<p>Both use the same IPL source language.</p>
+<p>They simply make use of different consumers of the parsed definition.</p>
+<hr>
+<h2 id="16-a-complete-three-dimensional-example"><a class="header" href="#16-a-complete-three-dimensional-example">16. A Complete Three-Dimensional Example</a></h2>
+<p>A cube demonstrates why the distinction between geometry and mesh becomes increasingly useful.</p>
+<p>The source can define eight points:</p>
+<pre><code class="language-matterscript">p0&lt;point(0.0, 0.0, 0.0)&gt;
+p1&lt;point(1.0, 0.0, 0.0)&gt;
+p2&lt;point(1.0, 1.0, 0.0)&gt;
+p3&lt;point(0.0, 1.0, 0.0)&gt;
+
+p4&lt;point(0.0, 0.0, 1.0)&gt;
+p5&lt;point(1.0, 0.0, 1.0)&gt;
+p6&lt;point(1.0, 1.0, 1.0)&gt;
+p7&lt;point(0.0, 1.0, 1.0)&gt;
+</code></pre>
+<p>Each face is then constructed from its own four-edge loop.</p>
+<p>For example, the bottom face:</p>
+<pre><code class="language-matterscript">e_b0&lt;edge($p0, $p1)&gt;
+e_b1&lt;edge($p1, $p2)&gt;
+e_b2&lt;edge($p2, $p3)&gt;
+e_b3&lt;edge($p3, $p0)&gt;
+
+l_bottom&lt;loop($e_b0, $e_b1, $e_b2, $e_b3)&gt;
+f_bottom&lt;face($l_bottom)&gt;
+</code></pre>
+<p>The other five faces follow the same pattern.</p>
+<p>The source therefore describes:</p>
+<pre><code class="language-text">8 points
+6 faces
+24 edge bindings
+6 loops
+</code></pre>
+<p>with each face owning its own four edge bindings, including geometrically coincident segments.</p>
+<p>The triangulation stage can then lower those surfaces into a triangle mesh.</p>
+<p>The source remains understandable as a cube.</p>
+<p>The mesh remains understandable as a collection of triangles.</p>
+<p>Both representations describe the same structure at different levels.</p>
+<hr>
+<h2 id="17-the-mesh-as-a-computational-boundary"><a class="header" href="#17-the-mesh-as-a-computational-boundary">17. The Mesh as a Computational Boundary</a></h2>
+<p>The mesh is particularly important because it provides a representation that other systems can consume.</p>
+<p>Once geometry has been reduced to explicit vertices and triangles, it can be used by:</p>
+<ul>
+<li>mesh viewers,</li>
+<li>geometry processors,</li>
+<li>spatial algorithms,</li>
+<li>simulation systems,</li>
+<li>fabrication pipelines,</li>
+<li>physical layout tools.</li>
+</ul>
+<p>The mesh therefore becomes a bridge:</p>
+<pre><code class="language-text">MatterScript
+     │
+     ▼
+semantic geometry
+     │
+     ▼
+discrete mesh
+     │
+     ├── visualization
+     ├── simulation
+     ├── fabrication
+     └── physical computation
+</code></pre>
+<p>The important architectural principle is that these downstream systems do not need to understand MatterScript’s entire geometric construction language.</p>
+<p>They can consume the representation appropriate to their task.</p>
+<hr>
+<h2 id="18-the-mesh-is-not-the-end"><a class="header" href="#18-the-mesh-is-not-the-end">18. The Mesh Is Not the End</a></h2>
+<p>It would be tempting to think of:</p>
+<pre><code class="language-text">MatterScript → PLY
+</code></pre>
+<p>as the purpose of the spatial system.</p>
+<p>It is not.</p>
+<p>PLY is simply the current concrete endpoint of the implemented pipeline.</p>
+<p>The more important transformation is:</p>
+<pre><code class="language-text">source description
+       ↓
+semantic geometry
+       ↓
+computable geometry
+</code></pre>
+<p>The mesh makes geometry explicit enough for another computational system to operate on it.</p>
+<p>This becomes particularly important when geometry is eventually connected to MatterScript’s other concepts.</p>
+<p>A spatial region could become a placement target.</p>
+<p>A distance could become a delay.</p>
+<p>A surface could become a sensor domain.</p>
+<p>A mesh could become the physical substrate on which computation is mapped.</p>
+<p>The mesh is therefore a boundary between <strong>describing physical structure</strong> and <strong>computing with physical structure</strong>.</p>
+<hr>
+<h2 id="19-from-mesh-to-physical-computation"><a class="header" href="#19-from-mesh-to-physical-computation">19. From Mesh to Physical Computation</a></h2>
+<p>The larger direction of the MatterScript spatial system can now be seen:</p>
+<pre><code class="language-text">Geometry
+
+POINT
+  ↓
+EDGE
+  ↓
+LOOP
+  ↓
+FACE
+  ↓
+MESH
+
+Computation
+
+MESH
+  ↓
+PLACEMENT
+  ↓
+PROJECTION
+  ↓
+DELAY
+  ↓
+SENSING
+  ↓
+HARDWARE
+</code></pre>
+<p>The first half constructs the physical model.</p>
+<p>The second half uses that model.</p>
+<p>This is where MatterScript begins to move beyond conventional geometry processing.</p>
+<p>A mesh is not merely something to render.</p>
+<p>It can become a coordinate system for computation.</p>
+<hr>
+<h2 id="20-one-language-multiple-representations"><a class="header" href="#20-one-language-multiple-representations">20. One Language, Multiple Representations</a></h2>
+<p>The same source definition can move through several representations:</p>
+<pre><code class="language-text">MatterScript source
+        │
+        ▼
+      IPL AST
+        │
+        ▼
+   SpatialGraph
+        │
+        ▼
+ TriangulatedMesh
+        │
+        ▼
+      PLY file
+</code></pre>
+<p>Each representation answers a different question.</p>
+<h3 id="matterscript"><a class="header" href="#matterscript">MatterScript</a></h3>
+<p>What did the programmer describe?</p>
+<h3 id="spatialgraph"><a class="header" href="#spatialgraph">SpatialGraph</a></h3>
+<p>What geometric entities and relationships exist?</p>
+<h3 id="triangulatedmesh"><a class="header" href="#triangulatedmesh">TriangulatedMesh</a></h3>
+<p>How can those surfaces be represented as discrete triangles?</p>
+<h3 id="ply"><a class="header" href="#ply">PLY</a></h3>
+<p>How can that mesh be serialized for another tool?</p>
+<p>The representations are therefore not competing models.</p>
+<p>They are layers.</p>
+<hr>
+<h2 id="21-the-geometry-pipeline-is-compositional"><a class="header" href="#21-the-geometry-pipeline-is-compositional">21. The Geometry Pipeline Is Compositional</a></h2>
+<p>The complete Part V geometry construction sequence can now be summarized:</p>
+<pre><code class="language-text">@domain(spatial2d | spatial3d)
+              │
+              ▼
+           point()
+              │
+              ▼
+            edge()
+              │
+              ▼
+            loop()
+              │
+              ▼
+            face()
+              │
+              ▼
+         triangulation
+              │
+              ▼
+          TriangulatedMesh
+              │
+              ▼
+              PLY
+</code></pre>
+<p>Every stage consumes the structure produced by the stage before it.</p>
+<p>No new representation has to be invented for every step.</p>
+<p>The same names, the same <code>$</code> reference convention, and the same define-once binding discipline continue throughout the construction.</p>
+<p>That continuity is one of the most important properties of the design.</p>
+<hr>
+<h2 id="22-why-the-mesh-layer-matters"><a class="header" href="#22-why-the-mesh-layer-matters">22. Why the Mesh Layer Matters</a></h2>
+<p>The mesh is where MatterScript’s abstract geometric relationships become a form that ordinary computational machinery can consume.</p>
+<p>The progression is:</p>
+<pre><code class="language-text">point
+  = position
+
+edge
+  = connectivity
+
+loop
+  = boundary
+
+face
+  = surface
+
+mesh
+  = discrete representation
+</code></pre>
+<p>This is more than a convenient export pipeline.</p>
+<p>It establishes a boundary between two ways of thinking about geometry:</p>
+<pre><code class="language-text">SEMANTIC
+
+"What is this structure?"
+
+
+COMPUTATIONAL
+
+"How do I represent and process it?"
+</code></pre>
+<p>MatterScript works on the semantic side.</p>
+<p>The mesh provides the computational bridge.</p>
+<hr>
+<h2 id="23-looking-ahead-computing-within-geometry"><a class="header" href="#23-looking-ahead-computing-within-geometry">23. Looking Ahead: Computing Within Geometry</a></h2>
+<p>With the mesh layer in place, Part V can now change direction.</p>
+<p>The first chapters constructed space:</p>
+<pre><code class="language-text">Spatial Domains
+      ↓
+Vertices
+      ↓
+Edges
+      ↓
+Loops
+      ↓
+Faces
+      ↓
+Meshes
+</code></pre>
+<p>The remaining chapters ask what computation can do <strong>with</strong> that space:</p>
+<pre><code class="language-text">Meshes
+   ↓
+Cell Placement
+   ↓
+Conformal Projection
+   ↓
+Delay Synthesis
+   ↓
+Sensor Placement
+   ↓
+Hardware Fidelity
+</code></pre>
+<p>The fundamental transition is:</p>
+<blockquote>
+<p><strong>First we construct space. Then we compute within it.</strong></p>
+</blockquote>
+<p>The mesh is the boundary between those two worlds.</p>
+<p>It takes the physical structure described by MatterScript and gives it a discrete, inspectable, computational form.</p>
+<p>That is what makes geometry more than an output.</p>
+<p>It makes geometry available as a substrate for computation.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="cell-placement"><a class="header" href="#cell-placement">Cell Placement</a></h1>

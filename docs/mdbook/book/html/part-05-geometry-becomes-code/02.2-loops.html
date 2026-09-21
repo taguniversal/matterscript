@@ -37,10 +37,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b0284014.js";
+            window.path_to_searchindex_js = "../searchindex-a3d8c040.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-6782d51a.js"></script>
+        <script src="../toc-723adea2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -177,6 +177,7 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="loops-boundaries-as-ordered-structure"><a class="header" href="#loops-boundaries-as-ordered-structure">Loops: Boundaries as Ordered Structure</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="images/loops.png" alt="Loops"><span class="img-wrapper"><img src="images/loops.png" alt="Loops"></span></label></p>
 <p>An edge connects two vertices.</p>
 <p>A loop turns a sequence of connected edges into a <strong>boundary</strong>.</p>
 <p>In MatterScript, a loop is constructed by referencing previously defined edges:</p>
@@ -623,22 +624,22 @@ l0&lt;loop($e0, $e1, $e2, $e3)&gt;
 f0&lt;face($l0)&gt;
 </code></pre>
 <p>The construction can be read as a sequence of increasingly meaningful statements:</p>
-<pre><code class="language-text">p0, p1, p2, p3
+<pre><code class="language-text"> p0, p1, p2, p3
         │
         ▼
    four positions
         │
         ▼
-e0, e1, e2, e3
+ e0, e1, e2, e3
         │
         ▼
-   four connections
+ four connections
         │
         ▼
         l0
         │
         ▼
-   closed boundary
+ closed boundary
         │
         ▼
         f0
