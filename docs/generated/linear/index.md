@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 20  |  🟡 Partial: 5  |  🔴 Blocked: 1  |  ⬛ Spec only: 2  |  ⬜ Not started: 117  |  Total: 145
+✅ Implemented: 20  |  🟡 Partial: 5  |  🔴 Blocked: 1  |  ⬛ Spec only: 2  |  ⬜ Not started: 118  |  Total: 146
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
@@ -144,6 +144,7 @@
 - ✅ Implemented [Unit Cube Geometry](TAG-196.md)
 - ⬜ Not started [IPL Reference Runtime](TAG-197.md)
 - ⬜ Not started [Example 12.25 Pure Value Expression](TAG-198.md)
+- ⬜ Not started [Matterscript Developer's Guide](TAG-199.md)
 - ⬜ Not started [Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [The Completeness Dialogue](TAG-80.md)

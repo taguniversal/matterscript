@@ -80,6 +80,28 @@ pub fn buildRules(allocator: std.mem.Allocator, def: network.Definition) ![]cons
         }
     }
 
+    // Fill-shaped children of def.contained (e.g. Z0[OUT<$Z0>]) — these
+    // are nested Definitions whose own resolution is a single ordinary
+    // fill, not a value-transform-rule. collectValueTransformRules
+    // already filters these out (it only matches .pure_value shaped
+    // resolutions), so they need their own pass here. Only explicit
+    // $name references are handled — a bare, non-$ name in the fill's
+    // expr (Fant's own idiom, e.g. K[SUM<K>] in Example 12.25) is a
+    // separate, not-yet-implemented gap, flagged during the TAG-177
+    // work; this loop deliberately doesn't guess at that interpretation.
+    for (def.contained) |contained| {
+        if (contained.sources.len != 0 or contained.destinations.len != 0) continue;
+        if (contained.resolution.len != 1 or contained.resolution[0] != .fill) continue;
+        const f = contained.resolution[0].fill;
+        const expr = std.mem.trim(u8, f.expr, " \t\r\n");
+        if (expr.len > 0 and expr[0] == '$') {
+            const ref = expr[1..];
+            const inputs = try allocator.alloc([]const u8, 1);
+            inputs[0] = ref;
+            try rules.append(allocator, .{ .inputs = inputs, .dest = f.dest_name, .action = .{ .copy_from = ref } });
+        }
+    }
+
     return rules.toOwnedSlice(allocator);
 }
 
