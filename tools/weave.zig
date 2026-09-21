@@ -17,6 +17,8 @@ const STATUS_PRIORITY = [_][]const u8{ "Implemented", "Partial", "Spec Only", "B
 
 const IMAGE_DIR = "docs/generated/linear/images";
 
+const max_entries = 250;
+
 const IssueSections = struct {
     software_notes: []const u8,
     reference: []const u8,
@@ -386,9 +388,9 @@ fn fetchIssues(
 ) ![]const LinearIssue {
     const query = try std.fmt.allocPrint(
         allocator,
-        \\{{"query": "query {{ issues(filter: {{ project: {{ name: {{ eq: \"{s}\" }} }} }}, first: 200) {{ nodes {{ identifier title description labels {{ nodes {{ name }} }} state {{ name }} }} }} }}"}}
+        \\{{"query": "query {{ issues(filter: {{ project: {{ name: {{ eq: \"{s}\" }} }} }}, first: {d}) {{ nodes {{ identifier title description labels {{ nodes {{ name }} }} state {{ name }} }} }} }}"}}
     ,
-        .{project_name},
+        .{ project_name, max_entries },
     );
 
     // response_storage is gone — responses now stream into a caller-
