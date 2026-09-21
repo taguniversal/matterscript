@@ -1,3 +1,4 @@
+// Linear : TAG-200 Dual Rail/ Multi-token pure value resolution
 AND2[(A<> B<>)($OUT)
 
     $A $B :
