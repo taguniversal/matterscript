@@ -35,70 +35,62 @@ pub fn buildRules(allocator: std.mem.Allocator, def: network.Definition) ![]cons
     // validation the VHDL emitter and validate.zig share, so there is
     // only ever one implementation of "what is a value transform rule."
     const vt_rules = try value_transform.collectValueTransformRules(allocator, def);
-    try value_transform.assertNoTransformRuleSymbolCollidesWithPort(def, vt_rules);
+
+    // Filter out destination ports from collision checks so contained fills can write to $OUT.
+    var non_dest_ports_def = def;
+    non_dest_ports_def.destinations = &.{};
+    try value_transform.assertNoTransformRuleSymbolCollidesWithPort(non_dest_ports_def, vt_rules);
+
     const rule_groups = try value_transform.groupRulesByTarget(allocator, vt_rules);
     for (rule_groups) |group| {
         for (group.contributing_inputs.items) |inputs| {
-            try rules.append(allocator, .{
-                .inputs = inputs,
-                .dest = group.target,
-                .action = .{ .assert_symbol = group.target },
-            });
+            var matched_contained = false;
+            for (def.contained) |contained| {
+                if (!std.mem.eql(u8, contained.name, group.target)) continue;
+                matched_contained = true;
+                for (contained.resolution) |stmt| {
+                    if (stmt != .fill) continue;
+                    const f = stmt.fill;
+                    const expr = std.mem.trim(u8, f.expr, " \t\r\n");
+
+                    const action: RuleAction = if (expr.len > 0 and expr[0] == '$')
+                        .{ .copy_from = expr[1..] }
+                    else
+                        .{ .assert_symbol = expr };
+
+                    try rules.append(allocator, .{
+                        .inputs = inputs,
+                        .dest = f.dest_name,
+                        .action = action,
+                    });
+                }
+            }
+
+            if (!matched_contained) {
+                try rules.append(allocator, .{
+                    .inputs = inputs,
+                    .dest = group.target,
+                    .action = .{ .assert_symbol = group.target },
+                });
+            }
         }
     }
 
     // Ordinary fills — a literal is a zero-input rule (fires
     // immediately); "$name" is a one-input rule copying that place's
-    // value once valid. Anything else isn't supported yet and is
-    // silently skipped, matching entity.zig's own "acknowledge, don't
-    // crash" stance for constructs outside current scope.
+    // value once valid.
     for (def.resolution) |stmt| {
         if (stmt != .fill) continue;
         const f = stmt.fill;
         const expr = std.mem.trim(u8, f.expr, " \t\r\n");
 
-        if (std.fmt.parseInt(u64, expr, 10)) |literal| {
-            try rules.append(allocator, .{ .inputs = &.{}, .dest = f.dest_name, .action = .{ .literal = literal } });
-        } else |_| if (expr.len > 0 and expr[0] == '$') {
-            const ref = expr[1..];
-            const inputs = try allocator.alloc([]const u8, 1);
-            inputs[0] = ref;
-            try rules.append(allocator, .{ .inputs = inputs, .dest = f.dest_name, .action = .{ .copy_from = ref } });
-        }
-    }
-
-    for (def.contained) |contained| {
-        if (contained.sources.len != 0 or contained.destinations.len != 0) continue;
-        if (contained.resolution.len != 1 or contained.resolution[0] != .fill) continue;
-        const f = contained.resolution[0].fill;
-        const expr = std.mem.trim(u8, f.expr, " \t\r\n");
         if (expr.len > 0 and expr[0] == '$') {
             const ref = expr[1..];
             const inputs = try allocator.alloc([]const u8, 1);
             inputs[0] = ref;
             try rules.append(allocator, .{ .inputs = inputs, .dest = f.dest_name, .action = .{ .copy_from = ref } });
-        }
-    }
-
-    // Fill-shaped children of def.contained (e.g. Z0[OUT<$Z0>]) — these
-    // are nested Definitions whose own resolution is a single ordinary
-    // fill, not a value-transform-rule. collectValueTransformRules
-    // already filters these out (it only matches .pure_value shaped
-    // resolutions), so they need their own pass here. Only explicit
-    // $name references are handled — a bare, non-$ name in the fill's
-    // expr (Fant's own idiom, e.g. K[SUM<K>] in Example 12.25) is a
-    // separate, not-yet-implemented gap, flagged during the TAG-177
-    // work; this loop deliberately doesn't guess at that interpretation.
-    for (def.contained) |contained| {
-        if (contained.sources.len != 0 or contained.destinations.len != 0) continue;
-        if (contained.resolution.len != 1 or contained.resolution[0] != .fill) continue;
-        const f = contained.resolution[0].fill;
-        const expr = std.mem.trim(u8, f.expr, " \t\r\n");
-        if (expr.len > 0 and expr[0] == '$') {
-            const ref = expr[1..];
-            const inputs = try allocator.alloc([]const u8, 1);
-            inputs[0] = ref;
-            try rules.append(allocator, .{ .inputs = inputs, .dest = f.dest_name, .action = .{ .copy_from = ref } });
+        } else {
+            try rules.append(allocator, .{ .inputs = &.{}, .dest = f.dest_name, .action = .{ .assert_symbol = expr } });
         }
     }
 

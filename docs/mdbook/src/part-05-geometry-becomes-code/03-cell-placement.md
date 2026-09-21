@@ -791,16 +791,16 @@ The architecture becomes:
                    └──────┬───────┘
                           │
                           ▼
-                     @generate
+                      @generate
                           │
                           ▼
-                   local rule
+                      local rule
                           │
                           ▼
-                  cellular system
+                    cellular system
                           ▲
                           │
-                   inferred rule
+                     inferred rule
                           │
                    ┌──────┴───────┐
                    │ observations │

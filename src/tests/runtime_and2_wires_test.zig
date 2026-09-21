@@ -9,8 +9,8 @@ const runtime = matterscript.ipl_runtime;
 //   p,s[Z0]   // A=0(p), B=1(s) -> Z0 (OUT=0)
 //   q,r[Z0]   // A=1(q), B=0(r) -> Z0 (OUT=0)
 //   q,s[Z1]   // A=1(q), B=1(s) -> Z1 (OUT=1)
-//   Z0[OUT<$Z0>]
-//   Z1[OUT<$Z1>]
+//   Z0[OUT<0>]
+//   Z1[OUT<1>]
 // ]
 //
 // p, q (wire A's two symbols) and r, s (wire B's two symbols) are seeded
@@ -30,8 +30,8 @@ const and2_contained = [_]network.Definition{
     .{ .name = "p,s", .sources = &.{}, .destinations = &.{}, .constants = &.{}, .resolution = &[_]network.Statement{.{ .pure_value = "Z0" }} },
     .{ .name = "q,r", .sources = &.{}, .destinations = &.{}, .constants = &.{}, .resolution = &[_]network.Statement{.{ .pure_value = "Z0" }} },
     .{ .name = "q,s", .sources = &.{}, .destinations = &.{}, .constants = &.{}, .resolution = &[_]network.Statement{.{ .pure_value = "Z1" }} },
-    .{ .name = "Z0", .sources = &.{}, .destinations = &.{}, .constants = &.{}, .resolution = &[_]network.Statement{.{ .fill = .{ .dest_name = "OUT", .expr = "$Z0" } }} },
-    .{ .name = "Z1", .sources = &.{}, .destinations = &.{}, .constants = &.{}, .resolution = &[_]network.Statement{.{ .fill = .{ .dest_name = "OUT", .expr = "$Z1" } }} },
+    .{ .name = "Z0", .sources = &.{}, .destinations = &.{}, .constants = &.{}, .resolution = &[_]network.Statement{.{ .fill = .{ .dest_name = "OUT", .expr = "0" } }} },
+    .{ .name = "Z1", .sources = &.{}, .destinations = &.{}, .constants = &.{}, .resolution = &[_]network.Statement{.{ .fill = .{ .dest_name = "OUT", .expr = "1" } }} },
 };
 
 fn testDef() network.Definition {
@@ -52,10 +52,10 @@ const Case = struct {
 };
 
 const cases = [_]Case{
-    .{ .a_symbol = "p", .b_symbol = "r", .expected_out_symbol = "Z0" }, // 0,0 -> 0
-    .{ .a_symbol = "p", .b_symbol = "s", .expected_out_symbol = "Z0" }, // 0,1 -> 0
-    .{ .a_symbol = "q", .b_symbol = "r", .expected_out_symbol = "Z0" }, // 1,0 -> 0
-    .{ .a_symbol = "q", .b_symbol = "s", .expected_out_symbol = "Z1" }, // 1,1 -> 1
+    .{ .a_symbol = "p", .b_symbol = "r", .expected_out_symbol = "0" }, // 0,0 -> 0
+    .{ .a_symbol = "p", .b_symbol = "s", .expected_out_symbol = "0" }, // 0,1 -> 0
+    .{ .a_symbol = "q", .b_symbol = "r", .expected_out_symbol = "0" }, // 1,0 -> 0
+    .{ .a_symbol = "q", .b_symbol = "s", .expected_out_symbol = "1" }, // 1,1 -> 1
 };
 
 test "AND2 truth table via wire-segregated symbols" {
