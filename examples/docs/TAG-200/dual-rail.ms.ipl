@@ -1,0 +1,12 @@
+AND2[(A<> B<>)($OUT)
+
+    $A $B :
+
+  p,r[Z0]   // A=0(p), B=0(r) -> Z0 (OUT=0)
+  p,s[Z0]   // A=0(p), B=1(s) -> Z0 (OUT=0)
+  q,r[Z0]   // A=1(q), B=0(r) -> Z0 (OUT=0)
+  q,s[Z1]   // A=1(q), B=1(s) -> Z1 (OUT=1)
+
+  Z0[OUT<0>]
+  Z1[OUT<1>]
+]
