@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a3d8c040.js";
+            window.path_to_searchindex_js = "searchindex-5d5f52d9.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-723adea2.js"></script>
@@ -7313,6 +7313,7 @@ hardware
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="meshes"><a class="header" href="#meshes">Meshes</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-05-geometry-becomes-code/images/meshes.png" alt="Meshes"><span class="img-wrapper"><img src="part-05-geometry-becomes-code/images/meshes.png" alt="Meshes"></span></label></p>
 <p>Vertices establish position.</p>
 <p>Edges establish connectivity.</p>
 <p>Loops establish boundaries.</p>
@@ -7320,27 +7321,27 @@ hardware
 <p>A <strong>mesh</strong> turns those surfaces into a discrete representation that can be processed, exported, inspected, and eventually used as the foundation for physical computation.</p>
 <p>In MatterScript, the mesh is not the starting point.</p>
 <p>It is the result of lowering the higher-level geometric structure into a collection of computational primitives:</p>
-<pre><code class="language-text">POINT
+<pre><code class="language-text"> POINT
    │
    │ position
    ▼
-EDGE
+ EDGE
    │
    │ connectivity
    ▼
-LOOP
+ LOOP
    │
    │ boundary
    ▼
-FACE
+ FACE
    │
    │ surface
    ▼
-MESH
+ MESH
    │
    │ discretization
    ▼
-PLY
+  PLY
 </code></pre>
 <p>This distinction is fundamental.</p>
 <p>MatterScript describes geometry in terms of meaningful structures. The mesh is generated afterward as a representation of that structure.</p>
@@ -7971,7 +7972,7 @@ HARDWARE
           TriangulatedMesh
               │
               ▼
-              PLY
+             PLY
 </code></pre>
 <p>Every stage consumes the structure produced by the stage before it.</p>
 <p>No new representation has to be invented for every step.</p>
@@ -8015,15 +8016,15 @@ COMPUTATIONAL
 <p>The first chapters constructed space:</p>
 <pre><code class="language-text">Spatial Domains
       ↓
-Vertices
+   Vertices
       ↓
-Edges
+    Edges
       ↓
-Loops
+    Loops
       ↓
-Faces
+    Faces
       ↓
-Meshes
+    Meshes
 </code></pre>
 <p>The remaining chapters ask what computation can do <strong>with</strong> that space:</p>
 <pre><code class="language-text">Meshes
