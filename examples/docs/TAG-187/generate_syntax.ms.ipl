@@ -1,4 +1,4 @@
-// Lineaer: TAG-187 Generate Directive
+// Linear: TAG-187 Generate Directive
 ca100[()()
 
 @domain(spatial2d, size: [300, 500], range: [0, 15])

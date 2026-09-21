@@ -24,4 +24,54 @@ For the first time, a programming language allows developers to describe computa
 
 The result is not simply another hardware description language. It is a language for building computational systems whose software and hardware share the same model of reality.
 
+```
+     PART I
+Rethink computation
+        │
+        ▼
+     PART II
+Computation is a property of a physical/computational universe
+        │
+        ▼
+     PART III
+Asynchronous computation changes the programming model
+        │
+        ▼
+     PART IV
+MatterScript can learn and construct models of matter
+        │
+        ▼
+     PART V
+Geometry becomes code
+        │
+        ▼
+     PART VI
+Code becomes physical systems
+        │
+        ▼
+     PART VII
+Space and time become programming primitives
+        │
+        ▼
+    PART VIII
+The language becomes a compiler/toolchain
+        │
+        ▼
+     PART IX
+The compiled system becomes a runtime
+        │
+        ▼
+      PART X
+The runtime becomes a world model
+        │
+        ▼
+     PART XI
+Multiple machines become one distributed
+space-time computational system
+        │
+        ▼ 
+     PART XII
+Complete systems
+```
+
 *Drafting in progress...*

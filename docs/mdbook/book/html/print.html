@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d5f52d9.js";
+            window.path_to_searchindex_js = "searchindex-c5eb6cfb.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-723adea2.js"></script>
@@ -220,6 +220,54 @@ Time is merely an implementation detail managed by clocks.</p>
 <p>MatterScript closes that gap.</p>
 <p>For the first time, a programming language allows developers to describe computation using the same notions of geometry, locality, propagation delay, and physical arrangement that already govern the hardware beneath it. Rather than treating placement as a compiler optimization, MatterScript makes placement part of the program itself.</p>
 <p>The result is not simply another hardware description language. It is a language for building computational systems whose software and hardware share the same model of reality.</p>
+<pre><code>     PART I
+Rethink computation
+        │
+        ▼
+     PART II
+Computation is a property of a physical/computational universe
+        │
+        ▼
+     PART III
+Asynchronous computation changes the programming model
+        │
+        ▼
+     PART IV
+MatterScript can learn and construct models of matter
+        │
+        ▼
+     PART V
+Geometry becomes code
+        │
+        ▼
+     PART VI
+Code becomes physical systems
+        │
+        ▼
+     PART VII
+Space and time become programming primitives
+        │
+        ▼
+    PART VIII
+The language becomes a compiler/toolchain
+        │
+        ▼
+     PART IX
+The compiled system becomes a runtime
+        │
+        ▼
+      PART X
+The runtime becomes a world model
+        │
+        ▼
+     PART XI
+Multiple machines become one distributed
+space-time computational system
+        │
+        ▼ 
+     PART XII
+Complete systems
+</code></pre>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-i-rethinking-computation"><a class="header" href="#part-i-rethinking-computation">Part I: Rethinking Computation</a></h1>
@@ -8050,6 +8098,840 @@ Hardware Fidelity
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="cell-placement"><a class="header" href="#cell-placement">Cell Placement</a></h1>
+<p>A mesh gives MatterScript a representation of physical space.</p>
+<p>Cell placement gives that space <strong>computational meaning</strong>.</p>
+<p>A spatial domain can be divided into discrete locations, and each location can become a computational cell. The behavior of the entire system is then determined by local relationships between neighboring cells.</p>
+<p>This is the point where MatterScript connects directly to one of the most important ideas in <em>A New Kind of Science</em>:</p>
+<blockquote>
+<p><strong>Complex global behavior can arise from simple local rules.</strong></p>
+</blockquote>
+<p>The programmer does not necessarily need to describe the behavior of the entire system.</p>
+<p>Instead, the programmer describes:</p>
+<ol>
+<li>the space in which computation occurs,</li>
+<li>the state of each cell,</li>
+<li>the neighborhood visible to a cell,</li>
+<li>and the rule that determines its next state.</li>
+</ol>
+<p>The system then evolves.</p>
+<pre><code class="language-text">SPACE
+  │
+  ▼
+CELLS
+  │
+  ▼
+LOCAL NEIGHBORHOODS
+  │
+  ▼
+LOCAL RULE
+  │
+  ▼
+GLOBAL BEHAVIOR
+</code></pre>
+<p>This is the fundamental connection between MatterScript and the computational universe explored by Stephen Wolfram’s <em>A New Kind of Science</em>.</p>
+<hr>
+<h2 id="1-from-geometry-to-computation"><a class="header" href="#1-from-geometry-to-computation">1. From Geometry to Computation</a></h2>
+<p>The previous chapters constructed geometry:</p>
+<pre><code class="language-text">Point
+  ↓
+Edge
+  ↓
+Loop
+  ↓
+Face
+  ↓
+Mesh
+</code></pre>
+<p>Cell placement adds another dimension:</p>
+<pre><code class="language-text">Mesh
+  ↓
+Cells
+  ↓
+State
+  ↓
+Evolution
+</code></pre>
+<p>The distinction is important.</p>
+<p>A mesh tells us <strong>where things are</strong>.</p>
+<p>A cell tells us <strong>where computation happens</strong>.</p>
+<p>For example:</p>
+<pre><code class="language-text">+---+---+---+---+
+|   |   |   |   |
++---+---+---+---+
+|   |   |   |   |
++---+---+---+---+
+|   |   |   |   |
++---+---+---+---+
+</code></pre>
+<p>Each square can become a computational location.</p>
+<p>The geometry establishes the spatial relationships.</p>
+<p>The cell model establishes the computational relationships.</p>
+<p>MatterScript therefore allows the same underlying idea of locality to be expressed spatially and computationally.</p>
+<hr>
+<h2 id="2-a-cellular-space"><a class="header" href="#2-a-cellular-space">2. A Cellular Space</a></h2>
+<p>MatterScript can declare a spatial cellular domain:</p>
+<pre><code class="language-matterscript">@domain(spatial2d, size: [300, 500])
+</code></pre>
+<p>The <code>size</code> establishes the extent of the cellular space.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">          500
+    ┌───────────────┐
+    │               │
+    │               │
+300 │   CELLULAR    │
+    │     SPACE     │
+    │               │
+    │               │
+    └───────────────┘
+</code></pre>
+<p>The important abstraction is not the rectangle itself.</p>
+<p>It is the fact that the domain contains a collection of discrete computational locations.</p>
+<pre><code class="language-text">domain
+   │
+   ├── cell
+   ├── cell
+   ├── cell
+   ├── cell
+   └── ...
+</code></pre>
+<p>Each cell occupies a particular location within the domain.</p>
+<p>That location gives the cell a neighborhood.</p>
+<p>The neighborhood gives the cell access to local information.</p>
+<p>And the local information determines its evolution.</p>
+<hr>
+<h2 id="3-the-cell-is-a-local-computational-entity"><a class="header" href="#3-the-cell-is-a-local-computational-entity">3. The Cell Is a Local Computational Entity</a></h2>
+<p>Consider a one-dimensional neighborhood:</p>
+<pre><code class="language-text">[ Left ][ Center ][ Right ]
+</code></pre>
+<p>A cell observes its local neighborhood:</p>
+<pre><code class="language-text">      neighborhood
+   ┌─────┬─────┬─────┐
+   │  L  │  C  │  R  │
+   └─────┴─────┴─────┘
+</code></pre>
+<p>The next state of the center cell is determined by those states.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">       L   C   R
+       │   │   │
+       └───┼───┘
+           ▼
+       local rule
+           │
+           ▼
+       new C state
+</code></pre>
+<p>This is a cellular automaton.</p>
+<p>The important property is <strong>locality</strong>.</p>
+<p>The cell does not need to know the state of the entire universe.</p>
+<p>It needs only the portion of the universe included in its neighborhood.</p>
+<hr>
+<h2 id="4-the-generate-directive"><a class="header" href="#4-the-generate-directive">4. The Generate Directive</a></h2>
+<p>MatterScript expresses this local evolution rule with the <code>@generate</code> directive.</p>
+<p>A simple example is:</p>
+<pre><code class="language-matterscript">ca100[()()
+
+@domain(spatial2d, size: [300, 500])
+
+@generate {
+  // Format: [ Left , Center , Right ] -&gt; New Center State
+
+  [*, 1, 5]: 4
+
+  [3, 2, 4]: 6
+
+  // Unmentioned permutations retain their center state.
+}
+  :
+]
+</code></pre>
+<p>The structure is deliberately compact.</p>
+<pre><code class="language-text">@generate
+    │
+    ▼
+neighborhood
+    │
+    ▼
+next state
+</code></pre>
+<p>The rule:</p>
+<pre><code class="language-text">[3, 2, 4]: 6
+</code></pre>
+<p>means:</p>
+<pre><code class="language-text">left   = 3
+center = 2
+right  = 4
+
+        ↓
+
+new center = 6
+</code></pre>
+<p>The rule describes the transformation of one local configuration.</p>
+<p>It does not describe the entire grid.</p>
+<hr>
+<h2 id="5-wildcards"><a class="header" href="#5-wildcards">5. Wildcards</a></h2>
+<p>The generate language also permits wildcard matching.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">[*, 1, 5]: 4
+</code></pre>
+<p>means that the left-hand state can be any value.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">[0, 1, 5] → 4
+[1, 1, 5] → 4
+[2, 1, 5] → 4
+[3, 1, 5] → 4
+...
+</code></pre>
+<p>The center and right states remain constrained:</p>
+<pre><code class="language-text">Center = 1
+Right  = 5
+</code></pre>
+<p>while:</p>
+<pre><code class="language-text">Left = anything
+</code></pre>
+<p>This provides a compact way to express families of local transitions without enumerating every permutation individually.</p>
+<hr>
+<h2 id="6-the-default-rule"><a class="header" href="#6-the-default-rule">6. The Default Rule</a></h2>
+<p>Not every possible neighborhood needs to be explicitly written.</p>
+<p>For example:</p>
+<pre><code class="language-matterscript">[3, 2, 4]: 6
+</code></pre>
+<p>does not say what should happen for:</p>
+<pre><code class="language-text">[0,0,0]
+</code></pre>
+<p>or:</p>
+<pre><code class="language-text">[1,4,2]
+</code></pre>
+<p>or any other unmentioned configuration.</p>
+<p>The generate semantics provide a default:</p>
+<blockquote>
+<p><strong>Unmentioned permutations retain their center state.</strong></p>
+</blockquote>
+<p>Thus:</p>
+<pre><code class="language-text">[0, 0, 0] → 0
+</code></pre>
+<p>and:</p>
+<pre><code class="language-text">[1, 4, 2] → 4
+</code></pre>
+<p>unless an explicit or wildcard rule matches those neighborhoods.</p>
+<p>This makes the rule specification sparse.</p>
+<p>The programmer specifies <strong>what changes</strong> rather than being forced to enumerate everything that remains unchanged.</p>
+<hr>
+<h2 id="7-local-rules-global-systems"><a class="header" href="#7-local-rules-global-systems">7. Local Rules, Global Systems</a></h2>
+<p>The remarkable property of a cellular automaton is that a tiny rule can govern an enormous number of cells.</p>
+<p>Suppose the domain contains thousands of cells.</p>
+<p>The programmer still defines the rule once:</p>
+<pre><code class="language-text">[Left, Center, Right] → New Center
+</code></pre>
+<p>The rule is then applied throughout the cellular space.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">        local rule
+             │
+      ┌──────┼──────┐
+      ▼      ▼      ▼
+    cell    cell   cell
+      │      │      │
+      ▼      ▼      ▼
+    state   state  state
+</code></pre>
+<p>The same rule is reused at every applicable location.</p>
+<p>This is one of the most important differences between describing a system globally and describing it locally.</p>
+<p>Instead of:</p>
+<blockquote>
+<p>Here is the complete behavior of the 300 × 500 system.</p>
+</blockquote>
+<p>we say:</p>
+<blockquote>
+<p>Here is what any cell does when it encounters this neighborhood.</p>
+</blockquote>
+<p>The global behavior emerges from repeated local application.</p>
+<hr>
+<h1 id="8-the-nks-connection"><a class="header" href="#8-the-nks-connection">8. The NKS Connection</a></h1>
+<p>This is where MatterScript enters the conceptual territory of <em>A New Kind of Science</em>.</p>
+<p>NKS treats cellular automata as a particularly important class of computational systems because extremely simple rules can produce unexpectedly rich behavior.</p>
+<p>The essential structure is:</p>
+<pre><code class="language-text">simple rule
+     +
+simple initial condition
+     +
+repeated local evolution
+     ↓
+complex global behavior
+</code></pre>
+<p>MatterScript provides a language-level mechanism for expressing exactly this relationship.</p>
+<p>The programmer describes the local rule.</p>
+<p>The cellular domain provides the space.</p>
+<p>Repeated application provides the evolution.</p>
+<p>The resulting behavior is discovered by running the system.</p>
+<hr>
+<h2 id="9-from-programming-behavior-to-discovering-behavior"><a class="header" href="#9-from-programming-behavior-to-discovering-behavior">9. From Programming Behavior to Discovering Behavior</a></h2>
+<p>Traditional programming generally begins with a desired global behavior.</p>
+<p>For example:</p>
+<pre><code class="language-text">"Sort these values."
+
+"Render this image."
+
+"Calculate this result."
+</code></pre>
+<p>The programmer decomposes the desired behavior into instructions.</p>
+<p>Cellular computation allows a different approach.</p>
+<p>We can specify:</p>
+<pre><code class="language-text">"What happens locally?"
+</code></pre>
+<p>and then observe:</p>
+<pre><code class="language-text">"What happens globally?"
+</code></pre>
+<p>The difference is profound.</p>
+<pre><code class="language-text">TRADITIONAL
+
+desired behavior
+       ↓
+algorithm
+       ↓
+execution
+
+
+CELLULAR
+
+local rule
+       ↓
+repeated evolution
+       ↓
+emergent behavior
+</code></pre>
+<p>The second approach is much closer to the experimental methodology of NKS.</p>
+<p>Instead of always designing the final behavior first, we can explore what simple computational rules produce.</p>
+<hr>
+<h2 id="10-rule-space-becomes-a-programming-space"><a class="header" href="#10-rule-space-becomes-a-programming-space">10. Rule Space Becomes a Programming Space</a></h2>
+<p>Once the system is described by a local rule, the rule itself becomes an object of exploration.</p>
+<p>Imagine varying:</p>
+<pre><code class="language-text">[*, 1, 5]: 4
+</code></pre>
+<p>into another rule:</p>
+<pre><code class="language-text">[*, 1, 5]: 3
+</code></pre>
+<p>or adding another transition:</p>
+<pre><code class="language-text">[2, 3, *]: 7
+</code></pre>
+<p>Each change creates a different dynamical system.</p>
+<p>We can therefore think of the space of possible programs as:</p>
+<pre><code class="language-text">             RULE SPACE
+
+       ┌──────┬──────┬──────┐
+       │ R001 │ R002 │ R003 │
+       ├──────┼──────┼──────┤
+       │ R004 │ R005 │ R006 │
+       ├──────┼──────┼──────┤
+       │  ... │  ... │  ... │
+       └──────┴──────┴──────┘
+</code></pre>
+<p>MatterScript does not have to prescribe which rule is interesting.</p>
+<p>It provides a mechanism for generating and running the rules.</p>
+<p>This turns the language into an experimental environment for exploring computational behavior.</p>
+<hr>
+<h2 id="11-emergence"><a class="header" href="#11-emergence">11. Emergence</a></h2>
+<p>The central phenomenon is emergence.</p>
+<p>A single cell follows a simple rule.</p>
+<p>A large collection of cells can exhibit behavior that is not obvious from inspecting any individual transition.</p>
+<pre><code class="language-text">LOCAL
+
+[1, 2, 1] → 3
+
+
+GLOBAL
+
+many cells
+    ↓
+repeated application
+    ↓
+patterns
+    ↓
+structures
+    ↓
+behavior
+</code></pre>
+<p>The global pattern is not necessarily written anywhere in the source.</p>
+<p>It emerges from the repeated interaction of local computations.</p>
+<p>This is one reason cellular automata are so important to MatterScript.</p>
+<p>They provide a concrete computational model in which:</p>
+<blockquote>
+<p><strong>structure can emerge from locality.</strong></p>
+</blockquote>
+<hr>
+<h2 id="12-space-is-part-of-the-program"><a class="header" href="#12-space-is-part-of-the-program">12. Space Is Part of the Program</a></h2>
+<p>This changes the meaning of a program.</p>
+<p>In conventional code, the location of an instruction is usually an implementation detail.</p>
+<p>In a cellular system, location is part of the computation.</p>
+<p>Consider:</p>
+<pre><code class="language-text">cell A
+cell B
+cell C
+</code></pre>
+<p>The relationship:</p>
+<pre><code class="language-text">A is next to B
+</code></pre>
+<p>can determine whether information flows between them.</p>
+<p>The program therefore contains not only a rule:</p>
+<pre><code class="language-text">if neighborhood = X
+then state = Y
+</code></pre>
+<p>but also a spatial structure:</p>
+<pre><code class="language-text">this cell
+is adjacent to
+those cells
+</code></pre>
+<p>MatterScript can represent both.</p>
+<p>That is the deeper connection between the geometry system and cellular computation.</p>
+<hr>
+<h2 id="13-geometry-provides-locality"><a class="header" href="#13-geometry-provides-locality">13. Geometry Provides Locality</a></h2>
+<p>The geometry chapters established:</p>
+<pre><code class="language-text">points
+edges
+loops
+faces
+meshes
+</code></pre>
+<p>These structures establish spatial relationships.</p>
+<p>Cell placement uses those relationships to define computational neighborhoods.</p>
+<p>The conceptual transition is:</p>
+<pre><code class="language-text">GEOMETRY
+
+where are things?
+
+        ↓
+
+TOPOLOGY
+
+what is connected to what?
+
+        ↓
+
+CELLULAR COMPUTATION
+
+what information can each location see?
+
+        ↓
+
+EVOLUTION
+
+how does the system change?
+</code></pre>
+<p>This is why Cell Placement belongs immediately after Meshes.</p>
+<p>It is the first chapter where the geometry becomes an active computational substrate.</p>
+<hr>
+<h2 id="14-locality-is-a-computational-primitive"><a class="header" href="#14-locality-is-a-computational-primitive">14. Locality Is a Computational Primitive</a></h2>
+<p>In ordinary programming, locality is often treated as a property of implementation.</p>
+<p>In MatterScript, locality can become part of the program itself.</p>
+<p>A cell’s neighborhood defines the information available to it.</p>
+<p>For the rule:</p>
+<pre><code class="language-text">[Left, Center, Right] → New Center
+</code></pre>
+<p>the computational boundary is explicit:</p>
+<pre><code class="language-text">        visible
+   ┌─────┬─────┬─────┐
+   │  L  │  C  │  R  │
+   └─────┴─────┴─────┘
+</code></pre>
+<p>The cell cannot arbitrarily inspect every other cell.</p>
+<p>Its computation is constrained by locality.</p>
+<p>That constraint is not merely an optimization.</p>
+<p>It is part of the computational model.</p>
+<hr>
+<h2 id="15-the-universe-as-a-cellular-system"><a class="header" href="#15-the-universe-as-a-cellular-system">15. The Universe as a Cellular System</a></h2>
+<p>NKS encourages a much larger question:</p>
+<blockquote>
+<p>Could simple local computational rules be sufficient to generate the behavior we observe in nature?</p>
+</blockquote>
+<p>MatterScript does not need to answer that question in advance.</p>
+<p>Instead, it provides a language in which such questions can become executable experiments.</p>
+<p>A cellular model can represent:</p>
+<pre><code class="language-text">local state
+     ↓
+local interaction
+     ↓
+local evolution
+     ↓
+global pattern
+</code></pre>
+<p>This makes cellular automata a bridge between programming and modeling.</p>
+<p>The programmer can construct a small local rule and then investigate what kind of world it produces.</p>
+<hr>
+<h2 id="16-theory-free-exploration"><a class="header" href="#16-theory-free-exploration">16. Theory-Free Exploration</a></h2>
+<p>This also connects directly to model-free inference.</p>
+<p>Instead of beginning with a predefined equation describing a phenomenon, we can observe transitions:</p>
+<pre><code class="language-text">before                  after
+
+A B C                    A D C
+B C A       ─────→       B B A
+C A B                    E A B
+</code></pre>
+<p>and ask:</p>
+<blockquote>
+<p>What local rule could have generated this transition?</p>
+</blockquote>
+<p>The inference problem becomes:</p>
+<pre><code class="language-text">observations
+     ↓
+local transitions
+     ↓
+candidate rules
+     ↓
+generated evolution
+     ↓
+comparison
+</code></pre>
+<p>MatterScript can then become both:</p>
+<pre><code class="language-text">a language for specifying rules
+</code></pre>
+<p>and:</p>
+<pre><code class="language-text">a substrate for testing inferred rules.
+</code></pre>
+<p>This opens a path toward systems that discover local computational laws from observed spatial behavior.</p>
+<hr>
+<h2 id="17-rule-generation-and-rule-discovery"><a class="header" href="#17-rule-generation-and-rule-discovery">17. Rule Generation and Rule Discovery</a></h2>
+<p>The <code>@generate</code> directive is therefore more significant than a convenient cellular-automata syntax.</p>
+<p>It defines a boundary between:</p>
+<pre><code class="language-text">RULE SPECIFICATION
+</code></pre>
+<p>and:</p>
+<pre><code class="language-text">RULE EXECUTION
+</code></pre>
+<p>The programmer can explicitly provide:</p>
+<pre><code class="language-matterscript">@generate {
+  [*, 1, 5]: 4
+  [3, 2, 4]: 6
+}
+</code></pre>
+<p>But a future system could potentially produce the same structure from:</p>
+<pre><code class="language-text">observed transitions
+</code></pre>
+<p>The architecture becomes:</p>
+<pre><code class="language-text">                   ┌──────────────┐
+                   │ Human author │
+                   └──────┬───────┘
+                          │
+                          ▼
+                     @generate
+                          │
+                          ▼
+                   local rule
+                          │
+                          ▼
+                  cellular system
+                          ▲
+                          │
+                   inferred rule
+                          │
+                   ┌──────┴───────┐
+                   │ observations │
+                   └──────────────┘
+</code></pre>
+<p>The language can therefore support both <strong>programmed computation</strong> and eventually <strong>discovered computation</strong>.</p>
+<hr>
+<h2 id="18-computational-irreducibility"><a class="header" href="#18-computational-irreducibility">18. Computational Irreducibility</a></h2>
+<p>Cellular systems also provide a concrete setting for another important NKS concept: computational irreducibility.</p>
+<p>A system may have a very short description:</p>
+<pre><code class="language-text">one simple local rule
+</code></pre>
+<p>while the behavior generated after many iterations may not have an equally simple shortcut.</p>
+<p>The only practical way to know what happens may be to let the system evolve.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">small rule
+    │
+    ▼
+iteration 1
+    │
+    ▼
+iteration 2
+    │
+    ▼
+iteration 3
+    │
+    ▼
+...
+    │
+    ▼
+complex state
+</code></pre>
+<p>This changes the role of the programmer.</p>
+<p>The programmer is not always deriving the answer analytically.</p>
+<p>Sometimes the programmer constructs the computational universe and <strong>runs it to find out what happens</strong>.</p>
+<p>That is a very different programming paradigm.</p>
+<hr>
+<h2 id="19-simple-rules-large-spaces"><a class="header" href="#19-simple-rules-large-spaces">19. Simple Rules, Large Spaces</a></h2>
+<p>The example domain:</p>
+<pre><code class="language-matterscript">@domain(spatial2d, size: [300, 500])
+</code></pre>
+<p>contains a large number of locations while the rule itself remains tiny.</p>
+<p>This gives us a useful ratio:</p>
+<pre><code class="language-text">large computational space
+          +
+small rule description
+          ↓
+large computational behavior
+</code></pre>
+<p>The source code does not need to scale linearly with the number of cells.</p>
+<p>One local rule can govern an entire population.</p>
+<p>This is precisely what makes cellular computation attractive as a model of distributed physical systems.</p>
+<hr>
+<h2 id="20-cell-placement-as-physical-placement"><a class="header" href="#20-cell-placement-as-physical-placement">20. Cell Placement as Physical Placement</a></h2>
+<p>There is another important interpretation.</p>
+<p>A cell is not merely an abstract array element.</p>
+<p>It occupies a location.</p>
+<p>That means the same conceptual cell can eventually be mapped onto:</p>
+<pre><code class="language-text">software memory
+FPGA logic
+hardware cells
+sensor locations
+fabricated structures
+physical regions
+</code></pre>
+<p>The abstraction is:</p>
+<pre><code class="language-text">CELL
+ │
+ ├── state
+ ├── neighborhood
+ ├── rule
+ └── physical location
+</code></pre>
+<p>This is where MatterScript begins to bridge cellular computation and physical computing.</p>
+<p>The question becomes not merely:</p>
+<blockquote>
+<p>What does this cell calculate?</p>
+</blockquote>
+<p>but:</p>
+<blockquote>
+<p><strong>Where does this computation physically exist?</strong></p>
+</blockquote>
+<hr>
+<h2 id="21-cell-placement-and-hardware"><a class="header" href="#21-cell-placement-and-hardware">21. Cell Placement and Hardware</a></h2>
+<p>Suppose a cellular rule is eventually lowered onto physical hardware.</p>
+<p>The abstract model might be:</p>
+<pre><code class="language-text">Cell
+ │
+ ├── input from left
+ ├── local state
+ ├── input from right
+ └── output
+</code></pre>
+<p>A physical implementation could become:</p>
+<pre><code class="language-text">┌───────┐    ┌───────┐    ┌───────┐
+│ Cell  │───▶│ Cell  │───▶│ Cell  │
+│   A   │    │   B   │    │   C   │
+└───────┘    └───────┘    └───────┘
+</code></pre>
+<p>The spatial relationship becomes an actual interconnection.</p>
+<p>This is exactly where the distinction between conventional software and MatterScript begins to disappear.</p>
+<p>The program’s topology can become the hardware’s topology.</p>
+<hr>
+<h2 id="22-a-cellular-automaton-is-a-distributed-program"><a class="header" href="#22-a-cellular-automaton-is-a-distributed-program">22. A Cellular Automaton Is a Distributed Program</a></h2>
+<p>A useful way to think about the <code>@generate</code> directive is:</p>
+<blockquote>
+<p>It defines a program that is replicated across space.</p>
+</blockquote>
+<p>Instead of:</p>
+<pre><code class="language-text">one program
+    ↓
+one execution
+</code></pre>
+<p>we have:</p>
+<pre><code class="language-text">one local program
+    ↓
+many spatial instances
+    ↓
+distributed evolution
+</code></pre>
+<p>Each cell executes the same local relationship.</p>
+<p>The global system is the composition of those local processes.</p>
+<p>This makes cellular automata a natural intermediate model between software and physical systems.</p>
+<hr>
+<h2 id="23-from-cellular-automata-to-nks"><a class="header" href="#23-from-cellular-automata-to-nks">23. From Cellular Automata to NKS</a></h2>
+<p>The NKS connection can now be stated directly.</p>
+<p>MatterScript provides the machinery to explore several ideas central to computational experiments with cellular systems:</p>
+<pre><code class="language-text">local rules
+    ↓
+simple programs
+    ↓
+large state spaces
+    ↓
+repeated evolution
+    ↓
+emergence
+    ↓
+complexity
+    ↓
+computation
+</code></pre>
+<p>The important methodological shift is:</p>
+<blockquote>
+<p><strong>Do not always begin by asking how to program the desired answer. Begin by asking what behavior a simple rule generates.</strong></p>
+</blockquote>
+<p>This turns programming into experimentation.</p>
+<p>The programmer becomes, in part:</p>
+<pre><code class="language-text">designer
+   +
+observer
+   +
+experimentalist
+</code></pre>
+<hr>
+<h2 id="24-a-matterscript-cellular-experiment"><a class="header" href="#24-a-matterscript-cellular-experiment">24. A MatterScript Cellular Experiment</a></h2>
+<p>The complete example is deliberately small:</p>
+<pre><code class="language-matterscript">ca100[()()
+
+@domain(spatial2d, size: [300, 500])
+
+@generate {
+  // Format: [ Left , Center , Right ] -&gt; New Center State
+
+  // Wildcard rule
+  [*, 1, 5]: 4
+
+  // Explicit rule
+  [3, 2, 4]: 6
+
+  // Unmentioned permutations retain their center state.
+}
+  :
+]
+</code></pre>
+<p>Yet this tiny definition establishes an entire computational universe:</p>
+<pre><code class="language-text">300 × 500 spatial domain
+        │
+        ▼
+discrete cells
+        │
+        ▼
+local neighborhoods
+        │
+        ▼
+local transition rules
+        │
+        ▼
+repeated evolution
+        │
+        ▼
+emergent global behavior
+</code></pre>
+<p>The source code describes the rule.</p>
+<p>The system discovers the behavior.</p>
+<hr>
+<h2 id="25-from-cell-placement-to-space-time"><a class="header" href="#25-from-cell-placement-to-space-time">25. From Cell Placement to Space-Time</a></h2>
+<p>Cell placement introduces a second dimension to the meaning of a program.</p>
+<p>We now have:</p>
+<pre><code class="language-text">SPACE
+  │
+  ▼
+cell location
+</code></pre>
+<p>and:</p>
+<pre><code class="language-text">TIME
+  │
+  ▼
+cell evolution
+</code></pre>
+<p>Together:</p>
+<pre><code class="language-text">              TIME
+                │
+                ▼
+        ┌───────────────┐
+        │       •       │
+        │     • • •     │
+        │   • • • • •   │
+        │ • • • • • • • │
+        └───────────────┘
+                ▲
+                │
+              SPACE
+</code></pre>
+<p>A cellular automaton is therefore naturally a <strong>space-time computation</strong>.</p>
+<p>Each iteration creates another state of the spatial system.</p>
+<p>The complete computation is the history of those states.</p>
+<hr>
+<h2 id="26-the-geometry-to-nks-bridge"><a class="header" href="#26-the-geometry-to-nks-bridge">26. The Geometry-to-NKS Bridge</a></h2>
+<p>The Part V trajectory can now be seen as one continuous construction:</p>
+<pre><code class="language-text">Spatial Domain
+      │
+      ▼
+   Vertices
+      │
+      ▼
+    Edges
+      │
+      ▼
+    Loops
+      │
+      ▼
+    Faces
+      │
+      ▼
+    Meshes
+      │
+      ▼
+Cell Placement
+      │
+      ▼
+ Local Rules
+      │
+      ▼
+Cellular Evolution
+      │
+      ▼
+Emergent Behavior
+</code></pre>
+<p>The first half establishes <strong>where</strong>.</p>
+<p>The second half establishes <strong>what happens there</strong>.</p>
+<p>That is the fundamental bridge between geometry and computation.</p>
+<hr>
+<h2 id="27-why-cell-placement-matters-to-matterscript"><a class="header" href="#27-why-cell-placement-matters-to-matterscript">27. Why Cell Placement Matters to MatterScript</a></h2>
+<p>Cell placement is not simply another feature added to the language.</p>
+<p>It establishes a computational model in which:</p>
+<ul>
+<li>space is explicit,</li>
+<li>locality is explicit,</li>
+<li>state is distributed,</li>
+<li>rules are local,</li>
+<li>evolution is repeated,</li>
+<li>and global behavior can emerge.</li>
+</ul>
+<p>This provides MatterScript with a direct path into the enormous design space of cellular automata and the broader computational perspective of NKS.</p>
+<p>The programmer can begin with something as small as:</p>
+<pre><code class="language-text">[Left, Center, Right] → New Center
+</code></pre>
+<p>and end with a system containing hundreds of thousands of interacting computational locations.</p>
+<p>That is an extraordinary amount of behavior generated from an extraordinarily small description.</p>
+<hr>
+<h2 id="28-looking-ahead-computation-becomes-physical"><a class="header" href="#28-looking-ahead-computation-becomes-physical">28. Looking Ahead: Computation Becomes Physical</a></h2>
+<p>Cell placement gives us a computational substrate.</p>
+<p>The next question is:</p>
+<blockquote>
+<p>What happens when the abstract cellular space must conform to an actual physical structure?</p>
+</blockquote>
+<p>That leads naturally to <strong>Conformal Projection</strong>.</p>
+<p>The trajectory becomes:</p>
+<pre><code class="language-text">CELLULAR SPACE
+      │
+      ▼
+PHYSICAL GEOMETRY
+      │
+      ▼
+CONFORMAL PROJECTION
+      │
+      ▼
+CELLS ON A SURFACE
+      │
+      ▼
+PHYSICAL COMPUTATION
+</code></pre>
+<p>At that point, the NKS cellular universe is no longer confined to an abstract grid.</p>
+<p>Its cells can become associated with actual geometry.</p>
+<p>The program begins with a local rule.</p>
+<p>The geometry determines where the rule lives.</p>
+<p>Time determines how it evolves.</p>
+<p>And the resulting structure can ultimately become physical machinery.</p>
+<p>That is the deeper promise of MatterScript:</p>
+<blockquote>
+<p><strong>A program can describe not only what computation does, but where computation exists, how it evolves through time, and how its local interactions become a physical system.</strong></p>
+</blockquote>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="conformal-projection"><a class="header" href="#conformal-projection">Conformal Projection</a></h1>
