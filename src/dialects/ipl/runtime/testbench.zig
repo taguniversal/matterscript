@@ -75,26 +75,32 @@ pub const Testbench = struct {
     /// Runs every queued token to completion, one data wavefront per
     /// captured Presentation, stopping once no further wavefront can
     /// complete (streams exhausted, or a genuinely stuck combination).
-    pub fn run(self: *Testbench) ![]const Presentation {
+        pub fn run(self: *Testbench) ![]const Presentation {
         var presentations: std.ArrayListUnmanaged(Presentation) = .empty;
 
         outer: while (true) {
-            // Fresh Environment per wavefront, deliberately — see the
-            // module doc comment on why this stands in for the NULL
-            // phase for now.
             var env = Environment{ .allocator = self.allocator };
+            const fed_this_wavefront = try self.allocator.alloc(bool, self.streams.len);
+            @memset(fed_this_wavefront, false);
+
             var report = try rules_mod.run(self.allocator, &env, self.def, self.rules);
 
             while (!report.complete) {
                 var fed_any = false;
-                for (self.streams) |*stream| {
-                    if (env.isValid(stream.port)) continue; // already fed this wavefront
-                    const tok = stream.current() orelse continue; // this port's stream is exhausted
-                    try env.seed(stream.port, tok);
+                for (self.streams, 0..) |*stream, i| {
+                    if (fed_this_wavefront[i]) continue; // this wire already delivered its token for this wavefront
+                    const tok = stream.current() orelse continue; // this stream is exhausted
+                    // Place name == symbol name, matching the wire-segregated-
+                    // symbol convention: p/q/r/s ARE the places, not values
+                    // held inside places called "A"/"B". stream.port is a
+                    // purely descriptive label for which logical wire this
+                    // stream feeds — it's never itself matched against.
+                    try env.seed(tok, tok);
                     stream.advance();
+                    fed_this_wavefront[i] = true;
                     fed_any = true;
                 }
-                if (!fed_any) break :outer; // nothing left to feed anywhere and still incomplete — done
+                if (!fed_any) break :outer;
                 report = try rules_mod.run(self.allocator, &env, self.def, self.rules);
             }
 

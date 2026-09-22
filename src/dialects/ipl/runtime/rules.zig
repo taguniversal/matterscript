@@ -36,7 +36,6 @@ pub fn buildRules(allocator: std.mem.Allocator, def: network.Definition) ![]cons
     // only ever one implementation of "what is a value transform rule."
     const vt_rules = try value_transform.collectValueTransformRules(allocator, def);
 
-    // Filter out destination ports from collision checks so contained fills can write to $OUT.
     var non_dest_ports_def = def;
     non_dest_ports_def.destinations = &.{};
     try value_transform.assertNoTransformRuleSymbolCollidesWithPort(non_dest_ports_def, vt_rules);
@@ -44,35 +43,47 @@ pub fn buildRules(allocator: std.mem.Allocator, def: network.Definition) ![]cons
     const rule_groups = try value_transform.groupRulesByTarget(allocator, vt_rules);
     for (rule_groups) |group| {
         for (group.contributing_inputs.items) |inputs| {
-            var matched_contained = false;
-            for (def.contained) |contained| {
-                if (!std.mem.eql(u8, contained.name, group.target)) continue;
-                matched_contained = true;
-                for (contained.resolution) |stmt| {
-                    if (stmt != .fill) continue;
-                    const f = stmt.fill;
-                    const expr = std.mem.trim(u8, f.expr, " \t\r\n");
+            // Always assert the joint match's own target as a genuine
+            // place, regardless of whether a same-named contained
+            // definition also exists downstream. A $-reference fill
+            // further down (Z0[OUT<$Z0>]) needs something real to copy
+            // from — skipping this assertion (as this function
+            // previously did whenever a same-named contained child
+            // existed) left copy_from chasing a place that could never
+            // become valid, which the fixed-point loop couldn't
+            // distinguish from real progress: the rule kept re-firing,
+            // no-op'ing, and reporting "changed" forever.
+            try rules.append(allocator, .{
+                .inputs = inputs,
+                .dest = group.target,
+                .action = .{ .assert_symbol = group.target },
+            });
+        }
+    }
 
-                    const action: RuleAction = if (expr.len > 0 and expr[0] == '$')
-                        .{ .copy_from = expr[1..] }
-                    else
-                        .{ .assert_symbol = expr };
+    // Fill-shaped children of def.contained (Z0[OUT<$Z0>],
+    // RXN[WATER<w1>]) are a separate, one-input hop off whatever place
+    // the joint match above just asserted — gated on the target name
+    // alone, not the raw joint-match inputs. This is what lets several
+    // rules share one target cleanly (RXN having two WATER-producing
+    // children) without multiplying rules across every contributing
+    // input combination.
+    for (def.contained) |contained| {
+        if (contained.sources.len != 0 or contained.destinations.len != 0) continue;
+        for (contained.resolution) |stmt| {
+            if (stmt != .fill) continue;
+            const f = stmt.fill;
+            const expr = std.mem.trim(u8, f.expr, " \t\r\n");
 
-                    try rules.append(allocator, .{
-                        .inputs = inputs,
-                        .dest = f.dest_name,
-                        .action = action,
-                    });
-                }
-            }
+            const inputs = try allocator.alloc([]const u8, 1);
+            inputs[0] = contained.name;
 
-            if (!matched_contained) {
-                try rules.append(allocator, .{
-                    .inputs = inputs,
-                    .dest = group.target,
-                    .action = .{ .assert_symbol = group.target },
-                });
-            }
+            const action: RuleAction = if (expr.len > 0 and expr[0] == '$')
+                .{ .copy_from = expr[1..] }
+            else
+                .{ .assert_symbol = expr };
+
+            try rules.append(allocator, .{ .inputs = inputs, .dest = f.dest_name, .action = action });
         }
     }
 
@@ -121,7 +132,7 @@ pub fn run(
     while (changed) {
         changed = false;
         for (rules) |rule| {
-            if (env.isValid(rule.dest)) continue; // define-once — first successful rule wins
+            if (env.isValid(rule.dest)) continue;
             if (!env.allValid(rule.inputs)) continue;
 
             switch (rule.action) {
@@ -129,7 +140,12 @@ pub fn run(
                 .copy_from => |src| try env.copyFrom(rule.dest, src),
                 .assert_symbol => |sym| try env.assertSymbol(rule.dest, sym),
             }
-            changed = true;
+            // Only a real state transition counts as progress. A
+            // copy_from whose source turns out not to be valid yet
+            // no-ops — that must not read as "changed", or a rule whose
+            // source can never become valid spins the fixed-point loop
+            // forever instead of correctly settling into a stuck report.
+            if (env.isValid(rule.dest)) changed = true;
         }
     }
 
