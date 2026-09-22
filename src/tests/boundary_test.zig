@@ -1,6 +1,6 @@
 const std = @import("std");
 const network = @import("matterscript").network;
-const boundary = @import("matterscript").boundary;
+const boundary = @import("matterscript").vhdl.boundary;
 
 test "shouldSkipSpatialGeometry returns true for spatial 2D/3D without generate block" {
     const def2d = network.Definition{

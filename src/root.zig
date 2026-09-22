@@ -20,10 +20,22 @@ pub const lookup = @import("dialects/ipl/vhdl/lookup.zig");
 pub const spatial  = @import("dialects/geo/spatial.zig");
 pub const spatial_domain = @import("dialects/ipl/domains/spatial_domain.zig");
 pub const ipl_export_mesh = @import("dialects/ipl/export/mesh.zig");
-pub const definition = @import("dialects/ipl/vhdl/export/definition.zig");
-pub const boundary = @import("dialects/ipl/vhdl/export/boundary.zig");
-pub const ipl_value_transform = @import("dialects/ipl/value_transform.zig");
-pub const ipl_runtime = @import("dialects/ipl/runtime/root.zig");
+
+// VHDL export namespace
+pub const vhdl = struct {
+    pub const definition = @import("dialects/ipl/vhdl/export/definition.zig");
+    pub const boundary = @import("dialects/ipl/vhdl/export/boundary.zig");
+};
+
+pub const runtime = struct {
+  pub const ipl_value_transform = @import("dialects/ipl/value_transform.zig");
+  pub const ipl_runtime = @import("dialects/ipl/runtime/root.zig");
+  pub const testbench = @import("dialects/ipl/runtime/testbench.zig");
+  pub const rules = @import("dialects/ipl/runtime/rules.zig");
+  pub const environment = @import("dialects/ipl/runtime/environment.zig");
+  pub const bag = @import("dialects/ipl/runtime/bag.zig");
+};
+
 
 test {
     std.testing.refAllDecls(@This());

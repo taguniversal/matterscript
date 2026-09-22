@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c5eb6cfb.js";
+            window.path_to_searchindex_js = "searchindex-caf1e2cf.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-723adea2.js"></script>
@@ -8098,6 +8098,7 @@ Hardware Fidelity
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="cell-placement"><a class="header" href="#cell-placement">Cell Placement</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-05-geometry-becomes-code/images/cell_placement.png" alt="Cell Placement"><span class="img-wrapper"><img src="part-05-geometry-becomes-code/images/cell_placement.png" alt="Cell Placement"></span></label></p>
 <p>A mesh gives MatterScript a representation of physical space.</p>
 <p>Cell placement gives that space <strong>computational meaning</strong>.</p>
 <p>A spatial domain can be divided into discrete locations, and each location can become a computational cell. The behavior of the entire system is then determined by local relationships between neighboring cells.</p>
@@ -8934,7 +8935,793 @@ PHYSICAL COMPUTATION
 </blockquote>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="conformal-projection"><a class="header" href="#conformal-projection">Conformal Projection</a></h1>
+<h1 id="conformal-projection-mapping-computation-onto-geometry"><a class="header" href="#conformal-projection-mapping-computation-onto-geometry">Conformal Projection: Mapping Computation onto Geometry</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-05-geometry-becomes-code/images/conformal_projection.png" alt="Conformal Projection"><span class="img-wrapper"><img src="part-05-geometry-becomes-code/images/conformal_projection.png" alt="Conformal Projection"></span></label></p>
+<p>Cell placement gives MatterScript a way to turn space into a computational substrate.</p>
+<p>A spatial domain establishes where cells exist. A local rule establishes how those cells interact. Repeated application of the rule produces behavior across the domain.</p>
+<p>But the computational space does not have to remain a flat rectangle.</p>
+<p>A computational lattice can be mapped onto a surface.</p>
+<p>A surface can be curved.</p>
+<p>A curved surface can belong to a physical object.</p>
+<p>And once the computational structure is mapped onto physical geometry, the distinction between <em>where computation happens</em> and <em>what computation does</em> begins to disappear.</p>
+<p>This is the purpose of <strong>conformal projection</strong>.</p>
+<blockquote>
+<p><strong>Conformal projection transports a computational neighborhood structure onto geometry while attempting to preserve the local relationships that make the computation meaningful.</strong></p>
+</blockquote>
+<p>The important idea is not simply projection as visualization.</p>
+<p>It is <strong>projection as placement</strong>.</p>
+<hr>
+<h2 id="from-flat-cells-to-shaped-space"><a class="header" href="#from-flat-cells-to-shaped-space">From Flat Cells to Shaped Space</a></h2>
+<p>The cellular domain introduced in the previous chapter is conceptually simple:</p>
+<pre><code class="language-text">+---+---+---+---+---+
+|   |   |   |   |   |
++---+---+---+---+---+
+|   |   |   |   |   |
++---+---+---+---+---+
+|   |   |   |   |   |
++---+---+---+---+---+
+</code></pre>
+<p>Each location represents a computational cell.</p>
+<p>A neighborhood might be defined by the cells immediately to the left and right:</p>
+<pre><code class="language-text">       neighborhood
+
+       left    center    right
+         ↓       ↓         ↓
+       [ 3 ]   [ 2 ]     [ 4 ]
+
+                  |
+                  v
+
+              new state
+                  6
+</code></pre>
+<p>The rule does not care about the physical interpretation of the cells.</p>
+<p>It only requires that the neighborhood relationships remain meaningful.</p>
+<p>This gives us an important separation:</p>
+<pre><code class="language-text">               COMPUTATION
+
+             local rule
+                 |
+                 v
+       +---------------------+
+       | neighborhood graph  |
+       +---------------------+
+                 |
+                 v
+              geometry
+</code></pre>
+<p>The rule describes <strong>relationships</strong>.</p>
+<p>The geometry describes <strong>where those relationships are realized</strong>.</p>
+<p>Conformal projection provides a way to connect the two.</p>
+<hr>
+<h2 id="the-computational-surface"><a class="header" href="#the-computational-surface">The Computational Surface</a></h2>
+<p>Consider a cellular system defined on a rectangular domain:</p>
+<pre><code class="language-text">        computational domain
+
+      o---o---o---o---o
+      |   |   |   |   |
+      o---o---o---o---o
+      |   |   |   |   |
+      o---o---o---o---o
+      |   |   |   |   |
+      o---o---o---o---o
+</code></pre>
+<p>Now imagine wrapping that computational structure around a cylinder:</p>
+<pre><code class="language-text">              ___________
+           .-'           '-.
+         .'   o---o---o     '.
+        /     |   |   |       \
+       |      o---o---o        |
+       |      |   |   |        |
+        \     o---o---o       /
+         '.                 .'
+           '-.___________.-'
+</code></pre>
+<p>The underlying computational structure has not fundamentally changed.</p>
+<p>The cells still have neighbors.</p>
+<p>The local rule still operates on those neighbors.</p>
+<p>What has changed is <strong>where those cells are located in physical space</strong>.</p>
+<p>This is the key abstraction:</p>
+<blockquote>
+<p><strong>The computational topology can remain stable while the geometric embedding changes.</strong></p>
+</blockquote>
+<p>MatterScript therefore has two related but distinct descriptions:</p>
+<pre><code class="language-text">          COMPUTATIONAL STRUCTURE
+                    |
+             neighborhoods
+                    |
+                    v
+              local rules
+                    |
+                    |
+                    v
+             GEOMETRIC EMBEDDING
+                    |
+             coordinates
+                    |
+                    v
+             physical surface
+</code></pre>
+<p>The first describes computation.</p>
+<p>The second describes realization.</p>
+<hr>
+<h2 id="mapping-cells-onto-geometry"><a class="header" href="#mapping-cells-onto-geometry">Mapping Cells onto Geometry</a></h2>
+<p>A projection establishes a correspondence between computational coordinates and geometric coordinates.</p>
+<p>Conceptually:</p>
+<pre><code class="language-text">computational space              physical space
+
+      (u, v)                         (x, y, z)
+        |                                ^
+        |                                |
+        +---------- projection ----------+
+</code></pre>
+<p>A cell at computational position <code>(u, v)</code> is assigned a position in geometric space.</p>
+<p>For a flat surface this mapping might be nearly trivial:</p>
+<pre><code class="language-text">(u, v) → (x, y, 0)
+</code></pre>
+<p>For a curved surface, the same computational coordinates may map to something like:</p>
+<pre><code class="language-text">(u, v) → (x(u,v), y(u,v), z(u,v))
+</code></pre>
+<p>The resulting coordinates can describe a surface that is curved, folded, wrapped, or otherwise shaped.</p>
+<p>The cellular system therefore becomes embedded in the geometry.</p>
+<pre><code class="language-text">             CELLULAR SPACE
+
+       +---+---+---+---+
+       |   |   |   |   |
+       +---+---+---+---+
+       |   |   |   |   |
+       +---+---+---+---+
+       |   |   |   |   |
+       +---+---+---+---+
+                 |
+                 | projection
+                 v
+             PHYSICAL SPACE
+
+              .-------.
+           .-'         '-.
+         .'  o---o---o    '.
+        /    |   |   |      \
+       |     o---o---o       |
+        \    |   |   |      /
+         '.  o---o---o    .'
+           '-._________.-'
+</code></pre>
+<p>This is more than a coordinate transformation.</p>
+<p>It establishes a <strong>correspondence between a computational domain and a geometric domain</strong>.</p>
+<hr>
+<h2 id="preserving-locality"><a class="header" href="#preserving-locality">Preserving Locality</a></h2>
+<p>Why does the nature of the projection matter?</p>
+<p>Because cellular computation depends on locality.</p>
+<p>A cell does not normally require knowledge of the entire system.</p>
+<p>It requires information from a small neighborhood.</p>
+<p>For example:</p>
+<pre><code class="language-text">[ left ] [ center ] [ right ]
+</code></pre>
+<p>The rule might be:</p>
+<pre><code class="language-matterscript">[*, 1, 5]: 4
+</code></pre>
+<p>The center cell changes according to the states of its neighbors.</p>
+<p>If the projection moves those cells onto a physical surface, we want the neighborhood relationship to remain meaningful.</p>
+<p>That gives us a fundamental requirement:</p>
+<blockquote>
+<p><strong>A useful geometric projection should preserve computational locality as much as possible.</strong></p>
+</blockquote>
+<p>A projection that dramatically separates neighboring cells can damage the physical interpretation of the computation.</p>
+<p>A projection that keeps neighboring cells close together provides a more faithful physical realization.</p>
+<p>This creates a hierarchy:</p>
+<pre><code class="language-text">             local rule
+                 |
+                 v
+          neighborhood
+                 |
+                 v
+            cell graph
+                 |
+                 v
+          geometric map
+                 |
+                 v
+          physical layout
+</code></pre>
+<p>Each layer preserves information from the previous one.</p>
+<hr>
+<h2 id="what-does-conformal-mean"><a class="header" href="#what-does-conformal-mean">What Does “Conformal” Mean?</a></h2>
+<p>In geometry, a conformal mapping preserves local angles.</p>
+<p>That property is useful because angles describe the local shape of neighborhoods.</p>
+<p>A general projection can introduce distortion.</p>
+<p>A small square might become:</p>
+<pre><code class="language-text">       square
+
+       +---+
+       |   |
+       +---+
+</code></pre>
+<p>and after projection become:</p>
+<pre><code class="language-text">       distorted
+
+        /---/
+       /   /
+       \  /
+        \/
+</code></pre>
+<p>A conformal mapping attempts to preserve the local angular structure even when the overall shape changes.</p>
+<p>This does <strong>not</strong> mean that distances are globally preserved.</p>
+<p>A map can preserve angles while stretching regions.</p>
+<p>That distinction matters.</p>
+<pre><code class="language-text">CONFORMAL
+
+local angles       preserved
+local scale        may vary
+global distances   not necessarily preserved
+</code></pre>
+<p>For MatterScript, this makes conformal mapping particularly interesting.</p>
+<p>The computational system is fundamentally about <strong>relationships</strong>.</p>
+<p>If the local neighborhood structure is important, preserving local geometric relationships can be more useful than preserving absolute distances everywhere.</p>
+<hr>
+<h2 id="geometry-changes-relationships-persist"><a class="header" href="#geometry-changes-relationships-persist">Geometry Changes; Relationships Persist</a></h2>
+<p>This is a recurring principle throughout MatterScript.</p>
+<p>A name identifies a thing.</p>
+<p>A reference establishes a relationship.</p>
+<p>A geometry graph establishes topology.</p>
+<p>A cellular domain establishes locality.</p>
+<p>Projection establishes an embedding.</p>
+<p>The representation changes at each level, but the relationships can remain coherent.</p>
+<p>Consider three cells:</p>
+<pre><code class="language-text">A ---- B ---- C
+</code></pre>
+<p>Their computational relationship is:</p>
+<pre><code class="language-text">A ↔ B ↔ C
+</code></pre>
+<p>Now bend the geometry:</p>
+<pre><code class="language-text">A
+ \
+  B
+   \
+    C
+</code></pre>
+<p>The physical positions have changed.</p>
+<p>The computational relationship has not.</p>
+<p>This distinction is crucial:</p>
+<blockquote>
+<p><strong>Geometry is an embedding of relationships, not a replacement for them.</strong></p>
+</blockquote>
+<p>That is why MatterScript can reason about computational structure independently from the geometry used to realize it.</p>
+<hr>
+<h2 id="cell-placement-on-curved-surfaces"><a class="header" href="#cell-placement-on-curved-surfaces">Cell Placement on Curved Surfaces</a></h2>
+<p>Suppose a cellular automaton occupies a rectangular domain:</p>
+<pre><code class="language-matterscript">@domain(spatial2d, size: [300, 500])
+</code></pre>
+<p>Conceptually, this establishes a two-dimensional computational field.</p>
+<p>Now imagine that field being placed onto a curved surface.</p>
+<p>Instead of:</p>
+<pre><code class="language-text">+----------------------+
+|                      |
+|     COMPUTATION      |
+|                      |
++----------------------+
+</code></pre>
+<p>we might have:</p>
+<pre><code class="language-text">          physical surface
+
+             ______
+         .-'      '-.
+       .'            '.
+      /   COMPUTATION  \
+     |                  |
+      \                /
+       '.            .'
+         '-.______.-'
+</code></pre>
+<p>The cellular system has acquired a physical shape.</p>
+<p>This is where the geometry chapters and the NKS chapters meet.</p>
+<p>The geometry tells us <strong>where the cells are</strong>.</p>
+<p>The cellular rule tells us <strong>what the cells do</strong>.</p>
+<p>The projection tells us <strong>how the computational world is embedded into the physical world</strong>.</p>
+<hr>
+<h2 id="a-surface-becomes-a-computational-substrate"><a class="header" href="#a-surface-becomes-a-computational-substrate">A Surface Becomes a Computational Substrate</a></h2>
+<p>Once cells are mapped onto a surface, the surface itself can become part of the computation.</p>
+<p>This opens a different way of thinking about physical computing.</p>
+<p>Traditional programming often begins with an abstract machine:</p>
+<pre><code class="language-text">program
+   |
+   v
+processor
+   |
+   v
+memory
+</code></pre>
+<p>MatterScript can instead begin with a spatial substrate:</p>
+<pre><code class="language-text">geometry
+    |
+    v
+cells
+    |
+    v
+local relationships
+    |
+    v
+local rules
+    |
+    v
+emergent behavior
+</code></pre>
+<p>The machine is no longer necessarily a single processor.</p>
+<p>It can be a <strong>distributed geometry of interacting locations</strong>.</p>
+<p>This is one of the most important consequences of combining MatterScript’s geometry model with cellular computation.</p>
+<hr>
+<h2 id="projection-as-compilation"><a class="header" href="#projection-as-compilation">Projection as Compilation</a></h2>
+<p>Conformal projection can also be understood as a compilation step.</p>
+<p>At the source level we may describe:</p>
+<pre><code class="language-text">a cellular domain
+</code></pre>
+<p>At the computational level we have:</p>
+<pre><code class="language-text">cells + neighborhoods + rules
+</code></pre>
+<p>At the geometric level we have:</p>
+<pre><code class="language-text">positions + topology + surfaces
+</code></pre>
+<p>Projection connects these descriptions.</p>
+<pre><code class="language-text">       MatterScript source
+                |
+                v
+       cellular domain
+                |
+                v
+      computational topology
+                |
+                v
+       conformal projection
+                |
+                v
+       geometric embedding
+                |
+                v
+        physical substrate
+</code></pre>
+<p>This is closely related to the broader MatterScript idea that a program can become machinery.</p>
+<p>The source description is not merely interpreted.</p>
+<p>It can be progressively lowered into a more concrete representation.</p>
+<p>The same conceptual process appears elsewhere in the system:</p>
+<pre><code class="language-text">MatterScript
+     |
+     +--&gt; VHDL
+     |
+     +--&gt; PLY
+     |
+     +--&gt; geometry
+     |
+     +--&gt; physical placement
+     |
+     +--&gt; machine realization
+</code></pre>
+<p>Conformal projection adds another possible lowering step:</p>
+<pre><code class="language-text">computational space
+        ↓
+physical space
+</code></pre>
+<hr>
+<h2 id="geometry-as-a-computational-constraint"><a class="header" href="#geometry-as-a-computational-constraint">Geometry as a Computational Constraint</a></h2>
+<p>Projection also works in the opposite direction.</p>
+<p>Geometry does not merely receive computation.</p>
+<p>It constrains computation.</p>
+<p>A cell placed on a physical surface has a real location.</p>
+<p>That location can determine:</p>
+<ul>
+<li>which cells are nearby,</li>
+<li>how far signals must travel,</li>
+<li>what physical structures can connect,</li>
+<li>where sensors can be placed,</li>
+<li>where actuators can be located,</li>
+<li>how much material is available,</li>
+<li>and how information propagates through the system.</li>
+</ul>
+<p>The geometry therefore becomes part of the problem definition.</p>
+<pre><code class="language-text">       computation
+            ↕
+         geometry
+            ↕
+      physical limits
+</code></pre>
+<p>This is fundamentally different from treating geometry as a final rendering step.</p>
+<p>The shape of the computational substrate can influence the behavior of the computation itself.</p>
+<hr>
+<h2 id="the-nks-connection"><a class="header" href="#the-nks-connection">The NKS Connection</a></h2>
+<p>This brings us back to the ideas introduced with cellular computation and <em>A New Kind of Science</em>.</p>
+<p>A cellular automaton can be defined by a remarkably small local rule.</p>
+<p>Yet repeated application of that rule across a large space can produce behavior that is difficult to predict from the rule alone.</p>
+<pre><code class="language-text">             SIMPLE RULE
+
+                 |
+                 v
+
+        +----------------+
+        |  |  |  |  |  |
+        |  |  |  |  |  |
+        |  |  |  |  |  |
+        +----------------+
+
+                 |
+           repeated evolution
+                 |
+                 v
+
+        COMPLEX GLOBAL BEHAVIOR
+</code></pre>
+<p>Conformal projection adds another dimension to this idea.</p>
+<p>The computational universe does not have to be confined to a rectangular grid.</p>
+<p>The same principles can be embedded into different geometries.</p>
+<pre><code class="language-text">             LOCAL RULE
+                  |
+          +-------+-------+
+          |       |       |
+          v       v       v
+        plane   cylinder  surface
+          |       |       |
+          +-------+-------+
+                  |
+                  v
+        emergent computation
+</code></pre>
+<p>The rule remains local.</p>
+<p>The computational substrate changes.</p>
+<p>The resulting physical behavior can therefore depend not only on <strong>what rule is used</strong>, but also on <strong>where and how the rule is embedded</strong>.</p>
+<p>This is an important expansion of the NKS perspective:</p>
+<blockquote>
+<p><strong>The rule space and the geometry space can become coupled experimental dimensions.</strong></p>
+</blockquote>
+<hr>
+<h2 id="exploring-rule-space-and-geometry-space"><a class="header" href="#exploring-rule-space-and-geometry-space">Exploring Rule Space and Geometry Space</a></h2>
+<p>Traditional cellular automata experimentation varies the rule.</p>
+<p>For example:</p>
+<pre><code class="language-text">Rule A
+Rule B
+Rule C
+Rule D
+...
+</code></pre>
+<p>MatterScript can potentially vary both rule and geometry:</p>
+<pre><code class="language-text">                RULE SPACE
+                    |
+       +------------+------------+
+       |            |            |
+       v            v            v
+     Rule A       Rule B       Rule C
+       |            |            |
+       +------------+------------+
+                    |
+                    v
+              GEOMETRY SPACE
+                    |
+       +------------+------------+
+       |            |            |
+       v            v            v
+     Plane      Cylinder      Surface
+</code></pre>
+<p>Now an experiment is no longer simply:</p>
+<blockquote>
+<p>What happens when this rule runs?</p>
+</blockquote>
+<p>It can become:</p>
+<blockquote>
+<p>What happens when this rule runs on this geometry?</p>
+</blockquote>
+<p>And then:</p>
+<blockquote>
+<p>What changes when the same rule is embedded in a different geometry?</p>
+</blockquote>
+<p>This is exactly the kind of open-ended experimental space that makes computational geometry more than visualization.</p>
+<hr>
+<h2 id="from-cellular-automata-to-physical-systems"><a class="header" href="#from-cellular-automata-to-physical-systems">From Cellular Automata to Physical Systems</a></h2>
+<p>Once cells occupy physical geometry, a cellular automaton begins to resemble a physical system.</p>
+<p>Each cell can represent something physically meaningful:</p>
+<pre><code class="language-text">sensor
+logic element
+material region
+actuator
+memory element
+particle
+chemical site
+electrical node
+</code></pre>
+<p>The neighborhood can represent a physical relationship:</p>
+<pre><code class="language-text">electrical proximity
+material adjacency
+thermal coupling
+mechanical contact
+signal propagation
+chemical interaction
+</code></pre>
+<p>And the local rule can represent a transformation:</p>
+<pre><code class="language-text">state transition
+signal response
+material change
+control decision
+</code></pre>
+<p>The abstract cellular system therefore becomes a template for constructing physical systems.</p>
+<pre><code class="language-text">       CELLULAR MODEL
+
+       [A] [B] [C]
+       [D] [E] [F]
+       [G] [H] [I]
+
+            ↓
+
+       GEOMETRIC MODEL
+
+        A---B---C
+       / \ / \ / \
+      D---E---F
+       \ / \ / \ /
+        G---H---I
+
+            ↓
+
+       PHYSICAL SYSTEM
+
+      sensor → logic → actuator
+</code></pre>
+<p>The exact realization depends on the target hardware or material system.</p>
+<p>The computational principle remains the same.</p>
+<hr>
+<h2 id="locality-becomes-physical"><a class="header" href="#locality-becomes-physical">Locality Becomes Physical</a></h2>
+<p>In a purely abstract cellular automaton, locality is a mathematical relationship.</p>
+<p>In a physical system, locality can become a physical fact.</p>
+<p>Two cells may be neighbors because they occupy adjacent positions on a surface.</p>
+<p>A signal may propagate from one cell to another because a physical connection exists between them.</p>
+<p>A delay may arise because the path between two cells has a measurable length.</p>
+<p>This is where the next stages of MatterScript become particularly interesting.</p>
+<p>Geometry can begin to determine time.</p>
+<pre><code class="language-text">position
+   |
+   v
+distance
+   |
+   v
+propagation
+   |
+   v
+ delay
+   |
+   v
+state transition
+</code></pre>
+<p>The spatial graph constructed in the earlier chapters therefore provides more than a representation of shape.</p>
+<p>It provides the foundation for reasoning about <strong>space-time computation</strong>.</p>
+<hr>
+<h2 id="projection-and-physical-fidelity"><a class="header" href="#projection-and-physical-fidelity">Projection and Physical Fidelity</a></h2>
+<p>A useful MatterScript system should distinguish between different levels of fidelity.</p>
+<p>At the most abstract level:</p>
+<pre><code class="language-text">cell A is adjacent to cell B
+</code></pre>
+<p>At a geometric level:</p>
+<pre><code class="language-text">A = (x₁, y₁, z₁)
+B = (x₂, y₂, z₂)
+</code></pre>
+<p>At a physical level:</p>
+<pre><code class="language-text">distance(A,B) = d
+</code></pre>
+<p>At a timing level:</p>
+<pre><code class="language-text">propagation(A,B) = Δt
+</code></pre>
+<p>These are not necessarily separate systems.</p>
+<p>They can be successive refinements of the same description.</p>
+<pre><code class="language-text">relationship
+     ↓
+geometry
+     ↓
+distance
+     ↓
+delay
+     ↓
+physical behavior
+</code></pre>
+<p>This is one of the central ambitions of MatterScript:</p>
+<blockquote>
+<p><strong>Preserve the relationship as the description becomes progressively more physical.</strong></p>
+</blockquote>
+<hr>
+<h2 id="a-computational-surface-is-more-than-a-mesh"><a class="header" href="#a-computational-surface-is-more-than-a-mesh">A Computational Surface Is More Than a Mesh</a></h2>
+<p>The mesh chapter established a distinction between source geometry and its triangulated representation.</p>
+<p>That distinction becomes important here.</p>
+<p>A mesh may describe the physical surface:</p>
+<pre><code class="language-text">vertices
+edges
+triangles
+</code></pre>
+<p>The cellular system may describe computation:</p>
+<pre><code class="language-text">cells
+neighbors
+states
+rules
+</code></pre>
+<p>Projection establishes the relationship between them.</p>
+<pre><code class="language-text">       CELLULAR GRAPH
+       --------------
+       cells
+       neighborhoods
+       states
+            |
+            | projection
+            v
+       GEOMETRIC MESH
+       --------------
+       vertices
+       edges
+       faces
+</code></pre>
+<p>The mesh is therefore not necessarily the computation.</p>
+<p>It is the geometric substrate onto which computation is placed.</p>
+<p>This separation allows the same computational structure to potentially be realized on different physical geometries.</p>
+<hr>
+<h2 id="one-computation-many-geometries"><a class="header" href="#one-computation-many-geometries">One Computation, Many Geometries</a></h2>
+<p>Imagine a cellular rule defined once:</p>
+<pre><code class="language-matterscript">@generate {
+  [*, 1, 5]: 4
+  [3, 2, 4]: 6
+}
+</code></pre>
+<p>The rule itself does not encode a particular physical surface.</p>
+<p>That means the same computational idea can potentially be explored on:</p>
+<pre><code class="language-text">flat plane
+     |
+     v
+cylindrical surface
+     |
+     v
+spherical surface
+     |
+     v
+custom mesh
+     |
+     v
+fabricated physical structure
+</code></pre>
+<p>The geometry becomes a parameter of realization.</p>
+<p>This is a powerful consequence of separating <strong>rule</strong>, <strong>topology</strong>, and <strong>embedding</strong>.</p>
+<hr>
+<h2 id="projection-as-a-matterscript-primitive"><a class="header" href="#projection-as-a-matterscript-primitive">Projection as a MatterScript Primitive</a></h2>
+<p>The broader MatterScript architecture suggests a useful principle:</p>
+<pre><code class="language-text">describe the thing
+        ↓
+resolve relationships
+        ↓
+construct structure
+        ↓
+place structure
+        ↓
+generate realization
+</code></pre>
+<p>Conformal projection belongs to the placement stage.</p>
+<p>The computational structure already exists.</p>
+<p>The geometry already exists.</p>
+<p>Projection establishes their correspondence.</p>
+<p>That means projection is not simply a mathematical utility.</p>
+<p>It becomes part of the language’s larger process of turning descriptions into realizable systems.</p>
+<hr>
+<h2 id="toward-physical-cellular-systems"><a class="header" href="#toward-physical-cellular-systems">Toward Physical Cellular Systems</a></h2>
+<p>At this point the progression of Part V becomes clear.</p>
+<p>We began with geometry:</p>
+<pre><code class="language-text">Spatial Domain
+      ↓
+Vertices
+      ↓
+Edges
+      ↓
+Loops
+      ↓
+Faces
+      ↓
+Meshes
+</code></pre>
+<p>We then introduced computation into that space:</p>
+<pre><code class="language-text">Meshes
+      ↓
+Cell Placement
+      ↓
+Local Rules
+      ↓
+Emergent Behavior
+</code></pre>
+<p>Conformal projection now connects that computation back to arbitrary geometry:</p>
+<pre><code class="language-text">             GEOMETRY
+                 |
+                 v
+             CELLULAR
+            COMPUTATION
+                 |
+                 v
+             PROJECTION
+                 |
+                 v
+          PHYSICAL SURFACE
+</code></pre>
+<p>The result is a much larger idea than either geometry or cellular automata alone.</p>
+<p>MatterScript can describe <strong>computation that has a place</strong>.</p>
+<p>And once computation has a place, it can have:</p>
+<ul>
+<li>distance,</li>
+<li>adjacency,</li>
+<li>orientation,</li>
+<li>propagation,</li>
+<li>delay,</li>
+<li>physical constraints,</li>
+<li>and eventually measurable behavior.</li>
+</ul>
+<hr>
+<h2 id="why-conformal-projection-matters-to-matterscript"><a class="header" href="#why-conformal-projection-matters-to-matterscript">Why Conformal Projection Matters to MatterScript</a></h2>
+<p>Conformal projection is the point where spatial computation begins to become physical computation.</p>
+<p>Cell placement established that locations can be computational entities.</p>
+<p>NKS established that simple local rules can produce complex global behavior.</p>
+<p>Geometry established that space can be explicitly constructed and represented.</p>
+<p>Projection connects these ideas.</p>
+<p>It provides a mechanism for taking a computational structure and embedding it into a physical shape while preserving the local relationships that define the computation.</p>
+<p>The resulting model is neither purely geometric nor purely algorithmic.</p>
+<p>It is both.</p>
+<pre><code class="language-text">              MATTERSCRIPT
+
+        computation + geometry
+                  |
+                  v
+             relationships
+                  |
+                  v
+               locality
+                  |
+                  v
+              placement
+                  |
+                  v
+             physical form
+</code></pre>
+<p>The deeper principle is:</p>
+<blockquote>
+<p><strong>Computation does not have to happen inside an abstract machine. The machine itself can be a geometry.</strong></p>
+</blockquote>
+<p>Once that is possible, space is no longer merely the environment in which computation runs.</p>
+<p><strong>Space becomes part of the computation.</strong></p>
+<hr>
+<h2 id="looking-ahead-delay-synthesis"><a class="header" href="#looking-ahead-delay-synthesis">Looking Ahead: Delay Synthesis</a></h2>
+<p>Conformal projection gives cells a physical location.</p>
+<p>The next question is unavoidable:</p>
+<p><strong>What does physical distance mean computationally?</strong></p>
+<p>If two computational elements are separated by a measurable distance, a physical implementation may require a signal to travel between them.</p>
+<p>That travel can take time.</p>
+<p>A path through geometry can therefore become a timing relationship:</p>
+<pre><code class="language-text">        A
+        |
+        | physical path
+        |
+        +------------------+
+                           |
+                           v
+                           B
+
+        distance → propagation → delay
+</code></pre>
+<p>This suggests a new computational primitive:</p>
+<blockquote>
+<p><strong>A spatial relationship can become a temporal relationship.</strong></p>
+</blockquote>
+<p>That is the subject of the next chapter.</p>
+<p><strong>Delay Synthesis</strong> explores how geometry, propagation, and timing can be brought together so that the physical structure of a system contributes directly to its computational behavior.</p>
+<p>The progression continues:</p>
+<pre><code class="language-text">space
+  ↓
+placement
+  ↓
+geometry
+  ↓
+distance
+  ↓
+propagation
+  ↓
+delay
+  ↓
+space-time computation
+</code></pre>
+<p>MatterScript has constructed the space.</p>
+<p>Now it is time to make that space <strong>compute in time</strong>.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="delay-synthesis"><a class="header" href="#delay-synthesis">Delay Synthesis</a></h1>

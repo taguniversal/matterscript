@@ -1,5 +1,6 @@
 # Cell Placement
 
+![Cell Placement](images/cell_placement.png)
 
 A mesh gives MatterScript a representation of physical space.
 

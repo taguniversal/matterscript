@@ -1,7 +1,7 @@
 const std = @import("std");
 const matterscript = @import("matterscript");
 const network = matterscript.network;
-const runtime = matterscript.ipl_runtime;
+const runtime = matterscript.runtime;
 
 // AND2[(A<> B<>)($OUT)
 //     $A $B :
@@ -67,7 +67,7 @@ test "AND2 truth table via wire-segregated symbols" {
         const def = testDef();
         const rules = try runtime.rules.buildRules(a, def);
 
-        var env = runtime.Environment{ .allocator = a };
+        var env = runtime.environment.Environment{ .allocator = a };
         defer env.deinit();
         try env.seed(case.a_symbol, case.a_symbol); // place name == symbol name for these seeded wire states
         try env.seed(case.b_symbol, case.b_symbol);

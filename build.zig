@@ -341,6 +341,19 @@ pub fn build(b: *std.Build) void {
 
     const run_runtime_combustion_test = b.addRunArtifact(runtime_combustion_test);
 
+    const harness_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/harness_tests.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+            },
+        }),
+    });
+
+    const run_harness_tests = b.addRunArtifact(harness_tests);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
@@ -364,6 +377,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_runtime_test.step);
     test_step.dependOn(&run_runtime_and2_wires_test.step);
     test_step.dependOn(&run_runtime_combustion_test.step);
+    test_step.dependOn(&run_harness_tests.step);
 
     // --- Code Coverage Step (using kcov) ---
     const coverage_step = b.step("coverage", "Generate code coverage report using kcov");

@@ -5,7 +5,7 @@ const testing = std.testing;
 // Import parser and runtime engine modules
 const matterscript = @import("matterscript");
 const parser = matterscript.ipl_parser;
-const runtime = matterscript.ipl_runtime;
+const runtime = matterscript.runtime;
 
 test "combustion stoichiometry via multi-token matching" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);

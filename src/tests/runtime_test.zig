@@ -2,7 +2,7 @@
 const std = @import("std");
 const matterscript = @import("matterscript");
 const network = matterscript.network;
-const runtime = matterscript.ipl_runtime;
+const runtime = matterscript.runtime;
 
 // AND2[(A<> B<>)($OUT)
 //     $A $B :
@@ -61,7 +61,7 @@ test "runtime reaches completion once joint inputs are both present" {
     const def = testDef();
     const rules = try runtime.rules.buildRules(a, def);
 
-    var env = runtime.Environment{ .allocator = a };
+    var env = runtime.environment.Environment{ .allocator = a };
     defer env.deinit();
     try env.seed("p", "K");
     try env.seed("q", "L");
@@ -79,7 +79,7 @@ test "runtime reports exactly which place is stuck and what it's waiting on" {
     const def = testDef();
     const rules = try runtime.rules.buildRules(a, def);
 
-    var env = runtime.Environment{ .allocator = a };
+    var env = runtime.environment.Environment{ .allocator = a };
     defer env.deinit();
     try env.seed("p", "K"); // q never arrives
 
