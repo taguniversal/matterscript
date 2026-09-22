@@ -4,13 +4,14 @@
 
 ## Progress
 
-✅ Implemented: 20  |  🟡 Partial: 8  |  🔴 Blocked: 1  |  ⬛ Spec only: 2  |  ⬜ Not started: 117  |  Total: 148
+✅ Implemented: 20  |  🟡 Partial: 8  |  🔴 Blocked: 1  |  ⬛ Spec only: 2  |  ⬜ Not started: 118  |  Total: 149
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
 - ⬜ Not started [2.4.2 Logically Recognizing Data Flow Boundaries](TAG-176.md)
 - ⬜ Not started [7. Composing Boundaries](TAG-167.md)
 - ⬜ Not started [7.1.1 Association Boundaries](TAG-168.md)
+- ⬜ Not started [7.2 Coordinating Boundaries](TAG-202.md)
 - ⬜ Not started [8.2.3 The Feedback Ring](TAG-166.md)
 - ⬜ Not started [10.3 The Single Digit Number](TAG-178.md)
 - ⬜ Not started [12.1 The Nature of Symbol String Expression](TAG-93.md)

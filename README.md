@@ -1,7 +1,7 @@
 # MatterScript
 
 ![Matterscript](matterscript_cover.png)
-MatterScript is an experimental procedural geometry language inspired by Stephen Wolfram's *A New Kind of Science (NKS)*.
+MatterScript is an experimental procedural geometry language inspired by Stephen Wolfram's *A New Kind of Science (NKS)* and powered by Karl Fant's *Computer Science Reconsidered*.
 
 [**MatterScript: A Programmer's Guide to Space-Time Computing**](https://taguniversal.github.io/matterscript/mdbook/book/html/)
 
