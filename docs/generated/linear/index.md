@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 20  |  🟡 Partial: 8  |  🔴 Blocked: 1  |  ⬛ Spec only: 2  |  ⬜ Not started: 118  |  Total: 149
+✅ Implemented: 20  |  🟡 Partial: 8  |  🔴 Blocked: 1  |  ⬛ Spec only: 2  |  ⬜ Not started: 121  |  Total: 152
 
 - ⬜ Not started [1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [2. The Simplicity of Concurrency](TAG-179.md)
@@ -148,6 +148,9 @@
 - ⬜ Not started [Matterscript Developer's Guide](TAG-199.md)
 - 🟡 Partial [Dual rail/Multi-token Pure Value Resolution](TAG-200.md)
 - 🟡 Partial [Support multi-operand stoichiometry and multi-emission fills via chemical reaction test fixture](TAG-201.md)
+- ⬜ Not started [Parsing Pipeline](TAG-203.md)
+- ⬜ Not started [GEO Parser](TAG-204.md)
+- ⬜ Not started [Radiator Model](TAG-205.md)
 - ⬜ Not started [Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [The Completeness Dialogue](TAG-80.md)
