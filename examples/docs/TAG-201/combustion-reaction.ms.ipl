@@ -1,5 +1,6 @@
 // Linear: TAG-201 Combustion reaction: 2H2 + O2 -> 2H2O
 REACTION[(H2<> O2<>)($WATER)
+    @runtime(consumable)
     $H2 $O2 :
 
   // Rule: Fire reaction only when two H2 tokens and one O2 token collide

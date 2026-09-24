@@ -6,12 +6,12 @@ A[g,k,o] B[h,l,p] C[G,K,O] D[H,L,P] E[I,M,Q] F[J,N,R]
 //"define combinational resolution stages"
 G,I[S] G,J[T] H,I[S] H,J[S]
 K,M[U] K,N[U] L,M[V] L,N[U]
-O,Q[W] O,R[W] P,Q[W] P,R[X]
+O,Q[W] O,R[W] P,Q[W] P,R[Z]
 S,U[a,c,e] S,V[b,d,f] T,U[b,d,f] T,V[b,d,f] //"fan out input to second half-adder"
 g,a[i] g,b[j] h,a[i] h,b[i]
 k,c[m] k,d[m] l,c[n] l,d[m]
 o,e[q] o,f[q] p,e[q] p,f[r]
 i,m[s] i,n[t] j,m[t] j,n[t] //"sum"
-q,W[u] q,X[v] r,W[v] r,X[v] //"carry"
+q,W[u] q,Z[v] r,W[v] r,Z[v] //"carry"
 s[SUM<s>] t[SUM<t>] u[CARRY<u>] v[CARRY<v>] //"output"
 ]

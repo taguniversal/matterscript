@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 22  |  🟡 Partial: 8  |  🔴 Blocked: 1  |  ⬛ Spec only: 2  |  ⬜ Not started: 120  |  Total: 153
+✅ Implemented: 23  |  🟡 Partial: 8  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 121  |  Total: 154
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-179: 2. The Simplicity of Concurrency](TAG-179.md)
@@ -125,7 +125,7 @@
 - ⬜ Not started [TAG-172: VHDL Numeric table emission](TAG-172.md)
 - ⬜ Not started [TAG-174: Domain Layers](TAG-174.md)
 - ⬜ Not started [TAG-175: VHDL emission produces invalid syntax for unnamed/abbreviated destination places](TAG-175.md)
-- 🔴 Blocked [TAG-177: Example 12.26 Pure Value Expression of Boolean Full Adder](TAG-177.md)
+- ✅ Implemented [TAG-177: Example 12.26 Pure Value Expression of Boolean Full Adder](TAG-177.md)
 - ✅ Implemented [TAG-180: Example 12.10 Conditional Input Expression](TAG-180.md)
 - ✅ Implemented [TAG-181: Example 12.11 Controlled Fan-out Expression](TAG-181.md)
 - ⬜ Not started [TAG-183: IPL Generate keyword](TAG-183.md)
@@ -152,6 +152,7 @@
 - ⬜ Not started [TAG-205: Radiator Model](TAG-205.md)
 - ⬜ Not started [TAG-206: Runtime directive](TAG-206.md)
 - ✅ Implemented [TAG-207: Example 12.35 IF-THEN-ELSE expression conventions](TAG-207.md)
+- ⬜ Not started [TAG-208: Token naming conventions across runtime paths](TAG-208.md)
 - ⬜ Not started [TAG-46: Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [TAG-47: Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [TAG-80: The Completeness Dialogue](TAG-80.md)
