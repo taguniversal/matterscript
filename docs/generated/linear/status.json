@@ -1,4 +1,9 @@
 {
+  "TAG-206": {
+    "implementation_status": null,
+    "simulation_requested": false,
+    "workflow_state": "Backlog"
+  },
   "TAG-205": {
     "implementation_status": null,
     "simulation_requested": false,

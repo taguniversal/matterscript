@@ -369,7 +369,7 @@ pub fn main(init: std.process.Init) !void {
 
     for (entries.items) |e| {
         const badge = statusBadge(resolveStatus(e.labels));
-        try index_writer.interface.print("- {s} [{s}]({s}.md)\n", .{ badge, e.title, e.identifier });
+        try index_writer.interface.print("- {s} [{s}: {s}]({s}.md)\n", .{ badge, e.identifier, e.title, e.identifier });
     }
 
     try index_writer.interface.flush();
