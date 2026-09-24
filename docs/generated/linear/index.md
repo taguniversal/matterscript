@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 20  |  🟡 Partial: 8  |  🔴 Blocked: 1  |  ⬛ Spec only: 2  |  ⬜ Not started: 122  |  Total: 153
+✅ Implemented: 22  |  🟡 Partial: 8  |  🔴 Blocked: 1  |  ⬛ Spec only: 2  |  ⬜ Not started: 120  |  Total: 153
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-179: 2. The Simplicity of Concurrency](TAG-179.md)
@@ -52,9 +52,8 @@
 - ⬜ Not started [TAG-71: 12.9.3 Nested Definitions](TAG-71.md)
 - ⬜ Not started [TAG-72: 12.9.4 Structureless Expression](TAG-72.md)
 - ⬜ Not started [TAG-73: 12.10 Conditionality](TAG-73.md)
-- ⬜ Not started [TAG-74: 12.10.1 If-Then-Else](TAG-74.md)
+- ✅ Implemented [TAG-74: 12.10.1 If-Then-Else](TAG-74.md)
 - ⬜ Not started [TAG-75: 12.10.2 If-Then](TAG-75.md)
-- ⬜ Not started [TAG-76: 12.10.3 Multiway Conditionality](TAG-76.md)
 - ⬜ Not started [TAG-77: 12.11 Coordination Boundaries](TAG-77.md)
 - ⬜ Not started [TAG-78: 12.11.1 Invocation Boundaries](TAG-78.md)
 - ⬜ Not started [TAG-79: 12.11.2 Coordination Behavior](TAG-79.md)
@@ -152,6 +151,7 @@
 - ⬜ Not started [TAG-204: GEO Parser](TAG-204.md)
 - ⬜ Not started [TAG-205: Radiator Model](TAG-205.md)
 - ⬜ Not started [TAG-206: Runtime directive](TAG-206.md)
+- ✅ Implemented [TAG-207: Example 12.35 IF-THEN-ELSE expression conventions](TAG-207.md)
 - ⬜ Not started [TAG-46: Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [TAG-47: Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [TAG-80: The Completeness Dialogue](TAG-80.md)

@@ -32,6 +32,23 @@ pub const SpatialDomainKind = enum {
     // future domains: spatial1d, etc.
 };
 
+pub const RuntimeKind = enum {
+    consumable,
+    // the ordinary, persistent-signal model is the unmarked default —
+    // untagged definitions need no @runtime directive at all
+};
+
+pub fn parseRuntimeAnnotation(p: *core.Parser) !RuntimeKind {
+    try p.expect('(');
+    p.skipWhitespaceAndComments();
+    const kind_str = try p.readName();
+    p.skipWhitespaceAndComments();
+    try p.expect(')');
+
+    if (std.mem.eql(u8, kind_str, "consumable")) return .consumable;
+    return error.UnknownRuntimeKind;
+}
+
 pub const ValueBounds = struct {
     min: i64,
     max: i64,
@@ -276,6 +293,7 @@ pub const Definition = struct {
     sources: []const Arg,
     destinations: []const Arg,
     domain_spec: ?DomainSpec = null,
+    runtime_kind: ?RuntimeKind = null,
     generateBlock: ?GenerateBlock = null,
     resolution: []const Statement,
     constants: []const TableDef,

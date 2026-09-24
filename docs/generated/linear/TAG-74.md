@@ -2,7 +2,7 @@
 
 ### TAG-74: 12.10.1 If-Then-Else
 
-**Status:** ⬜ Not started
+**Status:** ✅ Implemented
 
 ## Software Notes
 
@@ -15,3 +15,12 @@ The IF-THEN-ELSE construct can be expressed with simple name conventions. In Exa
 A convention of naming is established with a set of definitions that return a set of common names. Example 12.36 is a set of conditionals that all return TRUE or FALSE.
 
 An invocation of a conditional can be nested in a destination list of the invocation of IF as in Example 12.37.
+
+```
+IF[(logical<> thenname<> elsename<>)($name)
+  $logical() :
+    TRUE[ name<$thenname>]
+    FALSE[ name<$elsename>]]
+
+Example 12.35 IF-THEN-ELSE expression conventions.
+```

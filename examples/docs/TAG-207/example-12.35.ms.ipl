@@ -1,0 +1,5 @@
+/// Linear: TAG-207 - Example 12.35 IF-THEN-ELSE expression conventions
+IF[(logical<> thenname<> elsename<>)($name)
+  $logical() :
+    TRUE[ name<$thenname>]
+    FALSE[ name<$elsename>]]

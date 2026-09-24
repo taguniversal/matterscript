@@ -45,6 +45,7 @@ pub fn parseDefinition(p: *core.Parser) anyerror!network.Definition {
 
     var domain_spec: ?network.DomainSpec = null;
     var generate_block: ?network.GenerateBlock = null;
+    var runtime_kind: ?network.RuntimeKind = null;
     // Loop to consume all '@' directives inside the definition header
     while (p.peek() == '@') {
         p.pos += 1; // Consume '@'
@@ -62,6 +63,9 @@ pub fn parseDefinition(p: *core.Parser) anyerror!network.Definition {
                 .rules = rules,
             };
             p.skipWhitespaceAndComments();
+        } else if (std.mem.eql(u8, directive, "runtime")) {
+            runtime_kind = try network.parseRuntimeAnnotation(p);
+            p.skipWhitespaceAndComments();
         } else {
             return error.UnknownDirective;
         }
@@ -77,6 +81,7 @@ pub fn parseDefinition(p: *core.Parser) anyerror!network.Definition {
         .sources = sources,
         .destinations = destinations,
         .domain_spec = domain_spec,
+        .runtime_kind = runtime_kind,
         .generateBlock = generate_block,
         .resolution = resolution,
         .constants = section.constants,
@@ -118,9 +123,6 @@ pub fn composedKeySegmentCount(resolution: []const network.Statement) usize {
     }
     return 0;
 }
-
-
-
 
 /// Parses everything after a definition's resolution-terminating ':'
 /// — Fant's "contained definitions" position (§12.3.2). Can hold
@@ -269,9 +271,9 @@ pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
         const potential_name = p.readName() catch |err| {
             return err;
         };
-        
+
         p.skipWhitespaceAndComments();
-        
+
         var label: ?[]const u8 = null;
         var name: []const u8 = potential_name;
 
@@ -344,7 +346,7 @@ pub fn parseDomainSpec(p: *core.Parser) !network.DomainSpec {
 
     var size: ?[2]usize = null;
     var value_bounds: ?network.ValueBounds = null;
-    
+
     // 3. Parse optional named parameters (e.g., `, size: [300, 500]` or `, range: [0, 15]`)
     while (p.peek() == ',') {
         p.pos += 1; // Consume ','

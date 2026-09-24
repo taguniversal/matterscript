@@ -75,7 +75,7 @@ pub const Testbench = struct {
     /// Runs every queued token to completion, one data wavefront per
     /// captured Presentation, stopping once no further wavefront can
     /// complete (streams exhausted, or a genuinely stuck combination).
-        pub fn run(self: *Testbench) ![]const Presentation {
+    pub fn run(self: *Testbench) ![]const Presentation {
         var presentations: std.ArrayListUnmanaged(Presentation) = .empty;
 
         outer: while (true) {
@@ -88,13 +88,20 @@ pub const Testbench = struct {
             while (!report.complete) {
                 var fed_any = false;
                 for (self.streams, 0..) |*stream, i| {
-                    if (fed_this_wavefront[i]) continue; // this wire already delivered its token for this wavefront
-                    const tok = stream.current() orelse continue; // this stream is exhausted
-                    // Place name == symbol name, matching the wire-segregated-
-                    // symbol convention: p/q/r/s ARE the places, not values
-                    // held inside places called "A"/"B". stream.port is a
-                    // purely descriptive label for which logical wire this
-                    // stream feeds — it's never itself matched against.
+                    if (fed_this_wavefront[i]) continue;
+                    const tok = stream.current() orelse continue;
+                    // Two conventions coexist in real IPL sources: ordinary
+                    // $portname references (Fant's standard model — see
+                    // FULLADD's $X/$Y/$CI, and this example's $thenname/
+                    // $elsename) need a place named after the PORT; joint-
+                    // match / discriminator rules keyed on the arriving
+                    // VALUE itself (AND2's p/q/r/s, this example's TRUE/
+                    // FALSE) need a place named after the TOKEN. Seed both
+                    // — harmless when only one is ever referenced (AND2's
+                    // port-name places are simply never read), necessary
+                    // when a single definition genuinely needs both, as
+                    // this one does.
+                    try env.seed(stream.port, tok);
                     try env.seed(tok, tok);
                     stream.advance();
                     fed_this_wavefront[i] = true;

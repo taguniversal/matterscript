@@ -4,6 +4,7 @@ const matterscript = @import("matterscript");
 
 const parser = matterscript.ipl_parser;
 const testbench = matterscript.runtime.testbench;
+const dispatch = matterscript.runtime.dispatch;
 
 // AND2[(A<> B<>)($OUT)
 //     $A $B :
@@ -35,12 +36,13 @@ test "testbench drives AND2's full truth table across four wavefronts" {
     const def = net.definitions[0];
 
     // (A, B) presented in order: (0,0) (1,1) (0,1) (1,0)
+  
     const a_stream = testbench.PortStream{ .port = "A", .tokens = &.{ "p", "q", "p", "q" } };
     const b_stream = testbench.PortStream{ .port = "B", .tokens = &.{ "r", "s", "s", "r" } };
     var streams = [_]testbench.PortStream{ a_stream, b_stream };
 
-    var bench = try testbench.Testbench.init(a, def, &streams);
-    const presentations = try bench.run();
+   const result = try dispatch.run(a, def, .{ .digital = &streams });
+    const presentations = result.digital;
 
     try testing.expectEqual(@as(usize, 4), presentations.len);
 
