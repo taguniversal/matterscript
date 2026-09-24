@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-caf1e2cf.js";
+            window.path_to_searchindex_js = "searchindex-88e4a8a5.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-723adea2.js"></script>
+        <script src="toc-a511d633.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -9813,6 +9813,255 @@ space-time computation
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="abstract-syntax-trees"><a class="header" href="#abstract-syntax-trees">Abstract Syntax Trees</a></h1>
+<p>Every MatterScript program begins life as text.</p>
+<pre><code class="language-matterscript">FULLADD($A $B $C)(SUM&lt;&gt; CARRY&lt;&gt;)
+</code></pre>
+<p>To a human, this is a readable description of a computation.</p>
+<p>To a compiler, it is only a sequence of characters.</p>
+<p>Before the compiler can reason about the program, it must recover its structure.</p>
+<p>That structure is represented internally as an <strong>Abstract Syntax Tree</strong>, or AST.</p>
+<hr>
+<h2 id="the-program-beneath-the-text"><a class="header" href="#the-program-beneath-the-text">The Program Beneath the Text</a></h2>
+<p>An AST ignores formatting and punctuation that exist only to help humans read the language.</p>
+<p>For example,</p>
+<pre><code class="language-matterscript">AND($A $B)(RESULT&lt;&gt;)
+</code></pre>
+<p>might be represented internally as something conceptually similar to</p>
+<pre><code class="language-text">Invocation
+ ├── Name: AND
+ ├── Destination List
+ │     ├── $A
+ │     └── $B
+ └── Source List
+       └── RESULT&lt;&gt;
+</code></pre>
+<p>This tree captures the meaning of the program without preserving its exact textual representation.</p>
+<p>Whitespace disappears.</p>
+<p>Comments disappear.</p>
+<p>Formatting disappears.</p>
+<p>Only structure remains.</p>
+<hr>
+<h2 id="the-ast-is-not-the-computation"><a class="header" href="#the-ast-is-not-the-computation">The AST Is Not the Computation</a></h2>
+<p>One of the easiest mistakes to make when thinking about compilers is to imagine that the AST somehow <em>is</em> the program.</p>
+<p>It isn’t.</p>
+<p>The AST is simply the compiler’s understanding of the source text.</p>
+<p>It exists only long enough for the compiler to analyze the language.</p>
+<p>The computational model appears later.</p>
+<pre><code class="language-text">Source Code
+        │
+        ▼
+Abstract Syntax Tree
+        │
+        ▼
+Association Graph
+        │
+        ▼
+Backend Realization
+</code></pre>
+<p>This distinction is important.</p>
+<p>The AST understands syntax.</p>
+<p>The association graph understands computation.</p>
+<hr>
+<h2 id="compiler-ast"><a class="header" href="#compiler-ast">Compiler AST</a></h2>
+<p>The abstract syntax tree (AST) for IPL/NPL dialects translates high-level component declarations, resolution blocks, and transition rules into structured intermediate representations.</p>
+<p>Understanding how source text maps to internal Go/Zig structs (<code>network.Definition</code>, <code>Arg</code>, and <code>Place</code>) is essential for building custom evaluators, validators, and code generators.</p>
+<hr>
+<h3 id="shorthand-truth-table-syntax"><a class="header" href="#shorthand-truth-table-syntax">Shorthand Truth-Table Syntax</a></h3>
+<p>To streamline truth-table definitions and value transform rules, the parser supports a shorthand row notation. Instead of requiring a full nested component signature, shorthand rows specify input identifiers separated by commas, followed by bracketed output targets.</p>
+<h4 id="example-binary-equality-evaluation"><a class="header" href="#example-binary-equality-evaluation">Example: Binary Equality Evaluation</a></h4>
+<pre><code class="language-matterscript">binaryequal[(a&lt;&gt; b&lt;&gt;) 
+   &lt;$a$b()&gt;
+    : 0,0[TRUE]
+      0,1[FALSE]
+      1,0[FALSE]
+      1,1[TRUE]  
+]
+
+</code></pre>
+<hr>
+<h3 id="internal-ast-mapping"><a class="header" href="#internal-ast-mapping">Internal AST Mapping</a></h3>
+<p>When the compiler encounters a shorthand truth-table row inside a <code>contained</code> section, it synthesizes a nested <code>Definition</code> object representing that transition row.</p>
+<p>The table below illustrates how the components of a shorthand row map to internal <code>network.Definition</code> fields:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Source Text Element</th><th>AST Field (<code>network.Definition</code>)</th><th>Internal Representation</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Input Tuple</strong> (<code>0,0</code>)</td><td><code>.name</code></td><td>Captured as the row’s name string (e.g., <code>"0,0"</code>).</td></tr>
+<tr><td><strong>Bracketed Target</strong> (<code>[TRUE]</code>)</td><td><code>.resolution</code></td><td>A slice of <code>Statement</code> unions holding <code>SourceFill</code> structs (<code>.fill</code>), where <code>dest_name</code> is empty or implicit and <code>expr</code> captures the target value (<code>"TRUE"</code>).</td></tr>
+<tr><td><strong>Sub-Components</strong></td><td><code>.contained</code></td><td>Empty (<code>&amp;.{}</code>) for leaf truth-table rows, or nested <code>Definition</code> slices for hierarchical logic blocks.</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h3 id="structural-breakdown"><a class="header" href="#structural-breakdown">Structural Breakdown</a></h3>
+<p>For the <code>binaryequal</code> example above, the resulting parent definition holds <strong>four contained shorthand definitions</strong> within its AST:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>Definition{
+    .name = "binaryequal",
+    .sources = &amp;.{
+        Arg{ .kind = .place, .name = "a" },
+        Arg{ .kind = .place, .name = "b" },
+    },
+    .destinations = &amp;.{},
+    .resolution = &amp;.{},
+    .contained = &amp;.{
+        Definition{
+            .name = "0,0",
+            .resolution = &amp;.{
+                Statement{ .fill = SourceFill{ .dest_name = "", .expr = "TRUE" } },
+            },
+        },
+        Definition{
+            .name = "0,1",
+            .resolution = &amp;.{
+                Statement{ .fill = SourceFill{ .dest_name = "", .expr = "FALSE" } },
+            },
+        },
+        Definition{
+            .name = "1,0",
+            .resolution = &amp;.{
+                Statement{ .fill = SourceFill{ .dest_name = "", .expr = "FALSE" } },
+            },
+        },
+        Definition{
+            .name = "1,1",
+            .resolution = &amp;.{
+                Statement{ .fill = SourceFill{ .dest_name = "", .expr = "TRUE" } },
+            },
+        },
+    },
+}
+
+<span class="boring">}</span></code></pre>
+<h2 id="parsing-matterscript-expressions-ast-generation-guide"><a class="header" href="#parsing-matterscript-expressions-ast-generation-guide">Parsing MatterScript Expressions: AST Generation Guide</a></h2>
+<p>This section details how MatterScript parses complex component definitions—such as gate-level logic or truth-table lookups—into the Abstract Syntax Tree (AST).</p>
+<hr>
+<h3 id="anatomy-of-the-expression"><a class="header" href="#anatomy-of-the-expression">Anatomy of the Expression</a></h3>
+<p>Consider the following MatterScript snippet representing a full adder definition with explicit truth-table mappings (<code>TAG-184</code>):</p>
+<pre><code class="language-matterscript">  // Linear: TAG-184 Pure Value Place of Resolution
+      
+      FULLADD($A,$B,$C)(&lt;&gt; CARRYOUT&lt;&gt;)
+        
+      FULLADD[(A&lt;&gt; B&lt;&gt; CI&lt;&gt; )($SUM $CO)
+        
+        $A$B$CI :
+        
+        S,U,W[SUM&lt;S&gt; CO&lt;W&gt;] 
+        S,U,X[SUM&lt;T&gt; CO&lt;W&gt;]
+        S,V,W[SUM&lt;T&gt; CO&lt;W&gt;] 
+        S,V,X[SUM&lt;S&gt; CO&lt;X&gt;]
+        T,U,W[SUM&lt;T&gt; CO&lt;W&gt;] 
+        T,U,X[SUM&lt;S&gt; CO&lt;X&gt;]
+        T,V,W[SUM&lt;S&gt; CO&lt;X&gt;] 
+        T,V,X[SUM&lt;T&gt; CO&lt;X&gt;] 
+      ]
+</code></pre>
+<p>When the parser encounters this structure, it translates the linear syntax into a hierarchical AST node structure.</p>
+<hr>
+<h3 id="step-by-step-ast-translation"><a class="header" href="#step-by-step-ast-translation">Step-by-Step AST Translation</a></h3>
+<ul>
+<li><strong>Line Comment &amp; Metadata:</strong> The leading <code>\\//</code> acts as a metadata comment, attaching tags (e.g., <code>TAG-184</code>) to the enclosing expression node for diagnostic and resolution tracking.</li>
+<li><strong>Gate / Component Invocation:</strong> <code>FULLADD($A,$B,$C)(&lt;&gt; CARRYOUT&lt;&gt;)</code> is parsed into an invocation node containing positional input arguments ($A, $B,$C) and output resolution placeholders (<code>CARRYOUT&lt;&gt;</code>).</li>
+<li><strong>Truth Table Mapping (<code>[...]</code>):</strong> The bracketed block defines a truth-table or state-transition matrix. The parser maps input tuples ($A, $B,$CI) to output bindings ($SUM,$CO).</li>
+<li><strong>Resolution Rules:</strong> Each line (e.g., <code>S,U,W[SUM&lt;S&gt; CO&lt;W&gt;]</code>) is parsed into individual evaluation clauses that feed directly into the <code>SourceFill</code> struct’s <code>parsed_expr</code> field.</li>
+</ul>
+<hr>
+<h3 id="integration-with-sourcefill"><a class="header" href="#integration-with-sourcefill">Integration with <code>SourceFill</code></a></h3>
+<p>In the compiler backend, when an unresolved invocation is detected within a fill statement, the raw string is parsed and stored using the following structure:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub const SourceFill = struct {
+    /// The destination place being filled (output of definition)
+    dest_name: []const u8,
+    /// The expression whose value fills the place
+    expr: []const u8,
+    /// Parsed expression when the fill contains an unresolved invocation.
+    parsed_expr: ?*const Expr = null,
+};
+
+<span class="boring">}</span></code></pre>
+<blockquote>
+<p><strong>Note:</strong> Ensure that any custom parser extensions handling transformation rules preserve the table row ordering, as downstream code generators rely on sequential pattern matching for hardware layout synthesis.</p>
+</blockquote>
+<hr>
+<p>This unified AST representation allows evaluators to process truth-table rows uniformly alongside standard nested hardware blocks while eliminating boilerplate component naming in dense logic tables.</p>
+<hr>
+<h2 id="a-stable-foundation"><a class="header" href="#a-stable-foundation">A Stable Foundation</a></h2>
+<p>Almost every later stage of the compiler builds upon the AST.</p>
+<p>Semantic analysis verifies that names are valid.</p>
+<p>Definitions are connected to invocations.</p>
+<p>Domains introduce additional syntax.</p>
+<p>Compiler directives are interpreted.</p>
+<p>Geometry expressions are recognized.</p>
+<p>Errors are reported against the original source.</p>
+<p>Because every feature is represented in a common tree structure, the compiler can grow without constantly rewriting its earlier stages.</p>
+<hr>
+<h2 id="trees-give-way-to-graphs"><a class="header" href="#trees-give-way-to-graphs">Trees Give Way to Graphs</a></h2>
+<p>MatterScript begins as a tree because people write text one line at a time.</p>
+<p>But computation is not a tree.</p>
+<p>It is a graph.</p>
+<p>One invocation may feed many others.</p>
+<p>Names connect distant parts of a program.</p>
+<p>Definitions reference other definitions.</p>
+<p>Causal relationships span the entire design.</p>
+<p>The compiler therefore performs a fundamental transformation.</p>
+<p>It converts the tree describing the <strong>syntax</strong> into a graph describing the <strong>computation</strong>.</p>
+<p>This is where MatterScript begins to diverge from conventional programming languages. In many compilers, the AST remains the central representation throughout optimization and code generation. In MatterScript, it is only a stepping stone. Once the association graph has been constructed, the compiler has recovered the true structure of the program, and from that point onward every optimization, transformation, and backend operates on relationships rather than on source code.</p>
+<p>In later chapters, when we introduce the <code>spatial3d</code> domain, we will discover that geometry is parsed into the same abstract syntax tree as every other MatterScript construct. The compiler makes no fundamental distinction between a logic gate, a chemical transform rule, or a geometric primitive. They are all simply structured descriptions waiting to be transformed into a common association graph.</p>
+<p><em>Drafting in progress…</em></p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="runtime-execution-models"><a class="header" href="#runtime-execution-models">Runtime Execution Models</a></h1>
+<p>Every definition you write describes places, and rules for filling them.</p>
+<p>But not every place <em>behaves</em> the same way once it’s filled.</p>
+<p>Consider two examples, side by side:</p>
+<pre><code class="language-matterscript">AND2[(A&lt;&gt; B&lt;&gt;)($OUT)
+  $A $B :
+  p,r[Z0]
+  ...
+]
+</code></pre>
+<pre><code class="language-matterscript">REACTION[(H2&lt;&gt; O2&lt;&gt;)($WATER)
+  @runtime(consumable)
+  $H2 $O2 :
+  ha,hb,oa[RXN]
+  RXN[WATER&lt;w1&gt;]
+  RXN[WATER&lt;w2&gt;]
+]
+</code></pre>
+<p>Both use the same joint-match syntax. Both describe a rule that fires once its inputs are present. But they mean something different by “present.”</p>
+<hr>
+<h2 id="the-default-a-signal-once-true-stays-true"><a class="header" href="#the-default-a-signal-once-true-stays-true">The default: a signal, once true, stays true</a></h2>
+<p>In <code>AND2</code>, once the place <code>p</code> holds a value, it holds that value for good. Nothing consumes it. Another rule can read <code>p</code> a hundred times without using it up — that’s exactly how a wire behaves. Once asserted, a signal doesn’t disappear because something downstream looked at it.</p>
+<p>This is the model every definition gets automatically, with no annotation required. It’s the right model for anything that behaves like ordinary digital logic: a value is either present or it isn’t, and being read doesn’t change that.</p>
+<h2 id="runtimeconsumable-a-token-once-used-is-gone"><a class="header" href="#runtimeconsumable-a-token-once-used-is-gone"><code>@runtime(consumable)</code>: a token, once used, is gone</a></h2>
+<p><code>REACTION</code> is doing something different. <code>ha</code>, <code>hb</code>, and <code>oa</code> aren’t signals sitting on wires — they’re meant to behave like reactant molecules. Once they combine to form <code>RXN</code>, they’re spent. They can’t also go on to power a second, unrelated reaction. If you fed the reactor two hydrogen molecules and one oxygen molecule, you’d expect exactly one water-forming event — not an ever-present “hydrogen is available” signal that keeps triggering new reactions forever.</p>
+<p><code>@runtime(consumable)</code>, written once in a definition’s header, tells MatterScript that this definition’s places work that way: matching a rule <em>removes</em> the tokens that satisfied it. Feed in a second <code>ha</code>, <code>hb</code>, <code>oa</code> set later, and the rule can fire again — because presence, this time, really did mean “this specific instance is here right now,” not “this condition has become permanently true.”</p>
+<h2 id="where-to-put-it"><a class="header" href="#where-to-put-it">Where to put it</a></h2>
+<p>The directive goes in the same header position as <code>@domain</code> and <code>@generate</code> — after the source and destination lists, before the resolution’s <code>:</code>:</p>
+<pre><code class="language-matterscript">REACTION[(H2&lt;&gt; O2&lt;&gt;)($WATER)
+  @runtime(consumable)
+  $H2 $O2 :
+  ...
+]
+</code></pre>
+<p>Leaving it out is not an oversight to fix — it’s the correct choice for the overwhelming majority of definitions, since ordinary digital logic is the default for a reason: it’s what nearly everything you’ll write actually is.</p>
+<h2 id="what-actually-changes-underneath"><a class="header" href="#what-actually-changes-underneath">What actually changes underneath</a></h2>
+<p>You don’t need to think about this to use the directive, but it helps to know what’s different, the same way it helps to know an AST exists even if you never inspect one by hand.</p>
+<p>An ordinary definition’s places are checked once and, once satisfied, stay satisfied — a rule’s inputs being true is a permanent fact about that run. A <code>consumable</code> definition’s places are tracked as a <em>multiset</em>: a running count of how many of each named token are currently available. Firing a rule decrements the count for everything it consumed and increments the count for whatever it produces. A rule that needed three tokens and produced two behaves exactly like a chemical equation balancing quantities, not a gate holding a state.</p>
+<p>This also means a <code>consumable</code> definition can produce more than one output from a single firing — <code>RXN[WATER&lt;w1&gt;]</code> and <code>RXN[WATER&lt;w2&gt;]</code> both fire off the same reaction event, and both counts get recorded. An ordinary definition has no equivalent notion of “this place fired twice” — a place either became valid or it didn’t.</p>
+<h2 id="what-you-dont-need-to-design-yourself"><a class="header" href="#what-you-dont-need-to-design-yourself">What you don’t need to design yourself</a></h2>
+<p>You don’t need to write two versions of your definition, or handle the bookkeeping of what’s been consumed. The runtime reads the tag once and picks the correct execution model automatically — you write the rules the same way either way, using the same joint-match and fill syntax throughout this book. The tag is the only thing that changes.</p>
+<p>If a testbench or tool feeds a <code>consumable</code> definition input meant for the ordinary model (or vice versa), that mismatch is caught and reported plainly rather than silently producing a meaningless result — you’ll know immediately if a definition and the way it’s being driven have gotten out of sync.</p>
+<h2 id="when-to-reach-for-it"><a class="header" href="#when-to-reach-for-it">When to reach for it</a></h2>
+<p>Ask whether your places represent <em>conditions</em> or <em>quantities</em>.</p>
+<ul>
+<li>If a place being present means “this fact is now true, and stays true” — ordinary digital logic, dual-rail encoding, anything you’d eventually expect to become a real circuit — leave the definition untagged.</li>
+<li>If a place being present means “exactly this many instances of this thing currently exist, and using one changes how many are left” — reactants, resources, anything with a notion of depletion or multiplicity — reach for <code>@runtime(consumable)</code>.</li>
+</ul>
+<p>There’s no hardware realization for the consumable model yet — no VHDL backend understands token depletion the way it understands a persistent signal. For now, <code>@runtime(consumable)</code> definitions run only against MatterScript’s reference runtime, as a way of expressing and testing ideas that don’t map onto a wire at all. That may change; it hasn’t yet, and the directive doesn’t pretend otherwise.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="neighborhood-rules"><a class="header" href="#neighborhood-rules">Neighborhood Rules</a></h1>
 <p>Earlier in the book we introduced <strong>Transform Rules</strong> as one of the fundamental building blocks of MatterScript. A Transform Rule describes how one arrangement of tokens transforms into another. Small examples, such as Boolean logic gates, can be written by hand.</p>

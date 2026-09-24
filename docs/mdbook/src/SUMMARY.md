@@ -83,7 +83,8 @@
 # Part VIII: Compilers & Code Generation
 - [Introduction](part-08-compilers-and-code-generation/index.md)
 - [Parsing](part-08-compilers-and-code-generation/01-parsing.md)
-- [Abstract Syntax Trees](part-08-compilers-and-code-generations/02-abstract-syntax-trees.md)
+- [Abstract Syntax Trees](part-08-compilers-and-code-generation/02-abstract-syntax-trees.md)
+- [Runtime Execution Models](part-08-compilers-and-code-generation/02.1-runtime-execution-models.md)
 - [Neighborhood Rules](part-08-compilers-and-code-generation/03-neighborhood-rules.md)
 - [Placement Algorithms](part-08-compilers-and-code-generation/04-placement-algorithms.md)
 - [Delay Insertion](part-08-compilers-and-code-generation/05-delay-insertion.md)
