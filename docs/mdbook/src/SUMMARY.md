@@ -85,6 +85,7 @@
 - [Parsing](part-08-compilers-and-code-generation/01-parsing.md)
 - [Abstract Syntax Trees](part-08-compilers-and-code-generation/02-abstract-syntax-trees.md)
 - [Runtime Execution Models](part-08-compilers-and-code-generation/02.1-runtime-execution-models.md)
+- [Verification Process](part-08-compilers-and-code-generation/02.2-verification-process.md)
 - [Neighborhood Rules](part-08-compilers-and-code-generation/03-neighborhood-rules.md)
 - [Placement Algorithms](part-08-compilers-and-code-generation/04-placement-algorithms.md)
 - [Delay Insertion](part-08-compilers-and-code-generation/05-delay-insertion.md)

@@ -13,6 +13,8 @@ const std = @import("std");
 const matterscript = @import("matterscript");
 const ipl_parser = matterscript.ipl_parser;
 const ipl_export_vhdl = matterscript.ipl_export_vhdl;
+const runtime_tb = matterscript.runtime.tb_vectors;
+const RuntimeOutcome = runtime_tb.Outcome;
 
 const ExampleResult = enum { pass, fail, expected_fail, unexpected_pass };
 
@@ -30,6 +32,7 @@ const ExampleRow = struct {
     ghdl_ok: bool,
     simulation_ok: bool,
     simulation_error: ?[]const u8,
+    runtime: RuntimeOutcome = .{},
     result: ExampleResult,
 };
 
@@ -103,10 +106,12 @@ pub fn main(init: std.process.Init) !void {
                 .ghdl_ok = false,
                 .simulation_ok = false,
                 .simulation_error = null,
-                .result = classify(expected, false, false, sim_requested, false),
+                .result = classify(expected, false, false, sim_requested, false, .{}),
             });
             continue;
         };
+
+        const runtime_outcome = runtime_tb.runIfPresent(arena, io, ex.path, net);
 
         // Emit VHDL into memory, then to a scratch file GHDL can read.
         var vhdl_body: std.ArrayList(u8) = .empty;
@@ -155,7 +160,8 @@ pub fn main(init: std.process.Init) !void {
             .ghdl_ok = ghdl_ok,
             .simulation_ok = simulation_ok,
             .simulation_error = simulation_error,
-            .result = classify(expected, true, ghdl_ok, sim_requested, simulation_ok),
+            .runtime = runtime_outcome,
+            .result = classify(expected, true, ghdl_ok, sim_requested, simulation_ok, runtime_outcome),
         });
     }
 
@@ -172,6 +178,11 @@ pub fn main(init: std.process.Init) !void {
                 std.debug.print("================================================================================\n", .{});
                 printed_header = true;
             }
+
+            if (row.runtime.err_msg) |msg| {
+                std.debug.print("❌ [{s}] Runtime:\n{s}\n", .{ row.tag, msg });
+            }
+
             std.debug.print("❌ [{s}] Simulation Failure:\n{s}\n", .{ row.tag, err_msg });
         }
     }
@@ -211,7 +222,7 @@ fn getEntityName(allocator: std.mem.Allocator, tb_path: []const u8) ![]const u8 
 /// Persist the report instead of relying on shell redirection. The console
 /// table uses std.debug (stderr), so redirecting stdout previously created an
 /// empty Markdown file.
-fn writeMarkdownReport(io: std.Io, path: []const u8, rows: []const ExampleRow) !void {
+fn writeMarkdownReport(io: std.Io, path: []const u8, rows: []const ExampleRow,) !void {
     var file = try std.Io.Dir.cwd().createFile(io, path, .{});
     defer file.close(io);
 
@@ -227,12 +238,14 @@ fn writeMarkdownReport(io: std.Io, path: []const u8, rows: []const ExampleRow) !
 
     try w.writeAll("# Example verification results\n\n");
     try w.print("{d} expected outcomes, {d} unexpected outcomes.\n\n", .{ ok_count, unexpected_count });
-    try w.writeAll("| Issue | Example | Expected | Parse | GHDL | Simulate | Result |\n");
-    try w.writeAll("| --- | --- | --- | --- | --- | --- | --- |\n");
+    try w.writeAll("| Issue | Example | Expected | Parse | Runtime | GHDL | Simulate | Result |\n");
+    try w.writeAll("| --- | --- | --- | --- | --- | --- | --- | --- |\n");
 
     for (rows) |row| {
+        var rt_buf: [16]u8 = undefined;
         const expected = row.expected_status orelse "-";
         const parse = if (row.parse_ok) "ok" else "FAIL";
+        const runtime = runtimeCell(row.runtime, &rt_buf);
         const ghdl = if (!row.parse_ok) "-" else if (row.ghdl_ok) "ok" else "FAIL";
         const simulate = if (!row.simulation_requested) "-" else if (row.simulation_ok) "ok" else "FAIL";
         const result = switch (row.result) {
@@ -241,15 +254,15 @@ fn writeMarkdownReport(io: std.Io, path: []const u8, rows: []const ExampleRow) !
             .expected_fail => "⬛ expected fail",
             .unexpected_pass => "🟡 unexpected pass",
         };
-        try w.print("| {s} | {s} | {s} | {s} | {s} | {s} | {s} |\n", .{
-            row.tag, std.fs.path.basename(row.path), expected, parse, ghdl, simulate, result,
+        try w.print("| {s} | {s} | {s} | {s} | {s} | {s} | {s} | {s} |\n", .{
+            row.tag, std.fs.path.basename(row.path), expected, parse, runtime, ghdl, simulate, result,
         });
     }
     try w.flush();
 }
 
-fn classify(expected: ?[]const u8, parse_ok: bool, ghdl_ok: bool, simulation_requested: bool, simulation_ok: bool) ExampleResult {
-    const passed = parse_ok and ghdl_ok and (!simulation_requested or simulation_ok);
+fn classify(expected: ?[]const u8, parse_ok: bool, ghdl_ok: bool, simulation_requested: bool, simulation_ok: bool, rt: RuntimeOutcome) ExampleResult {
+    const passed = parse_ok and ghdl_ok and (!simulation_requested or simulation_ok) and rt.ok();
     const expects_pass = expected != null and std.mem.eql(u8, expected.?, "Implemented");
 
     if (expects_pass) return if (passed) .pass else .fail;
@@ -430,10 +443,18 @@ fn readStatusManifest(
     return map;
 }
 
+fn runtimeCell(rt: RuntimeOutcome, buf: []u8) []const u8 {
+    if (!rt.present) return "-";
+    if (rt.malformed) return "BAD TB";
+    return std.fmt.bufPrint(buf, "{s} {d}/{d}", .{
+        if (rt.passed == rt.total) "ok" else "FAIL", rt.passed, rt.total,
+    }) catch "?";
+}
+
 fn printTable(rows: []const ExampleRow) void {
     const separator = "-------------------------------------------------------------------------------------------------";
 
-    std.debug.print("\n{s:<8} {s:<32} {s:<12} {s:<5} {s:<5} {s:<10} {s}\n", .{ "Issue", "example", "expected", "parse", "ghdl", "simulate", "result" });
+    std.debug.print("\n{s:<8} {s:<32} {s:<12} {s:<5} {s:<10} {s:<5} {s:<10} {s}\n", .{ "Issue", "example", "expected", "parse", "runtime", "ghdl", "simulate", "result" });
     std.debug.print("{s}\n", .{separator});
 
     var pass_count: usize = 0;
@@ -442,6 +463,7 @@ fn printTable(rows: []const ExampleRow) void {
     for (rows) |r| {
         const expected_str = r.expected_status orelse "-";
         const parse_str = if (r.parse_ok) "ok" else "FAIL";
+        var rt_buf: [16]u8 = undefined;
         const ghdl_str = if (!r.parse_ok) "-" else if (r.ghdl_ok) "ok" else "FAIL";
         const sim_str = if (!r.simulation_requested) "-" else if (r.simulation_ok) "ok" else "FAIL";
         const result_str = switch (r.result) {
@@ -452,8 +474,8 @@ fn printTable(rows: []const ExampleRow) void {
         };
         if (r.result == .pass or r.result == .expected_fail) pass_count += 1 else fail_count += 1;
 
-        std.debug.print("{s:<8} {s:<32} {s:<12} {s:<5} {s:<5} {s:<10} {s}\n", .{
-            r.tag, std.fs.path.basename(r.path), expected_str, parse_str, ghdl_str, sim_str, result_str,
+        std.debug.print("{s:<8} {s:<32} {s:<12} {s:<5} {s:<10} {s:<5} {s:<10} {s}\n", .{
+            r.tag, std.fs.path.basename(r.path), expected_str, parse_str, runtimeCell(r.runtime, &rt_buf), ghdl_str, sim_str, result_str,
         });
     }
 

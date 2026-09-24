@@ -1,4 +1,4 @@
-// linear: TAG-143 Expressing a single return to place of invocation
+// linear: TAG-143 Example 12.2 Expressing a single return to place of invocation
 AND($A $B)
 AND[(X<>Y<>)($R) 
 R<$X$Y()>

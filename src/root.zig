@@ -35,6 +35,7 @@ pub const runtime = struct {
   pub const environment = @import("dialects/ipl/runtime/environment.zig");
   pub const bag = @import("dialects/ipl/runtime/bag.zig");
   pub const dispatch = @import("dialects/ipl/runtime/dispatch.zig");
+  pub const tb_vectors = @import("dialects/ipl/runtime/tb_vectors.zig");
 };
 
 

@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-88e4a8a5.js";
+            window.path_to_searchindex_js = "searchindex-b738cd29.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-a511d633.js"></script>
+        <script src="toc-0f0a02a4.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -10062,6 +10062,125 @@ Backend Realization
 <li>If a place being present means “exactly this many instances of this thing currently exist, and using one changes how many are left” — reactants, resources, anything with a notion of depletion or multiplicity — reach for <code>@runtime(consumable)</code>.</li>
 </ul>
 <p>There’s no hardware realization for the consumable model yet — no VHDL backend understands token depletion the way it understands a persistent signal. For now, <code>@runtime(consumable)</code> definitions run only against MatterScript’s reference runtime, as a way of expressing and testing ideas that don’t map onto a wire at all. That may change; it hasn’t yet, and the directive doesn’t pretend otherwise.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="verification-process-1"><a href="#verification-process-1" class="header">Verification Process</a></h1>
+<h2 id="verification-process"><a class="header" href="#verification-process">Verification Process</a></h2>
+<p>Every example under <code>examples/docs/{issue-id}/</code> is checked automatically by
+<code>verify.sh</code>, which pulls its list of examples and their expected status from
+<code>docs/generated/linear/status.json</code>, which is built by the <code>weave</code> utility.
+Each example advances through up to four independent stages.
+A stage that finds nothing to do reports <code>-</code>
+rather than pass or fail, and a failure at one stage does not block the
+stages after it from being attempted where possible, so a single run
+tells you as much as it can about where an example stands.</p>
+<h3 id="the-four-stages"><a class="header" href="#the-four-stages">The four stages</a></h3>
+<p><strong>1. Parse.</strong> The <code>.ms.ipl</code> source is parsed and validated. This is the
+only stage every example must pass; everything downstream depends on
+having a valid network.</p>
+<p><strong>2. Runtime.</strong> If a sibling <code>&lt;stem&gt;.tb.vec</code> file is present next to the
+<code>.ms.ipl</code> source, the design is run through the MatterScript runtime
+directly — no VHDL, no external simulator. The vector file declares input
+and output columns and a table of rows; each row is driven into the
+parsed network as one wavefront, and the resulting output values are
+checked against what the row expects. A design with no <code>.tb.vec</code> file
+shows <code>-</code> in this column: parsing correctly is still meaningful on its
+own, but nothing has verified its behavior. <code>example-12.26.tb.vec</code> for
+TAG-177 looks like this:</p>
+<pre><code>@dut(FULLADD)
+@encoding(X:  0=A, 1=B)
+@encoding(Y:  0=C, 1=D)
+@encoding(CI: 0=E, 1=F)
+@encoding(SUM: 0=s, 1=t)
+@encoding(CARRY: 0=u, 1=v)
+@vectors(X,Y,CI : SUM,CARRY)
+
+0,0,0 : 0,0
+0,0,1 : 1,0
+...
+</code></pre>
+<p><code>@encoding</code> maps a logical 0/1 value to whatever rail symbol the design
+actually uses on that port; a port with no <code>@encoding</code> takes its cells as
+raw symbols, which is how simpler designs like TAG-143’s <code>AND</code> are
+written with no encoding block at all. A row can also assert <code>!stall</code>,
+meaning the wavefront is expected to never complete — the correct
+behavior for an input combination the design deliberately leaves
+unresolved.</p>
+<p>This stage exists to catch behavioral bugs directly, independent of
+anything the VHDL backend does. It’s also what caught the two bugs
+behind TAG-177 during development: a joint-match rule that needs comma
+separation (<code>G,I[S]</code>, not <code>GI[S]</code>) will silently parse as a single place
+name and stall every wavefront, and a transform-rule symbol that
+collides with a boundary port name is now rejected at parse time rather
+than producing a network with two things asserting the same wire.</p>
+<p><strong>3. GHDL (VHDL emission and analysis).</strong> The parsed network is emitted
+as VHDL and run through GHDL’s analyzer. This checks that the design
+translates to synthesizable VHDL and that GHDL accepts it, independent
+of what the design actually computes.</p>
+<p><strong>4. Simulate.</strong> If simulation is requested for the issue, the emitted
+VHDL is run through a GHDL simulation and its output is checked. This is
+the closest stage to a full hardware-equivalent run, at the cost of
+being the most indirect way to catch a bug in the network itself — a
+failure here can originate in the network, the emitter, or the
+simulation harness.</p>
+<h3 id="reading-a-result"><a class="header" href="#reading-a-result">Reading a result</a></h3>
+<p>An example’s overall <code>result</code> column reflects whether every stage that
+was expected to pass, did. Expectations come from Linear’s tracked
+status (<code>Implemented</code>, <code>Partial</code>, <code>Spec Only</code>, and so on) crossed with
+whether simulation was requested:</p>
+<ul>
+<li><strong>✅ PASS</strong> — parse, runtime (if present), GHDL, and simulation (if
+requested) all succeeded, matching an <code>Implemented</code> expectation.</li>
+<li><strong>❌ FAIL</strong> — a stage that was expected to pass, didn’t.</li>
+<li><strong>⬛ expected fail</strong> — a stage failed, but that failure was itself the
+expected outcome (for example, an issue tracked as <code>Partial</code> whose
+known-incomplete feature causes GHDL to reject it).</li>
+<li><strong>🟡 unexpected pass</strong> — everything passed, but Linear’s tracked status
+didn’t expect it to (commonly a <code>Partial</code> or <code>Spec Only</code> issue whose
+example happens to already work). This isn’t a failure; it’s a signal
+that the tracked status may be stale and worth revisiting.</li>
+</ul>
+<h3 id="current-results"><a class="header" href="#current-results">Current results</a></h3>
+<pre><code>Issue    example                          expected     parse runtime    ghdl  simulate   result
+-------------------------------------------------------------------------------------------------
+TAG-112  mobius_ring.ms.ipl               Partial      ok    -          FAIL  -          ⬛ expected fail
+TAG-129  example-12.19.ms.ipl             Implemented  ok    -          ok    FAIL       ❌ FAIL
+TAG-130  example-12.1.ms.ipl              Implemented  ok    -          ok    FAIL       ❌ FAIL
+TAG-136  example-12.45.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
+TAG-137  example-12.41.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
+TAG-138  example-12.40.ms.ipl             Implemented  ok    -          FAIL  -          ❌ FAIL
+TAG-142  example-12.3.ms.ipl              Partial      ok    -          ok    -          🟡 unexpected pass
+TAG-143  example-12.2.ms.ipl              Implemented  ok    ok 4/4     ok    -          ✅ PASS
+TAG-146  example-12.12.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
+TAG-147  example-12.13.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
+TAG-148  example-12.11.ms.ipl             Implemented  ok    -          ok    FAIL       ❌ FAIL
+TAG-149  example-12.9.ms.ipl              Spec Only    ok    -          ok    -          🟡 unexpected pass
+TAG-151  example-12.17.ms.ipl             Partial      ok    -          ok    -          🟡 unexpected pass
+TAG-153  example-12.8.ms.ipl              Implemented  ok    -          ok    -          ✅ PASS
+TAG-160  example-12.33.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
+TAG-163  example-12.36.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
+TAG-177  example-12.26.ms.ipl             Implemented  ok    ok 8/8     ok    -          ✅ PASS
+TAG-180  example-12.10.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
+TAG-181  example-12.11.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
+TAG-184  example-12.24.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
+TAG-185  case-unique-signals.ms.ipl       Implemented  ok    -          ok    -          ✅ PASS
+TAG-187  generate_syntax.ms.ipl           Implemented  ok    -          ok    -          ✅ PASS
+TAG-189  example-12.14-arbitration.ms.ipl Implemented  ok    -          ok    -          ✅ PASS
+TAG-190  example-12.5.ms.ipl              Implemented  ok    -          ok    -          ✅ PASS
+TAG-192  entity_labeling.ms.ipl           Partial      ok    -          ok    -          🟡 unexpected pass
+TAG-196  cube.ms.ipl                      Implemented  ok    -          FAIL  -          ❌ FAIL
+TAG-198  example-12.25.ms.ipl             Partial      ok    -          ok    -          🟡 unexpected pass
+TAG-200  dual-rail.ms.ipl                 Partial      ok    -          ok    -          🟡 unexpected pass
+TAG-201  combustion-reaction.ms.ipl       Partial      ok    -          ok    -          🟡 unexpected pass
+TAG-207  example-12.35.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
+-------------------------------------------------------------------------------------------------
+18 ok, 12 unexpected
+</code></pre>
+<p>Only two examples currently exercise the runtime stage (TAG-143, TAG-177);
+every other example still shows <code>-</code> there. Writing a <code>.tb.vec</code> for more
+of the <code>Implemented</code> examples — and especially for the four current
+<code>❌ FAIL</code> rows — is the most direct way to find out whether a failure is
+in the network itself or in VHDL emission/simulation, since the runtime
+stage checks the design’s behavior without going through either.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="neighborhood-rules"><a class="header" href="#neighborhood-rules">Neighborhood Rules</a></h1>
 <p>Earlier in the book we introduced <strong>Transform Rules</strong> as one of the fundamental building blocks of MatterScript. A Transform Rule describes how one arrangement of tokens transforms into another. Small examples, such as Boolean logic gates, can be written by hand.</p>

@@ -1,0 +1,8 @@
+// example-12.2.tb.vec: TAG-143, AND with single return to place of invocation
+@dut(AND)
+@vectors(X,Y : R)
+
+0,0 : 0
+0,1 : 0
+1,0 : 0
+1,1 : 1

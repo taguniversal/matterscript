@@ -1,0 +1,17 @@
+// example-12-26.tb.vec: Fant Example 12.26, pure-value full adder
+@dut(FULLADD)
+@encoding(X:     0=A, 1=B)
+@encoding(Y:     0=C, 1=D)
+@encoding(CI:    0=E, 1=F)
+@encoding(SUM:   0=s, 1=t)
+@encoding(CARRY: 0=u, 1=v)
+@vectors(X,Y,CI : SUM,CARRY)
+
+0,0,0 : 0,0
+0,0,1 : 1,0
+0,1,0 : 1,0
+0,1,1 : 0,1
+1,0,0 : 1,0
+1,0,1 : 0,1
+1,1,0 : 0,1
+1,1,1 : 1,1

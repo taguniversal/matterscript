@@ -134,6 +134,18 @@ pub fn shake(bag: *Bag, rules: []const ExecutableRule) !void {
                         try bag.add(sym);
                         try bag.recordEmission(rule.dest);
                     },
+                    .select => {
+                        // Conditional invocation ($a$b()) needs a
+                        // consumable-runtime design of its own: bag.zig
+                        // consumes tokens by literal identity, but
+                        // select's rule.inputs are argument PLACE NAMES
+                        // whose current VALUES form the lookup key — a
+                        // dereference bag.zig's model has no equivalent
+                        // for yet. Revisit when @runtime(consumable)
+                        // needs conditional invocation; not exercised by
+                        // any test today.
+                        return error.SelectNotSupportedInConsumableRuntime;
+                    },
                 }
             }
             changed = true;
