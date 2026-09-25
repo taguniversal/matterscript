@@ -158,6 +158,22 @@ pub fn buildRules(allocator: std.mem.Allocator, def: network.Definition) ![]cons
     return rules.toOwnedSlice(allocator);
 }
 
+fn destinationSatisfied(env: *Environment, arg: network.Arg) bool {
+    if (arg.kind == .group) {
+        const g = arg.group orelse return false;
+        return switch (g.kind) {
+            .bundle => for (g.places) |p| {
+                if (!destinationSatisfied(env, p)) break false;
+            } else true,
+            .mutex, .arbitration => for (g.places) |p| {
+                if (destinationSatisfied(env, p)) break true;
+            } else false,
+        };
+    }
+    if (arg.name.len == 0) return true;
+    return env.isValid(arg.name);
+}
+
 pub const StuckPlace = struct {
     place: []const u8,
     /// Unresolved inputs of whichever rule(s) target this place — one
@@ -218,8 +234,18 @@ pub fn run(
     }
 
     var stuck: std.ArrayListUnmanaged(StuckPlace) = .empty;
+    var incomplete = false;
     for (def.destinations) |dest| {
-        if (env.isValid(dest.name)) continue;
+        if (destinationSatisfied(env, dest)) continue;
+        incomplete = true;
+
+        if (dest.kind == .group) {
+            // Coarse for now: names the group by its raw source text
+            // rather than tracing which member(s) are still unresolved.
+            // Refine once group-aware stuck diagnostics are needed.
+            try stuck.append(allocator, .{ .place = dest.text, .waiting_on = &.{} });
+            continue;
+        }
 
         var waiting: std.ArrayListUnmanaged([]const u8) = .empty;
         for (rules) |rule| {
@@ -239,5 +265,5 @@ pub fn run(
         try stuck.append(allocator, .{ .place = dest.name, .waiting_on = try waiting.toOwnedSlice(allocator) });
     }
 
-    return .{ .complete = stuck.items.len == 0, .stuck = try stuck.toOwnedSlice(allocator) };
+    return .{ .complete = !incomplete, .stuck = try stuck.toOwnedSlice(allocator) };
 }

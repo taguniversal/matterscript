@@ -72,6 +72,26 @@ pub const Testbench = struct {
         return .{ .allocator = allocator, .def = def, .rules = rules, .streams = streams };
     }
 
+    fn collectOutputs(
+        allocator: std.mem.Allocator,
+        env: *Environment,
+        args: []const network.Arg,
+        outputs: *std.StringHashMapUnmanaged([]const u8),
+    ) !void {
+        for (args) |arg| {
+            if (arg.kind == .group) {
+                if (arg.group) |g| try collectOutputs(allocator, env, g.places, outputs);
+                continue;
+            }
+            if (arg.name.len == 0) continue;
+            switch (env.get(arg.name)) {
+                .valid => |v| try outputs.put(allocator, arg.name, env.symbols.items[v]),
+                .null_value => {},
+            }
+        }
+    }
+
+
     /// Runs every queued token to completion, one data wavefront per
     /// captured Presentation, stopping once no further wavefront can
     /// complete (streams exhausted, or a genuinely stuck combination).
@@ -112,12 +132,7 @@ pub const Testbench = struct {
             }
 
             var outputs: std.StringHashMapUnmanaged([]const u8) = .empty;
-            for (self.def.destinations) |dest| {
-                switch (env.get(dest.name)) {
-                    .valid => |v| try outputs.put(self.allocator, dest.name, env.symbols.items[v]),
-                    .null_value => {},
-                }
-            }
+            try collectOutputs(self.allocator, &env, self.def.destinations, &outputs);
             try presentations.append(self.allocator, .{ .outputs = outputs });
         }
 

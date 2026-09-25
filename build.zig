@@ -302,6 +302,19 @@ pub fn build(b: *std.Build) void {
 
     const run_boundary_test = b.addRunArtifact(boundary_test);
 
+    const controlled_fanout_test = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/controlled_fanout.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+            },
+        }),
+    });
+
+    const run_controlled_fanout_test = b.addRunArtifact(controlled_fanout_test);
+
     const runtime_test = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/tests/runtime_test.zig"),
@@ -367,7 +380,6 @@ pub fn build(b: *std.Build) void {
 
     const run_example_12_35_tests = b.addRunArtifact(example_12_35_tests);
 
-
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
@@ -393,6 +405,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_runtime_combustion_test.step);
     test_step.dependOn(&run_harness_tests.step);
     test_step.dependOn(&run_example_12_35_tests.step);
+    test_step.dependOn(&run_controlled_fanout_test.step);
 
     // --- Code Coverage Step (using kcov) ---
     const coverage_step = b.step("coverage", "Generate code coverage report using kcov");

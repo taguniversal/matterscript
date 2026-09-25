@@ -190,6 +190,20 @@ const Resolved = struct {
     stall: bool,
 };
 
+// Group aware search
+fn portExists(args: []const network.Arg, name: []const u8) bool {
+    for (args) |arg| {
+        if (arg.kind == .group) {
+            if (arg.group) |g| {
+                if (portExists(g.places, name)) return true;
+            }
+            continue;
+        }
+        if (std.mem.eql(u8, arg.name, name)) return true;
+    }
+    return false;
+}
+
 fn hasArg(args: []const network.Arg, name: []const u8) bool {
     for (args) |arg| if (std.mem.eql(u8, arg.name, name)) return true;
     return false;
@@ -210,15 +224,15 @@ fn symbolFor(enc: ?Encoding, cell: []const u8) ?[]const u8 {
 
 fn resolve(a: std.mem.Allocator, v: Vectors, def: network.Definition, diag: *Diag) ParseError![]const Resolved {
     for (v.in_cols) |c| {
-        if (!hasArg(def.sources, c))
+        if (!portExists(def.sources, c))
             return bad(a, diag, 0, "input column '{s}' is not a source place of {s}", .{ c, def.name });
     }
     for (v.out_cols) |c| {
-        if (!hasArg(def.destinations, c))
+        if (!portExists(def.destinations, c))
             return bad(a, diag, 0, "output column '{s}' is not a destination place of {s}", .{ c, def.name });
     }
     for (v.encodings) |e| {
-        if (!hasArg(def.sources, e.port) and !hasArg(def.destinations, e.port))
+        if (!portExists(def.sources, e.port) and !hasArg(def.destinations, e.port))
             return bad(a, diag, 0, "@encoding port '{s}' is not a port of {s}", .{ e.port, def.name });
     }
 

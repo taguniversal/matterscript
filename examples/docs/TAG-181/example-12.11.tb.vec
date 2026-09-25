@@ -1,0 +1,7 @@
+@dut(fanout)
+@vectors(select,in : out1,out2,out3,out4)
+
+A,V : V,-,-,-
+B,V : -,V,-,-
+C,V : -,-,V,-
+D,V : -,-,-,V
