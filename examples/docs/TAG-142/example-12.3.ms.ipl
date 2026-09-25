@@ -1,5 +1,9 @@
-// linear: TAG-142 Further abbreviated expression of a single return to place of invocation
+// linear: TAG-142 Example 12.3 Further abbreviated expression of a single return to place of invocation
 AND($A $B)
-AND[(X<>Y<>)<>:
-
+AND[(X<>Y<>)<>
+  $X$Y() :
+    0,0[0]
+    0,1[0]
+    1,0[0]
+    1,1[1]
 ] 

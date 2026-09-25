@@ -1,6 +1,6 @@
 # Example verification results
 
-18 expected outcomes, 12 unexpected outcomes.
+19 expected outcomes, 11 unexpected outcomes.
 
 | Issue | Example | Expected | Parse | Runtime | GHDL | Simulate | Result |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -30,7 +30,7 @@
 | TAG-190 | example-12.5.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-192 | entity_labeling.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
 | TAG-196 | cube.ms.ipl | Implemented | ok | - | FAIL | - | ❌ FAIL |
-| TAG-198 | example-12.25.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
+| TAG-198 | example-12.25.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
 | TAG-200 | dual-rail.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
 | TAG-201 | combustion-reaction.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
 | TAG-207 | example-12.35.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |

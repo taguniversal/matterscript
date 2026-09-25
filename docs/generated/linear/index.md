@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 23  |  🟡 Partial: 8  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 121  |  Total: 154
+✅ Implemented: 24  |  🟡 Partial: 7  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 122  |  Total: 155
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-179: 2. The Simplicity of Concurrency](TAG-179.md)
@@ -143,7 +143,7 @@
 - ⬜ Not started [TAG-195: Parser Invariants](TAG-195.md)
 - ✅ Implemented [TAG-196: Unit Cube Geometry](TAG-196.md)
 - ⬜ Not started [TAG-197: IPL Reference Runtime](TAG-197.md)
-- 🟡 Partial [TAG-198: Example 12.25 Pure Value Expression](TAG-198.md)
+- ✅ Implemented [TAG-198: Example 12.25 Pure Value Expression](TAG-198.md)
 - ⬜ Not started [TAG-199: Matterscript Developer's Guide](TAG-199.md)
 - 🟡 Partial [TAG-200: Dual rail/Multi-token Pure Value Resolution](TAG-200.md)
 - 🟡 Partial [TAG-201: Support multi-operand stoichiometry and multi-emission fills via chemical reaction test fixture](TAG-201.md)
@@ -153,6 +153,7 @@
 - ⬜ Not started [TAG-206: Runtime directive](TAG-206.md)
 - ✅ Implemented [TAG-207: Example 12.35 IF-THEN-ELSE expression conventions](TAG-207.md)
 - ⬜ Not started [TAG-208: Token naming conventions across runtime paths](TAG-208.md)
+- ⬜ Not started [TAG-209: Runtime testbench](TAG-209.md)
 - ⬜ Not started [TAG-46: Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [TAG-47: Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [TAG-80: The Completeness Dialogue](TAG-80.md)

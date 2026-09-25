@@ -1,0 +1,16 @@
+@dut(FULLADD)
+@encoding(A:  0=S, 1=T)
+@encoding(B:  0=U, 1=V)
+@encoding(CI: 0=W, 1=X)
+@encoding(SUM: 0=K, 1=L)
+@encoding(CO:  0=M, 1=N)
+@vectors(A,B,CI : SUM,CO)
+
+0,0,0 : 0,0
+0,0,1 : 1,0
+0,1,0 : 1,0
+0,1,1 : 0,1
+1,0,0 : 1,0
+1,0,1 : 0,1
+1,1,0 : 0,1
+1,1,1 : 1,1

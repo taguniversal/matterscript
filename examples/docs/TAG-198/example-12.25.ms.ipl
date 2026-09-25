@@ -1,7 +1,7 @@
 FULLADD($A,$B,$C)(< > CARRYOUT< >)
-FULLADD[(A< > B< > CI< >)($SUM$CO)
+FULLADD[(A< > B< > CI< >)($SUM $CO)
 
-$A$B$CI :
+$A $B $CI :
 K[SUM<K>] L[SUM<L>] M[CO<M>] N[CO<N>]
 S,U,W[K,M] S,U,X[L,M] S,V,W[L,M] S,V,X[K,N]
 T,U,W[L,M] T,U,X[K,N] T,V,W[K,N] T,V,X[L,N] ]
