@@ -380,6 +380,19 @@ pub fn build(b: *std.Build) void {
 
     const run_example_12_35_tests = b.addRunArtifact(example_12_35_tests);
 
+    const bundling_semantics_test = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/bundling_semantics_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+            },
+        }),
+    });
+
+    const run_bundling_semantics_test = b.addRunArtifact(bundling_semantics_test);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
@@ -406,6 +419,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_harness_tests.step);
     test_step.dependOn(&run_example_12_35_tests.step);
     test_step.dependOn(&run_controlled_fanout_test.step);
+    test_step.dependOn(&run_bundling_semantics_test.step);
 
     // --- Code Coverage Step (using kcov) ---
     const coverage_step = b.step("coverage", "Generate code coverage report using kcov");
