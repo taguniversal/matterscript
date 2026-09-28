@@ -26,6 +26,7 @@ pub fn writeDefinition(
     raw_def: network.Definition,
     scope: []const u8,
 ) !void {
+    
     if (value_transform.isValueTransformRule(raw_def)) return;
     if (shouldSkipSpatialGeometry(raw_def)) return;
 

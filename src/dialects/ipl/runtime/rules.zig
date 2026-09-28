@@ -5,13 +5,15 @@
 // rule stays null indefinitely — reported, not treated as an error.
 //
 // Scope (per the IPL Reference Runtime ticket): ordinary fills (literals
-// and $name references) and value transform rules only. No .invoke, no
-// ROM lookup tables, no @generate.
+// and $name references) and value transform rules only.
+// No ROM lookup tables, no @generate.
 
 const std = @import("std");
 const network = @import("../network.zig");
 const value_transform = @import("../value_transform.zig");
 const environment = @import("environment.zig");
+
+const max_invocation_depth = 32;
 
 pub const Environment = environment.Environment;
 pub const PlaceState = environment.PlaceState;
@@ -69,7 +71,116 @@ fn buildSelectTable(allocator: std.mem.Allocator, def: network.Definition) ![]co
     return entries.toOwnedSlice(allocator);
 }
 
+// Build Rules Helpers
+const Binding = struct { callee: []const u8, caller: []const u8 };
+
+fn findDefinition(defs: []const network.Definition, name: []const u8) ?network.Definition {
+    for (defs) |d| if (std.mem.eql(u8, d.name, name)) return d;
+    return null;
+}
+
+/// Slice 1: plain named places only. Bundles are Ticket 2.
+fn scalarPlace(arg: network.Arg) ![]const u8 {
+    if (arg.kind == .group) return error.BundleInvocationNotSupported;
+    if (arg.kind != .place or arg.name.len == 0) return error.UnsupportedInvocationArgument;
+    return arg.name;
+}
+
+fn mapName(allocator: std.mem.Allocator, prefix: []const u8, bindings: []const Binding, name: []const u8) ![]const u8 {
+    for (bindings) |b| if (std.mem.eql(u8, b.callee, name)) return b.caller;
+    return std.fmt.allocPrint(allocator, "{s}{s}", .{ prefix, name });
+}
+
+fn isSourcePort(callee: network.Definition, name: []const u8) bool {
+    for (callee.sources) |s| if (std.mem.eql(u8, s.name, name)) return true;
+    return false;
+}
+
+fn producedBy(rules: []const ExecutableRule, name: []const u8) bool {
+    for (rules) |r| if (std.mem.eql(u8, r.dest, name)) return true;
+    return false;
+}
+
+/// A place that is neither a port nor produced by any rule can only be
+/// made valid by the environment seeding a token of that name. Inside an
+/// inlined callee nothing seeds it, so it would silently stall. Fail
+/// loudly instead. (This is the FULLADD case: S,U,W[K,M] and friends.)
+fn checkInvocable(callee: network.Definition, rules: []const ExecutableRule, name: []const u8) !void {
+    if (isSourcePort(callee, name) or producedBy(rules, name)) return;
+    return error.ValueKeyedInvocationNotSupported;
+}
+
+fn inlineInvocation(
+    allocator: std.mem.Allocator,
+    out: *std.ArrayListUnmanaged(ExecutableRule),
+    inv: network.Invocation,
+    index: usize,
+    definitions: []const network.Definition,
+    depth: usize,
+) anyerror!void {
+    const callee = findDefinition(definitions, inv.name) orelse return error.UnknownCallee;
+    if (inv.sources.len != callee.sources.len or inv.destinations.len != callee.destinations.len)
+        return error.InvocationArityMismatch;
+
+    var bindings: std.ArrayListUnmanaged(Binding) = .empty;
+    for (inv.sources, callee.sources) |actual, formal|
+        try bindings.append(allocator, .{ .callee = try scalarPlace(formal), .caller = try scalarPlace(actual) });
+    for (inv.destinations, callee.destinations) |actual, formal|
+        try bindings.append(allocator, .{ .callee = try scalarPlace(formal), .caller = try scalarPlace(actual) });
+
+    const callee_rules = try buildRulesAtDepth(allocator, callee, definitions, depth + 1);
+    for (callee_rules) |r| {
+        for (r.inputs) |input| try checkInvocable(callee, callee_rules, input);
+        switch (r.action) {
+            .copy_from => |src| try checkInvocable(callee, callee_rules, src),
+            else => {},
+        }
+    }
+
+    // Local index, not a global counter: nested prefixes compose
+    // ("AND3#1.AND#0.") and stay unique. `inv.label` is ignored for now.
+    const prefix = try std.fmt.allocPrint(allocator, "{s}#{d}.", .{ callee.name, index });
+
+    for (callee_rules) |r| {
+        const inputs = try allocator.alloc([]const u8, r.inputs.len);
+        for (r.inputs, 0..) |input, k| inputs[k] = try mapName(allocator, prefix, bindings.items, input);
+
+        const action: RuleAction = switch (r.action) {
+            .literal => |v| .{ .literal = v },
+            .assert_symbol => |s| .{ .assert_symbol = s }, // a VALUE, not a place
+            .copy_from => |src| .{ .copy_from = try mapName(allocator, prefix, bindings.items, src) },
+            .select => |entries| .{ .select = entries }, // keys are values; inputs are renamed above
+        };
+
+        try out.append(allocator, .{
+            .inputs = inputs,
+            .dest = try mapName(allocator, prefix, bindings.items, r.dest),
+            .action = action,
+        });
+    }
+}
+
 pub fn buildRules(allocator: std.mem.Allocator, def: network.Definition) ![]const ExecutableRule {
+    return buildRulesInNetwork(allocator, def, &.{});
+}
+
+/// `definitions` is the network's flat definition list, used to resolve
+/// callee names for `.invoke` statements.
+pub fn buildRulesInNetwork(
+    allocator: std.mem.Allocator,
+    def: network.Definition,
+    definitions: []const network.Definition,
+) ![]const ExecutableRule {
+    return buildRulesAtDepth(allocator, def, definitions, 0);
+}
+
+fn buildRulesAtDepth(
+    allocator: std.mem.Allocator,
+    def: network.Definition,
+    definitions: []const network.Definition,
+    depth: usize,
+) anyerror![]const ExecutableRule {
+    if (depth > max_invocation_depth) return error.InvocationDepthExceeded;
     var rules: std.ArrayListUnmanaged(ExecutableRule) = .empty;
 
     // Value transform rules — reusing the exact same parsing/grouping/
@@ -153,6 +264,13 @@ pub fn buildRules(allocator: std.mem.Allocator, def: network.Definition) ![]cons
         } else {
             try rules.append(allocator, .{ .inputs = &.{}, .dest = f.dest_name, .action = .{ .assert_symbol = expr } });
         }
+    }
+
+    var invoke_index: usize = 0;
+    for (def.resolution) |stmt| {
+        if (stmt != .invoke) continue;
+        try inlineInvocation(allocator, &rules, stmt.invoke, invoke_index, definitions, depth);
+        invoke_index += 1;
     }
 
     return rules.toOwnedSlice(allocator);

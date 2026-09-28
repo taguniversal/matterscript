@@ -20,6 +20,7 @@ pub const lookup = @import("dialects/ipl/vhdl/lookup.zig");
 pub const spatial  = @import("dialects/geo/spatial.zig");
 pub const spatial_domain = @import("dialects/ipl/domains/spatial_domain.zig");
 pub const ipl_export_mesh = @import("dialects/ipl/export/mesh.zig");
+pub const validate = @import("dialects/ipl/validate.zig");
 
 // VHDL export namespace
 pub const vhdl = struct {

@@ -19,7 +19,6 @@ pub fn argToText(arg: network.Arg) []const u8 {
     };
 }
 
-
 pub fn placeName(allocator: std.mem.Allocator, arg: network.Arg) ![]const u8 {
     const raw_name = switch (arg.kind) {
         .place => if (arg.name.len > 0) arg.name else arg.text,
@@ -28,7 +27,6 @@ pub fn placeName(allocator: std.mem.Allocator, arg: network.Arg) ![]const u8 {
     };
     return try sanitizeName(allocator, raw_name);
 }
-
 
 pub fn scopedDefinitionName(
     allocator: std.mem.Allocator,
@@ -53,13 +51,27 @@ pub fn scopedDefinitionName(
     return std.fmt.allocPrint(allocator, "{s}_{s}", .{ local_scope, local_name });
 }
 
-
-
 pub fn findContainedDefinition(def: network.Definition, name: []const u8) ?network.Definition {
     for (def.contained) |contained| {
         if (std.ascii.eqlIgnoreCase(contained.name, name)) return contained;
     }
     return null;
+}
+
+/// Caller's nested definitions first, then top-level (same rule as the validator).
+pub fn findCallee(def: network.Definition, top: []const network.Definition, name: []const u8) ?network.Definition {
+    if (findContainedDefinition(def, name)) |nested| return nested;
+    for (top) |t| {
+        if (std.ascii.eqlIgnoreCase(t.name, name)) return t;
+    }
+    return null;
+}
+
+/// The form of a definition that is actually emitted. The entity
+/// declaration and every port map derive port names from this one function.
+pub fn emissionForm(allocator: std.mem.Allocator, raw: network.Definition) !network.Definition {
+    const d = try boundary.normalizeReturnDestinations(allocator, raw);
+    return sanitizer.normalizeDefinitionIdentifiers(allocator, d);
 }
 
 pub fn writeInvocationArgument(
@@ -71,6 +83,13 @@ pub fn writeInvocationArgument(
 ) !void {
     const signal_name = try std.fmt.allocPrint(allocator, "invocation_{d}_arg_{d}", .{ invocation_index, argument_index });
     defer allocator.free(signal_name);
+
+    if (argument.kind == .place and argument.name.len > 0) {
+        const id = try placeName(allocator, argument);
+        defer allocator.free(id);
+        try writer.print("  {s} <= {s};\n", .{ signal_name, id });
+        return;
+    }
 
     const text = argToText(argument);
     const trimmed = std.mem.trim(u8, text, " \t\r\n");
@@ -110,20 +129,23 @@ pub fn writeInvocationSignals(
     }
 }
 
-
 pub fn invocationDefinitionName(
     allocator: std.mem.Allocator,
     def: network.Definition,
     scope: []const u8,
     name: []const u8,
 ) ![]u8 {
+    // Nested in the caller: declared as <scope>_<name>, the same rule
+    // writeDefinition applies when it recurses into def.contained.
     for (def.contained) |contained| {
         if (std.ascii.eqlIgnoreCase(contained.name, name)) {
             return scopedDefinitionName(allocator, scope, name);
         }
     }
-    // Fall back to the scoped name using the current definition's scope prefix
-    return scopedDefinitionName(allocator, scope, name);
+    // Not nested in the caller. Top-level definitions are declared with an
+    // empty scope (writeDefinition's `scope` is "" at the top), so
+    // instantiate them by that same unscoped name.
+    return scopedDefinitionName(allocator, "", name);
 }
 
 pub fn writeInvocationInstance(
@@ -131,6 +153,7 @@ pub fn writeInvocationInstance(
     writer: anytype,
     def: network.Definition,
     scope: []const u8,
+    top: []const network.Definition,
     inv: network.Invocation,
     invocation_index: usize,
 ) !void {
@@ -153,6 +176,13 @@ pub fn writeInvocationInstance(
     // consult.
     var target_sources: []const []const u8 = &.{};
     var target_destinations: []const []const u8 = &.{};
+
+    if (findCallee(def, top, inv.name)) |raw_target| {
+        const target = try emissionForm(allocator, raw_target);
+        target_sources = try boundary.collectBoundaryPortNames(allocator, target.sources);
+        target_destinations = try boundary.collectBoundaryPortNames(allocator, target.destinations);
+    }
+    
     if (findContainedDefinition(def, inv.name)) |raw_target| {
         const target = try sanitizer.normalizeDefinitionIdentifiers(allocator, raw_target);
         target_sources = try boundary.collectBoundaryPortNames(allocator, target.sources);

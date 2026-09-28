@@ -128,12 +128,14 @@ test "TAG-211 step 1b: bundle group at an invocation call site" {
         \\STEP1B([$A0 $A1 $A2 $A3])(OUT<>)
         \\
         \\STEP1B[([A0<> A1<> A2<> A3<>])($OUT)
-        \\ : A0[OUT<1>]
+        \\  :
+        \\ A0[OUT<1>]
         \\]
         \\
         \\WRAP($X0 $X1 $X2 $X3)(RESULT<>)
         \\WRAP[(X0<> X1<> X2<> X3<>)($RESULT)
         \\  STEP1B([$X0 $X1 $X2 $X3])(RESULT<>)
+        \\  :
         \\]
     ;
     const net = parser.parse(a, src) catch |err| {
@@ -213,7 +215,7 @@ test "TAG-211 step 4: full 4BITADD with bundling and invocation combined" {
         \\  FULLADD($A1 $B1 $C1)(SUM1<> C2<>)
         \\  FULLADD($A2 $B2 $C2)(SUM2<> C3<>)
         \\  FULLADD($A3 $B3 $C3)(SUM3<> CO<>)
-        \\   :
+        \\  :
         \\]
     ;
     const net = parser.parse(a, src) catch |err| {
@@ -221,4 +223,53 @@ test "TAG-211 step 4: full 4BITADD with bundling and invocation combined" {
         return err;
     };
     for (net.definitions) |def| dumpDef("step 4", def);
+}
+
+// --- 5. Bare single name standing for a bundle, both as an
+//        invocation's destination AND, immediately after, as the same
+//        bare name reused as a subsequent invocation's source. ---
+//
+// FOOBAR: bare $T in -> 3-wide bundle [A1 A2 A3] in its own header;
+//         3-wide bundle [$K1 $K2 $K3] out of its own header -> bare
+//         U<> at the call site.
+// BAR:    bare $U in -> 3-wide bundle [T1 T2 T3] in its own header.
+// PIPE:   feeds FOOBAR explicitly-bracketed (mechanism already proven
+//         in step 1b), captures its output as bare U<>, then reuses
+//         bare $U as BAR's bundle-shaped source — the untested part.
+//
+// If this fails, the error location should say whether it's the bare
+// destination binding (FOOBAR(...)(U<>)) or the bare source reuse
+// ($U into BAR) that the parser/binder doesn't handle.
+test "TAG-211 step 5: bare name aliasing a bundle across two invocation hops" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const src =
+        \\FOOBAR($T)(U<>)
+        \\FOOBAR[([A1<> A2<> A3<>])([$K1 $K2 $K3])
+        \\ :
+        \\  A1[K1<$A1>]
+        \\  A2[K2<$A2>]
+        \\  A3[K3<$A3>]
+        \\]
+        \\
+        \\BAR($U)(RESULT<>)
+        \\BAR[([T1<> T2<> T3<>])($RESULT)
+        \\ :
+        \\  T1[RESULT<$T1>]
+        \\]
+        \\
+        \\PIPE($X1 $X2 $X3)(FINAL<>)
+        \\PIPE[(X1<> X2<> X3<>)($FINAL)
+        \\  FOOBAR([$X1 $X2 $X3])(U<>)
+        \\  BAR($U)(FINAL<>)
+        \\ :
+        \\]
+    ;
+    const net = parser.parse(a, src) catch |err| {
+        std.debug.print("step 5 FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        return err;
+    };
+    for (net.definitions) |def| dumpDef("step 5", def);
 }

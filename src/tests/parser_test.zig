@@ -436,10 +436,17 @@ test "TAG-192 Support Explicit Instance Labelling (prefixlabel: invocation) for 
         \\     u2: AND($C $D)
         \\:
         \\ ]
+        \\  AND[($A $B)(res<>)
+        \\   $A$B()
+        \\   : 0,0[res<0>]
+        \\     0,1[res<0>]
+        \\     1,0[res<0>]
+        \\     1,1[res<1>]
+        \\]
     ;
 
     const net = try parser.parse(allocator, src);
-    try testing.expectEqual(@as(usize, 1), net.definitions.len);
+    try testing.expectEqual(@as(usize, 2), net.definitions.len);
 
     const resolution = net.definitions[0].resolution;
     try testing.expectEqual(@as(usize, 2), resolution.len);

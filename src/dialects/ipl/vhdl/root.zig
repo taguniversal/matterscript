@@ -38,7 +38,8 @@ pub fn writeVhdlNetwork(
 
 pub fn write(allocator: std.mem.Allocator, writer: anytype, net: network.Network) !void {
     for (net.definitions) |def| {
-        try entity.writeDefinition(allocator, writer, def, "");
+     //   try entity.writeDefinition(allocator, writer, def, "");
+        try entity.writeDefinitionInNetwork(allocator, writer, def, "", net.definitions);
     }
     try network_entity.writeNetworkEntity(allocator, writer, net);
 }

@@ -8,3 +8,9 @@
   FULLADD(A2<> B2<> C2<>)(SUM2<> C3<>)
   FULLADD(A3<> B3<> C3<>)(SUM3<> $CO)
 ]
+
+FULLADD[(A< > B< > CI< >)($SUM $CO)
+  $A $B $CI :
+K[SUM<K>] L[SUM<L>] M[CO<M>] N[CO<N>]
+S,U,W[K,M] S,U,X[L,M] S,V,W[L,M] S,V,X[K,N]
+T,U,W[L,M] T,U,X[K,N] T,V,W[K,N] T,V,X[L,N] ]

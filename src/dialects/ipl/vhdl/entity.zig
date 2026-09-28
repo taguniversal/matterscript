@@ -16,20 +16,26 @@ pub const value_transform = @import("../value_transform.zig"); // shared: AST sh
 const transform_emit = @import("export/value_transform.zig");  // VHDL-specific emission only
 pub const rom_lookup = @import("export/rom_lookup.zig");
 
+
+pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: network.Definition, scope: []const u8) !void {
+    return writeDefinitionInNetwork(allocator, writer, raw_def, scope, &.{});
+}
 /// Emits a VHDL entity and architecture body for a single MatterScript definition,
 /// normalizing destination defaults and identifiers, and recursively processing any
 /// nested child definitions.
-pub fn writeDefinition(
+pub fn writeDefinitionInNetwork(
     allocator: std.mem.Allocator,
     writer: anytype,
     raw_def: network.Definition,
     scope: []const u8,
+    top: []const  network.Definition,
 ) !void {
     if (value_transform.isValueTransformRule(raw_def)) return;
     if (boundary.shouldSkipSpatialGeometry(raw_def)) return;
 
-    var def = try boundary.normalizeReturnDestinations(allocator, raw_def);
-    def = try sanitizer.normalizeDefinitionIdentifiers(allocator, def);
+    //var def = try boundary.normalizeReturnDestinations(allocator, raw_def);
+    //def = try sanitizer.normalizeDefinitionIdentifiers(allocator, def);
+    const def = try invocation.emissionForm(allocator, raw_def);
 
     const def_id = try invocation.scopedDefinitionName(allocator, scope, def.name);
     defer allocator.free(def_id);
@@ -56,7 +62,8 @@ pub fn writeDefinition(
         const child_scope = try invocation.scopedDefinitionName(allocator, def_id, contained.name);
         defer allocator.free(child_scope);
 
-        try writeDefinition(allocator, writer, contained, def_id);
+       // try writeDefinition(allocator, writer, contained, def_id);
+       try writeDefinitionInNetwork(allocator, writer, contained, def_id, top);
     }
 
     // 2. Then write the parent definition/architecture that instantiates them
@@ -124,7 +131,7 @@ pub fn writeDefinition(
         if (already_declared) continue;
         const name = try allocator.dupe(u8, inv.name);
         try component_names.append(allocator, name);
-        const component_id = try invocation.invocationDefinitionName(allocator, def, scope, inv.name);
+        const component_id = try invocation.invocationDefinitionName(allocator, def, def_id, inv.name);
         defer allocator.free(component_id);
         try component.writeComponentDeclaration(writer, inv, component_id);
     }
@@ -143,7 +150,8 @@ pub fn writeDefinition(
             if (output.group == null and output.name.len != 0) continue;
             try writer.print("  invocation_{d}_output_{d} <= null_value;\n", .{ invocation_index, output_index });
         }
-        try invocation.writeInvocationInstance(allocator, writer, def, def_id, inv, invocation_index);
+       // try invocation.writeInvocationInstance(allocator, writer, def, def_id, inv, invocation_index);
+       try invocation.writeInvocationInstance(allocator, writer, def, def_id, top, inv, invocation_index);
     }
 
     // valid extraction from source places (inputs)

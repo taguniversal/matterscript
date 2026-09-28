@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 24  |  🟡 Partial: 7  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 122  |  Total: 155
+✅ Implemented: 24  |  🟡 Partial: 8  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 125  |  Total: 159
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-179: 2. The Simplicity of Concurrency](TAG-179.md)
@@ -154,6 +154,10 @@
 - ✅ Implemented [TAG-207: Example 12.35 IF-THEN-ELSE expression conventions](TAG-207.md)
 - ⬜ Not started [TAG-208: Token naming conventions across runtime paths](TAG-208.md)
 - ⬜ Not started [TAG-209: Runtime testbench](TAG-209.md)
+- ⬜ Not started [TAG-210: Rule 30 Cellular Automaton](TAG-210.md)
+- 🟡 Partial [TAG-211: Example 12.18 Bundling digits into numbers](TAG-211.md)
+- ⬜ Not started [TAG-212: Runtime: execute `Statement.invoke` (cross-definition invocation), scalar only](TAG-212.md)
+- ⬜ Not started [TAG-213: Runtime/parser: bare-name bundle aliasing at invocation boundaries](TAG-213.md)
 - ⬜ Not started [TAG-46: Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [TAG-47: Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [TAG-80: The Completeness Dialogue](TAG-80.md)

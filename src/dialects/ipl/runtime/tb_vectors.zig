@@ -280,6 +280,10 @@ fn badTb(a: std.mem.Allocator, label: []const u8, diag: Diag) Outcome {
     return .{ .present = true, .malformed = true, .err_msg = msg catch null };
 }
 
+//fn runRow(a: std.mem.Allocator, def: network.Definition, definitions: []const network.Definition, streams: []testbench.PortStream) ![]const testbench.Presentation {
+//    var tb = try testbench.Testbench.initInNetwork(a, def, definitions, streams);
+//    return tb.run();
+//}
 fn runRow(a: std.mem.Allocator, def: network.Definition, streams: []testbench.PortStream) ![]const testbench.Presentation {
     var tb = try testbench.Testbench.init(a, def, streams);
     return tb.run();
