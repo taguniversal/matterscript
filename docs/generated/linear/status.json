@@ -5,9 +5,9 @@
     "workflow_state": "Backlog"
   },
   "TAG-212": {
-    "implementation_status": null,
+    "implementation_status": "Implemented",
     "simulation_requested": false,
-    "workflow_state": "Backlog"
+    "workflow_state": "Done"
   },
   "TAG-211": {
     "implementation_status": "Partial",

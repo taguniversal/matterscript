@@ -18,18 +18,26 @@ EQ0({$lesser $init})(incondition< > outcondition< > )
 dualfanout($outcondition $lesser $greater)
   ({(cyclelesser< > cyclegreater< > ) ( SINK< > GCD< >) })
 :
+] 
+
 dualfanin[(steer< > {A< > B< >}{C< > D< >})($out1 $out2)
    $steer( ) : True[out1< $A > out2<$B >]
-               False[out1< $C > out2<$D >] ]
+               False[out1< $C > out2<$D >]
+]
 
 dualfanout[(steer< > A< > B< >)({$out1 $out2} {$out3 $out4})
    $steer( ) :  True[out1< $A > out2<$B >]
-                False[out3< $B > out4<$A >] ]
+                False[out3< $B > out4<$A >] 
+]
 
 EQ0[(A<>)($condition $condition)
   condition<Equal($A,0)>:]
 
-LTsteer[(A< > B< >)
-  LT($A $B) : True[out1< $A > out2<$B >]
-              False[out1< $B > out2<$A >] ]
-] 
+LTsteer[(A< > B< >)($out1 $out2)
+  LT($A $B) 
+  : 
+     True[out1< $A > out2<$B >]
+     False[out1< $B > out2<$A >] 
+]
+
+Equal[($X $Y)]

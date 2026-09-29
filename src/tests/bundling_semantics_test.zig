@@ -178,7 +178,8 @@ test "TAG-211 step 3: chained invoke statements, no bundling" {
         \\$A$B$CI :
         \\K[SUM<K>] L[SUM<L>] M[CO<M>] N[CO<N>]
         \\S,U,W[K,M] S,U,X[L,M] S,V,W[L,M] S,V,X[K,N]
-        \\T,U,W[L,M] T,U,X[K,N] T,V,W[K,N] T,V,X[L,N] ]
+        \\T,U,W[L,M] T,U,X[K,N] T,V,W[K,N] T,V,X[L,N] 
+        \\]
         \\
         \\CHAIN($X0 $X1 $X2)(SUM0<> SUM1<> COUT<>)
         \\CHAIN[(X0<> X1<> X2<>)($SUM0 $SUM1 $COUT)
@@ -205,7 +206,8 @@ test "TAG-211 step 4: full 4BITADD with bundling and invocation combined" {
         \\$A$B$CI :
         \\K[SUM<K>] L[SUM<L>] M[CO<M>] N[CO<N>]
         \\S,U,W[K,M] S,U,X[L,M] S,V,W[L,M] S,V,X[K,N]
-        \\T,U,W[L,M] T,U,X[K,N] T,V,W[K,N] T,V,X[L,N] ]
+        \\T,U,W[L,M] T,U,X[K,N] T,V,W[K,N] T,V,X[L,N] 
+        \\]
         \\
         \\4BITADD($A $B $CARRYIN)(SUM<> CARRYOUT<>)
         \\4BITADD[([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)

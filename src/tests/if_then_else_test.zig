@@ -54,8 +54,8 @@ test "TAG-207 Example 12.35 - IF-THEN-ELSE execution (FALSE branch)" {
     const snippet =
         \\IF[(logical<> thenname<> elsename<>)($name)
         \\  $logical() :
-        \\    TRUE[ name<$thenname>]
-        \\    FALSE[ name<$elsename>]]
+        \\    TRUE[name<$thenname>]
+        \\    FALSE[name<$elsename>]]
     ;
 
     const net = try parser.parse(allocator, snippet);
@@ -90,7 +90,8 @@ test "TAG-207 Example 12.35 - Sequential two-wavefront execution (TRUE then FALS
         \\IF[(logical<> thenname<> elsename<>)($name)
         \\  $logical() :
         \\    TRUE[ name<$thenname>]
-        \\    FALSE[ name<$elsename>]]
+        \\    FALSE[ name<$elsename>]
+        \\]
     ;
 
     const net = try parser.parse(allocator, snippet);

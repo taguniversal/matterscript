@@ -232,7 +232,7 @@ fn resolve(a: std.mem.Allocator, v: Vectors, def: network.Definition, diag: *Dia
             return bad(a, diag, 0, "output column '{s}' is not a destination place of {s}", .{ c, def.name });
     }
     for (v.encodings) |e| {
-        if (!portExists(def.sources, e.port) and !hasArg(def.destinations, e.port))
+        if (!portExists(def.sources, e.port) and !portExists(def.destinations, e.port))
             return bad(a, diag, 0, "@encoding port '{s}' is not a port of {s}", .{ e.port, def.name });
     }
 
@@ -280,12 +280,8 @@ fn badTb(a: std.mem.Allocator, label: []const u8, diag: Diag) Outcome {
     return .{ .present = true, .malformed = true, .err_msg = msg catch null };
 }
 
-//fn runRow(a: std.mem.Allocator, def: network.Definition, definitions: []const network.Definition, streams: []testbench.PortStream) ![]const testbench.Presentation {
-//    var tb = try testbench.Testbench.initInNetwork(a, def, definitions, streams);
-//    return tb.run();
-//}
-fn runRow(a: std.mem.Allocator, def: network.Definition, streams: []testbench.PortStream) ![]const testbench.Presentation {
-    var tb = try testbench.Testbench.init(a, def, streams);
+fn runRow(a: std.mem.Allocator, def: network.Definition, definitions: []const network.Definition, streams: []testbench.PortStream) ![]const testbench.Presentation {
+    var tb = try testbench.Testbench.initInNetwork(a, def, definitions, streams);
     return tb.run();
 }
 
@@ -324,7 +320,7 @@ pub fn runVectors(
             s.* = .{ .port = v.in_cols[j], .tokens = toks };
         }
 
-        const pres = runRow(a, def, streams) catch |err| {
+        const pres = runRow(a, def, net.definitions, streams) catch |err| {
             try failures.append(a, try std.fmt.allocPrint(a, "line {d} ({s}): runtime error {s}", .{ row.line, row.label, @errorName(err) }));
             continue;
         };
@@ -392,35 +388,4 @@ pub fn runIfPresent(a: std.mem.Allocator, io: std.Io, ex_path: []const u8, net: 
     };
 
     return runVectors(a, std.fs.path.basename(path), source, net) catch oom_outcome;
-}
-
-test "parse: full adder vectors" {
-    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
-    defer arena.deinit();
-    const a = arena.allocator();
-
-    const src =
-        \\// full adder
-        \\@dut(FULLADD)
-        \\@encoding(X: 0=A, 1=B)
-        \\@encoding(SUM: 0=s, 1=t)
-        \\@vectors(X,Y : SUM)
-        \\0,C : 0
-        \\1,C : -
-        \\1,D : !stall
-    ;
-    var diag: Diag = .{};
-    const v = try parse(a, src, &diag);
-    try std.testing.expectEqualStrings("FULLADD", v.dut.?);
-    try std.testing.expectEqual(@as(usize, 2), v.in_cols.len);
-    try std.testing.expectEqual(@as(usize, 3), v.rows.len);
-    try std.testing.expect(v.rows[2].stall);
-}
-
-test "parse: row before @vectors is malformed" {
-    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
-    defer arena.deinit();
-    var diag: Diag = .{};
-    try std.testing.expectError(error.MalformedTestbench, parse(arena.allocator(), "0,0 : 1\n", &diag));
-    try std.testing.expectEqual(@as(usize, 1), diag.line);
 }

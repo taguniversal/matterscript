@@ -74,7 +74,8 @@ test "TAG-190 Example 12.5 AND Function with value transform rule definitions" {
         \\   : 0,0[TRUE]
         \\     0,1[FALSE]
         \\     1,0[FALSE]
-        \\     1,1[TRUE]  ]
+        \\     1,1[TRUE]  
+        \\]
     ;
 
     const net = try parser.parse(allocator, src);

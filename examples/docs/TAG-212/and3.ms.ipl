@@ -1,0 +1,19 @@
+// Linear: TAG-212 Runtime: execute Statement.invoke (cross-definition invocation), scalar only
+// 3-input AND built from two chained invocations of AND, exercising
+// scalar .invoke execution end-to-end through the runtime and GHDL.
+
+AND($A $B)
+AND[(X<>Y<>)($R)
+R<$X$Y()>
+:
+   0,0[0]
+   0,1[0]
+   1,1[1]
+   1,0[0]
+]
+
+AND3($A $B $C)(OUT<>)
+AND3[(A<> B<> C<>)($OUT)
+  AND($A $B)(T<>)
+  AND($T $C)(OUT<>)
+]

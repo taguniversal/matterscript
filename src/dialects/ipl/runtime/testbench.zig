@@ -63,12 +63,25 @@ pub const Testbench = struct {
     rules: []const ExecutableRule,
     streams: []PortStream,
 
-    pub fn init(
+        pub fn init(
         allocator: std.mem.Allocator,
         def: network.Definition,
         streams: []PortStream,
     ) !Testbench {
-        const rules = try rules_mod.buildRules(allocator, def);
+        return initInNetwork(allocator, def, &.{}, streams);
+    }
+
+    /// `definitions` is the network's flat definition list, threaded
+    /// through to buildRulesInNetwork so `.invoke` statements in `def`'s
+    /// resolution can resolve their callees. Flat, no nesting (see
+    /// README) — always just `net.definitions`, unchanged.
+    pub fn initInNetwork(
+        allocator: std.mem.Allocator,
+        def: network.Definition,
+        definitions: []const network.Definition,
+        streams: []PortStream,
+    ) !Testbench {
+        const rules = try rules_mod.buildRulesInNetwork(allocator, def, definitions);
         return .{ .allocator = allocator, .def = def, .rules = rules, .streams = streams };
     }
 
