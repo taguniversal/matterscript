@@ -1,11 +1,26 @@
-// Linear: TAG-180 Example 12.10 Conditional Input Expression
+// linear: TAG-180 Example 12.10 Conditional Input Expression
 
-fanin($select {$input1 $input2 $input3 $input4})(output< >)
-
+bus[(selector_in<> selector_out<> Q1<> Q2<> Q3<> Q4<>)({$out1 $out2 $out3 $out4})
+  fanin($selector_in {$Q1 $Q2 $Q3 $Q4})(serialmid<>)
+  fanout($selector_out $serialmid)({out1<> out2<> out3<> out4<>})
+]
+// Link to TAG-180 Example 12.10 {mutex}
 fanin[(select< > {in1< > in2< > in3< > in4< >})($out)
 
     $select( ) : A[out< $in1 >]
                  B[out< $in2 >]
                  C[out< $in3 >]
                  D[out< $in4>] 
-    ]
+]
+
+// Example 12.11 Controlled Fanout Expression
+fanout[(select<> in<>)({$out1 $out2 $out3 $out4})
+
+    $select() : A[out1< $in >]
+                B[out2< $in >]
+                C[out3< $in >]
+                D[out4< $in >]
+
+]
+
+

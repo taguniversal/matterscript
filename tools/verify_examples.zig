@@ -171,18 +171,19 @@ pub fn main(init: std.process.Init) !void {
     // Print captured simulation errors to stderr prior to the table output
     var printed_header = false;
     for (rows.items) |row| {
+        if (row.runtime.err_msg == null and row.simulation_error == null) continue;
+
+        if (!printed_header) {
+            std.debug.print("\n================================================================================\n", .{});
+            std.debug.print("                         CAPTURE FAILURES                                        \n", .{});
+            std.debug.print("================================================================================\n", .{});
+            printed_header = true;
+        }
+
+        if (row.runtime.err_msg) |msg| {
+            std.debug.print("❌ [{s}] Runtime:\n{s}\n", .{ row.tag, msg });
+        }
         if (row.simulation_error) |err_msg| {
-            if (!printed_header) {
-                std.debug.print("\n================================================================================\n", .{});
-                std.debug.print("                         CAPTURE SIMULATION FAILURES                            \n", .{});
-                std.debug.print("================================================================================\n", .{});
-                printed_header = true;
-            }
-
-            if (row.runtime.err_msg) |msg| {
-                std.debug.print("❌ [{s}] Runtime:\n{s}\n", .{ row.tag, msg });
-            }
-
             std.debug.print("❌ [{s}] Simulation Failure:\n{s}\n", .{ row.tag, err_msg });
         }
     }

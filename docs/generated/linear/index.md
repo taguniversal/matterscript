@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 25  |  🟡 Partial: 8  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 124  |  Total: 159
+✅ Implemented: 24  |  🟡 Partial: 8  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 124  |  Total: 158
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-179: 2. The Simplicity of Concurrency](TAG-179.md)
@@ -101,7 +101,6 @@
 - 🟡 Partial [TAG-142: Example 12.3 Further abbreviated expression of a single return to place of invocation](TAG-142.md)
 - ✅ Implemented [TAG-143: Example 12.2 Expressing a single return to place of invocation](TAG-143.md)
 - ⬜ Not started [TAG-144: Parser stops at first entry-shaped invocation, silently discarding trailing definitions](TAG-144.md)
-- ✅ Implemented [TAG-146: Example 12.12 Serial Bus](TAG-146.md)
 - ✅ Implemented [TAG-147: Example 12.13 Parallel Bus](TAG-147.md)
 - ✅ Implemented [TAG-148: Example 12.11 Controlled fan-out expression](TAG-148.md)
 - ⬛ Spec only [TAG-149: Example 12.9 Mutually Exclusive Completeness](TAG-149.md)
