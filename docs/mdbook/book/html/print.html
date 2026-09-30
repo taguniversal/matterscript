@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b738cd29.js";
+            window.path_to_searchindex_js = "searchindex-ac36234b.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-0f0a02a4.js"></script>
+        <script src="toc-e9462bcf.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -1731,6 +1731,434 @@ ALARM($TRIGGER)(SIREN&lt;&gt;)
 <p>It simply allows software to participate in it.</p>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="time-and-memory"><a class="header" href="#time-and-memory">Time and Memory</a></h1>
+<p>Computation is usually described as something that happens <strong>in time</strong>.</p>
+<p>A program starts. Instructions execute. Memory is read and written. The program continues. Eventually it produces a result.</p>
+<p>In this model, time is largely an external coordinate. The computer exists in space, while computation proceeds along a clock.</p>
+<p>MatterScript takes a different view.</p>
+<p>Time can itself be part of the computational structure. A process can persist, accumulate history, and respond differently because of what has happened before. Memory, in this sense, is not necessarily a collection of values stored at addresses. It is the persistence of structure through time.</p>
+<blockquote>
+<p><strong>Memory is not merely information about the past. Memory is the persistence of the past into the present.</strong></p>
+</blockquote>
+<p>This distinction becomes fundamental when computation is understood as <strong>propagation</strong> rather than execution.</p>
+<hr>
+<h2 id="51-memory-is-not-storage"><a class="header" href="#51-memory-is-not-storage">5.1 Memory Is Not Storage</a></h2>
+<p>The conventional computer provides an extremely useful metaphor for memory:</p>
+<pre><code class="language-text">DATA → ADDRESS → STORAGE → RETRIEVE
+</code></pre>
+<p>Something happens. Its representation is written to a location. Later, a program retrieves that representation.</p>
+<p>This is a <strong>spatial model of memory</strong>.</p>
+<p>Information exists somewhere, and remembering consists of finding it.</p>
+<p>The metaphor is so familiar that it is easy to mistake it for a definition.</p>
+<p>A hard drive stores files. RAM stores values. A database stores records. A program retrieves them when needed.</p>
+<p>But not every system that exhibits memory works this way.</p>
+<p>An organism does not carry a collection of discrete files corresponding to everything that has happened to it. A learned skill is not necessarily retrieved from a particular address. A habit does not need to be opened before it can influence behavior. The history of a process can be present in the structure and behavior of the process itself.</p>
+<p>This suggests another model:</p>
+<pre><code class="language-text">HISTORY ─────────────────→ PRESENT
+   │                          │
+   └──── persistent structure ┘
+</code></pre>
+<p>The distinction is subtle but important.</p>
+<p>In the first model, the past is <strong>stored somewhere</strong>.</p>
+<p>In the second, the past <strong>persists as part of what the system is now</strong>.</p>
+<p>MatterScript is concerned with the second kind of structure.</p>
+<hr>
+<h2 id="52-persistence"><a class="header" href="#52-persistence">5.2 Persistence</a></h2>
+<p>Fant describes a process expression as:</p>
+<blockquote>
+<p><strong>A structure of memories of various persistences.</strong></p>
+</blockquote>
+<p>This provides a useful starting point for thinking about memory in a space-time computational system.</p>
+<p>A process is not simply a thing that receives transient inputs. It is itself a <strong>locus of persistence</strong>.</p>
+<p>Presentations flow through it. Some are extremely transient. Others persist longer. Some relationships between them persist longer still.</p>
+<p>Fant writes:</p>
+<blockquote>
+<p><strong>The expression itself is a locus of persistence that is relatively stable from presentation to presentation.</strong></p>
+</blockquote>
+<p>This means that persistence does not have to be implemented as a separate memory subsystem.</p>
+<p>The structure of the process can itself provide persistence.</p>
+<p>A presentation may exist for a moment.</p>
+<p>A perception may persist for longer.</p>
+<p>A learned response may persist for years.</p>
+<p>A structural characteristic of an organism may persist for its entire lifetime.</p>
+<p>These are all different forms of temporal persistence.</p>
+<h3 id="a-hierarchy-of-persistence"><a class="header" href="#a-hierarchy-of-persistence">A hierarchy of persistence</a></h3>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-02-computational-universe/images/time_and_memory.png" alt="Time and Memory"><span class="img-wrapper"><img src="part-02-computational-universe/images/time_and_memory.png" alt="Time and Memory"></span></label></p>
+<p>The organism provides an intuitive example of this hierarchy.</p>
+<p>At the innermost level is a momentary input: something happening now.</p>
+<p>That input may persist as a sensory event.</p>
+<p>A collection of events may form a perception or experience.</p>
+<p>Repeated experience can produce learned responses.</p>
+<p>Repeated responses can become habits and dispositions.</p>
+<p>The entire history is incorporated into the continuing structure of the organism.</p>
+<p>The result is not a database of increasingly old records.</p>
+<p>It is a hierarchy of structures with different <strong>persistence timescales</strong>.</p>
+<hr>
+<h2 id="53-memories-of-different-persistence"><a class="header" href="#53-memories-of-different-persistence">5.3 Memories of Different Persistence</a></h2>
+<p>A conventional memory architecture tends to distinguish memory by <em>location</em>:</p>
+<pre><code class="language-text"> register
+    ↓
+  cache
+    ↓
+   RAM
+    ↓
+  disk
+    ↓
+ archive
+</code></pre>
+<p>MatterScript can instead think about memory in terms of <strong>persistence</strong>:</p>
+<pre><code class="language-text">  moment
+    ↓
+  event
+    ↓
+perception
+    ↓
+learned response
+    ↓
+  habit
+    ↓
+organism
+</code></pre>
+<p>The important property is not where something is stored.</p>
+<p>The important property is <strong>how long its structure remains relevant to subsequent propagation</strong>.</p>
+<p>This provides a more general definition of memory:</p>
+<blockquote>
+<p><strong>A memory is a structure whose persistence allows a process to relate what has happened to what happens next.</strong></p>
+</blockquote>
+<p>A memory need not be an explicit data object.</p>
+<p>It may be:</p>
+<ul>
+<li>a persistent token,</li>
+<li>a geometric relationship,</li>
+<li>a delayed association,</li>
+<li>a stable boundary,</li>
+<li>a learned transformation,</li>
+<li>a physical configuration,</li>
+<li>a recurring pathway,</li>
+<li>or an entire persistent expression.</li>
+</ul>
+<p>The same principle applies across different physical implementations.</p>
+<p>A neural structure, a mechanical mechanism, a semiconductor circuit, and a MatterScript expression can all exhibit memory without requiring that memory to take the form of a conventional addressable data record.</p>
+<hr>
+<h2 id="54-appreciating-differentness-through-time"><a class="header" href="#54-appreciating-differentness-through-time">5.4 Appreciating Differentness Through Time</a></h2>
+<p>MatterScript is fundamentally concerned with <strong>differentness</strong>.</p>
+<p>A process encounters one condition, then another. The significance of the second condition can depend upon the persistence of the first.</p>
+<p>Fant expresses this directly:</p>
+<blockquote>
+<p><strong>Appreciating differentness through time requires memory to associate a differentness from the past with a differentness in the future.</strong></p>
+</blockquote>
+<p>This is the key transition from simple persistence to temporal computation.</p>
+<p>Consider a sequence:</p>
+<pre><code class="language-text">A → B
+</code></pre>
+<p>Without memory, <code>B</code> is simply the current condition.</p>
+<p>With persistence, the process can encounter:</p>
+<pre><code class="language-text">A → B
+</code></pre>
+<p>and distinguish that sequence from:</p>
+<pre><code class="language-text">C → B
+</code></pre>
+<p>The current event is the same.</p>
+<p>The <em>history</em> is different.</p>
+<p>Therefore the process can behave differently.</p>
+<p>Memory has entered the computation.</p>
+<p>The system does not need to retrieve a stored representation of <code>A</code>. It only needs some aspect of <code>A</code> to have persisted sufficiently to participate in the interpretation of <code>B</code>.</p>
+<p>This is a fundamentally different computational model from:</p>
+<pre><code class="language-text">READ memory[address]
+COMPARE value
+WRITE result
+</code></pre>
+<p>The temporal structure itself performs part of the computation.</p>
+<hr>
+<h2 id="55-history-becomes-point-of-view"><a class="header" href="#55-history-becomes-point-of-view">5.5 History Becomes Point of View</a></h2>
+<p>Persistence has another consequence.</p>
+<p>A sufficiently persistent structure does not merely remember the past. It begins to <strong>interpret the present through the accumulated past</strong>.</p>
+<p>Fant describes this as the “arrogance of bulk”:</p>
+<blockquote>
+<p><strong>Any association expression of sufficient persistence and stride of appreciation, even if it is continually changing, becomes a de facto referent: an arrogant bulk projecting its appreciations on all it encounters.</strong></p>
+</blockquote>
+<p>The terminology is deliberately provocative, but the computational idea is important.</p>
+<p>A persistent expression carries a <em>history</em>.</p>
+<p>That history affects which differences it can appreciate.</p>
+<p>Those differences affect how it responds.</p>
+<p>Thus:</p>
+<pre><code class="language-text">PERSISTENCE
+     ↓
+  HISTORY
+     ↓
+APPRECIATION
+     ↓
+POINT OF VIEW
+</code></pre>
+<p>A point of view is therefore not merely an opinion stored inside a system.</p>
+<p>It can be understood as the consequence of <strong>persistent structure interacting with new events</strong>.</p>
+<p>Two expressions can encounter the same event and respond differently because their histories are different.</p>
+<p>The difference does not necessarily reside in a separately retrieved memory.</p>
+<p>It resides in the structures that have persisted.</p>
+<p>This is one reason biological systems are such useful examples of space-time computation. An organism carries its history in its continuing organization.</p>
+<hr>
+<h2 id="56-the-past-is-present"><a class="header" href="#56-the-past-is-present">5.6 The Past Is Present</a></h2>
+<p>This gives us a useful distinction between two statements:</p>
+<blockquote>
+<p>“The system remembers the past.”</p>
+</blockquote>
+<p>and:</p>
+<blockquote>
+<p>“The past is part of the system’s present state.”</p>
+</blockquote>
+<p>The first suggests storage and retrieval.</p>
+<p>The second suggests <em>persistence</em>.</p>
+<p>For a sufficiently persistent process, these become nearly inseparable.</p>
+<p>A person’s ability to recognize a familiar face is not necessarily the result of retrieving a file labeled with that face. The organism has been changed by its previous encounters.</p>
+<p>Likewise, a learned physical mechanism does not need to remember its design as an abstract description. Its structure embodies the history that produced it.</p>
+<p>The past has become <strong>present structure</strong>.</p>
+<p>This can be expressed computationally as:</p>
+<pre><code class="language-text">state(t) = history → present
+</code></pre>
+<p>rather than:</p>
+<pre><code class="language-text">state(t) = current_input + memory[address]
+</code></pre>
+<p>The first expression is not intended as a conventional equation. It is a change in ontology.</p>
+<p>The present is understood as the continuation of a history rather than as a state that periodically consults an external archive.</p>
+<hr>
+<h2 id="57-incidental-time"><a class="header" href="#57-incidental-time">5.7 Incidental Time</a></h2>
+<p>Not every computation that takes time is a temporal computation.</p>
+<p>This distinction is essential.</p>
+<p>A conventional program may execute for ten seconds. That does not mean that the program has computationally represented ten seconds.</p>
+<p>The passage of time may simply be an incidental consequence of execution.</p>
+<p>Fant calls attention to this distinction in his discussion of <strong>incidental time</strong>.</p>
+<p>An expression may extend through time simply because of implementation constraints, resource limitations, or the convenience of reusing one structure sequentially rather than constructing many structures in parallel.</p>
+<p>A conventional computer is full of such examples.</p>
+<p>A processor may execute:</p>
+<pre><code class="language-text">A
+B
+C
+D
+</code></pre>
+<p>sequentially even when the computation has no conceptual reason for A, B, C, and D to occupy successive moments.</p>
+<p>The sequence is an implementation strategy.</p>
+<p>MatterScript distinguishes this from a computation in which <strong>temporal relationship is itself meaningful</strong>.</p>
+<p>Compare:</p>
+<h3 id="incidental-time"><a class="header" href="#incidental-time">Incidental time</a></h3>
+<pre><code class="language-text">A → B → C → D
+</code></pre>
+<p>The system happens to perform these operations sequentially.</p>
+<h3 id="computational-time"><a class="header" href="#computational-time">Computational time</a></h3>
+<pre><code class="language-text">A ───────→ B
+    ↑
+ persistence
+</code></pre>
+<p>The relationship between A and B depends upon A persisting into the interval in which B occurs.</p>
+<p>The first is sequential execution.</p>
+<p>The second is temporal structure.</p>
+<p>This distinction is one of the foundations of space-time programming.</p>
+<hr>
+<h2 id="58-time-as-computational-structure"><a class="header" href="#58-time-as-computational-structure">5.8 Time as Computational Structure</a></h2>
+<p>Traditional programming tends to make time external to structure.</p>
+<p>A program has:</p>
+<ul>
+<li>data,</li>
+<li>operations,</li>
+<li>memory,</li>
+<li>addresses,</li>
+<li>and a clock.</li>
+</ul>
+<p>The clock determines when operations happen.</p>
+<p>MatterScript instead permits time to participate directly in the organization of computation.</p>
+<p>A delay can be structural.</p>
+<p>A persistence can be structural.</p>
+<p>A temporal relationship can be structural.</p>
+<p>A process can distinguish an event because another event is still present, or because another event has ceased to be present, or because a persistent structure connects the current event to something that happened earlier.</p>
+<p>In this model:</p>
+<pre><code class="language-text">TIME
+ │
+ ├── persistence
+ ├── delay
+ ├── ordering
+ ├── association
+ └── memory
+</code></pre>
+<p>These are not merely runtime measurements.</p>
+<p>They can be properties of the computational expression itself.</p>
+<p>This is why MatterScript does not treat time simply as a clock attached to otherwise timeless computation.</p>
+<blockquote>
+<p><strong>Time can be part of the machinery.</strong></p>
+</blockquote>
+<hr>
+<h2 id="59-temporal-memory-and-spatial-structure"><a class="header" href="#59-temporal-memory-and-spatial-structure">5.9 Temporal Memory and Spatial Structure</a></h2>
+<p>Time and space provide two complementary forms of computational relationship.</p>
+<p>A spatial relationship says:</p>
+<blockquote>
+<p>These things are related because of where they are.</p>
+</blockquote>
+<p>A temporal relationship says:</p>
+<blockquote>
+<p>These things are related because of what persists between their occurrences.</p>
+</blockquote>
+<p>Consider two structures:</p>
+<pre><code class="language-text">SPATIAL RELATIONSHIP
+
+A ───── B
+</code></pre>
+<p>The relationship is expressed by their arrangement.</p>
+<p>Now consider:</p>
+<pre><code class="language-text">TEMPORAL RELATIONSHIP
+
+A ─────────→ B
+     │
+     └── A persists
+</code></pre>
+<p>The relationship is expressed by persistence through the interval.</p>
+<p>MatterScript treats both as computationally meaningful.</p>
+<p>This leads to a useful symmetry:</p>
+<pre><code class="language-text">                 COMPUTATION
+                      │
+          ┌───────────┴───────────┐
+          │                       │
+        SPACE                    TIME
+          │                       │
+      LOCALITY               PERSISTENCE
+          │                       │
+    RELATIONSHIP               MEMORY
+          │                       │
+     PROPAGATION             APPRECIATION
+</code></pre>
+<p>Space determines what can interact through locality.</p>
+<p>Time determines what can remain relevant through persistence.</p>
+<p>Together they provide a richer substrate for computation than either dimension considered independently.</p>
+<hr>
+<h2 id="510-from-memory-to-matterscript"><a class="header" href="#510-from-memory-to-matterscript">5.10 From Memory to MatterScript</a></h2>
+<p>The conventional programming model asks:</p>
+<blockquote>
+<p>Where is the value stored?</p>
+</blockquote>
+<p>MatterScript can ask a different question:</p>
+<blockquote>
+<p>What persists, where does it persist, and what can that persistence affect?</p>
+</blockquote>
+<p>This changes the programmer’s conception of state.</p>
+<p>A variable normally represents something whose value can be changed.</p>
+<p>A persistent expression represents something whose <strong>continued existence has computational consequences</strong>.</p>
+<p>That distinction matters when computation is mapped onto physical systems.</p>
+<p>A physical circuit does not need to simulate every aspect of memory as an abstract data structure. It can embody persistence directly through:</p>
+<ul>
+<li>physical state,</li>
+<li>geometry,</li>
+<li>capacitance,</li>
+<li>delay,</li>
+<li>feedback,</li>
+<li>stable configurations,</li>
+<li>asynchronous handshakes,</li>
+<li>or other mechanisms that preserve distinctions through time.</li>
+</ul>
+<p>MatterScript’s purpose is not to hide these mechanisms behind a conventional sequential abstraction.</p>
+<p>It is to describe computational structure in terms that remain meaningful when the computation becomes physical.</p>
+<hr>
+<h2 id="511-memory-without-a-memory-subsystem"><a class="header" href="#511-memory-without-a-memory-subsystem">5.11 Memory Without a Memory Subsystem</a></h2>
+<p>This leads to a broader principle:</p>
+<blockquote>
+<p><strong>A system does not necessarily need a separate memory subsystem in order to have memory.</strong></p>
+</blockquote>
+<p>If a structure persists and that persistence affects subsequent behavior, the system already possesses a form of memory.</p>
+<p>This can happen at many scales.</p>
+<p>A token can persist.</p>
+<p>A place can persist.</p>
+<p>A geometric arrangement can persist.</p>
+<p>A process can persist.</p>
+<p>A biological structure can persist.</p>
+<p>An entire world model can persist.</p>
+<p>The implementation may change, but the computational principle remains the same.</p>
+<p>Memory is therefore not defined by a particular technology.</p>
+<p>It is defined by a relationship between <strong>persistence and subsequent appreciation</strong>.</p>
+<hr>
+<h2 id="512-from-history-to-computation"><a class="header" href="#512-from-history-to-computation">5.12 From History to Computation</a></h2>
+<p>The resulting model is compact:</p>
+<pre><code class="language-text">EVENT
+  ↓
+PERSISTENCE
+  ↓
+HISTORY
+  ↓
+APPRECIATION
+  ↓
+RESPONSE
+  ↓
+NEW EVENT
+</code></pre>
+<p>The process continuously transforms its history into its present behavior.</p>
+<p>There is no requirement that the history be serialized into a file.</p>
+<p>There is no requirement that the system explicitly retrieve the past.</p>
+<p>There is no requirement that every historical state remain separately addressable.</p>
+<p>What matters is that enough structure persists for the system to distinguish what is happening now in relation to what has happened before.</p>
+<p>This is memory as <strong>temporal computation</strong>.</p>
+<hr>
+<h2 id="513-the-space-time-programmer"><a class="header" href="#513-the-space-time-programmer">5.13 The Space-Time Programmer</a></h2>
+<p>The conventional programmer thinks primarily in terms of values and operations:</p>
+<pre><code class="language-text">value → operation → value
+</code></pre>
+<p>The space-time programmer must also think in terms of:</p>
+<pre><code class="language-text">place
+persistence
+propagation
+locality
+delay
+association
+</code></pre>
+<p>The question is no longer merely:</p>
+<blockquote>
+<p>What value should this computation produce?</p>
+</blockquote>
+<p>It becomes:</p>
+<blockquote>
+<p>What should persist, where should it persist, what should it encounter, and for how long should that relationship remain computationally relevant?</p>
+</blockquote>
+<p>This is a different way of designing systems.</p>
+<p>It is particularly important when the destination of a program is not merely another software runtime, but a <em>physical system</em>.</p>
+<p>A conventional compiler translates abstract operations into instructions.</p>
+<p>A space-time compiler can instead translate structure into <strong>relationships among physical events, places, and persistence</strong>.</p>
+<hr>
+<h2 id="514-the-central-principle"><a class="header" href="#514-the-central-principle">5.14 The Central Principle</a></h2>
+<p>Fant’s treatment of time and memory gives us a concise foundation for this view:</p>
+<blockquote>
+<p><strong>A process can be understood as a structure of memories of different persistences.</strong></p>
+</blockquote>
+<p>From that perspective, memory is not fundamentally a container.</p>
+<p>It is <em>persistence</em>.</p>
+<p>And persistence allows a process to relate the past to the future.</p>
+<p>That relationship permits the process to appreciate differentness through time.</p>
+<p>The accumulated history of those appreciations produces behavior, disposition, and point of view.</p>
+<p>Thus:</p>
+<pre><code class="language-text">PERSISTENCE
+     ↓
+  MEMORY
+     ↓
+  HISTORY
+     ↓
+APPRECIATION
+     ↓
+POINT OF VIEW
+     ↓
+  BEHAVIOR
+</code></pre>
+<p>This is why <strong>time is not merely a clock</strong>.</p>
+<p>A clock measures the passage of time from outside the computation.</p>
+<p>A temporal structure <strong>uses persistence as part of the computation itself</strong>.</p>
+<p>MatterScript treats that distinction as fundamental.</p>
+<blockquote>
+<p><strong>Computation does not merely happen in time.
+Computation can be <em>made</em> from time.</strong></p>
+</blockquote>
+<hr>
+<h3 id="relationship-to-the-next-chapter"><a class="header" href="#relationship-to-the-next-chapter">Relationship to the Next Chapter</a></h3>
+<p>Time provides one dimension of computational relationship.</p>
+<p>Space provides another.</p>
+<p>If persistence allows a process to maintain relevance across time, <strong>locality</strong> determines which structures can directly encounter one another in space.</p>
+<p>The next chapter therefore turns from temporal relationship to spatial relationship:</p>
+<blockquote>
+<p><strong>Locality as a Programming Primitive.</strong></p>
+</blockquote>
+<p>Together, persistence and locality provide the foundation for computation as a physical process rather than as a sequence of abstract instructions.</p>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="locality-as-a-programming-primitive"><a class="header" href="#locality-as-a-programming-primitive">Locality as a Programming Primitive</a></h1>
 <p>One of the deepest assumptions in modern software is that everything is, in principle, equally accessible.</p>
 <p>A variable stored in memory can be read from anywhere.</p>
@@ -1743,7 +2171,7 @@ ALARM($TRIGGER)(SIREN&lt;&gt;)
 <p>Distributed systems attempt to recover proximity after the fact.</p>
 <p>In other words, locality is usually treated as an optimization.</p>
 <p>MatterScript begins from the opposite assumption.</p>
-<p><strong>Locality is not an optimization. It is a programming primitive.</strong></p>
+<p><strong>Locality is not an optimization. It is a computational primitive.</strong></p>
 <hr>
 <p>This idea has its roots in Karl Fant’s <em>Computer Science Reconsidered</em>, where he introduced the concept of the <strong>theng</strong>.</p>
 <p>A theng is not simply a variable, nor is it an object in the object-oriented sense.</p>

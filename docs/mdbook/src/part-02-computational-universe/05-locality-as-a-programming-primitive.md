@@ -22,7 +22,7 @@ In other words, locality is usually treated as an optimization.
 
 MatterScript begins from the opposite assumption.
 
-**Locality is not an optimization. It is a programming primitive.**
+**Locality is not an optimization. It is a computational primitive.**
 
 ---
 
