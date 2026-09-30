@@ -497,96 +497,12 @@ pub fn build(b: *std.Build) void {
     // TODO    test_step.dependOn(&run_doctest.step);
 
     // ------------------------------------------------------------
-    // Verify pipeline
-    // ------------------------------------------------------------
-    // 1. Generate machine.vhd from coffee FSM example
-    // 2. Generate add.vhd from add IL example
-    // 3. GHDL syntax check both
+    // Verify pipeline: parse + emit VHDL + GHDL syntax check
+    // all examples/docs sources against status.json.
     // ------------------------------------------------------------
 
     const verify_step = b.step("verify", "Generate VHDL and syntax check with GHDL");
 
-    // --- FSM: coffee ---
-    const gen_coffee = b.addRunArtifact(exe);
-    gen_coffee.addArg("examples/coffee/coffee.ms.fsm");
-    gen_coffee.step.dependOn(b.getInstallStep());
-    verify_step.dependOn(&gen_coffee.step);
-
-    const ghdl_coffee = b.addSystemCommand(&.{
-        "ghdl", "-s", "--std=08", "../workspace/coffee/machine.vhd",
-    });
-    ghdl_coffee.step.dependOn(&gen_coffee.step);
-    verify_step.dependOn(&ghdl_coffee.step);
-
-    // --- IL: add ---
-    const gen_add = b.addRunArtifact(exe);
-    gen_add.addArg("examples/add/add.ms.ipl");
-    gen_add.step.dependOn(b.getInstallStep());
-    verify_step.dependOn(&gen_add.step);
-    verify_step.dependOn(&run_parser_tests.step);
-
-    const ghdl_ncl = b.addSystemCommand(&.{
-        "ghdl", "-a", "--std=08", "src/stdlib/ncl/matterscript_ncl.vhd",
-    });
-
-    const ghdl_add = b.addSystemCommand(&.{
-        "ghdl", "-s", "--std=08", "../workspace/add/add.vhd",
-    });
-    ghdl_add.step.dependOn(&gen_add.step);
-    ghdl_add.step.dependOn(&ghdl_ncl.step);
-    verify_step.dependOn(&ghdl_add.step);
-
-    // ------------------------------------------------------------
-    // Simulate pipeline (Linux only)
-    // ------------------------------------------------------------
-    // 1. ghdl -a  — analyze VHDL
-    // 2. ghdl --synth — export to Verilog netlist
-    // 3. verilator  — compile with C++ testbench to native binary
-    // 4. run the simulation binary
-    // ------------------------------------------------------------
-
-    const simulate_step = b.step("simulate", "Full GHDL->Verilator simulation (Linux only)");
-
-    const is_linux = b.graph.host.result.os.tag == .linux;
-    if (is_linux) {
-        const ghdl_analyze = b.addSystemCommand(&.{
-            "ghdl-llvm",                     "-a",                              "--std=08",
-            "--workdir=../workspace/coffee", "../workspace/coffee/machine.vhd",
-        });
-        ghdl_analyze.step.dependOn(&gen_coffee.step);
-
-        const ghdl_synth = b.addSystemCommand(&.{
-            "sh",                                                                                                                  "-c",
-            "ghdl-llvm synth --std=08 --workdir=../workspace/coffee --out=verilog CoffeeShop > ../workspace/coffee/CoffeeShop.sv",
-        });
-        ghdl_synth.step.dependOn(&ghdl_analyze.step);
-
-        const verilator_build = b.addSystemCommand(&.{
-            "verilator",
-            "--cc",
-            "--exe",
-            "--build",
-            "--Mdir",
-            "../workspace/coffee/obj_dir",
-            "-CFLAGS",
-            "-I.",
-            "../workspace/coffee/CoffeeShop.sv",
-            "../workspace/coffee/tb_machine.cpp",
-        });
-        verilator_build.step.dependOn(&ghdl_synth.step);
-
-        const run_sim = b.addSystemCommand(&.{
-            "../workspace/coffee/obj_dir/VCoffeeShop",
-        });
-        run_sim.step.dependOn(&verilator_build.step);
-
-        simulate_step.dependOn(&run_sim.step);
-    } else {
-        const note = b.addSystemCommand(&.{
-            "cmd", "/c", "echo", "Simulate step is Linux only",
-        });
-        simulate_step.dependOn(&note.step);
-    }
 
     // ------------------------------------------------------------
     // Book example verification: parse + emit VHDL + GHDL syntax

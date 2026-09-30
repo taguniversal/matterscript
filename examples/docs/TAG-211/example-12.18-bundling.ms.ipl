@@ -2,11 +2,12 @@
 4BITADD($A $B $CARRYIN)(SUM<> CARRYOUT<>)
 4BITADD[([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)
   ([$SUM0 $SUM1 $SUM2 $SUM3] $CO)
-:
+
   FULLADD(A0<> B0<> CI<>)(SUM0<> C1<>)
   FULLADD(A1<> B1<> C1<>)(SUM1<> C2<>)
   FULLADD(A2<> B2<> C2<>)(SUM2<> C3<>)
   FULLADD(A3<> B3<> C3<>)(SUM3<> $CO)
+  :
 ]
 
 FULLADD[(A< > B< > CI< >)($SUM $CO)

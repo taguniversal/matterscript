@@ -36,6 +36,10 @@ const ExampleRow = struct {
     result: ExampleResult,
 };
 
+fn ghdlWorkdirFor(allocator: std.mem.Allocator, tag: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, ".verify_scratch/ghdl_work/{s}", .{tag});
+}
+
 fn getStatusEntry(map: std.StringHashMap(StatusEntry), tag: []const u8) StatusEntry {
     return map.get(tag) orelse .{ .implementation_status = null, .simulation_requested = false };
 }
@@ -70,6 +74,11 @@ pub fn main(init: std.process.Init) !void {
     const status_map = try readStatusManifest(arena, io, status_path);
 
     std.Io.Dir.cwd().createDir(io, ".verify_scratch", .default_dir) catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+
+    std.Io.Dir.cwd().createDir(io, ".verify_scratch/ghdl_work", .default_dir) catch |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     };
@@ -113,6 +122,12 @@ pub fn main(init: std.process.Init) !void {
 
         const runtime_outcome = runtime_tb.runIfPresent(arena, io, ex.path, net);
 
+        const workdir = try ghdlWorkdirFor(arena, ex.tag);
+        std.Io.Dir.cwd().createDir(io, workdir, .default_dir) catch |err| switch (err) {
+            error.PathAlreadyExists => {},
+            else => return err,
+        };
+
         // Emit VHDL into memory, then to a scratch file GHDL can read.
         var vhdl_body: std.ArrayList(u8) = .empty;
         defer vhdl_body.deinit(arena);
@@ -141,11 +156,10 @@ pub fn main(init: std.process.Init) !void {
             }
             vhd_file.close(io);
 
-            ghdl_ok = runGhdlSyntaxCheck(arena, io, vhd_path);
-
+            ghdl_ok = runGhdlSyntaxCheck(arena, io, workdir, vhd_path);
             if (ghdl_ok and sim_requested) {
                 const tb_path = try getTestbenchPath(arena, ex.path);
-                const sim_res = runGhdlSimulation(arena, io, vhd_path, tb_path);
+                const sim_res = runGhdlSimulation(arena, io, workdir, vhd_path, tb_path);
                 simulation_ok = sim_res.ok;
                 simulation_error = sim_res.err_msg;
             }
@@ -223,7 +237,11 @@ fn getEntityName(allocator: std.mem.Allocator, tb_path: []const u8) ![]const u8 
 /// Persist the report instead of relying on shell redirection. The console
 /// table uses std.debug (stderr), so redirecting stdout previously created an
 /// empty Markdown file.
-fn writeMarkdownReport(io: std.Io, path: []const u8, rows: []const ExampleRow,) !void {
+fn writeMarkdownReport(
+    io: std.Io,
+    path: []const u8,
+    rows: []const ExampleRow,
+) !void {
     var file = try std.Io.Dir.cwd().createFile(io, path, .{});
     defer file.close(io);
 
@@ -270,9 +288,12 @@ fn classify(expected: ?[]const u8, parse_ok: bool, ghdl_ok: bool, simulation_req
     return if (passed) .unexpected_pass else .expected_fail;
 }
 
-fn runGhdlSyntaxCheck(allocator: std.mem.Allocator, io: std.Io, vhd_path: []const u8) bool {
+fn runGhdlSyntaxCheck(allocator: std.mem.Allocator, io: std.Io, workdir: []const u8, vhd_path: []const u8) bool {
+    const workdir_arg = std.fmt.allocPrint(allocator, "--workdir={s}", .{workdir}) catch return false;
+    defer allocator.free(workdir_arg);
+
     const package_result = std.process.run(allocator, io, .{
-        .argv = &.{ "ghdl", "-a", "--std=08", "src/stdlib/ncl/matterscript_ncl.vhd" },
+        .argv = &.{ "ghdl", "-a", "--std=08", workdir_arg, "src/stdlib/ncl/matterscript_ncl.vhd" },
     }) catch |err| {
         std.debug.print("  [{s}] failed to spawn ghdl for package analysis: {s}\n", .{ vhd_path, @errorName(err) });
         return false;
@@ -291,7 +312,7 @@ fn runGhdlSyntaxCheck(allocator: std.mem.Allocator, io: std.Io, vhd_path: []cons
     }
 
     const result = std.process.run(allocator, io, .{
-        .argv = &.{ "ghdl", "-a", "--std=08", vhd_path },
+        .argv = &.{ "ghdl", "-a", "--std=08", workdir_arg, vhd_path },
     }) catch |err| {
         std.debug.print("  [{s}] failed to spawn ghdl for syntax check: {s}\n", .{ vhd_path, @errorName(err) });
         return false;
@@ -314,11 +335,13 @@ const SimulationResult = struct {
     err_msg: ?[]const u8,
 };
 
-fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, vhd_path: []const u8, tb_path: []const u8) SimulationResult {
+fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, workdir: []const u8, vhd_path: []const u8, tb_path: []const u8) SimulationResult {
+    const workdir_arg = std.fmt.allocPrint(allocator, "--workdir={s}", .{workdir}) catch return .{ .ok = false, .err_msg = "oom building workdir arg" };
+    defer allocator.free(workdir_arg);
     // 1. Analyze stdlib package
-    std.debug.print("  [{s}] Running GHDL simulation for testbench {s} (design {s})\n", .{ tb_path, tb_path, vhd_path });
+    std.debug.print("  [{s}] Running GHDL simulation for testbench {s} (design {s}) (workdir {s}\n", .{ tb_path, tb_path, vhd_path, workdir_arg });
     const package_result = std.process.run(allocator, io, .{
-        .argv = &.{ "ghdl", "-a", "--std=08", "src/stdlib/ncl/matterscript_ncl.vhd" },
+        .argv = &.{ "ghdl", "-a", "--std=08", workdir_arg, "src/stdlib/ncl/matterscript_ncl.vhd" },
     }) catch |err| {
         const msg = std.fmt.allocPrint(allocator, "failed to spawn ghdl for package analysis: {s}", .{@errorName(err)}) catch return .{ .ok = false, .err_msg = "failed to spawn" };
         return .{ .ok = false, .err_msg = msg };
@@ -332,7 +355,7 @@ fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, vhd_path: []const
 
     // 2. Analyze the generated VHDL design unit
     const des_result = std.process.run(allocator, io, .{
-        .argv = &.{ "ghdl", "-a", "--std=08", vhd_path },
+        .argv = &.{ "ghdl", "-a", "--std=08", workdir_arg, vhd_path },
     }) catch |err| {
         const msg = std.fmt.allocPrint(allocator, "failed to spawn ghdl for design analysis ({s}): {s}", .{ vhd_path, @errorName(err) }) catch return .{ .ok = false, .err_msg = "spawn error" };
         return .{ .ok = false, .err_msg = msg };
@@ -346,7 +369,7 @@ fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, vhd_path: []const
 
     // 3. Analyze the testbench file
     const tb_result = std.process.run(allocator, io, .{
-        .argv = &.{ "ghdl", "-a", "--std=08", tb_path },
+        .argv = &.{ "ghdl", "-a", "--std=08", workdir_arg, tb_path },
     }) catch |err| {
         const msg = std.fmt.allocPrint(allocator, "failed to spawn ghdl for testbench analysis ({s}): {s}", .{ tb_path, @errorName(err) }) catch return .{ .ok = false, .err_msg = "spawn error" };
         return .{ .ok = false, .err_msg = msg };
@@ -365,7 +388,7 @@ fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, vhd_path: []const
     defer allocator.free(entity_name);
 
     const elab_result = std.process.run(allocator, io, .{
-        .argv = &.{ "ghdl", "-e", "--std=08", entity_name },
+        .argv = &.{ "ghdl", "-e", "--std=08", workdir_arg, entity_name },
     }) catch |err| {
         const msg = std.fmt.allocPrint(allocator, "failed to spawn ghdl for elaboration ({s}): {s}", .{ entity_name, @errorName(err) }) catch return .{ .ok = false, .err_msg = "spawn error" };
         return .{ .ok = false, .err_msg = msg };
@@ -376,6 +399,12 @@ fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, vhd_path: []const
         const msg = std.fmt.allocPrint(allocator, "simulation elaboration failed ({s}):\n{s}", .{ entity_name, elab_result.stderr }) catch return .{ .ok = false, .err_msg = "elaboration failed" };
         return .{ .ok = false, .err_msg = msg };
     }
+
+    // One gotcha to watch: GHDL's -e and -r write/read an executable in the current working directory,
+    // not the workdir. If you run two examples concurrently that share an entity name (e.g. tb_machine),
+    // they'll race on the produced binary. For the current single-threaded for loop this is fine, but if
+    // you ever parallelize verify-examples, you'll want to also cd into the per-example scratch dir for
+    // the -e/-r steps, or pass -o <workdir>/<entity> explicitly. Not needed today.
 
     // 5. Execute simulation
     const run_result = std.process.run(allocator, io, .{

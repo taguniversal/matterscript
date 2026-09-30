@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 24  |  🟡 Partial: 8  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 124  |  Total: 158
+✅ Implemented: 24  |  🟡 Partial: 8  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 125  |  Total: 159
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-179: 2. The Simplicity of Concurrency](TAG-179.md)
@@ -157,6 +157,7 @@
 - 🟡 Partial [TAG-211: Example 12.18 Bundling digits into numbers](TAG-211.md)
 - ✅ Implemented [TAG-212: Runtime: execute `Statement.invoke` (cross-definition invocation), scalar only](TAG-212.md)
 - ⬜ Not started [TAG-213: Runtime/parser: bare-name bundle aliasing at invocation boundaries](TAG-213.md)
+- ⬜ Not started [TAG-214: Isolate GHDL analysis libraries per example in `verify-examples`](TAG-214.md)
 - ⬜ Not started [TAG-46: Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [TAG-47: Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [TAG-80: The Completeness Dialogue](TAG-80.md)
