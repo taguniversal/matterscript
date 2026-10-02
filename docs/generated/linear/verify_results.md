@@ -13,7 +13,7 @@
 | TAG-142 | example-12.3.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
 | TAG-143 | example-12.2.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
 | TAG-147 | example-12.13.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
-| TAG-148 | example-12.11.ms.ipl | Implemented | ok | - | ok | FAIL | ❌ FAIL |
+| TAG-148 | example-12.11.ms.ipl | Implemented | ok | ok 8/8 | ok | FAIL | ❌ FAIL |
 | TAG-149 | example-12.9.ms.ipl | Spec Only | ok | - | ok | - | 🟡 unexpected pass |
 | TAG-151 | example-12.17.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
 | TAG-153 | example-12.8.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
@@ -22,7 +22,7 @@
 | TAG-177 | example-12.26.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
 | TAG-180 | example-12.10.ms.ipl | Implemented | ok | FAIL 0/20 | FAIL | - | ❌ FAIL |
 | TAG-181 | example-12.11.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
-| TAG-184 | example-12.24.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
+| TAG-184 | example-12.24.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
 | TAG-185 | case-unique-signals.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-187 | generate_syntax.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-189 | example-12.14-arbitration.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |

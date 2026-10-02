@@ -1,0 +1,11 @@
+@dut(FULLADD)
+@vectors(A,B,CI : SUM,CO)
+
+S,U,W : S,W
+S,U,X : T,W
+S,V,W : T,W
+S,V,X : S,X
+T,U,W : T,W
+T,U,X : S,X
+T,V,W : S,X
+T,V,X : T,X
