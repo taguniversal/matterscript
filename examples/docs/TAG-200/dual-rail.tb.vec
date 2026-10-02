@@ -1,0 +1,8 @@
+@dut(AND2)
+@vectors(A, B : OUT)
+@mode(wavefront)
+
+p, r : Z0
+p, s : Z0
+q, r : Z0
+q, s : Z1

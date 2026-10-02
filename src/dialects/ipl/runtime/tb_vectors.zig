@@ -8,14 +8,15 @@
 // Grammar (line-oriented, `//` comments):
 //
 //   @dut(NAME)                          optional, defaults to definitions[0]
-//   @encoding(PORT: 0=A, 1=B)           logical value -> rail symbol
 //   @vectors(IN,IN,... : OUT,OUT,...)   column names; must precede rows
 //   @mode(wavefront)                    only mode supported so far
 //   v,v,... : v,v,...                   one row = one wavefront
 //   v,v,... : !stall                    wavefront must NOT complete
 //   `-` in an output cell               don't care
 //
-// A port without @encoding takes raw symbols in its cells.
+// Cells are raw tokens: the token driven on an input place, or the token
+// expected on an output place. No value<->symbol mapping is provided or
+// needed; the meaning of a token is the DUT author's convention.
 //
 // Each row runs in its own Testbench (one token per input port), because
 // Testbench.run stops at the first stuck wavefront and a `!stall` row
@@ -40,9 +41,6 @@ pub const Outcome = struct {
     }
 };
 
-const Mapping = struct { value: []const u8, symbol: []const u8 };
-const Encoding = struct { port: []const u8, map: []const Mapping };
-
 const RawRow = struct {
     line: usize,
     inputs: []const []const u8,
@@ -52,7 +50,7 @@ const RawRow = struct {
 
 pub const Vectors = struct {
     dut: ?[]const u8 = null,
-    encodings: []const Encoding = &.{},
+    mode_stream: bool = false, // NEW, see Part 2
     in_cols: []const []const u8 = &.{},
     out_cols: []const []const u8 = &.{},
     rows: []const RawRow = &.{},
@@ -93,7 +91,6 @@ fn allIdents(list: []const []const u8) bool {
 
 pub fn parse(a: std.mem.Allocator, source: []const u8, diag: *Diag) ParseError!Vectors {
     var v: Vectors = .{};
-    var encodings: std.ArrayListUnmanaged(Encoding) = .empty;
     var rows: std.ArrayListUnmanaged(RawRow) = .empty;
     var have_vectors = false;
     var line_no: usize = 0;
@@ -117,27 +114,9 @@ pub fn parse(a: std.mem.Allocator, source: []const u8, diag: *Diag) ParseError!V
             if (std.mem.eql(u8, name, "dut")) {
                 if (!isIdent(args)) return bad(a, diag, line_no, "@dut needs a definition name", .{});
                 v.dut = args;
-            } else if (std.mem.eql(u8, name, "encoding")) {
-                const colon = std.mem.indexOfScalar(u8, args, ':') orelse
-                    return bad(a, diag, line_no, "@encoding needs 'PORT: value=symbol, ...'", .{});
-                const port = std.mem.trim(u8, args[0..colon], " \t");
-                if (!isIdent(port)) return bad(a, diag, line_no, "bad port name in @encoding", .{});
-                for (encodings.items) |e| {
-                    if (std.mem.eql(u8, e.port, port))
-                        return bad(a, diag, line_no, "duplicate @encoding for '{s}'", .{port});
-                }
-                var maps: std.ArrayListUnmanaged(Mapping) = .empty;
-                var it = std.mem.splitScalar(u8, args[colon + 1 ..], ',');
-                while (it.next()) |part| {
-                    const eq = std.mem.indexOfScalar(u8, part, '=') orelse
-                        return bad(a, diag, line_no, "expected value=symbol, got '{s}'", .{std.mem.trim(u8, part, " \t")});
-                    const val = std.mem.trim(u8, part[0..eq], " \t");
-                    const sym = std.mem.trim(u8, part[eq + 1 ..], " \t");
-                    if (!isIdent(val) or !isIdent(sym))
-                        return bad(a, diag, line_no, "bad mapping '{s}'", .{std.mem.trim(u8, part, " \t")});
-                    try maps.append(a, .{ .value = val, .symbol = sym });
-                }
-                try encodings.append(a, .{ .port = port, .map = try maps.toOwnedSlice(a) });
+            } else if (std.mem.eql(u8, name, "stream")) {
+                if (args.len != 0) return bad(a, diag, line_no, "@stream takes no arguments", .{});
+                v.mode_stream = true;
             } else if (std.mem.eql(u8, name, "vectors")) {
                 if (have_vectors) return bad(a, diag, line_no, "only one @vectors block is supported", .{});
                 const colon = std.mem.indexOfScalar(u8, args, ':') orelse
@@ -177,7 +156,7 @@ pub fn parse(a: std.mem.Allocator, source: []const u8, diag: *Diag) ParseError!V
 
     if (!have_vectors) return bad(a, diag, line_no, "missing @vectors", .{});
     if (rows.items.len == 0) return bad(a, diag, line_no, "no vector rows", .{});
-    v.encodings = try encodings.toOwnedSlice(a);
+
     v.rows = try rows.toOwnedSlice(a);
     return v;
 }
@@ -204,24 +183,6 @@ fn portExists(args: []const network.Arg, name: []const u8) bool {
     return false;
 }
 
-fn hasArg(args: []const network.Arg, name: []const u8) bool {
-    for (args) |arg| if (std.mem.eql(u8, arg.name, name)) return true;
-    return false;
-}
-
-fn encodingFor(v: Vectors, port: []const u8) ?Encoding {
-    for (v.encodings) |e| if (std.mem.eql(u8, e.port, port)) return e;
-    return null;
-}
-
-/// With an @encoding the cell must be a mapped value; without one the
-/// cell is taken as a raw symbol.
-fn symbolFor(enc: ?Encoding, cell: []const u8) ?[]const u8 {
-    const e = enc orelse return cell;
-    for (e.map) |m| if (std.mem.eql(u8, m.value, cell)) return m.symbol;
-    return null;
-}
-
 fn resolve(a: std.mem.Allocator, v: Vectors, def: network.Definition, diag: *Diag) ParseError![]const Resolved {
     for (v.in_cols) |c| {
         if (!portExists(def.sources, c))
@@ -231,17 +192,12 @@ fn resolve(a: std.mem.Allocator, v: Vectors, def: network.Definition, diag: *Dia
         if (!portExists(def.destinations, c))
             return bad(a, diag, 0, "output column '{s}' is not a destination place of {s}", .{ c, def.name });
     }
-    for (v.encodings) |e| {
-        if (!portExists(def.sources, e.port) and !portExists(def.destinations, e.port))
-            return bad(a, diag, 0, "@encoding port '{s}' is not a port of {s}", .{ e.port, def.name });
-    }
 
     var out: std.ArrayListUnmanaged(Resolved) = .empty;
     for (v.rows) |row| {
         const in_syms = try a.alloc([]const u8, row.inputs.len);
         for (row.inputs, 0..) |cell, j| {
-            in_syms[j] = symbolFor(encodingFor(v, v.in_cols[j]), cell) orelse
-                return bad(a, diag, row.line, "value '{s}' has no @encoding mapping for input '{s}'", .{ cell, v.in_cols[j] });
+            in_syms[j] = cell;                     // raw token, no mapping
         }
         const out_syms = try a.alloc(?[]const u8, v.out_cols.len);
         for (out_syms, 0..) |*slot, k| {
@@ -249,8 +205,7 @@ fn resolve(a: std.mem.Allocator, v: Vectors, def: network.Definition, diag: *Dia
                 slot.* = null;
                 continue;
             }
-            slot.* = symbolFor(encodingFor(v, v.out_cols[k]), row.outputs[k]) orelse
-                return bad(a, diag, row.line, "value '{s}' has no @encoding mapping for output '{s}'", .{ row.outputs[k], v.out_cols[k] });
+            slot.* = row.outputs[k];               // raw token, no mapping
         }
         try out.append(a, .{
             .line = row.line,

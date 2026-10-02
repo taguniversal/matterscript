@@ -275,3 +275,25 @@ test "TAG-211 step 5: bare name aliasing a bundle across two invocation hops" {
     };
     for (net.definitions) |def| dumpDef("step 5", def);
 }
+
+
+test "Example 12.9: two adjacent mutex source groups" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const src =
+        \\OR[({A0<> A1<>}{B0<> B1<>})({$0 $1})
+        \\  :
+        \\  A0,B0[0]
+        \\  A0,B1[1]
+        \\  A1,B0[1]
+        \\  A1,B1[1]
+        \\]
+    ;
+    const net = parser.parse(a, src) catch |err| {
+        std.debug.print("FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        return err;
+    };
+    dumpDef("Example 12.9", net.definitions[0]); // reuse the existing dump helper
+}

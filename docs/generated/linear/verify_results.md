@@ -1,6 +1,6 @@
 # Example verification results
 
-19 expected outcomes, 13 unexpected outcomes.
+21 expected outcomes, 11 unexpected outcomes.
 
 | Issue | Example | Expected | Parse | Runtime | GHDL | Simulate | Result |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -14,13 +14,13 @@
 | TAG-143 | example-12.2.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
 | TAG-147 | example-12.13.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-148 | example-12.11.ms.ipl | Implemented | ok | ok 8/8 | ok | FAIL | ❌ FAIL |
-| TAG-149 | example-12.9.ms.ipl | Spec Only | ok | - | ok | - | 🟡 unexpected pass |
+| TAG-149 | example-12.9.ms.ipl | Spec Only | ok | - | FAIL | - | ⬛ expected fail |
 | TAG-151 | example-12.17.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
 | TAG-153 | example-12.8.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-160 | example-12.33.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-163 | example-12.36.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-177 | example-12.26.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
-| TAG-180 | example-12.10.ms.ipl | Implemented | ok | FAIL 0/20 | FAIL | - | ❌ FAIL |
+| TAG-180 | example-12.10.ms.ipl | Implemented | ok | ok 20/20 | FAIL | - | ❌ FAIL |
 | TAG-181 | example-12.11.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
 | TAG-184 | example-12.24.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
 | TAG-185 | case-unique-signals.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
@@ -30,7 +30,7 @@
 | TAG-192 | entity_labeling.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
 | TAG-196 | cube.ms.ipl | Implemented | ok | - | FAIL | - | ❌ FAIL |
 | TAG-198 | example-12.25.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
-| TAG-200 | dual-rail.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
+| TAG-200 | dual-rail.ms.ipl | Partial | ok | FAIL 0/4 | ok | - | ⬛ expected fail |
 | TAG-201 | combustion-reaction.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
 | TAG-207 | example-12.35.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-210 | rule30.ms.ipl | - | ok | - | ok | - | 🟡 unexpected pass |
