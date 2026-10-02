@@ -18,7 +18,12 @@ const max_invocation_depth = 32;
 pub const Environment = environment.Environment;
 pub const PlaceState = environment.PlaceState;
 
-pub const SelectEntry = struct { key: []const u8, symbol: []const u8 };
+pub const SelectAction = union(enum) {
+    symbol: []const u8,
+    copy_from: []const u8,
+};
+
+pub const SelectEntry = struct { key: []const u8, action: SelectAction };
 
 pub const RuleAction = union(enum) {
     literal: u64,
@@ -38,16 +43,38 @@ pub const ExecutableRule = struct {
     action: RuleAction,
 };
 
-/// `$a$b()` -> ["a","b"]; null for anything that isn't exactly that shape.
+fn findComposedDispatchHeader(allocator: std.mem.Allocator, def: network.Definition) !?[]const []const u8 {
+    for (def.resolution) |stmt| {
+        if (stmt != .pure_value) continue;
+        if (try parseInvocationArgs(allocator, stmt.pure_value)) |args| return args;
+    }
+    return null;
+}
+
+/// "$a$b$c()", "$select( )" -> ["a","b","c"]; null for anything that
+/// isn't exactly this shape (a $-joined name chain followed by empty
+/// parens). The parens are always empty — "()" is the marker, not an
+/// arg list. Whitespace is tolerated around the whole expression and
+/// inside the parens, but NOT inside the name chain itself: "$a $b()"
+/// is rejected, because every name after the first must be introduced
+/// by its own '$', not a space.
 fn parseInvocationArgs(allocator: std.mem.Allocator, expr: []const u8) !?[]const []const u8 {
-    if (!std.mem.endsWith(u8, expr, "()")) return null;
-    const body = expr[0 .. expr.len - 2];
+    const trimmed = std.mem.trim(u8, expr, " \t\r\n");
+    if (trimmed.len < 2 or trimmed[trimmed.len - 1] != ')') return null;
+    const open = std.mem.lastIndexOfScalar(u8, trimmed, '(') orelse return null;
+    const inside = std.mem.trim(u8, trimmed[open + 1 .. trimmed.len - 1], " \t");
+    if (inside.len != 0) return null; // only ever empty — "()" is the marker, not an arg list
+    const body = std.mem.trim(u8, trimmed[0..open], " \t");
     if (body.len < 2 or body[0] != '$') return null;
     var args: std.ArrayListUnmanaged([]const u8) = .empty;
     var it = std.mem.splitScalar(u8, body[1..], '$');
     while (it.next()) |raw| {
-        const name = std.mem.trim(u8, raw, " \t");
+        // A name must be a bare identifier run: no internal whitespace,
+        // no empty segments. "$a $b" -> raw "a " fails here, so the
+        // space-separated form is rejected rather than silently accepted.
+        const name = raw;
         if (name.len == 0) return null;
+        if (std.mem.indexOfAny(u8, name, " \t") != null) return null;
         try args.append(allocator, name);
     }
     return try args.toOwnedSlice(allocator);
@@ -62,7 +89,7 @@ fn buildSelectTable(allocator: std.mem.Allocator, def: network.Definition) ![]co
             switch (stmt) {
                 .pure_value => |val| try entries.append(allocator, .{
                     .key = c.name,
-                    .symbol = std.mem.trim(u8, val, " \t\r\n"),
+                    .action = .{ .symbol = std.mem.trim(u8, val, " \t\r\n") },
                 }),
                 else => {},
             }
@@ -92,7 +119,17 @@ fn mapName(allocator: std.mem.Allocator, prefix: []const u8, bindings: []const B
 }
 
 fn isSourcePort(callee: network.Definition, name: []const u8) bool {
-    for (callee.sources) |s| if (std.mem.eql(u8, s.name, name)) return true;
+    return argListHasPlace(callee.sources, name);
+}
+
+fn argListHasPlace(args: []const network.Arg, name: []const u8) bool {
+    for (args) |arg| {
+        if (arg.kind == .group) {
+            if (arg.group) |g| if (argListHasPlace(g.places, name)) return true;
+            continue;
+        }
+        if (std.mem.eql(u8, arg.name, name)) return true;
+    }
     return false;
 }
 
@@ -110,6 +147,33 @@ fn checkInvocable(callee: network.Definition, rules: []const ExecutableRule, nam
     return error.ValueKeyedInvocationNotSupported;
 }
 
+/// Binds one caller argument to one callee port. A plain place binds
+/// 1:1. A group argument — explicit bracket syntax at the call site,
+/// e.g. {$Q1 $Q2 $Q3 $Q4} — requires the callee's own declared port in
+/// that position to ALSO be a group with the same member count, and
+/// binds each member positionally. This is TAG-213 slice 2a: explicit,
+/// fully-spelled-out groups only. A bare name aliasing a callee's group
+/// port with no brackets at the call site (4BITADD($A $B $CARRYIN)) is
+/// the harder, separate mechanism — still falls through to scalarPlace
+/// below and fails loudly rather than silently binding wrong.
+fn bindArgument(
+    allocator: std.mem.Allocator,
+    bindings: *std.ArrayListUnmanaged(Binding),
+    formal: network.Arg,
+    actual: network.Arg,
+) !void {
+    if (formal.kind == .group and actual.kind == .group) {
+        const formal_group = formal.group orelse return error.InvocationArityMismatch;
+        const actual_group = actual.group orelse return error.InvocationArityMismatch;
+        if (formal_group.places.len != actual_group.places.len) return error.InvocationArityMismatch;
+        for (formal_group.places, actual_group.places) |fp, ap| {
+            try bindings.append(allocator, .{ .callee = try scalarPlace(fp), .caller = try scalarPlace(ap) });
+        }
+        return;
+    }
+    try bindings.append(allocator, .{ .callee = try scalarPlace(formal), .caller = try scalarPlace(actual) });
+}
+
 fn inlineInvocation(
     allocator: std.mem.Allocator,
     out: *std.ArrayListUnmanaged(ExecutableRule),
@@ -123,16 +187,17 @@ fn inlineInvocation(
         return error.InvocationArityMismatch;
 
     var bindings: std.ArrayListUnmanaged(Binding) = .empty;
-    for (inv.sources, callee.sources) |actual, formal|
-        try bindings.append(allocator, .{ .callee = try scalarPlace(formal), .caller = try scalarPlace(actual) });
-    for (inv.destinations, callee.destinations) |actual, formal|
-        try bindings.append(allocator, .{ .callee = try scalarPlace(formal), .caller = try scalarPlace(actual) });
+    for (inv.sources, callee.sources) |actual, formal| try bindArgument(allocator, &bindings, formal, actual);
+    for (inv.destinations, callee.destinations) |actual, formal| try bindArgument(allocator, &bindings, formal, actual);
 
     const callee_rules = try buildRulesAtDepth(allocator, callee, definitions, depth + 1);
     for (callee_rules) |r| {
         for (r.inputs) |input| try checkInvocable(callee, callee_rules, input);
         switch (r.action) {
             .copy_from => |src| try checkInvocable(callee, callee_rules, src),
+            .select => |entries| for (entries) |e| {
+                if (e.action == .copy_from) try checkInvocable(callee, callee_rules, e.action.copy_from);
+            },
             else => {},
         }
     }
@@ -149,7 +214,19 @@ fn inlineInvocation(
             .literal => |v| .{ .literal = v },
             .assert_symbol => |s| .{ .assert_symbol = s }, // a VALUE, not a place
             .copy_from => |src| .{ .copy_from = try mapName(allocator, prefix, bindings.items, src) },
-            .select => |entries| .{ .select = entries }, // keys are values; inputs are renamed above
+            .select => |entries| blk: {
+                const mapped = try allocator.alloc(SelectEntry, entries.len);
+                for (entries, 0..) |e, i| {
+                    mapped[i] = .{
+                        .key = e.key, // a VALUE — never renamed
+                        .action = switch (e.action) {
+                            .symbol => |s| .{ .symbol = s },
+                            .copy_from => |src| .{ .copy_from = try mapName(allocator, prefix, bindings.items, src) },
+                        },
+                    };
+                }
+                break :blk .{ .select = mapped };
+            },
         };
 
         try out.append(allocator, .{
@@ -213,29 +290,64 @@ fn buildRulesAtDepth(
         }
     }
 
-    // Fill-shaped children of def.contained (Z0[OUT<$Z0>],
-    // RXN[WATER<w1>]) are a separate, one-input hop off whatever place
-    // the joint match above just asserted — gated on the target name
-    // alone, not the raw joint-match inputs. This is what lets several
-    // rules share one target cleanly (RXN having two WATER-producing
-    // children) without multiplying rules across every contributing
-    // input combination.
-    for (def.contained) |contained| {
-        if (contained.sources.len != 0 or contained.destinations.len != 0) continue;
-        for (contained.resolution) |stmt| {
-            if (stmt != .fill) continue;
-            const f = stmt.fill;
-            const expr = std.mem.trim(u8, f.expr, " \t\r\n");
+    if (try findComposedDispatchHeader(allocator, def)) |dispatch_inputs| {
+        // Bare "$a$b$c()" header, no fill wrapper — e.g. fanin's
+        // "$select( )" or FULLADD's "$X$Y$C()". Compiles to the same
+        // .select mechanism a fill-embedded "$a$b()" already uses:
+        // read the actual VALUES of dispatch_inputs, join with ",",
+        // match against each branch's own name. A branch may supply
+        // more than one destination fill at once (FULLADD's
+        // "0,0,0[SUM<0> CARRY<0>]"), so group by dest_name.
+        var by_dest: std.StringHashMapUnmanaged(std.ArrayListUnmanaged(SelectEntry)) = .empty;
+        for (def.contained) |contained| {
+            if (contained.sources.len != 0 or contained.destinations.len != 0) continue;
+            for (contained.resolution) |stmt| {
+                if (stmt != .fill) continue;
+                const f = stmt.fill;
+                const expr = std.mem.trim(u8, f.expr, " \t\r\n");
+                const action: SelectAction = if (expr.len > 0 and expr[0] == '$')
+                    .{ .copy_from = expr[1..] }
+                else
+                    .{ .symbol = expr };
 
-            const inputs = try allocator.alloc([]const u8, 1);
-            inputs[0] = contained.name;
+                const gop = try by_dest.getOrPut(allocator, f.dest_name);
+                if (!gop.found_existing) gop.value_ptr.* = .empty;
+                try gop.value_ptr.append(allocator, .{ .key = contained.name, .action = action });
+            }
+        }
+        var it = by_dest.iterator();
+        while (it.next()) |entry| {
+            try rules.append(allocator, .{
+                .inputs = dispatch_inputs,
+                .dest = entry.key_ptr.*,
+                .action = .{ .select = try entry.value_ptr.toOwnedSlice(allocator) },
+            });
+        }
+    } else {
+        // Fill-shaped children of def.contained (Z0[OUT<$Z0>],
+        // RXN[WATER<w1>]) are a separate, one-input hop off whatever place
+        // the joint match above just asserted — gated on the target name
+        // alone, not the raw joint-match inputs. This is what lets several
+        // rules share one target cleanly (RXN having two WATER-producing
+        // children) without multiplying rules across every contributing
+        // input combination.
+        for (def.contained) |contained| {
+            if (contained.sources.len != 0 or contained.destinations.len != 0) continue;
+            for (contained.resolution) |stmt| {
+                if (stmt != .fill) continue;
+                const f = stmt.fill;
+                const expr = std.mem.trim(u8, f.expr, " \t\r\n");
 
-            const action: RuleAction = if (expr.len > 0 and expr[0] == '$')
-                .{ .copy_from = expr[1..] }
-            else
-                .{ .assert_symbol = expr };
+                const inputs = try allocator.alloc([]const u8, 1);
+                inputs[0] = contained.name;
 
-            try rules.append(allocator, .{ .inputs = inputs, .dest = f.dest_name, .action = action });
+                const action: RuleAction = if (expr.len > 0 and expr[0] == '$')
+                    .{ .copy_from = expr[1..] }
+                else
+                    .{ .assert_symbol = expr };
+
+                try rules.append(allocator, .{ .inputs = inputs, .dest = f.dest_name, .action = action });
+            }
         }
     }
 
@@ -336,7 +448,10 @@ pub fn run(
                     defer allocator.free(key);
                     for (entries) |e| {
                         if (std.mem.eql(u8, e.key, key)) {
-                            try env.assertSymbol(rule.dest, e.symbol);
+                            switch (e.action) {
+                                .symbol => |sym| try env.assertSymbol(rule.dest, sym),
+                                .copy_from => |src| try env.copyFrom(rule.dest, src),
+                            }
                             break;
                         }
                     }

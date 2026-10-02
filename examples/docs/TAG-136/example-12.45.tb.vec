@@ -1,0 +1,17 @@
+@dut(code)
+@vectors(currentstate,newbit : detect,state)
+
+S0,0 : no,S1
+S1,0 : no,S2
+S2,0 : no,S2
+S3,0 : no,S4
+S4,0 : no,S2
+S5,0 : no,S1
+S6,0 : no,S1
+S0,1 : no,S0
+S1,1 : no,S0
+S2,1 : no,S3
+S3,1 : no,S0
+S4,1 : no,S5
+S5,1 : no,S6
+S6,1 : yes,S0

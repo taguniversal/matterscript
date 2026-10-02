@@ -58,9 +58,12 @@ pub fn findContainedDefinition(def: network.Definition, name: []const u8) ?netwo
     return null;
 }
 
-/// Caller's nested definitions first, then top-level (same rule as the validator).
+/// Flat definitions only (see README / validate.zig's NestedDefinitionNotAllowed):
+/// callee resolution is always top-level, never through def.contained.
+/// findContainedDefinition above still exists for genuine lookup-table
+/// entries (value-transform rules), but is no longer consulted here.
 pub fn findCallee(def: network.Definition, top: []const network.Definition, name: []const u8) ?network.Definition {
-    if (findContainedDefinition(def, name)) |nested| return nested;
+    _ = def;
     for (top) |t| {
         if (std.ascii.eqlIgnoreCase(t.name, name)) return t;
     }
@@ -74,16 +77,12 @@ pub fn emissionForm(allocator: std.mem.Allocator, raw: network.Definition) !netw
     return sanitizer.normalizeDefinitionIdentifiers(allocator, d);
 }
 
-pub fn writeInvocationArgument(
+fn writeScalarArgument(
     allocator: std.mem.Allocator,
     writer: anytype,
-    invocation_index: usize,
-    argument_index: usize,
+    signal_name: []const u8,
     argument: network.Arg,
 ) !void {
-    const signal_name = try std.fmt.allocPrint(allocator, "invocation_{d}_arg_{d}", .{ invocation_index, argument_index });
-    defer allocator.free(signal_name);
-
     if (argument.kind == .place and argument.name.len > 0) {
         const id = try placeName(allocator, argument);
         defer allocator.free(id);
@@ -94,14 +93,7 @@ pub fn writeInvocationArgument(
     const text = argToText(argument);
     const trimmed = std.mem.trim(u8, text, " \t\r\n");
 
-    if (argument.kind == .group) {
-        if (argument.group) |group| {
-            if (group.kind == .arbitration) {
-                try writer.print("  -- Arbiter input competition group\n", .{});
-            }
-        }
-        try writer.print("  {s} <= null_value;\n", .{signal_name});
-    } else if (trimmed.len > 1 and trimmed[0] == '$' and std.mem.indexOfScalar(u8, trimmed[1..], '$') == null) {
+    if (trimmed.len > 1 and trimmed[0] == '$' and std.mem.indexOfScalar(u8, trimmed[1..], '$') == null) {
         const source_id = try sanitizeName(allocator, trimmed[1..]);
         defer allocator.free(source_id);
         try writer.print("  {s} <= {s};\n", .{ signal_name, source_id });
@@ -112,6 +104,47 @@ pub fn writeInvocationArgument(
     }
 }
 
+fn writeInvocationArgumentMember(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    invocation_index: usize,
+    argument_index: usize,
+    member_index: usize,
+    member: network.Arg,
+) !void {
+    // A nested group-of-groups isn't exercised by any current example;
+    // fail loudly rather than silently drive null_value if one shows up.
+    if (member.kind == .group) return error.NestedGroupInvocationNotSupported;
+
+    const signal_name = try std.fmt.allocPrint(allocator, "invocation_{d}_arg_{d}_{d}", .{ invocation_index, argument_index, member_index });
+    defer allocator.free(signal_name);
+    try writeScalarArgument(allocator, writer, signal_name, member);
+}
+
+pub fn writeInvocationArgument(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    invocation_index: usize,
+    argument_index: usize,
+    argument: network.Arg,
+) !void {
+    if (argument.kind == .group) {
+        if (argument.group) |group| {
+            if (group.kind == .arbitration) {
+                try writer.print("  -- Arbiter input competition group\n", .{});
+            }
+            for (group.places, 0..) |member, member_index| {
+                try writeInvocationArgumentMember(allocator, writer, invocation_index, argument_index, member_index, member);
+            }
+        }
+        return;
+    }
+
+    const signal_name = try std.fmt.allocPrint(allocator, "invocation_{d}_arg_{d}", .{ invocation_index, argument_index });
+    defer allocator.free(signal_name);
+    try writeScalarArgument(allocator, writer, signal_name, argument);
+}
+
 pub fn writeInvocationSignals(
     writer: anytype,
     def: network.Definition,
@@ -119,10 +152,34 @@ pub fn writeInvocationSignals(
     for (def.resolution, 0..) |stmt, invocation_index| {
         if (stmt != .invoke) continue;
         const inv = stmt.invoke;
-        for (inv.sources, 0..) |_, argument_index| {
+
+        for (inv.sources, 0..) |source, argument_index| {
+            if (source.kind == .group) {
+                if (source.group) |group| {
+                    for (group.places, 0..) |_, member_index| {
+                        try writer.print("  signal invocation_{d}_arg_{d}_{d} : ncl_signal;\n", .{ invocation_index, argument_index, member_index });
+                    }
+                }
+                continue;
+            }
             try writer.print("  signal invocation_{d}_arg_{d} : ncl_signal;\n", .{ invocation_index, argument_index });
         }
+
         for (inv.destinations, 0..) |output, output_index| {
+            if (output.kind == .group) {
+                if (output.group) |group| {
+                    for (group.places, 0..) |member, member_index| {
+                        // A named member (the common case — out1, SUM0,
+                        // etc.) is a real place elsewhere in this
+                        // definition; it's wired to directly in the port
+                        // map, no synthetic signal needed. Only an
+                        // anonymous or nested-group member needs one.
+                        if (member.group == null and member.name.len != 0) continue;
+                        try writer.print("  signal invocation_{d}_output_{d}_{d} : ncl_signal;\n", .{ invocation_index, output_index, member_index });
+                    }
+                }
+                continue;
+            }
             if (output.group == null and output.name.len != 0) continue;
             try writer.print("  signal invocation_{d}_output_{d} : ncl_signal;\n", .{ invocation_index, output_index });
         }
@@ -161,19 +218,11 @@ pub fn writeInvocationInstance(
     defer allocator.free(component_id);
 
     // The port map's formal (left-hand) names must match what the
-    // target entity actually declares — writeBoundaryPorts names each
-    // port after its real, sanitized source/destination name, never
-    // generic "arg_N"/"output_N" (that generic scheme is only valid
-    // for the special testbench "_network" component wrapper, not for
-    // an ordinary nested gate invocation like this). Look up the
-    // invoked definition's own ports, run them through the SAME
+    // target entity actually declares. Look up the invoked definition
+    // (flat/top-level only — see findCallee), run it through the same
     // normalization its own independent writeDefinition call will
-    // apply (in particular, EQ0-style duplicate destination names
-    // that fan out to "condition"/"condition_1" — see
-    // normalizeDestinations), and use those names. Fall back to
-    // "arg_N"/"output_N" only when no matching contained definition
-    // is found at all, since then there's no real port list to
-    // consult.
+    // apply, and use those names. Fall back to "arg_N"/"output_N" only
+    // when the callee can't be found at all.
     var target_sources: []const []const u8 = &.{};
     var target_destinations: []const []const u8 = &.{};
 
@@ -182,32 +231,71 @@ pub fn writeInvocationInstance(
         target_sources = try boundary.collectBoundaryPortNames(allocator, target.sources);
         target_destinations = try boundary.collectBoundaryPortNames(allocator, target.destinations);
     }
-    
-    if (findContainedDefinition(def, inv.name)) |raw_target| {
-        const target = try sanitizer.normalizeDefinitionIdentifiers(allocator, raw_target);
-        target_sources = try boundary.collectBoundaryPortNames(allocator, target.sources);
-        target_destinations = try boundary.collectBoundaryPortNames(allocator, target.destinations);
-    }
 
-    // Changed from component instance name to direct entity instantiation
     try writer.print("  invocation_{d} : entity work.{s} port map (", .{ invocation_index, component_id });
 
     var first = true;
-    for (inv.sources, 0..) |_, argument_index| {
-        if (!first) try writer.print(", ", .{});
-        if (argument_index < target_sources.len) {
-            try writer.print("{s} => invocation_{d}_arg_{d}", .{ target_sources[argument_index], invocation_index, argument_index });
-        } else {
-            try writer.print("arg_{d} => invocation_{d}_arg_{d}", .{ argument_index, invocation_index, argument_index });
+
+    // formal_index tracks the callee's own flat port list position,
+    // which is NOT the same as argument_index once a group argument
+    // expands into several formal ports at once.
+    var formal_index: usize = 0;
+    for (inv.sources, 0..) |source, argument_index| {
+        if (source.kind == .group) {
+            if (source.group) |group| {
+                for (group.places, 0..) |_, member_index| {
+                    if (!first) try writer.print(", ", .{});
+                    const member_signal = try std.fmt.allocPrint(allocator, "invocation_{d}_arg_{d}_{d}", .{ invocation_index, argument_index, member_index });
+                    defer allocator.free(member_signal);
+                    if (formal_index < target_sources.len) {
+                        try writer.print("{s} => {s}", .{ target_sources[formal_index], member_signal });
+                    } else {
+                        try writer.print("arg_{d} => {s}", .{ formal_index, member_signal });
+                    }
+                    formal_index += 1;
+                    first = false;
+                }
+            }
+            continue;
         }
+        if (!first) try writer.print(", ", .{});
+        if (formal_index < target_sources.len) {
+            try writer.print("{s} => invocation_{d}_arg_{d}", .{ target_sources[formal_index], invocation_index, argument_index });
+        } else {
+            try writer.print("arg_{d} => invocation_{d}_arg_{d}", .{ formal_index, invocation_index, argument_index });
+        }
+        formal_index += 1;
         first = false;
     }
+
+    var formal_dest_index: usize = 0;
     for (inv.destinations, 0..) |output, output_index| {
+        if (output.kind == .group) {
+            if (output.group) |group| {
+                for (group.places, 0..) |member, member_index| {
+                    if (!first) try writer.print(", ", .{});
+                    const formal = if (formal_dest_index < target_destinations.len)
+                        target_destinations[formal_dest_index]
+                    else
+                        try std.fmt.allocPrint(allocator, "output_{d}", .{formal_dest_index});
+                    if (member.group != null or member.name.len == 0) {
+                        try writer.print("{s} => invocation_{d}_output_{d}_{d}", .{ formal, invocation_index, output_index, member_index });
+                    } else {
+                        const member_id = try placeName(allocator, member);
+                        defer allocator.free(member_id);
+                        try writer.print("{s} => {s}", .{ formal, member_id });
+                    }
+                    formal_dest_index += 1;
+                    first = false;
+                }
+            }
+            continue;
+        }
         if (!first) try writer.print(", ", .{});
-        const formal = if (output_index < target_destinations.len)
-            target_destinations[output_index]
+        const formal = if (formal_dest_index < target_destinations.len)
+            target_destinations[formal_dest_index]
         else
-            try std.fmt.allocPrint(allocator, "output_{d}", .{output_index});
+            try std.fmt.allocPrint(allocator, "output_{d}", .{formal_dest_index});
         if (output.group != null or output.name.len == 0) {
             try writer.print("{s} => invocation_{d}_output_{d}", .{ formal, invocation_index, output_index });
         } else {
@@ -215,7 +303,9 @@ pub fn writeInvocationInstance(
             defer allocator.free(output_id);
             try writer.print("{s} => {s}", .{ formal, output_id });
         }
+        formal_dest_index += 1;
         first = false;
     }
+
     try writer.print(");\n", .{});
 }

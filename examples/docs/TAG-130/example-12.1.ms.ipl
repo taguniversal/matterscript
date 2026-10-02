@@ -10,12 +10,12 @@ FULLADD(0,1,0)(<> CARRYOUT<>)
 FULLADD[(X<> Y<> C<>)($SUM $CARRY)
     $X$Y$C()
 :
-    0,0,0[SUM<0> CARRY<0>]
+    0,0,0[SUM<0> CARRY<0>] 
     0,0,1[SUM<1> CARRY<0>]
     0,1,0[SUM<1> CARRY<0>]
     0,1,1[SUM<0> CARRY<1>]
     1,0,0[SUM<1> CARRY<0>]
     1,0,1[SUM<0> CARRY<1>]
     1,1,0[SUM<0> CARRY<1>]
-    1,1,1[SUM<1> CARRY<1>]
+    1,1,1[SUM<1> CARRY<1>] 
 ]
