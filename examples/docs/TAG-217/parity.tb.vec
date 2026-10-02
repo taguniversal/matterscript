@@ -1,0 +1,9 @@
+@dut(PARITY)
+@vectors(state,bit : next)
+@carry(state=next)
+@stream()
+
+E,1 : O
+_,1 : E
+_,0 : E
+_,1 : O

@@ -1,0 +1,9 @@
+// Linear : TAG-217 @stream testbench directive
+PARITY(state,bit)(next<>)
+PARITY[(state<> bit<>)($next)
+  $state$bit() :
+  E,0[next<E>]
+  E,1[next<O>]
+  O,0[next<O>]
+  O,1[next<E>]
+]

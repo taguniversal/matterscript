@@ -48,9 +48,13 @@ const RawRow = struct {
     stall: bool,
 };
 
+const Carry = struct { in: []const u8, out: []const u8 };
+
 pub const Vectors = struct {
     dut: ?[]const u8 = null,
-    mode_stream: bool = false, // NEW, see Part 2
+    mode_stream: bool = false,
+    // TAG-217 carries - The real fix: let _ name which output it carries from, when it isn't the same name
+    carries: []const Carry = &.{},
     in_cols: []const []const u8 = &.{},
     out_cols: []const []const u8 = &.{},
     rows: []const RawRow = &.{},
@@ -62,6 +66,11 @@ pub const Diag = struct {
 };
 
 const ParseError = error{ MalformedTestbench, OutOfMemory };
+
+fn carryTarget(v: Vectors, in_name: []const u8) []const u8 {
+    for (v.carries) |c| if (std.mem.eql(u8, c.in, in_name)) return c.out;
+    return in_name; // default: same name, unchanged behavior when no @carry is given
+}
 
 fn bad(a: std.mem.Allocator, d: *Diag, line: usize, comptime fmt: []const u8, args: anytype) ParseError {
     d.line = line;
@@ -126,6 +135,18 @@ pub fn parse(a: std.mem.Allocator, source: []const u8, diag: *Diag) ParseError!V
                 if (!allIdents(v.in_cols) or !allIdents(v.out_cols))
                     return bad(a, diag, line_no, "bad column name in @vectors", .{});
                 have_vectors = true;
+                
+            } else if (std.mem.eql(u8, name, "carry")) {
+                const eq = std.mem.indexOfScalar(u8, args, '=') orelse
+                    return bad(a, diag, line_no, "@carry needs 'input=output'", .{});
+                const in_name = std.mem.trim(u8, args[0..eq], " \t");
+                const out_name = std.mem.trim(u8, args[eq + 1 ..], " \t");
+                if (!isIdent(in_name) or !isIdent(out_name))
+                    return bad(a, diag, line_no, "bad @carry mapping", .{});
+                var list = std.ArrayListUnmanaged(@TypeOf(v.carries[0])).fromOwnedSlice(@constCast(v.carries));
+                try list.append(a, .{ .in = in_name, .out = out_name });
+                v.carries = try list.toOwnedSlice(a);
+                
             } else if (std.mem.eql(u8, name, "mode")) {
                 if (!std.mem.eql(u8, args, "wavefront"))
                     return bad(a, diag, line_no, "@mode({s}) not supported yet (only 'wavefront')", .{args});
@@ -146,9 +167,21 @@ pub fn parse(a: std.mem.Allocator, source: []const u8, diag: *Diag) ParseError!V
 
         if (ins.len != v.in_cols.len)
             return bad(a, diag, line_no, "expected {d} input cells, got {d}", .{ v.in_cols.len, ins.len });
+        for (ins) |c| {
+            if (c.len == 0) return bad(a, diag, line_no, "empty input cell", .{});
+            if (std.mem.eql(u8, c, "_")) {
+                if (!v.mode_stream) return bad(a, diag, line_no, "'_' requires @stream", .{});
+                if (rows.items.len == 0) return bad(a, diag, line_no, "'_' on the first row has nothing to carry", .{});
+            }
+        }
+
+        if (v.mode_stream and stall)
+            return bad(a, diag, line_no, "'!stall' is not supported with @stream yet", .{});
+
+        if (v.mode_stream and stall)
+            return bad(a, diag, line_no, "'!stall' is not supported with @stream yet", .{});
         if (!stall and outs.len != v.out_cols.len)
             return bad(a, diag, line_no, "expected {d} output cells, got {d}", .{ v.out_cols.len, outs.len });
-        for (ins) |c| if (c.len == 0) return bad(a, diag, line_no, "empty input cell", .{});
         for (outs) |c| if (c.len == 0) return bad(a, diag, line_no, "empty output cell", .{});
 
         try rows.append(a, .{ .line = line_no, .inputs = ins, .outputs = outs, .stall = stall });
@@ -161,11 +194,16 @@ pub fn parse(a: std.mem.Allocator, source: []const u8, diag: *Diag) ParseError!V
     return v;
 }
 
+const InCell = union(enum) {
+    literal: []const u8,
+    carry_from: []const u8, // name of the output column to pull from
+};
+
 const Resolved = struct {
     line: usize,
     label: []const u8,
-    in_syms: []const []const u8,
-    out_syms: []const ?[]const u8, // null = don't care
+    in_cells: []const InCell, // was in_syms: []const []const u8
+    out_syms: []const ?[]const u8,
     stall: bool,
 };
 
@@ -195,9 +233,12 @@ fn resolve(a: std.mem.Allocator, v: Vectors, def: network.Definition, diag: *Dia
 
     var out: std.ArrayListUnmanaged(Resolved) = .empty;
     for (v.rows) |row| {
-        const in_syms = try a.alloc([]const u8, row.inputs.len);
+        const in_cells = try a.alloc(InCell, row.inputs.len);
         for (row.inputs, 0..) |cell, j| {
-            in_syms[j] = cell;                     // raw token, no mapping
+            in_cells[j] = if (std.mem.eql(u8, cell, "_"))
+                .{ .carry_from = carryTarget(v, v.in_cols[j]) }
+            else
+                .{ .literal = cell };
         }
         const out_syms = try a.alloc(?[]const u8, v.out_cols.len);
         for (out_syms, 0..) |*slot, k| {
@@ -205,12 +246,12 @@ fn resolve(a: std.mem.Allocator, v: Vectors, def: network.Definition, diag: *Dia
                 slot.* = null;
                 continue;
             }
-            slot.* = row.outputs[k];               // raw token, no mapping
+            slot.* = row.outputs[k];
         }
         try out.append(a, .{
             .line = row.line,
             .label = try std.mem.join(a, ",", row.inputs),
-            .in_syms = in_syms,
+            .in_cells = in_cells,
             .out_syms = out_syms,
             .stall = row.stall,
         });
@@ -266,19 +307,39 @@ pub fn runVectors(
 
     var failures: std.ArrayListUnmanaged([]const u8) = .empty;
     var passed: usize = 0;
+    var last_output: std.StringHashMapUnmanaged([]const u8) = .empty;
 
     for (rows) |row| {
         const streams = try a.alloc(testbench.PortStream, v.in_cols.len);
+        var row_had_carry_error = false;
         for (streams, 0..) |*s, j| {
+            const resolved: []const u8 = switch (row.in_cells[j]) {
+                .literal => |sym| sym,
+                .carry_from => |out_name| last_output.get(out_name) orelse {
+                    try failures.append(a, try std.fmt.allocPrint(a, "line {d} ({s}): '_' refers to '{s}', which was never produced by a prior row", .{ row.line, row.label, out_name }));
+                    row_had_carry_error = true;
+                    break;
+                },
+            };
             const toks = try a.alloc([]const u8, 1);
-            toks[0] = row.in_syms[j];
+            toks[0] = resolved;
             s.* = .{ .port = v.in_cols[j], .tokens = toks };
         }
+        if (row_had_carry_error) continue; // nothing valid to run this row with
 
         const pres = runRow(a, def, net.definitions, streams) catch |err| {
             try failures.append(a, try std.fmt.allocPrint(a, "line {d} ({s}): runtime error {s}", .{ row.line, row.label, @errorName(err) }));
             continue;
         };
+
+        // Update the carry map from what ACTUALLY happened, before the
+        // pass/fail check below — a "-" (don't-check) output still needs
+        // to carry its real value forward to the next row.
+        if (pres.len > 0) {
+            for (v.out_cols) |col| {
+                if (pres[0].outputs.get(col)) |val| try last_output.put(a, col, val);
+            }
+        }
 
         var row_ok = true;
         if (row.stall) {
@@ -287,8 +348,6 @@ pub fn runVectors(
                 try failures.append(a, try std.fmt.allocPrint(a, "line {d} ({s}): expected stall, but the wavefront completed", .{ row.line, row.label }));
             }
         } else if (pres.len == 0) {
-            // Coarse: "no wavefront completed". Refine once Testbench can
-            // report which places were still waiting.
             row_ok = false;
             try failures.append(a, try std.fmt.allocPrint(a, "line {d} ({s}): stalled, the wavefront never completed", .{ row.line, row.label }));
         } else {

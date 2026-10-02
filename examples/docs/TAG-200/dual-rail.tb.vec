@@ -2,7 +2,7 @@
 @vectors(A, B : OUT)
 @mode(wavefront)
 
-p, r : Z0
-p, s : Z0
-q, r : Z0
-q, s : Z1
+p, r : 0
+p, s : 0
+q, r : 0
+q, s : 1
