@@ -211,6 +211,59 @@ test "TAG-217: carry threading is actually exercised (wrong carry produces failu
     try testing.expect(!out.ok());
 }
 
+test "TAG-136: code detector stream carries state and fires yes" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const code_ipl = 
+      \\// linear: TAG-136 Code detector state machine
+      \\// Detects sequence 001011 in a continuous stream of bits.
+      \\code[(currentstate< > newbit< >)($state $detect) 
+      \\$newbit$currentstate() :
+      \\0,S0[detect< no > state<S1>]
+      \\0,S1[detect< no > state<S2>]
+      \\0,S2[detect< no > state<S2>]
+      \\0,S3[detect< no > state<S4>]
+      \\0,S4[detect< no > state<S2>]
+      \\0,S5[detect< no > state<S1>]
+      \\0,S6[detect< no > state<S1>]
+      \\1,S0[detect< no > state<S0>]
+      \\1,S1[detect< no > state<S0>]
+      \\1,S2[detect< no > state<S3>]
+      \\1,S3[detect< no > state<S0>]
+      \\1,S4[detect< no > state<S5>]
+      \\1,S5[detect< no > state<S6>] 
+      \\1,S6[detect< yes > state<S0>] 
+      \\] 
+      ;
+
+    const net = try parser.parse(a, code_ipl);
+
+    const vec =
+        \\ @dut(code)
+        \\ @vectors(currentstate,newbit : detect,state)
+        \\ @carry(currentstate=state)
+        \\ @stream()
+        \\
+        \\ S0,0 : no,S1
+        \\ _,0  : no,S2
+        \\ _,1  : no,S3
+        \\ _,0  : no,S4
+        \\ _,1  : no,S5
+        \\ _,1  : no,S6
+        \\ _,1  : yes,S0
+    ;
+
+
+    const out = try tb_vectors.runVectors(a, "code.tb.vec", vec, net);
+    try testing.expect(out.present);
+    try testing.expect(!out.malformed);
+    try testing.expectEqual(@as(usize, 7), out.total);
+    try testing.expectEqual(@as(usize, 7), out.passed);
+    try testing.expect(out.ok());
+    try testing.expect(out.err_msg == null);
+}
 
 
 
