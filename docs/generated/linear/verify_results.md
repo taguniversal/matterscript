@@ -34,6 +34,6 @@
 | TAG-201 | combustion-reaction.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
 | TAG-207 | example-12.35.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-210 | rule30.ms.ipl | - | ok | - | ok | - | 🟡 unexpected pass |
-| TAG-211 | example-12.18-bundling.ms.ipl | Partial | ok | - | FAIL | - | ⬛ expected fail |
+| TAG-211 | example-12.18-bundling.ms.ipl | Partial | ok | FAIL 0/7 | FAIL | - | ⬛ expected fail |
 | TAG-212 | and3.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
 | TAG-217 | parity.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |

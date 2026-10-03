@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 25  |  🟡 Partial: 8  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 127  |  Total: 162
+✅ Implemented: 25  |  🟡 Partial: 8  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 128  |  Total: 163
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-179: 2. The Simplicity of Concurrency](TAG-179.md)
@@ -161,6 +161,7 @@
 - ⬜ Not started [TAG-215: Value-to-place reification for token-identity dispatch](TAG-215.md)
 - ⬜ Not started [TAG-216: stream-mode test vectors (`@stream` directive)](TAG-216.md)
 - ✅ Implemented [TAG-217: Test Bench @stream directive](TAG-217.md)
+- ⬜ Not started [TAG-218: Runtime: support top-level definitions whose resolution is instance invocations](TAG-218.md)
 - ⬜ Not started [TAG-46: Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [TAG-47: Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [TAG-80: The Completeness Dialogue](TAG-80.md)

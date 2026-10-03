@@ -1,0 +1,31 @@
+// TAG-211: Example 12.18 Bundling digits into numbers
+// 4-bit adder composed of four FULLADD instances, one per bit slice.
+// Inputs: A0..A3, B0..B3 (the two 4-bit operands, LSB first),
+//         CI (carry-in).
+// Outputs: SUM0..SUM3 (the 4-bit sum, LSB first), CO (carry-out).
+
+@dut(4BITADD)
+@vectors(A0,A1,A2,A3,B0,B1,B2,B3,CI : SUM0,SUM1,SUM2,SUM3,CO)
+@mode(wavefront)
+
+// 0 + 0 + 0 = 0, carry 0
+K,K,K,K, K,K,K,K, K : K,K,K,K,M
+
+// 0 + 0 + 1 = 1, carry 0
+K,K,K,K, K,K,K,K, L : L,K,K,K,M
+
+// 1 + 0 + 0 = 1, carry 0
+L,K,K,K, K,K,K,K, K : L,K,K,K,M
+
+// 1 + 1 + 0 = 2, carry 0
+L,K,K,K, L,K,K,K, K : K,L,K,K,M
+
+// 1 + 1 + 1 = 3, carry 0
+L,K,K,K, L,K,K,K, L : L,L,K,K,M
+
+// 15 + 1 + 0 = 16, carry 1 (all sum bits 0, CO=1)
+L,L,L,L, L,K,K,K, K : K,K,K,K,N
+
+// 15 + 15 + 0 = 30, carry 0 (sum = 11110 -> SUM0..SUM3 = 1110, CO=1)
+// careful: 15+15=30=0b11110, sum bits 1110 (SUM0=0,SUM1=1,SUM2=1,SUM3=1), carry 1
+L,L,L,L, L,L,L,L, K : K,L,L,L,N
