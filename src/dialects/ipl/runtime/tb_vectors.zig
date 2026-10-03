@@ -103,6 +103,7 @@ pub fn parse(a: std.mem.Allocator, source: []const u8, diag: *Diag) ParseError!V
     var rows: std.ArrayListUnmanaged(RawRow) = .empty;
     var have_vectors = false;
     var line_no: usize = 0;
+    var carries_list: std.ArrayListUnmanaged(Carry) = .empty;
 
     var lines = std.mem.splitScalar(u8, source, '\n');
     while (lines.next()) |raw| {
@@ -135,18 +136,20 @@ pub fn parse(a: std.mem.Allocator, source: []const u8, diag: *Diag) ParseError!V
                 if (!allIdents(v.in_cols) or !allIdents(v.out_cols))
                     return bad(a, diag, line_no, "bad column name in @vectors", .{});
                 have_vectors = true;
-                
             } else if (std.mem.eql(u8, name, "carry")) {
                 const eq = std.mem.indexOfScalar(u8, args, '=') orelse
                     return bad(a, diag, line_no, "@carry needs 'input=output'", .{});
                 const in_name = std.mem.trim(u8, args[0..eq], " \t");
                 const out_name = std.mem.trim(u8, args[eq + 1 ..], " \t");
+                if (rows.items.len != 0)
+                    return bad(a, diag, line_no, "@carry must appear before vector rows", .{});
+                for (carries_list.items) |existing| {
+                    if (std.mem.eql(u8, existing.in, in_name))
+                        return bad(a, diag, line_no, "duplicate @carry for '{s}'", .{in_name});
+                }
                 if (!isIdent(in_name) or !isIdent(out_name))
                     return bad(a, diag, line_no, "bad @carry mapping", .{});
-                var list = std.ArrayListUnmanaged(@TypeOf(v.carries[0])).fromOwnedSlice(@constCast(v.carries));
-                try list.append(a, .{ .in = in_name, .out = out_name });
-                v.carries = try list.toOwnedSlice(a);
-                
+                try carries_list.append(a, .{ .in = in_name, .out = out_name });
             } else if (std.mem.eql(u8, name, "mode")) {
                 if (!std.mem.eql(u8, args, "wavefront"))
                     return bad(a, diag, line_no, "@mode({s}) not supported yet (only 'wavefront')", .{args});
@@ -167,21 +170,28 @@ pub fn parse(a: std.mem.Allocator, source: []const u8, diag: *Diag) ParseError!V
 
         if (ins.len != v.in_cols.len)
             return bad(a, diag, line_no, "expected {d} input cells, got {d}", .{ v.in_cols.len, ins.len });
-        for (ins) |c| {
+        for (ins, 0..) |c, j| {
             if (c.len == 0) return bad(a, diag, line_no, "empty input cell", .{});
             if (std.mem.eql(u8, c, "_")) {
                 if (!v.mode_stream) return bad(a, diag, line_no, "'_' requires @stream", .{});
                 if (rows.items.len == 0) return bad(a, diag, line_no, "'_' on the first row has nothing to carry", .{});
+                const col = v.in_cols[j];
+                var carried = false;
+                for (carries_list.items) |cc| if (std.mem.eql(u8, cc.in, col)) {
+                    carried = true;
+                    break;
+                };
+                if (!carried)
+                    return bad(a, diag, line_no, "'_' in column '{s}' but no @carry writes to it", .{col});
             }
         }
 
         if (v.mode_stream and stall)
-            return bad(a, diag, line_no, "'!stall' is not supported with @stream yet", .{});
+            return bad(a, diag, line_no, "'!stall' is not supported with @stream", .{});
 
-        if (v.mode_stream and stall)
-            return bad(a, diag, line_no, "'!stall' is not supported with @stream yet", .{});
         if (!stall and outs.len != v.out_cols.len)
             return bad(a, diag, line_no, "expected {d} output cells, got {d}", .{ v.out_cols.len, outs.len });
+
         for (outs) |c| if (c.len == 0) return bad(a, diag, line_no, "empty output cell", .{});
 
         try rows.append(a, .{ .line = line_no, .inputs = ins, .outputs = outs, .stall = stall });
@@ -191,6 +201,7 @@ pub fn parse(a: std.mem.Allocator, source: []const u8, diag: *Diag) ParseError!V
     if (rows.items.len == 0) return bad(a, diag, line_no, "no vector rows", .{});
 
     v.rows = try rows.toOwnedSlice(a);
+    v.carries = try carries_list.toOwnedSlice(a);
     return v;
 }
 
@@ -230,7 +241,22 @@ fn resolve(a: std.mem.Allocator, v: Vectors, def: network.Definition, diag: *Dia
         if (!portExists(def.destinations, c))
             return bad(a, diag, 0, "output column '{s}' is not a destination place of {s}", .{ c, def.name });
     }
-
+    for (v.carries) |c| {
+        var in_ok = false;
+        for (v.in_cols) |ic| if (std.mem.eql(u8, ic, c.in)) {
+            in_ok = true;
+            break;
+        };
+        if (!in_ok)
+            return bad(a, diag, 0, "@carry input '{s}' is not an input column", .{c.in});
+        var out_ok = false;
+        for (v.out_cols) |oc| if (std.mem.eql(u8, oc, c.out)) {
+            out_ok = true;
+            break;
+        };
+        if (!out_ok)
+            return bad(a, diag, 0, "@carry target '{s}' is not an output column", .{c.out});
+    }
     var out: std.ArrayListUnmanaged(Resolved) = .empty;
     for (v.rows) |row| {
         const in_cells = try a.alloc(InCell, row.inputs.len);
@@ -332,9 +358,10 @@ pub fn runVectors(
             continue;
         };
 
-        // Update the carry map from what ACTUALLY happened, before the
-        // pass/fail check below — a "-" (don't-check) output still needs
-        // to carry its real value forward to the next row.
+        // A stall row must not overwrite last_output: carry state is defined to be
+        // unchanged across a stall. Unreachable in @stream mode today (parser
+        // forbids `!stall` there), but kept correct in case that restriction lifts.
+
         if (pres.len > 0) {
             for (v.out_cols) |col| {
                 if (pres[0].outputs.get(col)) |val| try last_output.put(a, col, val);

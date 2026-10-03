@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ac36234b.js";
+            window.path_to_searchindex_js = "searchindex-da98dfea.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e9462bcf.js"></script>
@@ -10493,6 +10493,7 @@ Backend Realization
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="verification-process-1"><a href="#verification-process-1" class="header">Verification Process</a></h1>
 <h2 id="verification-process"><a class="header" href="#verification-process">Verification Process</a></h2>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-08-compilers-and-code-generation/images/verification_process.png" alt="Verification Process"><span class="img-wrapper"><img src="part-08-compilers-and-code-generation/images/verification_process.png" alt="Verification Process"></span></label></p>
 <p>Every example under <code>examples/docs/{issue-id}/</code> is checked automatically by
 <code>verify.sh</code>, which pulls its list of examples and their expected status from
 <code>docs/generated/linear/status.json</code>, which is built by the <code>weave</code> utility.
@@ -10512,34 +10513,104 @@ and output columns and a table of rows; each row is driven into the
 parsed network as one wavefront, and the resulting output values are
 checked against what the row expects. A design with no <code>.tb.vec</code> file
 shows <code>-</code> in this column: parsing correctly is still meaningful on its
-own, but nothing has verified its behavior. <code>example-12.26.tb.vec</code> for
-TAG-177 looks like this:</p>
-<pre><code>@dut(FULLADD)
-@encoding(X:  0=A, 1=B)
-@encoding(Y:  0=C, 1=D)
-@encoding(CI: 0=E, 1=F)
-@encoding(SUM: 0=s, 1=t)
-@encoding(CARRY: 0=u, 1=v)
-@vectors(X,Y,CI : SUM,CARRY)
+own, but nothing has verified its behavior.</p>
+<p>Cells in a vector row are <strong>raw tokens</strong>: the token driven on an input
+place, or the token expected on an output place. There is no
+value↔symbol mapping layer — if the design uses <code>p</code>/<code>q</code> for a dual-rail
+wire, the vectors use <code>p</code>/<code>q</code>, and it is the DUT author’s convention
+that those tokens mean “0” and “1”. This keeps the testbench pure: it
+exercises the expression in the vocabulary the expression already
+speaks, and the meaning of a token is decided by whoever consumes the
+output.</p>
+<p>A minimal vector file for <code>AND2</code> looks like this:</p>
+<pre><code>@dut(AND2)
+@vectors(A, B : OUT)
+@mode(wavefront)
 
-0,0,0 : 0,0
-0,0,1 : 1,0
-...
+p, r : Z0
+p, s : Z0
+q, r : Z0
+q, s : Z1
 </code></pre>
-<p><code>@encoding</code> maps a logical 0/1 value to whatever rail symbol the design
-actually uses on that port; a port with no <code>@encoding</code> takes its cells as
-raw symbols, which is how simpler designs like TAG-143’s <code>AND</code> are
-written with no encoding block at all. A row can also assert <code>!stall</code>,
-meaning the wavefront is expected to never complete — the correct
-behavior for an input combination the design deliberately leaves
-unresolved.</p>
-<p>This stage exists to catch behavioral bugs directly, independent of
-anything the VHDL backend does. It’s also what caught the two bugs
-behind TAG-177 during development: a joint-match rule that needs comma
-separation (<code>G,I[S]</code>, not <code>GI[S]</code>) will silently parse as a single place
-name and stall every wavefront, and a transform-rule symbol that
-collides with a boundary port name is now rejected at parse time rather
-than producing a network with two things asserting the same wire.</p>
+<p><code>@dut</code> names the definition under test (optional — it defaults to the
+first definition in the network). <code>@vectors</code> declares the input and
+output columns and must precede the rows. Each subsequent line is one
+row, one wavefront. A <code>-</code> in an output cell means “don’t check this
+output”. A row can assert <code>!stall</code>, meaning the wavefront is expected
+to never complete — the correct behavior for an input combination the
+design deliberately leaves unresolved.</p>
+<h3 id="streaming-a-sequence-of-tokens"><a class="header" href="#streaming-a-sequence-of-tokens">Streaming a sequence of tokens</a></h3>
+<p>A single-row-per-wavefront testbench is fine for a combinational design,
+but a state machine wants to be fed a <em>sequence</em>: one bit at a time, with
+the design’s state carried from each wavefront into the next. That is
+what <code>@stream</code> provides.</p>
+<p>The problem it solves is this. A state machine like a parity detector
+has a state (<code>E</code> or <code>O</code>) and an input bit (<code>0</code> or <code>1</code>), and on each
+wavefront it consumes one bit and produces the next state. To feed it a
+bit stream <code>1, 1, 0, 1</code>, you need the first row to seed the state
+explicitly, and every row after that to take its <code>state</code> input from
+whatever the previous row’s <code>next</code> output was. Writing that by hand
+means transcribing each intermediate state into the next row, which is
+exactly the kind of bookkeeping a testbench should do for you.</p>
+<p><code>@stream</code> plus <code>@carry</code> does that bookkeeping. <code>@carry(input=output)</code>
+declares that the named input column is fed from the named output column
+of the previous row. A cell written as <code>_</code> in that input column means
+“use the carried value here” rather than a literal token. The first row
+still needs a literal seed for any carried column, because there is no
+previous row to pull from.</p>
+<p>A parity detector and its stream vectors:</p>
+<pre><code>PARITY[(state&lt;&gt; bit&lt;&gt;)($next)
+  $state$bit() :
+  E,0[next&lt;E&gt;]
+  E,1[next&lt;O&gt;]
+  O,0[next&lt;O&gt;]
+  O,1[next&lt;E&gt;]
+]
+</code></pre>
+<pre><code>@dut(PARITY)
+@vectors(state,bit : next)
+@carry(state=next)
+@stream()
+
+E,1 : O
+_,1 : E
+_,0 : E
+_,1 : O
+</code></pre>
+<p>Read row by row:</p>
+<ul>
+<li><strong>Row 1</strong> seeds <code>state=E</code> and drives <code>bit=1</code>. The table says <code>E,1</code> produces
+<code>next=O</code>, and the row expects <code>O</code>. Row 1’s actual output becomes the
+carried value for the next row.</li>
+<li><strong>Row 2</strong> writes <code>_</code> for <code>state</code>, meaning “take it from <code>@carry(state=next)</code>”
+— that is, from row 1’s <code>next</code>, which was <code>O</code>. So <code>state=O</code>, <code>bit=1</code>,
+which produces <code>next=E</code>. The row expects <code>E</code>.</li>
+<li><strong>Row 3</strong> carries <code>E</code> forward, drives <code>bit=0</code>, produces <code>next=E</code>.</li>
+<li><strong>Row 4</strong> carries <code>E</code> forward, drives <code>bit=1</code>, produces <code>next=O</code>.</li>
+</ul>
+<p>The sequence of bits tested is <code>1, 1, 0, 1</code>, and the state moves along
+the stream without the vector author ever writing an intermediate state
+name. This is what “a state-dependent read/test head moving along the
+stream” means: the head is the pair <code>(state, bit)</code> being read from the
+stream at each step, and <code>@carry</code> keeps the state half of that head
+synchronized with where the previous step left it.</p>
+<p>Two parse-time checks make a silently-broken carry loud rather than
+silent, which matters because a carry that fails to thread is otherwise
+indistinguishable from a correct run until the rows after it start
+mismatching:</p>
+<ul>
+<li>A <code>_</code> in a column with no matching <code>@carry(input=…)</code> is rejected at
+parse time — there is nothing to pull from, so the row could never run.</li>
+<li>A <code>@carry</code> whose target is not an output column of the DUT, or whose
+source is not an input column, is rejected before any row runs, so a
+typo in the mapping is caught as a testbench error rather than as a
+mysterious mid-stream stall.</li>
+</ul>
+<p>The runtime then carries the <em>actual</em> output of each completed wavefront
+forward, not the expected value, so a row whose output is <code>-</code>
+(don’t-check) still threads its real result into the next row. <code>!stall</code>
+is not supported under <code>@stream</code> today, because a stalled wavefront
+leaves the carry state undefined.</p>
 <p><strong>3. GHDL (VHDL emission and analysis).</strong> The parsed network is emitted
 as VHDL and run through GHDL’s analyzer. This checks that the design
 translates to synthesizable VHDL and that GHDL accepts it, independent
@@ -10571,45 +10642,52 @@ that the tracked status may be stale and worth revisiting.</li>
 <pre><code>Issue    example                          expected     parse runtime    ghdl  simulate   result
 -------------------------------------------------------------------------------------------------
 TAG-112  mobius_ring.ms.ipl               Partial      ok    -          FAIL  -          ⬛ expected fail
-TAG-129  example-12.19.ms.ipl             Implemented  ok    -          ok    FAIL       ❌ FAIL
-TAG-130  example-12.1.ms.ipl              Implemented  ok    -          ok    FAIL       ❌ FAIL
-TAG-136  example-12.45.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
-TAG-137  example-12.41.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
-TAG-138  example-12.40.ms.ipl             Implemented  ok    -          FAIL  -          ❌ FAIL
+TAG-129  example-12.19.ms.ipl             Implemented  ok    ok 8/8     FAIL  FAIL       ❌ FAIL
+TAG-130  example-12.1.ms.ipl              Implemented  ok    ok 8/8     ok    FAIL       ❌ FAIL
+TAG-136  example-12.45.ms.ipl             Implemented  ok    ok 14/14   ok    -          ✅ PASS
+TAG-137  example-12.41.ms.ipl             Implemented  ok    ok 4/4     ok    -          ✅ PASS
+TAG-138  example-12.40.ms.ipl             Implemented  FAIL  -          -     -          ❌ FAIL
 TAG-142  example-12.3.ms.ipl              Partial      ok    -          ok    -          🟡 unexpected pass
 TAG-143  example-12.2.ms.ipl              Implemented  ok    ok 4/4     ok    -          ✅ PASS
-TAG-146  example-12.12.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
 TAG-147  example-12.13.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
-TAG-148  example-12.11.ms.ipl             Implemented  ok    -          ok    FAIL       ❌ FAIL
-TAG-149  example-12.9.ms.ipl              Spec Only    ok    -          ok    -          🟡 unexpected pass
+TAG-148  example-12.11.ms.ipl             Implemented  ok    ok 8/8     ok    FAIL       ❌ FAIL
+TAG-149  example-12.9.ms.ipl              Spec Only    ok    -          FAIL  -          ⬛ expected fail
 TAG-151  example-12.17.ms.ipl             Partial      ok    -          ok    -          🟡 unexpected pass
 TAG-153  example-12.8.ms.ipl              Implemented  ok    -          ok    -          ✅ PASS
 TAG-160  example-12.33.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
 TAG-163  example-12.36.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
 TAG-177  example-12.26.ms.ipl             Implemented  ok    ok 8/8     ok    -          ✅ PASS
-TAG-180  example-12.10.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
-TAG-181  example-12.11.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
-TAG-184  example-12.24.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
+TAG-180  example-12.10.ms.ipl             Implemented  ok    ok 20/20   FAIL  -          ❌ FAIL
+TAG-181  example-12.11.ms.ipl             Implemented  ok    ok 4/4     ok    -          ✅ PASS
+TAG-184  example-12.24.ms.ipl             Implemented  ok    ok 8/8     ok    -          ✅ PASS
 TAG-185  case-unique-signals.ms.ipl       Implemented  ok    -          ok    -          ✅ PASS
 TAG-187  generate_syntax.ms.ipl           Implemented  ok    -          ok    -          ✅ PASS
 TAG-189  example-12.14-arbitration.ms.ipl Implemented  ok    -          ok    -          ✅ PASS
 TAG-190  example-12.5.ms.ipl              Implemented  ok    -          ok    -          ✅ PASS
 TAG-192  entity_labeling.ms.ipl           Partial      ok    -          ok    -          🟡 unexpected pass
 TAG-196  cube.ms.ipl                      Implemented  ok    -          FAIL  -          ❌ FAIL
-TAG-198  example-12.25.ms.ipl             Partial      ok    -          ok    -          🟡 unexpected pass
-TAG-200  dual-rail.ms.ipl                 Partial      ok    -          ok    -          🟡 unexpected pass
+TAG-198  example-12.25.ms.ipl             Implemented  ok    ok 8/8     ok    -          ✅ PASS
+TAG-200  dual-rail.ms.ipl                 Partial      ok    ok 4/4     ok    -          🟡 unexpected pass
 TAG-201  combustion-reaction.ms.ipl       Partial      ok    -          ok    -          🟡 unexpected pass
 TAG-207  example-12.35.ms.ipl             Implemented  ok    -          ok    -          ✅ PASS
+TAG-210  rule30.ms.ipl                    -            ok    -          ok    -          🟡 unexpected pass
+TAG-211  example-12.18-bundling.ms.ipl    Partial      ok    -          FAIL  -          ⬛ expected fail
+TAG-212  and3.ms.ipl                      Implemented  ok    ok 8/8     ok    -          ✅ PASS
+TAG-217  parity.ms.ipl                    Implemented  ok    ok 4/4     ok    -          ✅ PASS
 -------------------------------------------------------------------------------------------------
-18 ok, 12 unexpected
+21 ok, 12 unexpected
 </code></pre>
-<p>Only two examples currently exercise the runtime stage (TAG-143, TAG-177);
-every other example still shows <code>-</code> there. Writing a <code>.tb.vec</code> for more
-of the <code>Implemented</code> examples — and especially for the four current
-<code>❌ FAIL</code> rows — is the most direct way to find out whether a failure is
+<p>The runtime stage now exercises seven examples: TAG-143, TAG-177,
+TAG-136, TAG-148, TAG-180, TAG-198, TAG-200, TAG-212, and TAG-217 —
+covering combinational logic, a full adder, a code detector, a dual-rail
+network, an AND3, and the parity stream test that motivated <code>@stream</code>.
+Every <code>Implemented</code> example that has a <code>.tb.vec</code> currently passes its
+runtime stage. Writing a <code>.tb.vec</code> for more of the <code>Implemented</code>
+examples — and especially for the <code>❌ FAIL</code> rows where the runtime stage
+is still <code>-</code> — is the most direct way to find out whether a failure is
 in the network itself or in VHDL emission/simulation, since the runtime
 stage checks the design’s behavior without going through either.</p>
-<div style="break-before: page; page-break-before: always;"></div>
+<hr><div style="break-before: page; page-break-before: always;"></div>
 <h1 id="neighborhood-rules"><a class="header" href="#neighborhood-rules">Neighborhood Rules</a></h1>
 <p>Earlier in the book we introduced <strong>Transform Rules</strong> as one of the fundamental building blocks of MatterScript. A Transform Rule describes how one arrangement of tokens transforms into another. Small examples, such as Boolean logic gates, can be written by hand.</p>
 <pre><code class="language-matterscript">0,0[0]

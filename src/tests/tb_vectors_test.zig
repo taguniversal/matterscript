@@ -16,6 +16,17 @@ const and2_ipl =
     \\ ]
 ;
 
+const parity_ipl = 
+  \\ // Linear : TAG-217 @stream testbench directive
+  \\ PARITY[(state<> bit<>)($next)
+  \\  $state$bit() :
+  \\  E,0[next<E>]
+  \\  E,1[next<O>]
+  \\  O,0[next<O>]
+  \\  O,1[next<E>]
+  \\ ]
+;
+
 // ---- helpers ---------------------------------------------------------------
 
 fn mkPlace(_: std.mem.Allocator, name: []const u8) !network.Arg {
@@ -71,3 +82,137 @@ test "parse: row before @vectors is malformed" {
     try std.testing.expectError(error.MalformedTestbench, tb_vectors.parse(arena.allocator(), "0,0 : 1\n", &diag));
     try std.testing.expectEqual(@as(usize, 1), diag.line);
 }
+
+test "TAG-217: PARITY @stream with @carry runs 4/4" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const net = try parser.parse(a, parity_ipl);
+
+    const vec =
+        \\ @dut(PARITY)
+        \\ @vectors(state,bit : next)
+        \\ @carry(state=next)
+        \\ @stream()
+        \\
+        \\ E,1 : O
+        \\ _,1 : E
+        \\ _,0 : E
+        \\ _,1 : O
+    ;
+
+    const out = try tb_vectors.runVectors(a, "parity.tb.vec", vec, net);
+    try testing.expect(out.present);
+    try testing.expect(!out.malformed);
+    try testing.expectEqual(@as(usize, 4), out.total);
+    try testing.expectEqual(@as(usize, 4), out.passed);
+    try testing.expect(out.ok());
+    try testing.expect(out.err_msg == null);
+}
+
+test "TAG-217: _ without a matching @carry is malformed" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const net = try parser.parse(a, parity_ipl);
+
+    // @carry writes to `bit`, not `state`, so `_` in the `state` column
+    // has nothing to pull from.
+    const vec =
+        \\ @dut(PARITY)
+        \\ @vectors(state,bit : next)
+        \\ @carry(bit=next)
+        \\ @stream()
+        \\
+        \\ E,1 : O
+        \\ _,1 : E
+    ;
+
+    const out = try tb_vectors.runVectors(a, "parity.tb.vec", vec, net);
+    try testing.expect(out.present);
+    try testing.expect(out.malformed);
+    try testing.expect(!out.ok());
+    try testing.expect(out.err_msg != null);
+    try testing.expect(std.mem.indexOf(u8, out.err_msg.?, "no @carry writes to it") != null);
+}
+
+test "TAG-217: @carry target must be an output column" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const net = try parser.parse(a, parity_ipl);
+
+    const vec =
+        \\ @dut(PARITY)
+        \\ @vectors(state,bit : next)
+        \\ @carry(state=nexxt)
+        \\ @stream()
+        \\
+        \\ E,1 : O
+        \\ _,1 : E
+    ;
+
+    const out = try tb_vectors.runVectors(a, "parity.tb.vec", vec, net);
+    try testing.expect(out.malformed);
+    try testing.expect(out.err_msg != null);
+    try testing.expect(std.mem.indexOf(u8, out.err_msg.?, "not an output column") != null);
+}
+
+test "TAG-217: @carry after a vector row is malformed" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const net = try parser.parse(a, parity_ipl);
+
+    const vec =
+        \\ @dut(PARITY)
+        \\ @vectors(state,bit : next)
+        \\ @stream()
+        \\
+        \\ E,1 : O
+        \\ @carry(state=next)
+    ;
+
+    const out = try tb_vectors.runVectors(a, "parity.tb.vec", vec, net);
+    try testing.expect(out.malformed);
+    try testing.expect(out.err_msg != null);
+    try testing.expect(std.mem.indexOf(u8, out.err_msg.?, "must appear before vector rows") != null);
+}
+
+test "TAG-217: carry threading is actually exercised (wrong carry produces failures)" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const net = try parser.parse(a, parity_ipl);
+
+    // Same as the acceptance test, but the @carry pulls from the wrong
+    // source: `state` carries from `bit` instead of `next`. `bit` never
+    // becomes an output, so this fails at row 2. If @carry were a no-op
+    // (the earlier bug), this would accidentally pass because carryTarget
+    // would default to `state` and `last_output.get("state")` would be
+    // null too — so this test alone doesn't distinguish. Pair it with a
+    // test where the default *would* work to make the distinction sharp.
+    const vec =
+        \\ @dut(PARITY)
+        \\ @vectors(state,bit : next)
+        \\ @carry(state=bit)
+        \\ @stream()
+        \\
+        \\ E,1 : O
+        \\ _,1 : E
+    ;
+
+    const out = try tb_vectors.runVectors(a, "parity.tb.vec", vec, net);
+    try testing.expect(!out.ok());
+}
+
+
+
+
+
+
