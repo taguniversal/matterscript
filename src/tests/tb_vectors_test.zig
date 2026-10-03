@@ -265,7 +265,108 @@ test "TAG-136: code detector stream carries state and fires yes" {
     try testing.expect(out.err_msg == null);
 }
 
+test "TAG-217: '-' output still carries forward to the next row" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
 
+    const net = try parser.parse(a, parity_ipl);
 
+    // Row 1: literal seed, checks next=O.
+    // Row 2: `-` for next — don't check it, but it still produced E and
+    //        must carry to row 3. If the carry update were skipped on a
+    //        don't-check row, row 3 would fail.
+    // Row 3: `_` for state must resolve to E (row 2's real next), and
+    //        driving bit=0 from E produces E, which we do check.
+    const vec =
+        \\ @dut(PARITY)
+        \\ @vectors(state,bit : next)
+        \\ @carry(state=next)
+        \\ @stream()
+        \\
+        \\ E,1 : O
+        \\ _,1 : -
+        \\ _,0 : E
+    ;
 
+    const out = try tb_vectors.runVectors(a, "parity.tb.vec", vec, net);
+    try testing.expect(out.present);
+    try testing.expect(!out.malformed);
+    try testing.expectEqual(@as(usize, 3), out.total);
+    try testing.expectEqual(@as(usize, 3), out.passed);
+    try testing.expect(out.ok());
+}
 
+test "TAG-217: carry vocabulary mismatch fails loudly, not silently" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const net = try parser.parse(a, parity_ipl);
+
+    // Carry `bit` from `next`. PARITY's `bit` expects 0/1; `next`
+    // produces E/O. Row 2 drives bit=E (or O) into a port that only
+    // resolves 0/1 — the wavefront should not produce a valid
+    // presentation, so row 2 fails.
+    const vec =
+        \\ @dut(PARITY)
+        \\ @vectors(state,bit : next)
+        \\ @carry(bit=next)
+        \\ @stream()
+        \\
+        \\ E,1 : O
+        \\ E,_ : O
+    ;
+
+    const out = try tb_vectors.runVectors(a, "parity.tb.vec", vec, net);
+    try testing.expect(out.present);
+    try testing.expect(!out.malformed);
+    try testing.expect(!out.ok());
+    try testing.expect(out.err_msg != null);
+}
+
+test "TAG-217: duplicate @carry for the same input column is malformed" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const net = try parser.parse(a, parity_ipl);
+
+    const vec =
+        \\ @dut(PARITY)
+        \\ @vectors(state,bit : next)
+        \\ @carry(state=next)
+        \\ @carry(state=next)
+        \\ @stream()
+        \\
+        \\ E,1 : O
+        \\ _,1 : E
+    ;
+
+    const out = try tb_vectors.runVectors(a, "parity.tb.vec", vec, net);
+    try testing.expect(out.malformed);
+    try testing.expect(out.err_msg != null);
+    try testing.expect(std.mem.indexOf(u8, out.err_msg.?, "duplicate @carry") != null);
+}
+
+test "TAG-217: !stall under @stream is rejected" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const net = try parser.parse(a, parity_ipl);
+
+    const vec =
+        \\ @dut(PARITY)
+        \\ @vectors(state,bit : next)
+        \\ @carry(state=next)
+        \\ @stream()
+        \\
+        \\ E,1 : O
+        \\ _,1 : !stall
+    ;
+
+    const out = try tb_vectors.runVectors(a, "parity.tb.vec", vec, net);
+    try testing.expect(out.malformed);
+    try testing.expect(std.mem.indexOf(u8, out.err_msg.?, "not supported with @stream") != null);
+}
