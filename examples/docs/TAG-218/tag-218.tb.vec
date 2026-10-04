@@ -1,0 +1,5 @@
+@dut(WRAP)
+@vectors(A : Y)
+
+K : K
+L : L

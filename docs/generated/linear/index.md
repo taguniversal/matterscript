@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 25  |  🟡 Partial: 8  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 128  |  Total: 163
+✅ Implemented: 25  |  🟡 Partial: 8  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 129  |  Total: 164
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-179: 2. The Simplicity of Concurrency](TAG-179.md)
@@ -107,7 +107,6 @@
 - ⬜ Not started [TAG-150: Null Convention Library and ABI Spec](TAG-150.md)
 - 🟡 Partial [TAG-151: Example 12.17 Bundling mutually exclusive path into a single path](TAG-151.md)
 - ⬜ Not started [TAG-152: Make TAG-147 Shell VHDL Emission Valid and GHDL-Checkable](TAG-152.md)
-- ✅ Implemented [TAG-153: Example 12.8 Comma Delimited destination places](TAG-153.md)
 - ⬜ Not started [TAG-154: A real NCL register/storage primitive](TAG-154.md)
 - ⬜ Not started [TAG-155: Cycle detection](TAG-155.md)
 - ⬜ Not started [TAG-156: A deliberate design decision (register)](TAG-156.md)
@@ -161,7 +160,9 @@
 - ⬜ Not started [TAG-215: Value-to-place reification for token-identity dispatch](TAG-215.md)
 - ⬜ Not started [TAG-216: stream-mode test vectors (`@stream` directive)](TAG-216.md)
 - ✅ Implemented [TAG-217: Test Bench @stream directive](TAG-217.md)
-- ⬜ Not started [TAG-218: Runtime: support top-level definitions whose resolution is instance invocations](TAG-218.md)
+- ✅ Implemented [TAG-218: Runtime: support top-level definitions whose resolution is instance invocations](TAG-218.md)
+- ⬜ Not started [TAG-219: Parser: rule-key vs. contained-definition disambiguation is heuristic and fails on single-source and digit-prefixed keys](TAG-219.md)
+- ⬜ Not started [TAG-220: `value_transform.collectValueTransformRules` produces token-input rules for bare-source-header definitions](TAG-220.md)
 - ⬜ Not started [TAG-46: Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [TAG-47: Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [TAG-80: The Completeness Dialogue](TAG-80.md)

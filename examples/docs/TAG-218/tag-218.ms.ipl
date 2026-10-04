@@ -1,0 +1,13 @@
+// Linear: TAG-218 Runtime: support top-level definitions whose resolution is instance invocations
+WRAP($A)(Y<>)
+WRAP[(A<>)($Y)
+  INNER($A)(Y<>)
+  :
+]
+
+INNER[(A<>)($Y)
+  $A
+  :
+  K[Y<K>]
+  L[Y<L>]
+]

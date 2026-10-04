@@ -7,7 +7,7 @@
 // Scope (per the IPL Reference Runtime ticket): ordinary fills (literals
 // and $name references) and value transform rules only.
 // No ROM lookup tables, no @generate.
-
+const build_options = @import("build_options");
 const std = @import("std");
 const network = @import("../network.zig");
 const value_transform = @import("../value_transform.zig");
@@ -144,6 +144,15 @@ fn producedBy(rules: []const ExecutableRule, name: []const u8) bool {
 /// loudly instead. (This is the FULLADD case: S,U,W[K,M] and friends.)
 fn checkInvocable(callee: network.Definition, rules: []const ExecutableRule, name: []const u8) !void {
     if (isSourcePort(callee, name) or producedBy(rules, name)) return;
+
+    if (build_options.verbose_dumps) {
+        std.debug.print("checkInvocable({s}) failed on name='{s}'\n", .{ callee.name, name });
+        std.debug.print("  callee sources: ", .{});
+        for (callee.sources) |s| std.debug.print("'{s}' ", .{s.name});
+        std.debug.print("\n  rule dests: ", .{});
+        for (rules) |r| std.debug.print("'{s}' ", .{r.dest});
+        std.debug.print("\n", .{});
+    }
     return error.ValueKeyedInvocationNotSupported;
 }
 
@@ -191,6 +200,17 @@ fn inlineInvocation(
     for (inv.destinations, callee.destinations) |actual, formal| try bindArgument(allocator, &bindings, formal, actual);
 
     const callee_rules = try buildRulesAtDepth(allocator, callee, definitions, depth + 1);
+    if (build_options.verbose_dumps) {
+        std.debug.print("\n--- rules for {s} ---\n", .{callee.name});
+        for (callee_rules, 0..) |r, i| {
+            std.debug.print("rule[{d}] inputs=[", .{i});
+            for (r.inputs, 0..) |inp, j| {
+                if (j > 0) std.debug.print(",", .{});
+                std.debug.print("{s}", .{inp});
+            }
+            std.debug.print("] dest={s} action={s}\n", .{ r.dest, @tagName(r.action) });
+        }
+    }
     for (callee_rules) |r| {
         for (r.inputs) |input| try checkInvocable(callee, callee_rules, input);
         switch (r.action) {
@@ -250,7 +270,6 @@ pub fn buildRulesInNetwork(
 ) ![]const ExecutableRule {
     return buildRulesAtDepth(allocator, def, definitions, 0);
 }
-
 fn buildRulesAtDepth(
     allocator: std.mem.Allocator,
     def: network.Definition,
@@ -272,16 +291,6 @@ fn buildRulesAtDepth(
     const rule_groups = try value_transform.groupRulesByTarget(allocator, vt_rules);
     for (rule_groups) |group| {
         for (group.contributing_inputs.items) |inputs| {
-            // Always assert the joint match's own target as a genuine
-            // place, regardless of whether a same-named contained
-            // definition also exists downstream. A $-reference fill
-            // further down (Z0[OUT<$Z0>]) needs something real to copy
-            // from — skipping this assertion (as this function
-            // previously did whenever a same-named contained child
-            // existed) left copy_from chasing a place that could never
-            // become valid, which the fixed-point loop couldn't
-            // distinguish from real progress: the rule kept re-firing,
-            // no-op'ing, and reporting "changed" forever.
             try rules.append(allocator, .{
                 .inputs = inputs,
                 .dest = group.target,
@@ -294,43 +303,27 @@ fn buildRulesAtDepth(
         // Bare "$a$b$c()" header, no fill wrapper — e.g. fanin's
         // "$select( )" or FULLADD's "$X$Y$C()". Compiles to the same
         // .select mechanism a fill-embedded "$a$b()" already uses:
-        // read the actual VALUES of dispatch_inputs, join with ",",
-        // match against each branch's own name. A branch may supply
-        // more than one destination fill at once (FULLADD's
-        // "0,0,0[SUM<0> CARRY<0>]"), so group by dest_name.
-        var by_dest: std.StringHashMapUnmanaged(std.ArrayListUnmanaged(SelectEntry)) = .empty;
-        for (def.contained) |contained| {
-            if (contained.sources.len != 0 or contained.destinations.len != 0) continue;
-            for (contained.resolution) |stmt| {
-                if (stmt != .fill) continue;
-                const f = stmt.fill;
-                const expr = std.mem.trim(u8, f.expr, " \t\r\n");
-                const action: SelectAction = if (expr.len > 0 and expr[0] == '$')
-                    .{ .copy_from = expr[1..] }
-                else
-                    .{ .symbol = expr };
-
-                const gop = try by_dest.getOrPut(allocator, f.dest_name);
-                if (!gop.found_existing) gop.value_ptr.* = .empty;
-                try gop.value_ptr.append(allocator, .{ .key = contained.name, .action = action });
-            }
+        // read the actual VALUES of dispatch_inputs, join with ","
+        // match against each branch's own name.
+        try appendSelectRules(allocator, &rules, dispatch_inputs, def);
+    } else if (def.sources.len > 0 and vt_rules.len == 0) {
+        // Bare source clause ($A : or $A $B $CI :) with no value-transform
+        // rules — the contained entries are token-named dispatch cases
+        // (K[Y<K>], 0,S0[detect<no> state<S1>]) keyed by the VALUES of the
+        // source places. Watch the source places, key the select entries
+        // by the case name. Distinct from the composed-header path only
+        // in where the input place names come from: there, from the
+        // $a$b() header; here, from def.sources directly.
+        var source_names: std.ArrayListUnmanaged([]const u8) = .empty;
+        for (def.sources) |arg| {
+            if (arg.kind == .place) try source_names.append(allocator, arg.name);
         }
-        var it = by_dest.iterator();
-        while (it.next()) |entry| {
-            try rules.append(allocator, .{
-                .inputs = dispatch_inputs,
-                .dest = entry.key_ptr.*,
-                .action = .{ .select = try entry.value_ptr.toOwnedSlice(allocator) },
-            });
-        }
+        try appendSelectRules(allocator, &rules, source_names.items, def);
     } else {
         // Fill-shaped children of def.contained (Z0[OUT<$Z0>],
         // RXN[WATER<w1>]) are a separate, one-input hop off whatever place
         // the joint match above just asserted — gated on the target name
-        // alone, not the raw joint-match inputs. This is what lets several
-        // rules share one target cleanly (RXN having two WATER-producing
-        // children) without multiplying rules across every contributing
-        // input combination.
+        // alone, not the raw joint-match inputs.
         for (def.contained) |contained| {
             if (contained.sources.len != 0 or contained.destinations.len != 0) continue;
             for (contained.resolution) |stmt| {
@@ -386,6 +379,44 @@ fn buildRulesAtDepth(
     }
 
     return rules.toOwnedSlice(allocator);
+}
+
+/// Builds `.select` rules watching `inputs` (place names), one per
+/// distinct destination place named in `def.contained`'s fills, with
+/// select entries keyed by the contained row's name. Shared between
+/// the composed-header path and the bare-source-clause path — the
+/// only difference between them is where `inputs` comes from.
+fn appendSelectRules(
+    allocator: std.mem.Allocator,
+    rules: *std.ArrayListUnmanaged(ExecutableRule),
+    inputs: []const []const u8,
+    def: network.Definition,
+) !void {
+    var by_dest: std.StringHashMapUnmanaged(std.ArrayListUnmanaged(SelectEntry)) = .empty;
+    for (def.contained) |contained| {
+        if (contained.sources.len != 0 or contained.destinations.len != 0) continue;
+        for (contained.resolution) |stmt| {
+            if (stmt != .fill) continue;
+            const f = stmt.fill;
+            const expr = std.mem.trim(u8, f.expr, " \t\r\n");
+            const action: SelectAction = if (expr.len > 0 and expr[0] == '$')
+                .{ .copy_from = expr[1..] }
+            else
+                .{ .symbol = expr };
+
+            const gop = try by_dest.getOrPut(allocator, f.dest_name);
+            if (!gop.found_existing) gop.value_ptr.* = .empty;
+            try gop.value_ptr.append(allocator, .{ .key = contained.name, .action = action });
+        }
+    }
+    var it = by_dest.iterator();
+    while (it.next()) |entry| {
+        try rules.append(allocator, .{
+            .inputs = inputs,
+            .dest = entry.key_ptr.*,
+            .action = .{ .select = try entry.value_ptr.toOwnedSlice(allocator) },
+        });
+    }
 }
 
 fn destinationSatisfied(env: *Environment, arg: network.Arg) bool {

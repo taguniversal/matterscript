@@ -1,10 +1,17 @@
 const std = @import("std");
-const matterscript = @import("matterscript");
-const spatial = matterscript.spatial;
+//const matterscript = @import("matterscript");
+
+//const spatial = matterscript.spatial;
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    // VERBOSE
+    const verbose = b.option(bool, "verbose", "Print verbose parser/runtime dumps") orelse false;
+    const build_options = b.addOptions();
+    build_options.addOption(bool, "verbose_dumps", verbose);
+   
+    // VERBOSE
 
     // ------------------------------------------------------------------------
     // 1. Build the Tangle Helper Executable
@@ -30,6 +37,8 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/root.zig"),
         .target = target,
     });
+
+    matterscript_mod.addOptions("build_options", build_options);
 
     const exe = b.addExecutable(.{
         .name = "matterscript",
@@ -502,7 +511,6 @@ pub fn build(b: *std.Build) void {
     // ------------------------------------------------------------
 
     const verify_step = b.step("verify", "Generate VHDL and syntax check with GHDL");
-
 
     // ------------------------------------------------------------
     // Book example verification: parse + emit VHDL + GHDL syntax

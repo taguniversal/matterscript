@@ -54,7 +54,7 @@ test "TAG-187 parse 2D cellular automaton generate block and domain" {
     } else {
         return error.MissingDomainSpec;
     }
-    
+
     // Assert rules
     try testing.expectEqual(@as(usize, 3), gen.rules.len);
     try testing.expectEqualStrings("2", gen.rules[0].pattern[0]);
@@ -338,29 +338,23 @@ test "TAG-190 concatenated multi-source keys are rejected as ambiguous" {
     const allocator = arena.allocator();
 
     const src = "AND[(A<> B<>)<$A$B()>: 00[0] 01[0] 10[0] 11[1]]";
-    
-    try testing.expectError(
-        parser.core.ParseError.AmbiguousComposedKey, 
-        parser.parse(allocator, src)
-    );
+
+    try testing.expectError(parser.core.ParseError.AmbiguousComposedKey, parser.parse(allocator, src));
 }
 
-test "TAG-160 comma-separated multi-source keys are not flagged as ambiguous" {
-    // The comma-separated form is exactly what the check above
-    // requires, so it must parse without error. (Whether the VHDL
-    // exporter then does the right thing with it is a separate,
-    // already-known issue — see the comment on parseTruthTableRow's
-    // dispatch in parseContainedSection: a comma-separated row name
-    // is currently parsed as Fant's "S,U,W[...]" fresh-source-name
-    // shorthand, not as a composed lookup key, which is its own bug
-    // to resolve separately.)
+test "TAG-160 comma-separated multi-source keys parse as rules" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
 
     const src = "OR[(A<>B<>)<$A$B()>: 0,0[0] 0,1[1] 1,0[1] 1,1[1]]";
 
-    _ = try parser.parse(allocator, src);
+    const net = try parser.parse(allocator, src);
+    const def = net.definitions[0];
+
+    try testing.expectEqual(@as(usize, 4), def.contained.len);
+    try testing.expectEqualStrings("0,0", def.contained[0].name);
+    // ...assert .fill shape as in the tests above...
 }
 
 test "a single-source definition's multi-character row names are not flagged as ambiguous" {
@@ -493,4 +487,120 @@ test "an unlabeled bare invoke with no destinations parses as a pure_value expre
     try testing.expectEqual(@as(usize, 1), resolution.len);
     try testing.expect(resolution[0] == .pure_value);
     try testing.expectEqualStrings("LT($A $B)", resolution[0].pure_value);
+}
+
+test "TAG-219 single-source definition with digit keys parses as rules, not pure_value" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\INNER[(A<>)($Y)
+        \\  $A
+        \\  :
+        \\  0[Y<0>]
+        \\  1[Y<1>]
+        \\]
+    ;
+
+    const net = try parser.parse(allocator, src);
+    try testing.expectEqual(@as(usize, 1), net.definitions.len);
+    const def = net.definitions[0];
+
+    // resolution must be the keyed-transition form, not pure_value
+
+    // The source clause is recorded as a pure_value naming the sources
+    // involved. This mirrors FULLADD (TAG-184), whose resolution clause
+    // "$A $B $CI" is also a .pure_value. Matching is driven by the
+    // contained rule entries, not by resolution[0].
+    try testing.expectEqual(@as(usize, 1), def.resolution.len);
+    try testing.expect(def.resolution[0] == .pure_value);
+   
+    // two rules, each a .fill, not two constants
+    try testing.expectEqual(@as(usize, 2), def.contained.len);
+
+    try testing.expectEqualStrings("0", def.contained[0].name);
+    try testing.expectEqual(@as(usize, 1), def.contained[0].resolution.len);
+    try testing.expect(def.contained[0].resolution[0] == .fill);
+    try testing.expectEqualSlices(u8, "Y", def.contained[0].resolution[0].fill.dest_name);
+    try testing.expectEqualSlices(u8, "0", def.contained[0].resolution[0].fill.expr);
+
+    try testing.expectEqualStrings("1", def.contained[1].name);
+    try testing.expectEqual(@as(usize, 1), def.contained[1].resolution.len);
+    try testing.expect(def.contained[1].resolution[0] == .fill);
+    try testing.expectEqualSlices(u8, "Y", def.contained[1].resolution[0].fill.dest_name);
+    try testing.expectEqualSlices(u8, "1", def.contained[1].resolution[0].fill.expr);
+}
+
+test "TAG-219 single-source definition with identifier keys parses as rules" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\INNER[(A<>)($Y)
+        \\  $A
+        \\  :
+        \\  K[Y<K>]
+        \\  L[Y<L>]
+        \\]
+    ;
+
+    const net = try parser.parse(allocator, src);
+    const def = net.definitions[0];
+
+    // ---- TEMPORARY DEBUG DUMP ----
+    std.debug.print("\n--- INNER dump ---\n", .{});
+    std.debug.print("resolution.len = {d}\n", .{def.resolution.len});
+    for (def.resolution, 0..) |stmt, i| {
+        std.debug.print("resolution[{d}] = .{s}\n", .{ i, @tagName(stmt) });
+        switch (stmt) {
+            .pure_value => |v| std.debug.print("  pure_value = '{s}'\n", .{v}),
+            .invoke => |inv| std.debug.print("  invoke = '{s}'\n", .{inv.name}),
+            .fill => |f| std.debug.print("  fill = {s}<{s}>\n", .{ f.dest_name, f.expr }),
+            else => {},
+        }
+    }
+    std.debug.print("contained.len = {d}\n", .{def.contained.len});
+    for (def.contained, 0..) |c, i| {
+        std.debug.print("contained[{d}].name = '{s}'\n", .{ i, c.name });
+        std.debug.print("contained[{d}].sources.len = {d}\n", .{ i, c.sources.len });
+        std.debug.print("contained[{d}].resolution.len = {d}\n", .{ i, c.resolution.len });
+    }
+    // ---- END TEMPORARY DEBUG DUMP ----
+
+    try testing.expectEqual(@as(usize, 1), def.resolution.len);
+    try testing.expect(def.resolution[0] == .pure_value);
+
+    try testing.expectEqual(@as(usize, 2), def.contained.len);
+    try testing.expectEqualStrings("K", def.contained[0].name);
+    try testing.expect(def.contained[0].resolution[0] == .fill);
+    try testing.expectEqualSlices(u8, "Y", def.contained[0].resolution[0].fill.dest_name);
+    try testing.expectEqualSlices(u8, "K", def.contained[0].resolution[0].fill.expr);
+}
+
+test "TAG-219 trailing comma in single-segment key is a syntax error" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // A trailing comma after a single key segment. The comma's only
+    // purpose is to disambiguate multi-segment composed keys (e.g.
+    // `0,S0` needing to split into `0` + `S0`). With one segment there
+    // is nothing to disambiguate, so the comma is malformed, not a
+    // no-op — accepting it silently would invite the reader to believe
+    // it means something it doesn't.
+    const src =
+        \\INNER[(A<>)($Y)
+        \\  $A
+        \\  :
+        \\  0,[Y<0>]
+        \\  1,[Y<1>]
+        \\]
+    ;
+
+    try testing.expectError(
+        error.ExpectedToken, // adjust to core.ParseError.ExpectedToken if needed
+        parser.parse(allocator, src),
+    );
 }

@@ -4,6 +4,7 @@ const testing = std.testing;
 const matterscript = @import("matterscript");
 const parser = matterscript.ipl_parser;
 const network = matterscript.network;
+const helpers = @import("helpers.zig");
 
 // TAG-211: Example 12.18, bundling digits into numbers — parser
 // diagnostic suite.
@@ -31,67 +32,7 @@ const network = matterscript.network;
 //   4. The full original 4BITADD script, combining both, with a
 //      verbatim copy of TAG-198's FULLADD supplied ahead of it.
 
-fn printIndent(depth: usize) void {
-    var i: usize = 0;
-    while (i < depth) : (i += 1) std.debug.print("  ", .{});
-}
 
-fn dumpArg(depth: usize, arg: network.Arg) void {
-    printIndent(depth);
-    std.debug.print("kind={s} name='{s}' text='{s}'\n", .{ @tagName(arg.kind), arg.name, arg.text });
-    if (arg.group) |g| {
-        printIndent(depth + 1);
-        std.debug.print("group.kind={s}\n", .{@tagName(g.kind)});
-        for (g.places) |p| dumpArg(depth + 2, p);
-    }
-}
-
-fn dumpArgs(depth: usize, label: []const u8, args: []const network.Arg) void {
-    printIndent(depth);
-    std.debug.print("{s} ({d}):\n", .{ label, args.len });
-    for (args) |arg| dumpArg(depth + 1, arg);
-}
-
-fn dumpStatement(depth: usize, i: usize, stmt: network.Statement) void {
-    printIndent(depth);
-    std.debug.print("resolution[{d}]: {s}\n", .{ i, @tagName(stmt) });
-    switch (stmt) {
-        .fill => |f| {
-            printIndent(depth + 1);
-            std.debug.print("dest_name='{s}' expr='{s}'\n", .{ f.dest_name, f.expr });
-        },
-        .invoke => |inv| {
-            printIndent(depth + 1);
-            std.debug.print("invoke name='{s}' label={?s}\n", .{ inv.name, inv.label });
-            dumpArgs(depth + 1, "invoke.sources", inv.sources);
-            dumpArgs(depth + 1, "invoke.destinations", inv.destinations);
-        },
-        .pure_value => |v| {
-            printIndent(depth + 1);
-            std.debug.print("pure_value='{s}'\n", .{v});
-        },
-        .directive => |d| {
-            printIndent(depth + 1);
-            std.debug.print("directive name='{s}' args='{s}'\n", .{ d.name, d.args });
-        },
-    }
-}
-
-fn dumpDef(label: []const u8, def: network.Definition) void {
-    std.debug.print("--- {s}: def '{s}' ---\n", .{ label, def.name });
-    dumpArgs(0, "sources", def.sources);
-    dumpArgs(0, "destinations", def.destinations);
-    for (def.resolution, 0..) |stmt, i| dumpStatement(0, i, stmt);
-    for (def.contained) |c| std.debug.print("contained: '{s}'\n", .{c.name});
-    std.debug.print("\n", .{});
-}
-
-fn dumpEntry(label: []const u8, e: network.EntryInvocation) void {
-    std.debug.print("--- {s}: entry '{s}' ---\n", .{ label, e.name });
-    dumpArgs(0, "sources", e.sources);
-    dumpArgs(0, "destinations", e.destinations);
-    std.debug.print("\n", .{});
-}
 
 // --- 1. Bundle group in a DEFINITION's own source-port declaration ---
 test "TAG-211 step 1: bundle group in definition source list" {
@@ -110,7 +51,7 @@ test "TAG-211 step 1: bundle group in definition source list" {
         std.debug.print("step 1 FAILED TO PARSE: {s}\n", .{@errorName(err)});
         return err;
     };
-    dumpDef("step 1", net.definitions[0]);
+    helpers.dumpDef("step 1", net.definitions[0]);
 }
 
 // --- 1b. Bundle group as an argument AT AN INVOCATION call site ---
@@ -142,8 +83,8 @@ test "TAG-211 step 1b: bundle group at an invocation call site" {
         std.debug.print("step 1b FAILED TO PARSE: {s}\n", .{@errorName(err)});
         return err;
     };
-    for (net.entries) |e| dumpEntry("step 1b entry", e);
-    for (net.definitions) |def| dumpDef("step 1b", def);
+    for (net.entries) |e| helpers.dumpEntry("step 1b entry", e);
+    for (net.definitions) |def| helpers.dumpDef("step 1b", def);
 }
 
 // --- 2. Bundle group (of $-refs) in destinations, plain scalar dest ---
@@ -163,7 +104,7 @@ test "TAG-211 step 2: bundle group of $-refs in destination list" {
         std.debug.print("step 2 FAILED TO PARSE: {s}\n", .{@errorName(err)});
         return err;
     };
-    dumpDef("step 2", net.definitions[0]);
+    helpers.dumpDef("step 2", net.definitions[0]);
 }
 
 // --- 3. Bare invoke-statement chain, no bundling at all ---
@@ -191,7 +132,7 @@ test "TAG-211 step 3: chained invoke statements, no bundling" {
         std.debug.print("step 3 FAILED TO PARSE: {s}\n", .{@errorName(err)});
         return err;
     };
-    for (net.definitions) |def| dumpDef("step 3", def);
+    for (net.definitions) |def| helpers.dumpDef("step 3", def);
 }
 
 // --- 4. Full original 4BITADD, with a known-good FULLADD supplied ---
@@ -224,7 +165,7 @@ test "TAG-211 step 4: full 4BITADD with bundling and invocation combined" {
         std.debug.print("step 4 FAILED TO PARSE: {s}\n", .{@errorName(err)});
         return err;
     };
-    for (net.definitions) |def| dumpDef("step 4", def);
+    for (net.definitions) |def| helpers.dumpDef("step 4", def);
 }
 
 // --- 5. Bare single name standing for a bundle, both as an
@@ -273,7 +214,7 @@ test "TAG-211 step 5: bare name aliasing a bundle across two invocation hops" {
         std.debug.print("step 5 FAILED TO PARSE: {s}\n", .{@errorName(err)});
         return err;
     };
-    for (net.definitions) |def| dumpDef("step 5", def);
+    for (net.definitions) |def| helpers.dumpDef("step 5", def);
 }
 
 
@@ -295,5 +236,5 @@ test "Example 12.9: two adjacent mutex source groups" {
         std.debug.print("FAILED TO PARSE: {s}\n", .{@errorName(err)});
         return err;
     };
-    dumpDef("Example 12.9", net.definitions[0]); // reuse the existing dump helper
+    helpers.dumpDef("Example 12.9", net.definitions[0]); // reuse the existing dump helper
 }

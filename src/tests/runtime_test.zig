@@ -7,6 +7,8 @@ const runtime = matterscript.runtime;
 const parser = matterscript.ipl_parser;
 const rules = matterscript.runtime.rules;
 const environment = matterscript.runtime.environment;
+const tb_vectors = matterscript.runtime.tb_vectors;
+const helpers = @import("helpers.zig");
 
 // AND2[(A<> B<>)($OUT)
 //     $A $B :
@@ -94,45 +96,6 @@ test "runtime reports exactly which place is stuck and what it's waiting on" {
     try std.testing.expectEqualStrings("result", report.stuck[0].waiting_on[0]); // not "q" — one level deep only
 }
 
-test "TAG-143 debug: what does the runtime see?" {
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
-    defer arena.deinit();
-    const a = arena.allocator();
-
-    const src =
-        \\AND($A $B)
-        \\AND[(X<>Y<>)($R)
-        \\R<$X$Y()>
-        \\:
-        \\   0,0[0]
-        \\   0,1[0]
-        \\   1,1[1]
-        \\   1,0[0]
-        \\]
-    ;
-    const net = try parser.parse(a, src);
-    const def = net.definitions[0];
-
-    std.debug.print("def '{s}'\n", .{def.name});
-    for (def.sources) |s| std.debug.print("  source: '{s}'\n", .{s.name});
-    for (def.destinations) |d| std.debug.print("  dest:   '{s}'\n", .{d.name});
-    for (def.resolution) |st| std.debug.print("  resolution: {s}\n", .{@tagName(st)});
-    for (def.contained) |c| std.debug.print("  contained: '{s}'\n", .{c.name});
-
-    const test_rules = try runtime.rules.buildRules(a, def);
-    var env = runtime.environment.Environment{ .allocator = a };
-    defer env.deinit();
-    for ([_][]const u8{ "X", "Y" }, [_][]const u8{ "1", "1" }) |port, tok| {
-        try env.seed(port, tok);
-        try env.seed(tok, tok);
-    }
-    const report = try runtime.rules.run(a, &env, def, test_rules);
-    std.debug.print("complete: {}\n", .{report.complete});
-    for ([_][]const u8{ "X", "Y", "R", "0", "1" }) |name| {
-        std.debug.print("  {s}: {s}\n", .{ name, if (env.get(name) == .valid) "valid" else "null" });
-    }
-}
-
 test "select: no matching table entry leaves dest stuck, not an error" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -157,4 +120,44 @@ test "select: no matching table entry leaves dest stuck, not an error" {
     const report = try runtime.rules.run(a, &env, def, test_rules);
     try std.testing.expect(!report.complete);
     try std.testing.expectEqual(@as(usize, 0), report.stuck[0].waiting_on.len);
+}
+
+test "TAG-218" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const src =
+        \\ INNER[(A<>)($Y)
+        \\ $A
+        \\ :
+        \\ K[Y<K>]
+        \\ L[Y<L>]
+        \\]
+        \\ WRAP[(A<>)($Y)
+        \\  INNER($A)(Y<>)
+        \\  :
+        \\ ]
+    ;
+
+    const vec =
+        \\ @dut(WRAP)
+        \\ @vectors(A : Y)
+        \\
+        \\ K : K
+        \\ L : L
+    ;
+    const net = try parser.parse(a, src);
+    const def = net.definitions[0];
+    const out = try tb_vectors.runVectors(a, "wrap.tb.vec", vec, net);
+    helpers.dumpDef("WRAP-TAG-218", def);
+    std.debug.print("out: present={} malformed={} passed={} total={}\n", .{ out.present, out.malformed, out.passed, out.total });
+    if (out.err_msg) |m| std.debug.print("err_msg: {s}\n", .{m});
+
+    try testing.expect(out.present);
+    try testing.expect(!out.malformed);
+    try testing.expectEqual(@as(usize, 2), out.total);
+    try testing.expectEqual(@as(usize, 2), out.passed);
+    try testing.expect(out.ok());
+    try testing.expect(out.err_msg == null);
 }

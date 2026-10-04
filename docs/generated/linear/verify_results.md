@@ -1,6 +1,6 @@
 # Example verification results
 
-21 expected outcomes, 12 unexpected outcomes.
+20 expected outcomes, 13 unexpected outcomes.
 
 | Issue | Example | Expected | Parse | Runtime | GHDL | Simulate | Result |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -16,7 +16,6 @@
 | TAG-148 | example-12.11.ms.ipl | Implemented | ok | ok 8/8 | ok | FAIL | ❌ FAIL |
 | TAG-149 | example-12.9.ms.ipl | Spec Only | ok | - | FAIL | - | ⬛ expected fail |
 | TAG-151 | example-12.17.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
-| TAG-153 | example-12.8.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-160 | example-12.33.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-163 | example-12.36.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-177 | example-12.26.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
@@ -37,3 +36,4 @@
 | TAG-211 | example-12.18-bundling.ms.ipl | Partial | ok | FAIL 0/7 | FAIL | - | ⬛ expected fail |
 | TAG-212 | and3.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
 | TAG-217 | parity.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
+| TAG-218 | tag-218.ms.ipl | Implemented | ok | ok 2/2 | FAIL | - | ❌ FAIL |

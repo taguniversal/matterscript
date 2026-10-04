@@ -6,6 +6,11 @@
 # never hitting that "phantom missing/present file" mystery again.
 # Revisit if full-rebuild time becomes a real cost as the project
 # grows.
+if [[ "$*" == *"--verbose"* ]]; then
+    ZIG_FLAGS="$ZIG_FLAGS -Dverbose=true"
+fi
+
 rm -rf .zig-cache
 rm -rf .verify_scratch
-zig build verify-examples
+zig build test 
+zig build verify-examples $ZIG_FLAGS
