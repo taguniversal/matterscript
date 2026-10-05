@@ -119,7 +119,6 @@ test "a comma-keyed contained definition never produces consecutive underscores 
     try testing.expect(std.mem.indexOf(u8, vhdl, "__") == null);
 }
 
-
 test "an invocation's port map uses the target entity's real port names, not generic arg_N/output_N" {
     // Companion regression test: once the entity-name mismatch above
     // was fixed, ghdl got far enough to check the port map itself and
@@ -210,4 +209,69 @@ test "a spatial2d @generate definition still emits VHDL (not treated as geometry
     const vhdl = try exportToString(allocator, src);
     try testing.expect(std.mem.indexOf(u8, vhdl, "entity ca2d is") != null);
     try testing.expect(std.mem.indexOf(u8, vhdl, "architecture rtl of ca2d is") != null);
+}
+test "TAG-221: callee entity is emitted before the caller's architecture" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const src =
+        \\WRAP[(A<>)($Y)
+        \\  INNER($A)(Y<>)
+        \\  :
+        \\]
+        \\
+        \\INNER[(A<>)($Y)
+        \\  $A
+        \\  :
+        \\  K[Y<K>]
+        \\  L[Y<L>]
+        \\]
+    ;
+
+    const vhd = try exportToString(a, src);
+
+    try expectEntitiesBeforeReferences(vhd, a);
+
+    const inner_entity = std.mem.indexOf(u8, vhd, "entity inner is").?;
+    const wrap_arch = std.mem.indexOf(u8, vhd, "architecture rtl of wrap is").?;
+    try testing.expect(inner_entity < wrap_arch);
+}
+
+/// Scans VHDL source for `entity work.NAME port map` references and
+/// asserts each has a matching `entity NAME is` declaration earlier.
+/// This is the invariant GHDL enforces: an instantiation cannot
+/// reference an entity that hasn't been declared yet.
+fn expectEntitiesBeforeReferences(vhd: []const u8, a: std.mem.Allocator) !void {
+    var lines = std.mem.splitScalar(u8, vhd, '\n');
+
+    var declared: std.StringHashMapUnmanaged(void) = .empty;
+    var referenced: std.StringHashMapUnmanaged(void) = .empty;
+
+    while (lines.next()) |line| {
+        const trimmed = std.mem.trim(u8, line, " \t\r");
+
+        if (std.mem.startsWith(u8, trimmed, "entity ")) {
+            if (std.mem.indexOf(u8, trimmed, " is")) |is_pos| {
+                const after_entity = trimmed["entity ".len..is_pos];
+                const name = std.mem.trim(u8, after_entity, " \t");
+                try declared.put(a, try a.dupe(u8, name), {});
+            }
+            continue;
+        }
+
+        if (std.mem.indexOf(u8, trimmed, "entity work.")) |idx| {
+            const after = trimmed[idx + "entity work.".len ..];
+            const end = std.mem.indexOfAny(u8, after, " \t(") orelse after.len;
+            const name = after[0..end];
+            if (!declared.contains(name)) {
+                std.debug.print(
+                    "TAG-221 regression: '{s}' referenced by instantiation but not yet declared\n",
+                    .{name},
+                );
+                return error.EntityReferencedBeforeDeclaration;
+            }
+            try referenced.put(a, try a.dupe(u8, name), {});
+        }
+    }
 }
