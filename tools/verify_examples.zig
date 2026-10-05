@@ -302,7 +302,7 @@ fn runGhdlSyntaxCheck(allocator: std.mem.Allocator, io: std.Io, workdir: []const
     defer allocator.free(package_result.stderr);
     switch (package_result.term) {
         .exited => |code| if (code != 0) {
-            std.debug.print("  [{s}] ncl package analysis failed:\n{s}\n", .{ vhd_path, package_result.stderr });
+            std.debug.print("  [{s}] ncl package analysis failed:\n{s}{s}\n", .{ vhd_path, package_result.stdout, package_result.stderr });
             return false;
         },
         else => {
@@ -349,7 +349,7 @@ fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, workdir: []const 
     defer allocator.free(package_result.stdout);
     defer allocator.free(package_result.stderr);
     if (package_result.term != .exited or package_result.term.exited != 0) {
-        const msg = std.fmt.allocPrint(allocator, "ncl package analysis failed:\n{s}", .{package_result.stderr}) catch return .{ .ok = false, .err_msg = "ncl package analysis failed" };
+        const msg = std.fmt.allocPrint(allocator, "ncl package analysis failed:\n{s}{s}", .{package_result.stdout, package_result.stderr}) catch return .{ .ok = false, .err_msg = "ncl package analysis failed" };
         return .{ .ok = false, .err_msg = msg };
     }
 
@@ -363,7 +363,7 @@ fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, workdir: []const 
     defer allocator.free(des_result.stdout);
     defer allocator.free(des_result.stderr);
     if (des_result.term != .exited or des_result.term.exited != 0) {
-        const msg = std.fmt.allocPrint(allocator, "simulation design analysis failed:\n{s}", .{des_result.stderr}) catch return .{ .ok = false, .err_msg = "design analysis failed" };
+        const msg = std.fmt.allocPrint(allocator, "simulation design analysis failed:\n{s}{s}", .{des_result.stdout, des_result.stderr}) catch return .{ .ok = false, .err_msg = "design analysis failed" };
         return .{ .ok = false, .err_msg = msg };
     }
 
@@ -377,7 +377,7 @@ fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, workdir: []const 
     defer allocator.free(tb_result.stdout);
     defer allocator.free(tb_result.stderr);
     if (tb_result.term != .exited or tb_result.term.exited != 0) {
-        const msg = std.fmt.allocPrint(allocator, "simulation testbench analysis failed ({s}):\n{s}", .{ tb_path, tb_result.stderr }) catch return .{ .ok = false, .err_msg = "testbench analysis failed" };
+        const msg = std.fmt.allocPrint(allocator, "simulation testbench analysis failed ({s}):\n{s}{s}", .{ tb_path, tb_result.stdout, tb_result.stderr }) catch return .{ .ok = false, .err_msg = "testbench analysis failed" };
         return .{ .ok = false, .err_msg = msg };
     }
 
@@ -396,7 +396,7 @@ fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, workdir: []const 
     defer allocator.free(elab_result.stdout);
     defer allocator.free(elab_result.stderr);
     if (elab_result.term != .exited or elab_result.term.exited != 0) {
-        const msg = std.fmt.allocPrint(allocator, "simulation elaboration failed ({s}):\n{s}", .{ entity_name, elab_result.stderr }) catch return .{ .ok = false, .err_msg = "elaboration failed" };
+        const msg = std.fmt.allocPrint(allocator, "simulation elaboration failed ({s}):\n{s}{s}", .{ entity_name, elab_result.stdout, elab_result.stderr }) catch return .{ .ok = false, .err_msg = "elaboration failed" };
         return .{ .ok = false, .err_msg = msg };
     }
 
@@ -408,7 +408,7 @@ fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, workdir: []const 
 
     // 5. Execute simulation
     const run_result = std.process.run(allocator, io, .{
-        .argv = &.{ "ghdl", "-r", "--std=08", entity_name, "--stop-time=10s" },
+        .argv = &.{ "ghdl", "-r", "--std=08", workdir_arg, entity_name, "--stop-time=10sec" },
     }) catch |err| {
         const msg = std.fmt.allocPrint(allocator, "failed to spawn ghdl for execution: {s}", .{@errorName(err)}) catch return .{ .ok = false, .err_msg = "spawn error" };
         return .{ .ok = false, .err_msg = msg };
@@ -422,7 +422,7 @@ fn runGhdlSimulation(allocator: std.mem.Allocator, io: std.Io, workdir: []const 
     };
 
     if (!ok) {
-        const msg = std.fmt.allocPrint(allocator, "simulation execution failed:\n{s}", .{run_result.stderr}) catch return .{ .ok = false, .err_msg = "execution failed" };
+        const msg = std.fmt.allocPrint(allocator, "simulation execution failed:\n{s}{s}", .{run_result.stdout, run_result.stderr}) catch return .{ .ok = false, .err_msg = "execution failed" };
         return .{ .ok = false, .err_msg = msg };
     }
 

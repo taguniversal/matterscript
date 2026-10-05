@@ -19,13 +19,7 @@ pub const rom_lookup = @import("export/rom_lookup.zig");
 /// Emits a VHDL entity and architecture body for a single MatterScript definition,
 /// normalizing destination defaults and identifiers, and recursively processing any
 /// nested child definitions.
-pub fn writeDefinition(
-    allocator: std.mem.Allocator,
-    writer: anytype,
-    raw_def: network.Definition,
-    scope: []const u8,
-    top: []const network.Definition
-) !void {
+pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: network.Definition, scope: []const u8, top: []const network.Definition) !void {
     if (value_transform_analysis.isValueTransformRule(raw_def)) return;
     if (boundary.shouldSkipSpatialGeometry(raw_def)) return;
 
@@ -139,11 +133,14 @@ pub fn writeDefinition(
         for (inv.sources, 0..) |arg, argument_index| {
             try invocation.writeInvocationArgument(allocator, writer, invocation_index, argument_index, arg);
         }
-        for (inv.destinations, 0..) |output, output_index| {
-            if (output.group == null and output.name.len != 0) continue;
-            try writer.print("  invocation_{d}_output_{d} <= null_value;\n", .{ invocation_index, output_index });
-        }
-        try invocation.writeInvocationInstance(allocator, writer, def, def_id, top,inv, invocation_index);
+        const Ctx = struct {
+            w: @TypeOf(writer),
+            fn visit(self: @This(), name: []const u8) anyerror!void {
+                try self.w.print("  {s} <= null_value;\n", .{name});
+            }
+        };
+        try invocation.forEachSyntheticOutputSignal(inv, invocation_index, Ctx{ .w = writer }, Ctx.visit);
+        try invocation.writeInvocationInstance(allocator, writer, def, def_id, top, inv, invocation_index);
     }
 
     // valid extraction from source places (inputs)

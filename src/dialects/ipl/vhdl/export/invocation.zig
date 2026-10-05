@@ -145,6 +145,58 @@ pub fn writeInvocationArgument(
     try writeScalarArgument(allocator, writer, signal_name, argument);
 }
 
+/// Calls `visit` once per synthetic output signal of `inv`. A synthetic
+/// signal is one that the emitter has to declare itself, rather than a
+/// real place already wired directly into the port map.
+///
+/// The rules, mirroring the loop that used to be duplicated in
+/// writeInvocationSignals (declaration) and definition.zig's body loop
+/// (initialization):
+///
+///   - non-group output with a name      → no synthetic signal (it's a port)
+///   - non-group output without a name   → synthetic `invocation_N_output_M`
+///   - group output, named member        → no synthetic signal
+///   - group output, anonymous member    → synthetic `invocation_N_output_M_K`
+///   - group output, nested-group member → synthetic `invocation_N_output_M_K`
+///
+/// The last two cases are the only ones that produce a signal, and the
+/// signal name differs: group members get the extra `_K` suffix.
+///
+/// `visit` receives a stack-allocated name valid only for the duration
+/// of the call. Callers that need to keep it must dupe.
+pub fn forEachSyntheticOutputSignal(
+    inv: network.Invocation,
+    invocation_index: usize,
+    context: anytype,
+    comptime visit: fn (@TypeOf(context), name: []const u8) anyerror!void,
+) !void {
+    var buf: [64]u8 = undefined;
+
+    for (inv.destinations, 0..) |output, output_index| {
+        if (output.kind == .group) {
+            if (output.group) |group| {
+                for (group.places, 0..) |member, member_index| {
+                    if (member.group == null and member.name.len != 0) continue;
+                    const name = try std.fmt.bufPrint(
+                        &buf,
+                        "invocation_{d}_output_{d}_{d}",
+                        .{ invocation_index, output_index, member_index },
+                    );
+                    try visit(context, name);
+                }
+            }
+            continue;
+        }
+        if (output.group == null and output.name.len != 0) continue;
+        const name = try std.fmt.bufPrint(
+            &buf,
+            "invocation_{d}_output_{d}",
+            .{ invocation_index, output_index },
+        );
+        try visit(context, name);
+    }
+}
+
 pub fn writeInvocationSignals(
     writer: anytype,
     def: network.Definition,
@@ -165,24 +217,13 @@ pub fn writeInvocationSignals(
             try writer.print("  signal invocation_{d}_arg_{d} : ncl_signal;\n", .{ invocation_index, argument_index });
         }
 
-        for (inv.destinations, 0..) |output, output_index| {
-            if (output.kind == .group) {
-                if (output.group) |group| {
-                    for (group.places, 0..) |member, member_index| {
-                        // A named member (the common case — out1, SUM0,
-                        // etc.) is a real place elsewhere in this
-                        // definition; it's wired to directly in the port
-                        // map, no synthetic signal needed. Only an
-                        // anonymous or nested-group member needs one.
-                        if (member.group == null and member.name.len != 0) continue;
-                        try writer.print("  signal invocation_{d}_output_{d}_{d} : ncl_signal;\n", .{ invocation_index, output_index, member_index });
-                    }
-                }
-                continue;
+        const Ctx = struct {
+            w: @TypeOf(writer),
+            fn visit(self: @This(), name: []const u8) anyerror!void {
+                try self.w.print("  signal {s} : ncl_signal;\n", .{name});
             }
-            if (output.group == null and output.name.len != 0) continue;
-            try writer.print("  signal invocation_{d}_output_{d} : ncl_signal;\n", .{ invocation_index, output_index });
-        }
+        };
+        try forEachSyntheticOutputSignal(inv, invocation_index, Ctx{ .w = writer }, Ctx.visit);
     }
 }
 
