@@ -12,10 +12,10 @@
 
 const std = @import("std");
 const network = @import("../network.zig");
-const entity = @import("entity.zig");
 const workspace = @import("../../../common/workspace.zig");
 const network_entity = @import("export/network_entity.zig");
 pub const sanitizer = @import("sanitizer.zig");
+const definition = @import("definition.zig");
 
 pub fn writeVhdlNetwork(
     io: std.Io,
@@ -36,12 +36,11 @@ pub fn writeVhdlNetwork(
     try writer.interface.flush();
 }
 
+
 pub fn write(allocator: std.mem.Allocator, writer: anytype, net: network.Network) !void {
     for (net.definitions) |def| {
-     //   try entity.writeDefinition(allocator, writer, def, "");
-        try entity.writeDefinitionInNetwork(allocator, writer, def, "", net.definitions);
-    }
+    try definition.writeDefinition(allocator, writer, def, "", net.definitions);  // the local one, not definition.writeDefinition
+}
     try network_entity.writeNetworkEntity(allocator, writer, net);
 }
-
 

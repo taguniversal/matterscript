@@ -12,30 +12,25 @@ pub const invocation = @import("export/invocation.zig");
 const signal = @import("export/expression_signals.zig");
 pub const network_entity = @import("export/network_entity.zig");
 const component = @import("export/component.zig");
-pub const value_transform = @import("../value_transform.zig"); // shared: AST shape + validation
-const transform_emit = @import("export/value_transform.zig");  // VHDL-specific emission only
+pub const value_transform_export = @import("export/value_transform.zig");
+const value_transform_analysis = @import("../value_transform.zig");
 pub const rom_lookup = @import("export/rom_lookup.zig");
 
-
-pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: network.Definition, scope: []const u8) !void {
-    return writeDefinitionInNetwork(allocator, writer, raw_def, scope, &.{});
-}
 /// Emits a VHDL entity and architecture body for a single MatterScript definition,
 /// normalizing destination defaults and identifiers, and recursively processing any
 /// nested child definitions.
-pub fn writeDefinitionInNetwork(
+pub fn writeDefinition(
     allocator: std.mem.Allocator,
     writer: anytype,
     raw_def: network.Definition,
     scope: []const u8,
-    top: []const  network.Definition,
+    top: []const network.Definition
 ) !void {
-    if (value_transform.isValueTransformRule(raw_def)) return;
+    if (value_transform_analysis.isValueTransformRule(raw_def)) return;
     if (boundary.shouldSkipSpatialGeometry(raw_def)) return;
 
-    //var def = try boundary.normalizeReturnDestinations(allocator, raw_def);
-    //def = try sanitizer.normalizeDefinitionIdentifiers(allocator, def);
-    const def = try invocation.emissionForm(allocator, raw_def);
+    var def = try boundary.normalizeReturnDestinations(allocator, raw_def);
+    def = try sanitizer.normalizeDefinitionIdentifiers(allocator, def);
 
     const def_id = try invocation.scopedDefinitionName(allocator, scope, def.name);
     defer allocator.free(def_id);
@@ -56,14 +51,13 @@ pub fn writeDefinitionInNetwork(
     // 1. Write children/contained definitions first (so they are declared before instantiation)
     for (def.contained) |contained| {
         if (contained.name.len == 0 or std.ascii.isDigit(contained.name[0])) continue;
-        if (value_transform.isValueTransformRule(contained)) continue;
+        if (value_transform_analysis.isValueTransformRule(contained)) continue;
         try writer.print("\n", .{});
 
         const child_scope = try invocation.scopedDefinitionName(allocator, def_id, contained.name);
         defer allocator.free(child_scope);
 
-       // try writeDefinition(allocator, writer, contained, def_id);
-       try writeDefinitionInNetwork(allocator, writer, contained, def_id, top);
+        try writeDefinition(allocator, writer, contained, def_id, top);
     }
 
     // 2. Then write the parent definition/architecture that instantiates them
@@ -108,9 +102,8 @@ pub fn writeDefinitionInNetwork(
         }
     }
 
-    const transform_rules = try value_transform.collectValueTransformRules(allocator, def);
-    // boundary-port-collision check no longer needed here — validate.zig
-    // already enforces it at parse time via this same shared module.
+    const transform_rules = try value_transform_analysis.collectValueTransformRules(allocator, def);
+    try value_transform_analysis.assertNoTransformRuleSymbolCollidesWithPort(def, transform_rules);
 
     for (transform_rules) |rule| {
         for (rule.inputs) |name| try signal.writeIntermediateSignal(allocator, writer, def, &intermediate_names, name);
@@ -131,7 +124,7 @@ pub fn writeDefinitionInNetwork(
         if (already_declared) continue;
         const name = try allocator.dupe(u8, inv.name);
         try component_names.append(allocator, name);
-        const component_id = try invocation.invocationDefinitionName(allocator, def, def_id, inv.name);
+        const component_id = try invocation.invocationDefinitionName(allocator, def, scope, inv.name);
         defer allocator.free(component_id);
         try component.writeComponentDeclaration(writer, inv, component_id);
     }
@@ -150,8 +143,7 @@ pub fn writeDefinitionInNetwork(
             if (output.group == null and output.name.len != 0) continue;
             try writer.print("  invocation_{d}_output_{d} <= null_value;\n", .{ invocation_index, output_index });
         }
-       // try invocation.writeInvocationInstance(allocator, writer, def, def_id, inv, invocation_index);
-       try invocation.writeInvocationInstance(allocator, writer, def, def_id, top, inv, invocation_index);
+        try invocation.writeInvocationInstance(allocator, writer, def, def_id, top,inv, invocation_index);
     }
 
     // valid extraction from source places (inputs)
@@ -194,7 +186,7 @@ pub fn writeDefinitionInNetwork(
     try rom_lookup.writeKeyComposition(allocator, writer, def);
     try rom_lookup.writeRomLookupProcess(allocator, writer, def);
 
-    try transform_emit.writeTransformRules(allocator, writer, transform_rules);
+    try value_transform_export.writeTransformRules(allocator, writer, transform_rules);
 
     try signal.writeDestinationFills(allocator, writer, def);
 

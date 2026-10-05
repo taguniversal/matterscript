@@ -9,7 +9,6 @@ const Io = std.Io;
 pub const ipl_parser = @import("dialects/ipl/parser.zig");
 pub const ipl_export_vhdl = @import("dialects/ipl/vhdl/root.zig");
 pub const network = @import("dialects/ipl/network.zig");
-pub const entity = @import("dialects/ipl/vhdl/entity.zig");
 pub const directives = @import("dialects/ipl/parser/directives.zig");
 pub const statements = @import("dialects/ipl/parser/statements.zig");
 pub const groups = @import("dialects/ipl/parser/groups.zig");
@@ -21,10 +20,12 @@ pub const spatial  = @import("dialects/geo/spatial.zig");
 pub const spatial_domain = @import("dialects/ipl/domains/spatial_domain.zig");
 pub const ipl_export_mesh = @import("dialects/ipl/export/mesh.zig");
 pub const validate = @import("dialects/ipl/validate.zig");
+pub const boundary = @import("dialects/ipl/vhdl/export/boundary.zig");
+pub const invocation = @import("dialects/ipl/vhdl/export/invocation.zig");
 
 // VHDL export namespace
 pub const vhdl = struct {
-    pub const definition = @import("dialects/ipl/vhdl/export/definition.zig");
+    //pub const definition = @import("dialects/ipl/vhdl/export/definition.zig");
     pub const boundary = @import("dialects/ipl/vhdl/export/boundary.zig");
 };
 
