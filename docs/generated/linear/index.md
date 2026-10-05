@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 25  |  🟡 Partial: 8  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 129  |  Total: 164
+✅ Implemented: 24  |  🟡 Partial: 9  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 130  |  Total: 165
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-179: 2. The Simplicity of Concurrency](TAG-179.md)
@@ -160,9 +160,10 @@
 - ⬜ Not started [TAG-215: Value-to-place reification for token-identity dispatch](TAG-215.md)
 - ⬜ Not started [TAG-216: stream-mode test vectors (`@stream` directive)](TAG-216.md)
 - ✅ Implemented [TAG-217: Test Bench @stream directive](TAG-217.md)
-- ✅ Implemented [TAG-218: Runtime: support top-level definitions whose resolution is instance invocations](TAG-218.md)
+- 🟡 Partial [TAG-218: Runtime: support top-level definitions whose resolution is instance invocations](TAG-218.md)
 - ⬜ Not started [TAG-219: Parser: rule-key vs. contained-definition disambiguation is heuristic and fails on single-source and digit-prefixed keys](TAG-219.md)
 - ⬜ Not started [TAG-220: `value_transform.collectValueTransformRules` produces token-input rules for bare-source-header definitions](TAG-220.md)
+- ⬜ Not started [TAG-221: VHDL emitter: emit callee entities](TAG-221.md)
 - ⬜ Not started [TAG-46: Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [TAG-47: Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [TAG-80: The Completeness Dialogue](TAG-80.md)

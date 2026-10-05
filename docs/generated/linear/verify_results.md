@@ -5,7 +5,7 @@
 | Issue | Example | Expected | Parse | Runtime | GHDL | Simulate | Result |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TAG-112 | mobius_ring.ms.ipl | Partial | ok | - | FAIL | - | ⬛ expected fail |
-| TAG-129 | example-12.19.ms.ipl | Implemented | ok | ok 8/8 | FAIL | FAIL | ❌ FAIL |
+| TAG-129 | example-12.19.ms.ipl | Implemented | ok | ok 8/8 | ok | FAIL | ❌ FAIL |
 | TAG-130 | example-12.1.ms.ipl | Implemented | ok | ok 8/8 | ok | FAIL | ❌ FAIL |
 | TAG-136 | example-12.45.ms.ipl | Implemented | ok | ok 14/14 | ok | - | ✅ PASS |
 | TAG-137 | example-12.41.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
@@ -33,7 +33,7 @@
 | TAG-201 | combustion-reaction.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
 | TAG-207 | example-12.35.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-210 | rule30.ms.ipl | - | ok | - | ok | - | 🟡 unexpected pass |
-| TAG-211 | example-12.18-bundling.ms.ipl | Partial | ok | FAIL 0/7 | FAIL | - | ⬛ expected fail |
+| TAG-211 | example-12.18-bundling.ms.ipl | Partial | ok | FAIL 0/7 | ok | - | ⬛ expected fail |
 | TAG-212 | and3.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
 | TAG-217 | parity.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
-| TAG-218 | tag-218.ms.ipl | Implemented | ok | ok 2/2 | FAIL | - | ❌ FAIL |
+| TAG-218 | tag-218.ms.ipl | Partial | ok | ok 2/2 | ok | - | 🟡 unexpected pass |
