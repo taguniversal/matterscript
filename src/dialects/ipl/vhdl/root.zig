@@ -17,6 +17,7 @@ const network_entity = @import("export/network_entity.zig");
 pub const sanitizer = @import("sanitizer.zig");
 const definition = @import("definition.zig");
 const invocation = @import("export/invocation.zig");
+const boundary = @import("export/boundary.zig");
 
 pub fn writeVhdlNetwork(
     io: std.Io,
@@ -87,4 +88,16 @@ fn emitDefWithDeps(
     }
 
     try definition.writeDefinition(allocator, writer, def, "", top);
+}
+
+/// True if every definition in the network would be skipped by the
+/// emitter. Currently means: every definition is a geometry-only
+/// spatial definition. If even one definition produces VHDL, the
+/// network is not geometry-only and the pipeline should run GHDL.
+pub fn isGeometryOnly(net: network.Network) bool {
+    if (net.definitions.len == 0) return false;
+    for (net.definitions) |def| {
+        if (!boundary.shouldSkipSpatialGeometry(def)) return false;
+    }
+    return true;
 }

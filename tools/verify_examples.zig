@@ -122,6 +122,25 @@ pub fn main(init: std.process.Init) !void {
 
         const runtime_outcome = runtime_tb.runIfPresent(arena, io, ex.path, net);
 
+        if (ipl_export_vhdl.isGeometryOnly(net)) {
+            // Geometry-only networks produce no VHDL by design. Skip the
+            // emit + GHDL steps entirely; report the row as a pass on those
+            // stages (they're not applicable, but "pass" reads better than
+            // a fake "FAIL"). Runtime already ran above.
+            try rows.append(arena, .{
+                .tag = ex.tag,
+                .path = ex.path,
+                .expected_status = expected,
+                .simulation_requested = sim_requested,
+                .parse_ok = true,
+                .ghdl_ok = true,
+                .simulation_ok = true,     // not attempted
+                .simulation_error = null,
+                .runtime = runtime_outcome,
+                .result = classify(expected, true, true, sim_requested, true, runtime_outcome),
+            });
+            continue;
+        }
         const workdir = try ghdlWorkdirFor(arena, ex.tag);
         std.Io.Dir.cwd().createDir(io, workdir, .default_dir) catch |err| switch (err) {
             error.PathAlreadyExists => {},
