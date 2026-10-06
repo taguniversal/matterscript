@@ -112,6 +112,65 @@ Mutexes appear naturally throughout Matterscript:
 
 They communicate intent while allowing the compiler to verify that mutually exclusive paths remain mutually exclusive throughout the design.
 
+#### Mutex and completeness
+
+A mutex group participates in **completeness** differently than a bundle does.
+
+A bundle's completeness is the conjunction of its members: the group is complete when *every* member has content.
+
+A mutex group's completeness is the disjunction of its members: the group is complete when *at least one* member has content, and the mutual exclusion property guarantees that at most one does. "Complete" for a mutex therefore means "exactly one member has content."
+
+This distinction matters for source and destination lists. Consider a definition whose source list contains two mutex groups:
+
+```matterscript
+OR[({A0<> A1<>}{B0<> B1<>})({$0 $1})
+  :
+  A0,B0[0]
+  A0,B1[1]
+  A1,B0[1]
+  A1,B1[1]
+]
+```
+
+(Example 12.9, *Mutually exclusive completeness*.)
+
+The source list `({A0<> A1<>}{B0<> B1<>})` names two mutex groups. The definition is *complete* when the first group has exactly one of `A0`/`A1`, and the second group has exactly one of `B0`/`B1`. No other combination counts as complete — an empty group means the source is still waiting for content.
+
+The destination list `({$0 $1})` is also a mutex group. The definition's output is a value on exactly one of `$0` or `$1`, never both. Which one is determined by the resolution rules.
+
+Each rule reads a completeness pattern from the sources and asserts a value on the corresponding destination:
+
+| Sources present | Destination |
+|---|---|
+| `A0`, `B0` | `0` |
+| `A0`, `B1` | `1` |
+| `A1`, `B0` | `1` |
+| `A1`, `B1` | `1` |
+
+The `0` and `1` in the rules are **tokens**, not destination names. Because the destination list is a mutex group of places named `$0` and `$1`, and the tokens asserted by the rules are `0` and `1`, the mutex acts as the routing mechanism: asserting token `0` means "activate `$0`", asserting token `1` means "activate `$1`". Only one rule fires per wavefront, so only one destination place receives content — exactly what the mutex declares.
+
+#### How mutexes affect emitted hardware
+
+Mutually exclusive destinations are wired as mutually exclusive drivers. When the compiler emits VHDL for the example above, each destination place becomes an output signal driven by a conditional assignment:
+
+```vhdl
+ms_0 <= data_value(0) when (A0_valid = '1' and B0_valid = '1') else null_value;
+ms_1 <= data_value(1) when (A0_valid = '1' and B1_valid = '1')
+                       or (A1_valid = '1' and B0_valid = '1')
+                       or (A1_valid = '1' and B1_valid = '1')
+             else null_value;
+```
+
+Each destination's assignment falls back to `null_value` when its condition doesn't hold, so the two signals are never both driven in the same cycle. That's the mutex property, enforced structurally by the emitted code rather than by convention.
+
+#### Design consequences
+
+The mutex is not a notation for exclusive-or logic, and it is not a shorthand for a decoder. It is a statement about the *representation*: these places are alternative encodings of a single logical value, and content appearing in more than one of them would be a contradiction.
+
+Because it's a property of the representation rather than a computation, the mutex propagates through composition. A definition that consumes a mutex group and produces another mutex group has preserved the property end-to-end. Composing two such definitions preserves it again. The compiler can therefore reason about mutexes at every level of a design without having to re-derive the property at each layer.
+
+This is also why mutexes and bundles are not interchangeable: a bundle asserts "all members together," a mutex asserts "exactly one member." Using the wrong one describes a different representation, and the emitted hardware follows.
+
 ### Arbitration
 
 Mutual exclusion describes values.

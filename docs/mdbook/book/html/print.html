@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-da98dfea.js";
+            window.path_to_searchindex_js = "searchindex-73325a29.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e9462bcf.js"></script>
@@ -4597,6 +4597,50 @@ A1&lt;&gt;
 <li>alternative symbolic representations</li>
 </ul>
 <p>They communicate intent while allowing the compiler to verify that mutually exclusive paths remain mutually exclusive throughout the design.</p>
+<h4 id="mutex-and-completeness"><a class="header" href="#mutex-and-completeness">Mutex and completeness</a></h4>
+<p>A mutex group participates in <strong>completeness</strong> differently than a bundle does.</p>
+<p>A bundle’s completeness is the conjunction of its members: the group is complete when <em>every</em> member has content.</p>
+<p>A mutex group’s completeness is the disjunction of its members: the group is complete when <em>at least one</em> member has content, and the mutual exclusion property guarantees that at most one does. “Complete” for a mutex therefore means “exactly one member has content.”</p>
+<p>This distinction matters for source and destination lists. Consider a definition whose source list contains two mutex groups:</p>
+<pre><code class="language-matterscript">OR[({A0&lt;&gt; A1&lt;&gt;}{B0&lt;&gt; B1&lt;&gt;})({$0 $1})
+  :
+  A0,B0[0]
+  A0,B1[1]
+  A1,B0[1]
+  A1,B1[1]
+]
+</code></pre>
+<p>(Example 12.9, <em>Mutually exclusive completeness</em>.)</p>
+<p>The source list <code>({A0&lt;&gt; A1&lt;&gt;}{B0&lt;&gt; B1&lt;&gt;})</code> names two mutex groups. The definition is <em>complete</em> when the first group has exactly one of <code>A0</code>/<code>A1</code>, and the second group has exactly one of <code>B0</code>/<code>B1</code>. No other combination counts as complete — an empty group means the source is still waiting for content.</p>
+<p>The destination list <code>({$0 $1})</code> is also a mutex group. The definition’s output is a value on exactly one of <code>$0</code> or <code>$1</code>, never both. Which one is determined by the resolution rules.</p>
+<p>Each rule reads a completeness pattern from the sources and asserts a value on the corresponding destination:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Sources present</th><th>Destination</th></tr>
+</thead>
+<tbody>
+<tr><td><code>A0</code>, <code>B0</code></td><td><code>0</code></td></tr>
+<tr><td><code>A0</code>, <code>B1</code></td><td><code>1</code></td></tr>
+<tr><td><code>A1</code>, <code>B0</code></td><td><code>1</code></td></tr>
+<tr><td><code>A1</code>, <code>B1</code></td><td><code>1</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>The <code>0</code> and <code>1</code> in the rules are <strong>tokens</strong>, not destination names. Because the destination list is a mutex group of places named <code>$0</code> and <code>$1</code>, and the tokens asserted by the rules are <code>0</code> and <code>1</code>, the mutex acts as the routing mechanism: asserting token <code>0</code> means “activate <code>$0</code>”, asserting token <code>1</code> means “activate <code>$1</code>”. Only one rule fires per wavefront, so only one destination place receives content — exactly what the mutex declares.</p>
+<h4 id="how-mutexes-affect-emitted-hardware"><a class="header" href="#how-mutexes-affect-emitted-hardware">How mutexes affect emitted hardware</a></h4>
+<p>Mutually exclusive destinations are wired as mutually exclusive drivers. When the compiler emits VHDL for the example above, each destination place becomes an output signal driven by a conditional assignment:</p>
+<pre><code class="language-vhdl">ms_0 &lt;= data_value(0) when (A0_valid = '1' and B0_valid = '1') else null_value;
+ms_1 &lt;= data_value(1) when (A0_valid = '1' and B1_valid = '1')
+                       or (A1_valid = '1' and B0_valid = '1')
+                       or (A1_valid = '1' and B1_valid = '1')
+             else null_value;
+</code></pre>
+<p>Each destination’s assignment falls back to <code>null_value</code> when its condition doesn’t hold, so the two signals are never both driven in the same cycle. That’s the mutex property, enforced structurally by the emitted code rather than by convention.</p>
+<h4 id="design-consequences"><a class="header" href="#design-consequences">Design consequences</a></h4>
+<p>The mutex is not a notation for exclusive-or logic, and it is not a shorthand for a decoder. It is a statement about the <em>representation</em>: these places are alternative encodings of a single logical value, and content appearing in more than one of them would be a contradiction.</p>
+<p>Because it’s a property of the representation rather than a computation, the mutex propagates through composition. A definition that consumes a mutex group and produces another mutex group has preserved the property end-to-end. Composing two such definitions preserves it again. The compiler can therefore reason about mutexes at every level of a design without having to re-derive the property at each layer.</p>
+<p>This is also why mutexes and bundles are not interchangeable: a bundle asserts “all members together,” a mutex asserts “exactly one member.” Using the wrong one describes a different representation, and the emitted hardware follows.</p>
 <h3 id="arbitration"><a class="header" href="#arbitration">Arbitration</a></h3>
 <p>Mutual exclusion describes values.</p>
 <p>Arbitration describes <strong>behavior</strong>.</p>
