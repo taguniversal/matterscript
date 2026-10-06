@@ -63,12 +63,44 @@ pub fn argContainsName(arg: network.Arg, name: []const u8) bool {
     return false;
 }
 
-pub fn isBoundaryPort(def: network.Definition, name: []const u8) bool {
+pub fn isBoundaryPort(
+    allocator: std.mem.Allocator,
+    def: network.Definition,
+    name: []const u8,
+) bool {
+    // Compare on sanitized forms: an IPL port named "$0" becomes VHDL
+    // "ms_0", and a rule fill value "0" also sanitizes to "ms_0" — they
+    // refer to the same VHDL identifier, so a raw-string comparison
+    // misses the match and the emitter wrongly synthesizes an
+    // intermediate signal that collides with the port.
+    const sanitized = sanitizeName(allocator, name) catch return false;
+    defer allocator.free(sanitized);
     for (def.sources) |src| {
-        if (argContainsName(src, name)) return true;
+        if (argContainsSanitizedName(allocator, src, sanitized)) return true;
     }
     for (def.destinations) |dest| {
-        if (argContainsName(dest, name)) return true;
+        if (argContainsSanitizedName(allocator, dest, sanitized)) return true;
+    }
+    return false;
+}
+
+fn argContainsSanitizedName(
+    allocator: std.mem.Allocator,
+    arg: network.Arg,
+    sanitized: []const u8,
+) bool {
+    switch (arg.kind) {
+        .group => if (arg.group) |grp| {
+            for (grp.places) |child| {
+                if (argContainsSanitizedName(allocator, child, sanitized)) return true;
+            }
+        },
+        .place => {
+            const arg_id = sanitizeName(allocator, arg.name) catch return false;
+            defer allocator.free(arg_id);
+            if (std.ascii.eqlIgnoreCase(arg_id, sanitized)) return true;
+        },
+        else => {},
     }
     return false;
 }

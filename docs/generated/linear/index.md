@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 30  |  🟡 Partial: 4  |  🔴 Blocked: 0  |  ⬛ Spec only: 2  |  ⬜ Not started: 130  |  Total: 166
+✅ Implemented: 31  |  🟡 Partial: 4  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 130  |  Total: 166
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-222: 2D/3D HP (Hydrophobic-Polar) Lattice Folding Model](TAG-222.md)
@@ -104,7 +104,7 @@
 - ⬜ Not started [TAG-144: Parser stops at first entry-shaped invocation, silently discarding trailing definitions](TAG-144.md)
 - ✅ Implemented [TAG-147: Example 12.13 Parallel Bus](TAG-147.md)
 - ✅ Implemented [TAG-148: Example 12.11 Controlled fan-out expression](TAG-148.md)
-- ⬛ Spec only [TAG-149: Example 12.9 Mutually Exclusive Completeness](TAG-149.md)
+- ✅ Implemented [TAG-149: Example 12.9 Mutually Exclusive Completeness](TAG-149.md)
 - ⬜ Not started [TAG-150: Null Convention Library and ABI Spec](TAG-150.md)
 - ✅ Implemented [TAG-151: Example 12.17 Bundling mutually exclusive path into a single path](TAG-151.md)
 - ⬜ Not started [TAG-152: Make TAG-147 Shell VHDL Emission Valid and GHDL-Checkable](TAG-152.md)

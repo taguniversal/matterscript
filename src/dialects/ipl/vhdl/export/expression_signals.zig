@@ -7,28 +7,6 @@ const sanitizer = @import("../sanitizer.zig");
 const sanitizeName = sanitizer.sanitizeName;
 const lookup = @import("../lookup.zig");
 
-fn argListContainsName(args: []const network.Arg, name: []const u8) bool {
-    // Mirrors writeBoundaryPorts/boundaryCount's own recursion —
-    // without it, any source/destination nested inside a bracket or
-    // mutex group ("[{A0<> A1<>}]", "{$0 $1}", etc. — a very common
-    // shape) is invisible here, so the fill/$-reference declaration
-    // code below wrongly re-declares it as a fresh internal signal,
-    // colliding with the port writeBoundaryPorts already emitted.
-    for (args) |arg| {
-        switch (arg.kind) {
-            .group => if (arg.group) |grp| {
-                if (argListContainsName(grp.places, name)) return true;
-            },
-            .place => if (std.ascii.eqlIgnoreCase(arg.name, name)) return true,
-            else => {},
-        }
-    }
-    return false;
-}
-
-fn isDefinitionPort(def: network.Definition, name: []const u8) bool {
-    return argListContainsName(def.sources, name) or argListContainsName(def.destinations, name);
-}
 
 pub fn writeIntermediatePlaceSignal(
     allocator: std.mem.Allocator,
@@ -48,7 +26,7 @@ pub fn writeIntermediatePlaceSignal(
             if (raw_name.len == 0) return;
 
             // Avoid declaring signals for ports already declared on the boundary
-            if (boundary.isBoundaryPort(def, raw_name)) return;
+            if (boundary.isBoundaryPort(allocator,def, raw_name)) return;
 
             // Avoid duplicate declarations
             for (intermediate_names.items) |existing| {
@@ -75,7 +53,8 @@ pub fn writeIntermediateSignal(
     names: *std.ArrayListUnmanaged([]const u8),
     raw_name: []const u8,
 ) !void {
-    if (raw_name.len == 0 or isDefinitionPort(def, raw_name)) return;
+    if (raw_name.len == 0) return;
+    if (boundary.isBoundaryPort(allocator, def, raw_name)) return;
     for (names.items) |name| if (std.ascii.eqlIgnoreCase(name, raw_name)) return;
     try names.append(allocator, try allocator.dupe(u8, raw_name));
     const id = try sanitizeName(allocator, raw_name);

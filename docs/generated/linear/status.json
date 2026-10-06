@@ -350,9 +350,9 @@
     "workflow_state": "In Progress"
   },
   "TAG-149": {
-    "implementation_status": "Spec Only",
+    "implementation_status": "Implemented",
     "simulation_requested": false,
-    "workflow_state": "In Progress"
+    "workflow_state": "Done"
   },
   "TAG-148": {
     "implementation_status": "Implemented",
