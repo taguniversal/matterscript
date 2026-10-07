@@ -27,6 +27,7 @@
 const std = @import("std");
 const network = @import("../network.zig");
 const testbench = @import("testbench.zig");
+const boundary = @import("../vhdl/export/boundary.zig");
 
 pub const Outcome = struct {
     present: bool = false,
@@ -303,7 +304,18 @@ fn badTb(a: std.mem.Allocator, label: []const u8, diag: Diag) Outcome {
 }
 
 fn runRow(a: std.mem.Allocator, def: network.Definition, definitions: []const network.Definition, streams: []testbench.PortStream) ![]const testbench.Presentation {
+    std.debug.print("[runRow] initInNetwork\n", .{});
     var tb = try testbench.Testbench.initInNetwork(a, def, definitions, streams);
+    std.debug.print("[runRow] run\n", .{});
+    std.debug.print("--- rules for {s} ---\n", .{def.name});
+    for (tb.rules, 0..) |r, i| {
+        std.debug.print("rule[{d}]: dest='{s}' inputs=[", .{ i, r.dest });
+        for (r.inputs, 0..) |inp, j| {
+            if (j > 0) std.debug.print(",", .{});
+            std.debug.print("{s}", .{inp});
+        }
+        std.debug.print("] action={s}\n", .{@tagName(r.action)});
+    }
     return tb.run();
 }
 
@@ -315,17 +327,28 @@ pub fn runVectors(
     net: network.Network,
 ) error{OutOfMemory}!Outcome {
     var diag: Diag = .{};
-
+    std.debug.print("[runVectors] {s}\n", .{label});
     const v = parse(a, source, &diag) catch |err| switch (err) {
         error.OutOfMemory => return error.OutOfMemory,
         error.MalformedTestbench => return badTb(a, label, diag),
     };
 
-    const def = findDut(net, v.dut) orelse {
+    const raw_def = findDut(net, v.dut) orelse {
         diag = .{ .line = 0, .msg = "no matching definition for @dut" };
         return badTb(a, label, diag);
     };
 
+    // Apply the same boundary normalization the emitter applies, so the
+    // runtime sees the same destinations the emitted VHDL declares. Without
+    // this, a definition with an implicit return value (no destination list,
+    // key-composition header, contained value-transform rules) has zero
+    // destinations at the runtime layer, and a `.tb.vec` that references the
+    // synthesized `result` is rejected as "not a destination place".
+    const def = boundary.normalizeReturnDestinations(a, raw_def) catch |err| switch (err) {
+        error.OutOfMemory => return error.OutOfMemory,
+    };
+
+    std.debug.print("[runVectors] {s}: about to resolve, dests={d}\n", .{ label, def.destinations.len });
     const rows = resolve(a, v, def, &diag) catch |err| switch (err) {
         error.OutOfMemory => return error.OutOfMemory,
         error.MalformedTestbench => return badTb(a, label, diag),
@@ -334,7 +357,7 @@ pub fn runVectors(
     var failures: std.ArrayListUnmanaged([]const u8) = .empty;
     var passed: usize = 0;
     var last_output: std.StringHashMapUnmanaged([]const u8) = .empty;
-
+    std.debug.print("[runVectors] {s}: about to run {d} rows\n", .{ label, rows.len });
     for (rows) |row| {
         const streams = try a.alloc(testbench.PortStream, v.in_cols.len);
         var row_had_carry_error = false;
@@ -353,10 +376,14 @@ pub fn runVectors(
         }
         if (row_had_carry_error) continue; // nothing valid to run this row with
 
+        std.debug.print("[runVectors] {s}: about to runRow for row '{s}'\n", .{ label, row.label });
+
         const pres = runRow(a, def, net.definitions, streams) catch |err| {
             try failures.append(a, try std.fmt.allocPrint(a, "line {d} ({s}): runtime error {s}", .{ row.line, row.label, @errorName(err) }));
             continue;
         };
+
+        std.debug.print("[runVectors] {s}: runRow returned {d} presentations\n", .{ label, pres.len });
 
         // A stall row must not overwrite last_output: carry state is defined to be
         // unchanged across a stall. Unreachable in @stream mode today (parser

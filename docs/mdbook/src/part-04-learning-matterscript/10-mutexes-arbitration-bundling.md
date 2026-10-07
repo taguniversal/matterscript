@@ -1,5 +1,7 @@
 ## Bundles, Mutexes, and Arbitration
 
+![Mutexes](images/mutexes.png)
+
 As Matterscript expressions become larger, it quickly becomes impractical to treat every path as an isolated signal. A single value may be represented by multiple rails, a bus may consist of dozens of paths, and multiple producers may need to communicate through a shared destination. Matterscript provides three closely related mechanisms to address these common patterns:
 
 - **Bundles** group multiple places into a single logical place.

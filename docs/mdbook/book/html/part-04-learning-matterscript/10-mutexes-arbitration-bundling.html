@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-73325a29.js";
+            window.path_to_searchindex_js = "../searchindex-561f1206.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-e9462bcf.js"></script>
@@ -177,6 +177,7 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h2 id="bundles-mutexes-and-arbitration"><a class="header" href="#bundles-mutexes-and-arbitration">Bundles, Mutexes, and Arbitration</a></h2>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="images/mutexes.png" alt="Mutexes"><span class="img-wrapper"><img src="images/mutexes.png" alt="Mutexes"></span></label></p>
 <p>As Matterscript expressions become larger, it quickly becomes impractical to treat every path as an isolated signal. A single value may be represented by multiple rails, a bus may consist of dozens of paths, and multiple producers may need to communicate through a shared destination. Matterscript provides three closely related mechanisms to address these common patterns:</p>
 <ul>
 <li><strong>Bundles</strong> group multiple places into a single logical place.</li>

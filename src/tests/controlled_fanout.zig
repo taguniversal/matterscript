@@ -39,8 +39,6 @@ fn dump(label: []const u8, def: network.Definition) void {
     std.debug.print("\n", .{});
 }
 
-
-
 // --- 4. The "$select( ) :" resolution head on its own ---
 // This is the piece with no precedent in TAG-142 ($X$Y(), no space, no
 // trailing colon before a table) or TAG-177/198 ($X $Y $CI :, no
@@ -64,7 +62,6 @@ test "TAG-181 step 4: resolution head accepts space+empty-parens" {
     };
     dump("step 4", net.definitions[0]);
 }
-
 
 // --- 6. Full original TAG-181 expression, verbatim ---
 test "TAG-181 step 6: full original expression" {
@@ -119,5 +116,90 @@ test "TAG-181 step 7: inspect the anonymous destination's full shape" {
                 else => {},
             }
         }
+    }
+}
+
+test "TAG-142 single return to place of invocation" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const src =
+        // linear: TAG-142 Example 12.3 Further abbreviated expression of a single return to place of invocation
+        \\ AND($A $B)
+        \\ AND[(X<>Y<>)
+        \\   $X$Y() :
+        \\     0,0[0]
+        \\     0,1[0]
+        \\     1,0[0]
+        \\     1,1[1]
+        \\  ] 
+    ;
+    const net = parser.parse(a, src) catch |err| {
+        std.debug.print("TAG-142 FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        return err;
+    };
+    dump("TAG-142 AND", net.definitions[0]);
+    const def = net.definitions[0];
+    std.debug.print("AND destinations.len = {d}\n", .{def.destinations.len});
+    for (def.destinations, 0..) |d, i| {
+        std.debug.print("AND  dest[{d}]: kind={s} name='{s}' text='{s}'\n", .{ i, @tagName(d.kind), d.name, d.text });
+    }
+     // --- NEW: dump the resolution statements with their payloads ---
+    std.debug.print("\n--- AND resolution statements ---\n", .{});
+    std.debug.print("resolution.len = {d}\n", .{def.resolution.len});
+    for (def.resolution, 0..) |stmt, i| {
+        std.debug.print("resolution[{d}]: {s}\n", .{ i, @tagName(stmt) });
+        switch (stmt) {
+            .pure_value => |v| std.debug.print("    pure_value = '{s}'\n", .{v}),
+            .fill => |f| std.debug.print("    fill: dest='{s}' expr='{s}'\n", .{ f.dest_name, f.expr }),
+            .invoke => |inv| std.debug.print("    invoke: name='{s}'\n", .{inv.name}),
+            else => {},
+        }
+    }
+
+    // --- NEW: dump the contained entries with their resolution payloads ---
+    std.debug.print("\n--- AND contained entries ---\n", .{});
+    std.debug.print("contained.len = {d}\n", .{def.contained.len});
+    for (def.contained, 0..) |c, i| {
+        std.debug.print("contained[{d}]: name='{s}' sources={d} dests={d} res.len={d}\n",
+            .{ i, c.name, c.sources.len, c.destinations.len, c.resolution.len });
+        for (c.resolution, 0..) |cstmt, j| {
+            std.debug.print("    res[{d}]: {s}", .{ j, @tagName(cstmt) });
+            switch (cstmt) {
+                .pure_value => |v| std.debug.print(" = '{s}'\n", .{v}),
+                .fill => |f| std.debug.print(" dest='{s}' expr='{s}'\n", .{ f.dest_name, f.expr }),
+                else => std.debug.print("\n", .{}),
+            }
+        }
+    }
+    // --- END NEW ---
+
+    dump("TAG-142 AND", net.definitions[0]);
+
+    const wrap_src =
+        \\ 
+        \\ WRAP[(A<>)($Y)
+        \\   Y<INNER($A)>
+        \\   :
+        \\ ]
+        \\
+        \\INNER[(A<>)
+        \\  $A
+        \\  :
+        \\  K[K]
+        \\  L[L]
+        \\ ]
+    ;
+
+    const wrap_net = parser.parse(a, wrap_src) catch |err| {
+        std.debug.print("TAG-142 WRAP FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        return err;
+    };
+    const wrap_def = wrap_net.definitions[0];
+    dump("TAG-142 WRAP", wrap_def);
+    std.debug.print("WRAP destinations.len = {d}\n", .{wrap_def.destinations.len});
+    for (wrap_def.destinations, 0..) |d, i| {
+        std.debug.print("WRAP  dest[{d}]: kind={s} name='{s}' text='{s}'\n", .{ i, @tagName(d.kind), d.name, d.text });
     }
 }

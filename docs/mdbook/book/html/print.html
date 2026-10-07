@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-73325a29.js";
+            window.path_to_searchindex_js = "searchindex-561f1206.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e9462bcf.js"></script>
@@ -3917,10 +3917,12 @@ OR($OP4 $OP3)(FIRSTSUM&lt;&gt;)
      1,0[1]
      1,1[1]
 ]
+
 </code></pre>
 <p>As tokens arrive at <code>A&lt;&gt;</code> and <code>B&lt;&gt;</code>, they are combined to form a single correspondence name.</p>
 <p>If the arriving tokens are <code>0</code> and <code>1</code>, the composed name becomes:</p>
 <pre><code class="language-text">01
+
 </code></pre>
 <p>That composed name is then used to select the matching transform rule.</p>
 <p>The computation is not performing a comparison.</p>
@@ -3946,19 +3948,23 @@ OR($OP4 $OP3)(FIRSTSUM&lt;&gt;)
  0,1[1]
  1,0[1]
  1,1[1]
+
 </code></pre>
 <p>Internally, the correspondence name is simply the combination of the arriving tokens.</p>
 <p>The commas are <strong>not part of the name itself</strong>.</p>
 <p>Instead, they exist for the benefit of the programmer and the parser.</p>
 <p>Without separators, a rule such as</p>
 <pre><code class="language-text">011
+
 </code></pre>
 <p>could represent several different structures depending on how the incoming tokens are partitioned.</p>
 <p>Did it come from:</p>
 <pre><code class="language-text">0 11
+
 </code></pre>
 <p>or</p>
 <pre><code class="language-text">01 1
+
 </code></pre>
 <p>or three independent tokens?</p>
 <p>The commas remove that ambiguity.</p>
@@ -3966,13 +3972,39 @@ OR($OP4 $OP3)(FIRSTSUM&lt;&gt;)
 <p>They do <strong>not</strong> change the meaning of the composed name.</p>
 <p>They simply make the programmer’s intent explicit.</p>
 <hr>
+<h2 id="implicit-values-vs-explicit-invocations"><a class="header" href="#implicit-values-vs-explicit-invocations">Implicit Values vs. Explicit Invocations</a></h2>
+<p>Because MatterScript bridges pure value relations, associative behavior, and traditional functional paradigms, you will sometimes see two different forms for triggering correspondence resolution:</p>
+<pre><code class="language-matterscript">INNER[(A&lt;&gt;)($Y)
+    $A
+    :
+    K[Y&lt;K&gt;]
+    L[Y&lt;L&gt;]
+]
+
+</code></pre>
+<p>and</p>
+<pre><code class="language-matterscript">INNER[(A&lt;&gt;)($Y)
+    $A()
+    :
+    K[Y&lt;K&gt;]
+    L[Y&lt;L&gt;]
+]
+
+</code></pre>
+<p>While these look different syntactically, they represent two expression regimes that achieve <strong>functional sameness</strong>:</p>
+<ul>
+<li><strong>Implicit Invocation (<code>$A</code> or <code>$A$B$C</code>):</strong> Formed as an explicitly concatenated <strong>pure value name</strong>. It asserts the combined pure value into the area of resolution. Invocation of a matching definition occurs <em>implicitly and conditionally</em> as a natural consequence of flow-dependency resolution. If a matching pattern exists, it triggers automatically.</li>
+<li><strong>Explicit Invocation (<code>$A()</code> or <code>$A$B$C()</code>):</strong> The addition of <code>()</code> forms an <strong>association name</strong>. This signals an <em>explicit invocation</em> step—traditionally used when treating expression steps as functional or associative evaluations within conditional expressions.</li>
+</ul>
+<p>Despite this expressional difference—whether you view the statement as pure value flow or active definition invocation—the underlying data-flow model resolves them identically.</p>
+<hr>
 <h2 id="syntax-that-expresses-intent"><a class="header" href="#syntax-that-expresses-intent">Syntax That Expresses Intent</a></h2>
 <p>This is a recurring design principle throughout MatterScript.</p>
 <p>Whenever possible, the syntax is designed to communicate intent rather than introduce additional semantics.</p>
-<p>The commas do not alter the computation.</p>
+<p>Whether adding commas to demarcate structure or choosing between <code>$A</code> and <code>$A()</code> to express a value versus an association, these choices do not alter the underlying computation.</p>
 <p>They do not change the internal representation.</p>
 <p>They do not create a different correspondence relationship.</p>
-<p>They simply record how the programmer intended the name to be composed.</p>
+<p>They simply record how the programmer intended the name to be composed and evaluated.</p>
 <p>The language remains simple.</p>
 <p>The source code becomes clearer.</p>
 <p>The parser receives an unambiguous description of the intended structure.</p>
@@ -3992,6 +4024,7 @@ OR($OP4 $OP3)(FIRSTSUM&lt;&gt;)
 <p>Imagine a tiny region of space filled with tokens.</p>
 <p>Initially it contains nothing more than individual atoms.</p>
 <pre><code class="language-text">H   H   O
+
 </code></pre>
 <p>Each atom is simply a token occupying a place.</p>
 <p>No central program scans the region asking,</p>
@@ -4001,19 +4034,23 @@ OR($OP4 $OP3)(FIRSTSUM&lt;&gt;)
 <p>Instead, local transform rules describe what happens when compatible neighbors exist.</p>
 <p>A simplified rule might be written conceptually as:</p>
 <pre><code class="language-matterscript">H,O,H -&gt; H₂O
+
 </code></pre>
 <p>or in MatterScript style,</p>
-<pre><code class="language-matterscript">:H,O,H[H2O]
+<pre><code class="language-matterscript">H,O,H[H2O]
+
 </code></pre>
 <p>The exact syntax isn’t important here.</p>
 <p>The important point is that the three neighboring tokens form a correspondence name.</p>
 <p>When the relationship</p>
-<pre><code>H,O,H
+<pre><code class="language-text">H,O,H
+
 </code></pre>
 <p>exists locally, the transform rule matches.</p>
 <p>The three individual tokens disappear.</p>
 <p>A new token appears.</p>
-<pre><code>H₂O
+<pre><code class="language-text">H₂O
+
 </code></pre>
 <p>No search occurred.</p>
 <p>No iteration occurred.</p>
@@ -4022,27 +4059,30 @@ OR($OP4 $OP3)(FIRSTSUM&lt;&gt;)
 <hr>
 <h2 id="building-larger-structures"><a class="header" href="#building-larger-structures">Building Larger Structures</a></h2>
 <p>Now imagine the region contains thousands of atoms.</p>
-<pre><code>H H H O C N O H H ...
+<pre><code class="language-text">H H H O C N O H H ...
+
 </code></pre>
 <p>Most neighboring groups never satisfy any transform rule.</p>
 <p>They simply remain unchanged.</p>
 <p>Whenever a valid neighborhood forms, however, it immediately transforms into a larger structure.</p>
 <p>Those larger structures become tokens themselves.</p>
 <p>Now new rules become possible.</p>
-<pre><code>H
+<pre><code class="language-text">H
 O
 H
 ↓
 
 H₂O
+
 </code></pre>
 <p>Later,</p>
-<pre><code>Protein Fragment
+<pre><code class="language-text">Protein Fragment
 +
 H₂O
 ↓
 
 Hydrated Protein
+
 </code></pre>
 <p>The process continues naturally.</p>
 <p>Simple tokens become molecules.</p>
@@ -4076,6 +4116,7 @@ Hydrated Protein
 <p>When a valid relationship exists, it transforms.</p>
 <p>When none exist, nothing happens.</p>
 <p>The computation is driven by causality rather than inspection.</p>
+<hr>
 <h2 id="relationships-become-names"><a class="header" href="#relationships-become-names">Relationships Become Names</a></h2>
 <p>Name composition illustrates one of the central ideas of MatterScript.</p>
 <p>Relationships are not discovered by searching memory.</p>
@@ -4533,6 +4574,7 @@ new symbol/place
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="mutexes-arbitration-and-bundling"><a href="#mutexes-arbitration-and-bundling" class="header">Mutexes, Arbitration and Bundling</a></h1>
 <h2 id="bundles-mutexes-and-arbitration"><a class="header" href="#bundles-mutexes-and-arbitration">Bundles, Mutexes, and Arbitration</a></h2>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-04-learning-matterscript/images/mutexes.png" alt="Mutexes"><span class="img-wrapper"><img src="part-04-learning-matterscript/images/mutexes.png" alt="Mutexes"></span></label></p>
 <p>As Matterscript expressions become larger, it quickly becomes impractical to treat every path as an isolated signal. A single value may be represented by multiple rails, a bus may consist of dozens of paths, and multiple producers may need to communicate through a shared destination. Matterscript provides three closely related mechanisms to address these common patterns:</p>
 <ul>
 <li><strong>Bundles</strong> group multiple places into a single logical place.</li>

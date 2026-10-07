@@ -27,6 +27,7 @@ OR[(A<> B<>)($result)
      1,0[1]
      1,1[1]
 ]
+
 ```
 
 As tokens arrive at `A<>` and `B<>`, they are combined to form a single correspondence name.
@@ -35,6 +36,7 @@ If the arriving tokens are `0` and `1`, the composed name becomes:
 
 ```text
 01
+
 ```
 
 That composed name is then used to select the matching transform rule.
@@ -78,6 +80,7 @@ You may have noticed that the transform rules include commas.
  0,1[1]
  1,0[1]
  1,1[1]
+
 ```
 
 Internally, the correspondence name is simply the combination of the arriving tokens.
@@ -90,6 +93,7 @@ Without separators, a rule such as
 
 ```text
 011
+
 ```
 
 could represent several different structures depending on how the incoming tokens are partitioned.
@@ -98,12 +102,14 @@ Did it come from:
 
 ```text
 0 11
+
 ```
 
 or
 
 ```text
 01 1
+
 ```
 
 or three independent tokens?
@@ -118,19 +124,54 @@ They simply make the programmer's intent explicit.
 
 ---
 
+## Implicit Values vs. Explicit Invocations
+
+Because MatterScript bridges pure value relations, associative behavior, and traditional functional paradigms, you will sometimes see two different forms for triggering correspondence resolution:
+
+```matterscript
+INNER[(A<>)($Y)
+    $A
+    :
+    K[Y<K>]
+    L[Y<L>]
+]
+
+```
+
+and
+
+```matterscript
+INNER[(A<>)($Y)
+    $A()
+    :
+    K[Y<K>]
+    L[Y<L>]
+]
+
+```
+
+While these look different syntactically, they represent two expression regimes that achieve **functional sameness**:
+
+* **Implicit Invocation (`$A` or `$A$B$C`):** Formed as an explicitly concatenated **pure value name**. It asserts the combined pure value into the area of resolution. Invocation of a matching definition occurs *implicitly and conditionally* as a natural consequence of flow-dependency resolution. If a matching pattern exists, it triggers automatically.
+* **Explicit Invocation (`$A()` or `$A$B$C()`):** The addition of `()` forms an **association name**. This signals an *explicit invocation* step—traditionally used when treating expression steps as functional or associative evaluations within conditional expressions.
+
+Despite this expressional difference—whether you view the statement as pure value flow or active definition invocation—the underlying data-flow model resolves them identically.
+
+---
+
 ## Syntax That Expresses Intent
 
 This is a recurring design principle throughout MatterScript.
 
 Whenever possible, the syntax is designed to communicate intent rather than introduce additional semantics.
 
-The commas do not alter the computation.
+Whether adding commas to demarcate structure or choosing between `$A` and `$A()` to express a value versus an association, these choices do not alter the underlying computation.
 
 They do not change the internal representation.
 
 They do not create a different correspondence relationship.
 
-They simply record how the programmer intended the name to be composed.
+They simply record how the programmer intended the name to be composed and evaluated.
 
 The language remains simple.
 
@@ -170,6 +211,7 @@ Initially it contains nothing more than individual atoms.
 
 ```text
 H   H   O
+
 ```
 
 Each atom is simply a token occupying a place.
@@ -184,12 +226,14 @@ A simplified rule might be written conceptually as:
 
 ```matterscript
 H,O,H -> H₂O
+
 ```
 
 or in MatterScript style,
 
 ```matterscript
-:H,O,H[H2O]
+H,O,H[H2O]
+
 ```
 
 The exact syntax isn't important here.
@@ -198,8 +242,9 @@ The important point is that the three neighboring tokens form a correspondence n
 
 When the relationship
 
-```
+```text
 H,O,H
+
 ```
 
 exists locally, the transform rule matches.
@@ -208,8 +253,9 @@ The three individual tokens disappear.
 
 A new token appears.
 
-```
+```text
 H₂O
+
 ```
 
 No search occurred.
@@ -226,8 +272,9 @@ The relationship itself caused the transformation.
 
 Now imagine the region contains thousands of atoms.
 
-```
+```text
 H H H O C N O H H ...
+
 ```
 
 Most neighboring groups never satisfy any transform rule.
@@ -240,24 +287,26 @@ Those larger structures become tokens themselves.
 
 Now new rules become possible.
 
-```
+```text
 H
 O
 H
 ↓
 
 H₂O
+
 ```
 
 Later,
 
-```
+```text
 Protein Fragment
 +
 H₂O
 ↓
 
 Hydrated Protein
+
 ```
 
 The process continues naturally.
@@ -319,6 +368,8 @@ When a valid relationship exists, it transforms.
 When none exist, nothing happens.
 
 The computation is driven by causality rather than inspection.
+
+---
 
 ## Relationships Become Names
 

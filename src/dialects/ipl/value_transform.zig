@@ -30,15 +30,9 @@ pub const RuleGroup = struct {
     contributing_inputs: std.ArrayListUnmanaged([]const []const u8),
 };
 
-/// The digit-prefix exclusion mirrors the filter used wherever contained
-/// definitions are walked for VHDL entity emission: numeric lookup-table
-/// rows ("0", "1", "0,0") share this exact AST shape but mean something
-/// entirely different — a stored constant — and are handled by
-/// writeContainedLookupTable's own, more rigorous, source-arity-based
-/// disambiguation. This is a practical, currently-sufficient heuristic,
-/// not a fully general one.
+
 pub fn isValueTransformRule(def: network.Definition) bool {
-    if (def.name.len == 0 or std.ascii.isDigit(def.name[0])) return false;
+    if (def.name.len == 0) return false;
     if (def.sources.len != 0 or def.destinations.len != 0) return false;
     if (def.resolution.len != 1) return false;
     return def.resolution[0] == .pure_value;

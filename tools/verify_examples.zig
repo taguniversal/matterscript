@@ -87,6 +87,7 @@ pub fn main(init: std.process.Init) !void {
 
     for (examples.items) |ex| {
         const entry = getStatusEntry(status_map, ex.tag);
+        std.debug.print("[verify] processing {s}\n", .{ex.tag});
         const expected = entry.implementation_status;
         const sim_requested = entry.simulation_requested;
 
@@ -156,7 +157,7 @@ pub fn main(init: std.process.Init) !void {
             ipl_export_vhdl.write(arena, &vhdl_writer.writer, net) catch break :blk false;
             break :blk true;
         };
-
+        std.debug.print("[verify] emitted {s}, emit_ok={}\n", .{ ex.tag, emit_ok });
         var ghdl_ok = false;
         var simulation_ok = false;
         var simulation_error: ?[]const u8 = null;

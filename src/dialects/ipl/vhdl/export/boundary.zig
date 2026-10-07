@@ -6,7 +6,6 @@ const network = @import("../../network.zig");
 const sanitizer = @import("../sanitizer.zig");
 const sanitizeName = sanitizer.sanitizeName;
 
-// Boundary Helpers
 pub fn normalizeReturnDestinations(
     allocator: std.mem.Allocator,
     raw_def: network.Definition,
@@ -46,9 +45,53 @@ pub fn normalizeReturnDestinations(
         return def;
     }
 
+    // No fills named a return value, but the resolution may be a
+    // key-composition dispatch ($a$b() : 0,0[0] ...) whose contained
+    // entries are the values to select from. That shape has no explicit
+    // destination list either — the callee's result is the value the
+    // dispatch picks, and the caller's fill (R<INVOKE(...)>) names where
+    // it lands. Synthesize a single output named "result" so the
+    // emitter has a port to drive.
+    for (raw_def.resolution) |stmt| {
+        if (stmt != .pure_value) continue;
+        std.debug.print("[norm] checking header: '{s}'\n", .{stmt.pure_value});
+        std.debug.print("[norm] isKeyCompositionHeader -> {}\n", .{isKeyCompositionHeader(allocator, stmt.pure_value)});
+        if (!isKeyCompositionHeader(allocator, stmt.pure_value)) continue;
+
+        var def = raw_def;
+        const dests = try allocator.alloc(network.Arg, 1);
+        dests[0] = .{ .kind = .place, .name = "result" };
+        def.destinations = dests;
+        return def;
+    }
+
     return raw_def;
 }
 
+/// True if the expression is a bare key-composition header — a
+/// `$`-joined chain of names ending in empty parens, e.g. "$X$Y()",
+/// "$newbit$currentstate()". Matches the same shape
+/// findComposedDispatchHeader looks for, but at the boundary layer so
+/// it can be checked before any emitter modules are imported.
+fn isKeyCompositionHeader(allocator: std.mem.Allocator, expr: []const u8) bool {
+    _ = allocator;
+    const trimmed = std.mem.trim(u8, expr, " \t\r\n");
+    if (trimmed.len < 4) return false; // "$a()" is the shortest valid form
+    if (trimmed[0] != '$') return false;
+    if (trimmed[trimmed.len - 1] != ')') return false;
+    const open = std.mem.lastIndexOfScalar(u8, trimmed, '(') orelse return false;
+    const inside = std.mem.trim(u8, trimmed[open + 1 .. trimmed.len - 1], " \t");
+    if (inside.len != 0) return false; // parens are always empty
+    const body = std.mem.trim(u8, trimmed[0..open], " \t");
+    if (body.len < 2 or body[0] != '$') return false;
+    // Every name after the first must be introduced by its own '$'.
+    var it = std.mem.splitScalar(u8, body[1..], '$');
+    while (it.next()) |name| {
+        if (name.len == 0) return false;
+        if (std.mem.indexOfAny(u8, name, " \t") != null) return false;
+    }
+    return true;
+}
 
 pub fn argContainsName(arg: network.Arg, name: []const u8) bool {
     switch (arg.kind) {

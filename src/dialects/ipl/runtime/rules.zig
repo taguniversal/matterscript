@@ -270,6 +270,7 @@ pub fn buildRulesInNetwork(
 ) ![]const ExecutableRule {
     return buildRulesAtDepth(allocator, def, definitions, 0);
 }
+
 fn buildRulesAtDepth(
     allocator: std.mem.Allocator,
     def: network.Definition,
@@ -298,14 +299,18 @@ fn buildRulesAtDepth(
             });
         }
     }
+    std.debug.print("[build] after vt rules: {d} rules\n", .{rules.items.len});
 
     if (try findComposedDispatchHeader(allocator, def)) |dispatch_inputs| {
+        std.debug.print("[build] {s}: dispatch_inputs.len = {d}\n", .{ def.name, dispatch_inputs.len });
+        for (dispatch_inputs) |d| std.debug.print("  dispatch input: '{s}'\n", .{d});
         // Bare "$a$b$c()" header, no fill wrapper — e.g. fanin's
         // "$select( )" or FULLADD's "$X$Y$C()". Compiles to the same
         // .select mechanism a fill-embedded "$a$b()" already uses:
         // read the actual VALUES of dispatch_inputs, join with ","
         // match against each branch's own name.
         try appendSelectRules(allocator, &rules, dispatch_inputs, def);
+        std.debug.print("[build] after dispatch header block: {d} rules\n", .{rules.items.len});
     } else if (def.sources.len > 0 and vt_rules.len == 0) {
         // Bare source clause ($A : or $A $B $CI :) with no value-transform
         // rules — the contained entries are token-named dispatch cases
@@ -343,6 +348,7 @@ fn buildRulesAtDepth(
             }
         }
     }
+    std.debug.print("[build] after contained fill loop: {d} rules\n", .{rules.items.len});
 
     // Ordinary fills — a literal is a zero-input rule (fires
     // immediately); "$name" is a one-input rule copying that place's
@@ -370,12 +376,17 @@ fn buildRulesAtDepth(
             try rules.append(allocator, .{ .inputs = &.{}, .dest = f.dest_name, .action = .{ .assert_symbol = expr } });
         }
     }
+    std.debug.print("[build] after resolution fills: {d} rules\n", .{rules.items.len});
 
     var invoke_index: usize = 0;
     for (def.resolution) |stmt| {
         if (stmt != .invoke) continue;
         try inlineInvocation(allocator, &rules, stmt.invoke, invoke_index, definitions, depth);
         invoke_index += 1;
+    }
+
+    for (rules.items, 0..) |r, i| {
+        std.debug.print("[build:{s}] rule[{d}] dest='{s}' inputs.len={d} action={s}\n", .{ def.name, i, r.dest, r.inputs.len, @tagName(r.action) });
     }
 
     return rules.toOwnedSlice(allocator);
@@ -461,7 +472,7 @@ pub fn run(
         for (rules) |rule| {
             if (env.isValid(rule.dest)) continue;
             if (!env.allValid(rule.inputs)) continue;
-
+               std.debug.print("[rules.run] firing rule dest='{s}' inputs.len={d} action={s}\n",.{ rule.dest, rule.inputs.len, @tagName(rule.action) });
             switch (rule.action) {
                 .literal => |v| try env.assertLiteral(rule.dest, v),
                 .copy_from => |src| try env.copyFrom(rule.dest, src),
@@ -500,6 +511,7 @@ pub fn run(
     var stuck: std.ArrayListUnmanaged(StuckPlace) = .empty;
     var incomplete = false;
     for (def.destinations) |dest| {
+        std.debug.print("[rules.run] checking dest kind={s} name='{s}' satisfied={}\n", .{ @tagName(dest.kind), dest.name, destinationSatisfied(env, dest) });
         if (destinationSatisfied(env, dest)) continue;
         incomplete = true;
 

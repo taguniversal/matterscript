@@ -63,7 +63,7 @@ pub const Testbench = struct {
     rules: []const ExecutableRule,
     streams: []PortStream,
 
-        pub fn init(
+    pub fn init(
         allocator: std.mem.Allocator,
         def: network.Definition,
         streams: []PortStream,
@@ -104,7 +104,6 @@ pub const Testbench = struct {
         }
     }
 
-
     /// Runs every queued token to completion, one data wavefront per
     /// captured Presentation, stopping once no further wavefront can
     /// complete (streams exhausted, or a genuinely stuck combination).
@@ -113,11 +112,31 @@ pub const Testbench = struct {
 
         outer: while (true) {
             var env = Environment{ .allocator = self.allocator };
+
+            // If every stream is exhausted, no further wavefront can complete.
+            // Without this check, a rule that fires on an empty environment
+            // (producing a trivially-complete report) spins this loop forever.
+            var any_live_stream = false;
+            for (self.streams) |s| {
+                if (!s.exhausted()) {
+                    any_live_stream = true;
+                    break;
+                }
+            }
+            if (!any_live_stream) break :outer;
+
             const fed_this_wavefront = try self.allocator.alloc(bool, self.streams.len);
             @memset(fed_this_wavefront, false);
+            // Pre-check: if all streams are exhausted, no more wavefronts can complete.
+            var any_stream_live = false;
+            for (self.streams) |*s| if (!s.exhausted()) {
+                any_stream_live = true;
+                break;
+            };
+            if (!any_stream_live) break :outer;
 
             var report = try rules_mod.run(self.allocator, &env, self.def, self.rules);
-
+            std.debug.print("[tb.run] initial report.complete = {}, dests.len = {d}, dests[0].name='{s}'\n", .{ report.complete, self.def.destinations.len, if (self.def.destinations.len > 0) self.def.destinations[0].name else "" });
             while (!report.complete) {
                 var fed_any = false;
                 for (self.streams, 0..) |*stream, i| {

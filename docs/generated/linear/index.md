@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 31  |  🟡 Partial: 4  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 130  |  Total: 166
+✅ Implemented: 30  |  🟡 Partial: 5  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 130  |  Total: 166
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-222: 2D/3D HP (Hydrophobic-Polar) Lattice Folding Model](TAG-222.md)
@@ -99,7 +99,7 @@
 - ⬜ Not started [TAG-139: Figure 12.28 Experience Memory](TAG-139.md)
 - ⬜ Not started [TAG-140: Figure 12.23 Protocol behavior of interlinked cycles](TAG-140.md)
 - ⬜ Not started [TAG-141: Example 12.4 Nested Invocations](TAG-141.md)
-- ✅ Implemented [TAG-142: Example 12.3 Further abbreviated expression of a single return to place of invocation](TAG-142.md)
+- 🟡 Partial [TAG-142: Example 12.3 Further abbreviated expression of a single return to place of invocation](TAG-142.md)
 - ✅ Implemented [TAG-143: Example 12.2 Expressing a single return to place of invocation](TAG-143.md)
 - ⬜ Not started [TAG-144: Parser stops at first entry-shaped invocation, silently discarding trailing definitions](TAG-144.md)
 - ✅ Implemented [TAG-147: Example 12.13 Parallel Bus](TAG-147.md)
