@@ -53,7 +53,7 @@ test "a definition with an explicit named destination list still emits an entity
     try testing.expect(std.mem.indexOf(u8, vhdl, "architecture rtl of mygate is") != null);
 }
 
-test "a definition with no destination list still uses the synthesized 'result' output" {
+test "a definition with no destination list still uses the synthesized 'ms_result' output" {
     // Companion to the test above: makes sure fixing the brace bug
     // didn't disturb the §12.3.4 implicit-single-return path that
     // was already working (TAG-163/TAG-187's shape).
@@ -65,7 +65,7 @@ test "a definition with no destination list still uses the synthesized 'result' 
 
     const vhdl = try exportToString(allocator, src);
     try testing.expect(std.mem.indexOf(u8, vhdl, "entity myconst is") != null);
-    try testing.expect(std.mem.indexOf(u8, vhdl, "result") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "ms_result") != null);
 }
 
 test "composed two-variable lookup with comma-separated keys resolves to a case statement" {

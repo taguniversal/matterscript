@@ -14,7 +14,7 @@ const invocation = @import("invocation.zig");
 ///
 /// Naming convention (matches TAG-130's checked-in testbench):
 ///   entity name    = "{entry.name}_network"  (e.g. "FULLADD_network")
-///   unnamed output → port named "result", same convention already
+///   unnamed output → port named "ms_result", same convention already
 ///     used for an unnamed definition-level return
 ///   named output   → port using its own name, sanitized
 ///
@@ -60,10 +60,10 @@ pub fn writeOneNetworkEntity(
             .place => output.name,
             else => output.text,
         };
-        const candidate = if (raw_name.len == 0) "result" else raw_name;
+        const candidate = if (raw_name.len == 0) "ms_result" else raw_name;
         // Two unnamed destination slots (e.g. TAG-129's own
         // "(< > CARRYOUT < >)") would otherwise both fall back to the
-        // literal "result", producing two identical port declarations.
+        // literal "ms_result", producing two identical port declarations.
         const unique = try sanitizer.uniqueVhdlName(allocator, output_names.items, candidate);
         try output_names.append(allocator, unique);
     }
@@ -72,11 +72,11 @@ pub fn writeOneNetworkEntity(
     // about one, say). writeNetworkDestMapping below falls back to a
     // placeholder for every DUT output beyond what output_names
     // covers — that placeholder must actually be declared as a port
-    // here, or ghdl reports "no declaration for result" on the
+    // here, or ghdl reports "no declaration for ms_result" on the
     // resulting port-map reference.
     const dut_output_count = boundary.boundaryCount(matched.destinations);
     while (output_names.items.len < dut_output_count) {
-        const unique = try sanitizer.uniqueVhdlName(allocator, output_names.items, "result");
+        const unique = try sanitizer.uniqueVhdlName(allocator, output_names.items, "ms_result");
         try output_names.append(allocator, unique);
     }
 
@@ -206,7 +206,7 @@ fn writeNetworkDestMapping(
         .place => {
             const port_id = try sanitizeName(allocator, arg.name);
             defer allocator.free(port_id);
-            const output_name = if (output_index.* < output_names.len) output_names[output_index.*] else "result";
+            const output_name = if (output_index.* < output_names.len) output_names[output_index.*] else "ms_result";
             const output_id = try sanitizeName(allocator, output_name);
             defer allocator.free(output_id);
 

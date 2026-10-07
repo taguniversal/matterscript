@@ -59,7 +59,7 @@ test "normalizeReturnDestinations synthesizes implicit return for empty destinat
     // A definition with resolution fills but no explicit destinations
     const fill_stmt = network.Statement{
         .fill = .{
-            .dest_name = "", // Unnamed fill -> should synthesize "result"
+            .dest_name = "", // Unnamed fill -> should synthesize "ms_result"
             .expr = "42",
         },
     };
@@ -79,10 +79,10 @@ test "normalizeReturnDestinations synthesizes implicit return for empty destinat
 
     // Verify destination synthesis (§12.3.4)
     try std.testing.expectEqual(@as(usize, 1), normalized.destinations.len);
-    try std.testing.expectEqualStrings("result", normalized.destinations[0].name);
+    try std.testing.expectEqualStrings("ms_result", normalized.destinations[0].name);
 
     // Verify fill destination was updated
-    try std.testing.expectEqualStrings("result", normalized.resolution[0].fill.dest_name);
+    try std.testing.expectEqualStrings("ms_result", normalized.resolution[0].fill.dest_name);
 }
 
 test "normalizeReturnDestinations passes through definitions with existing destinations" {

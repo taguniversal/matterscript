@@ -20,7 +20,7 @@ pub fn normalizeReturnDestinations(
         switch (stmt) {
             .fill => |raw_f| {
                 var f = raw_f;
-                if (f.dest_name.len == 0) f.dest_name = "result";
+                if (f.dest_name.len == 0) f.dest_name = "ms_result";
                 var have = false;
                 for (names.items) |n| {
                     if (std.mem.eql(u8, n, f.dest_name)) {
@@ -50,7 +50,7 @@ pub fn normalizeReturnDestinations(
     // entries are the values to select from. That shape has no explicit
     // destination list either — the callee's result is the value the
     // dispatch picks, and the caller's fill (R<INVOKE(...)>) names where
-    // it lands. Synthesize a single output named "result" so the
+    // it lands. Synthesize a single output named "ms_result" so the
     // emitter has a port to drive.
     for (raw_def.resolution) |stmt| {
         if (stmt != .pure_value) continue;
@@ -60,7 +60,7 @@ pub fn normalizeReturnDestinations(
 
         var def = raw_def;
         const dests = try allocator.alloc(network.Arg, 1);
-        dests[0] = .{ .kind = .place, .name = "result" };
+        dests[0] = .{ .kind = .place, .name = "ms_result" };
         def.destinations = dests;
         return def;
     }

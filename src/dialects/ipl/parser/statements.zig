@@ -76,7 +76,7 @@ pub fn parseEntryInvocation(p: *core.Parser, label: ?[]const u8, name: []const u
         &.{};
 
     // §12.3.4 — an omitted or empty destination list means a single
-    // implicit return. Synthesize a place named "result" here so that
+    // implicit return. Synthesize a place named "ms_result" here so that
     // every downstream consumer (emitter, runtime, testbench) sees a
     // named destination and never has to special-case the anonymous
     // form. This is the single producer for the entry-invocation side
