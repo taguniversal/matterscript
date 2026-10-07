@@ -27,3 +27,7 @@ zig-pkg/
 
 work-obj08.cf
 
+.grepai/
+
+# analysis scratch (grepai output, refactor notes, temp files)
+.analysis/

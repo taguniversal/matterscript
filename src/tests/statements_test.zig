@@ -114,7 +114,7 @@ test "parseEntryInvocation - explicit sources and destinations" {
     try testing.expectEqual(@as(usize, 1), entry.destinations.len);
 }
 
-test "parseEntryInvocation - omitted destinations defaults to empty list" {
+test "parseEntryInvocation - omitted destinations synthesizes a result destination" {
     const allocator = testing.allocator;
     const src = "($a, $b)";
     var p = initParser(allocator, src);
@@ -126,5 +126,20 @@ test "parseEntryInvocation - omitted destinations defaults to empty list" {
     try testing.expect(entry.label == null);
     try testing.expectEqualStrings("MyEntry", entry.name);
     try testing.expectEqual(@as(usize, 2), entry.sources.len);
-    try testing.expectEqual(@as(usize, 0), entry.destinations.len);
+    try testing.expectEqual(@as(usize, 1), entry.destinations.len);
+    try testing.expectEqualStrings("ms_result", entry.destinations[0].name);
+}
+
+test "parseEntryInvocation 2 - present but empty destination list synthesizes a result destination" {
+    const allocator = testing.allocator;
+    const src = "($a, $b)()";
+    var p = initParser(allocator, src);
+
+    const entry = try statements.parseEntryInvocation(&p, null, "MyEntry");
+    defer allocator.free(entry.sources);
+    defer allocator.free(entry.destinations);
+
+    try testing.expectEqual(@as(usize, 2), entry.sources.len);
+    try testing.expectEqual(@as(usize, 1), entry.destinations.len);
+    try testing.expectEqualStrings("ms_result", entry.destinations[0].name);
 }

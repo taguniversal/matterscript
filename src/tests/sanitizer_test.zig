@@ -117,3 +117,9 @@ test "sanitizeName never produces consecutive, leading, or trailing underscores"
     defer allocator.free(trailing);
     try testing.expectEqualStrings("foo", trailing);
 }
+
+test "sanitizeName passes ms_-prefixed names through unchanged" {
+    const id = try sanitizer.sanitizeName(testing.allocator, "ms_result");
+    defer testing.allocator.free(id);
+    try testing.expectEqualStrings("ms_result", id);
+}

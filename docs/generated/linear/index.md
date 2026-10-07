@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 30  |  🟡 Partial: 5  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 130  |  Total: 166
+✅ Implemented: 30  |  🟡 Partial: 5  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 131  |  Total: 167
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-222: 2D/3D HP (Hydrophobic-Polar) Lattice Folding Model](TAG-222.md)
@@ -165,6 +165,7 @@
 - ⬜ Not started [TAG-219: Parser: rule-key vs. contained-definition disambiguation is heuristic and fails on single-source and digit-prefixed keys](TAG-219.md)
 - ⬜ Not started [TAG-220: `value_transform.collectValueTransformRules` produces token-input rules for bare-source-header definitions](TAG-220.md)
 - ⬜ Not started [TAG-221: VHDL emitter: emit callee entities](TAG-221.md)
+- ⬜ Not started [TAG-223: Normalize anonymous destinations at parse time](TAG-223.md)
 - ⬜ Not started [TAG-46: Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [TAG-47: Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [TAG-80: The Completeness Dialogue](TAG-80.md)

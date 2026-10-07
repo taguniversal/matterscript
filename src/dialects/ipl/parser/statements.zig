@@ -65,15 +65,36 @@ pub fn parseInvocation(p: *core.Parser, label: ?[]const u8, name: []const u8) !n
     } };
 }
 
-
 pub fn parseEntryInvocation(p: *core.Parser, label: ?[]const u8, name: []const u8) !network.EntryInvocation {
     // Fant invocation order: sources first ($name/literal/groups), destinations second (name<>)
     const sources = try arguments.parseArgList(p, ')');
     p.skipWhitespaceAndComments();
-    const destinations: []const network.Arg = if (p.peek() == '(')
+
+    const raw_destinations: []const network.Arg = if (p.peek() == '(')
         try arguments.parseArgList(p, ')')
     else
-        &.{}; // §12.3.4 — destination list omitted, implicit single unnamed return
+        &.{};
+
+    // §12.3.4 — an omitted or empty destination list means a single
+    // implicit return. Synthesize a place named "result" here so that
+    // every downstream consumer (emitter, runtime, testbench) sees a
+    // named destination and never has to special-case the anonymous
+    // form. This is the single producer for the entry-invocation side
+    // of the anonymous-destination refactor; the emitter-side fallback
+    // in network_entity.zig is now unreachable for this path.
+    
+    //  Why ms_result is the right name
+    // It matches the prefix sanitizer.zig already uses for synthesized VHDL identifiers (ms_0s0, ms_process, etc. — visible in the sanitizer tests). That means:
+    //
+    // - The name is already "VHDL-safe by construction." No sanitizer pass needs to touch it.
+    // - isBoundaryPortName and the various collision checks will treat it the same way they treat other ms_-prefixed names.
+    // - A reader who sees ms_result in the AST or in emitted VHDL immediately knows "synthesized, not user-written."
+    // - If a user writes ms_result as a destination name, the sanitizer's existing unique-name machinery is the place that would need to catch it (or the parser would reject it) — a separate, small policy question.
+    const destinations: []const network.Arg = if (raw_destinations.len == 0) blk: {
+        const synthesized = try p.allocator.alloc(network.Arg, 1);
+        synthesized[0] = .{ .kind = .place, .name = "ms_result" };
+        break :blk synthesized;
+    } else raw_destinations;
 
     return network.EntryInvocation{
         .label = label,
