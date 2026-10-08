@@ -73,13 +73,19 @@ fn isLookupEntry(contained: network.Definition) bool {
     return true;
 }
 
+
 fn checkNoNestedDefinitions(def: network.Definition, diag: *Diagnostic) ValidationError!void {
     for (def.contained) |contained| {
         if (!isLookupEntry(contained)) {
+            std.debug.print("[nest] rejecting '{s}' inside '{s}': sources={d} dests={d} res.len={d}\n",
+                .{ contained.name, def.name, contained.sources.len, contained.destinations.len, contained.resolution.len });
+            for (contained.resolution, 0..) |stmt, i| {
+                std.debug.print("  res[{d}]: {s}\n", .{ i, @tagName(stmt) });
+            }
             diag.* = .{ .name = contained.name, .in = def.name };
             return error.NestedDefinitionNotAllowed;
         }
-        try checkNoNestedDefinitions(contained, diag); // catch accidental multi-level nesting too
+        try checkNoNestedDefinitions(contained, diag);
     }
 }
 

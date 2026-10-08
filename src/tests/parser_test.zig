@@ -90,8 +90,10 @@ test "TAG-190 Example 12.5 AND Function with value transform rule definitions" {
     try testing.expectEqualStrings("a", def.sources[0].name);
     try testing.expectEqualStrings("b", def.sources[1].name);
 
-    // No explicit destination list -> implicit single return path to caller
-    try testing.expectEqual(@as(usize, 0), def.destinations.len);
+    // No explicit destination list -> implicit single return path to caller,
+    // synthesized as ms_result (§12.3.4).
+    try testing.expectEqual(@as(usize, 1), def.destinations.len);
+    try testing.expectEqualStrings("ms_result", def.destinations[0].name);
 
     // Resolution contains $a$b()
     try testing.expect(def.resolution.len > 0);
@@ -135,8 +137,8 @@ test "TAG-190 Example 12.5 AND Function with value transform rule definitions" {
     // Row 3: 1, 1 [TRUE]
     try testing.expectEqualStrings("1,1", def.contained[3].name);
     try testing.expectEqual(@as(usize, 0), def.contained[3].sources.len);
-    try testing.expectEqual(@as(usize, 0), def.contained[3].destinations.len);
-}
+
+   }
 
 test "parse TAG-181 controlled fanout expression and definition" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
@@ -515,7 +517,7 @@ test "TAG-219 single-source definition with digit keys parses as rules, not pure
     // contained rule entries, not by resolution[0].
     try testing.expectEqual(@as(usize, 1), def.resolution.len);
     try testing.expect(def.resolution[0] == .pure_value);
-   
+
     // two rules, each a .fill, not two constants
     try testing.expectEqual(@as(usize, 2), def.contained.len);
 

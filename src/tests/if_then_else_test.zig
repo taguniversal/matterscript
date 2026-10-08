@@ -91,7 +91,7 @@ test "TAG-207 Example 12.35 - Sequential two-wavefront execution (TRUE then FALS
         \\  $logical() :
         \\    TRUE[ name<$thenname>]
         \\    FALSE[ name<$elsename>]
-        \\]
+        \\ ]
     ;
 
     const net = try parser.parse(allocator, snippet);

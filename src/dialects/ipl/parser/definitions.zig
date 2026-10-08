@@ -6,6 +6,7 @@ const expressions = @import("expressions.zig");
 const directives = @import("directives.zig");
 const statements = @import("statements.zig");
 const groups = @import("groups.zig");
+const syntax = @import("syntax.zig");
 
 const testing = std.testing;
 
@@ -13,19 +14,24 @@ const testing = std.testing;
 // Definition and entry invocation
 // ----------------------------------------------------------------
 
-/// Parses a network definition from the given parser, enclosed in `[` and `]`.
-///
-/// Expects a comma-separated name, optional `(sources)` and `(destinations)` argument lists,
-/// zero or more `@domain` or `@generate` directives, a resolution specifier, and a contained section.
-///
-/// * `p`: A pointer to the active `Parser` state.
-///
-/// **Errors:**
-/// Returns `error.UnknownDirective` if an unhandled `@` directive is encountered, or any
-/// parsing error produced while reading names, argument lists, directives, or sections.
-///
-/// Returns the fully constructed `network.Definition`.
+pub const ParseMode = enum { top_level, contained_entry };
+
+/// Parses a top-level network definition. Anonymous-return synthesis is
+/// enabled: a definition with no destination list and a resolution that
+/// implies a return value gets a synthesized `ms_result` destination.
 pub fn parseDefinition(p: *core.Parser) anyerror!network.Definition {
+    return parseDefinitionInMode(p, .top_level);
+}
+
+/// Parses a contained entry (a row inside another definition's `[ ... ]`
+/// block). Anonymous-return synthesis is disabled: a contained entry's
+/// shape is key→value, not name→return, and the validation layer
+/// (`isLookupEntry`) rejects any entry that has destinations of its own.
+pub fn parseDefinitionAsContainedEntry(p: *core.Parser) anyerror!network.Definition {
+    return parseDefinitionInMode(p, .contained_entry);
+}
+
+fn parseDefinitionInMode(p: *core.Parser, mode: ParseMode) anyerror!network.Definition {
     const name = try groups.readCommaSeparatedName(p);
     try p.expect('[');
 
@@ -36,7 +42,7 @@ pub fn parseDefinition(p: *core.Parser) anyerror!network.Definition {
         &.{};
 
     p.skipWhitespaceAndComments();
-    const destinations: []const network.Arg = if (p.peek() == '(')
+    const raw_destinations: []const network.Arg = if (p.peek() == '(')
         try arguments.parseArgList(p, ')')
     else
         &.{};
@@ -46,7 +52,6 @@ pub fn parseDefinition(p: *core.Parser) anyerror!network.Definition {
     var domain_spec: ?network.DomainSpec = null;
     var generate_block: ?network.GenerateBlock = null;
     var runtime_kind: ?network.RuntimeKind = null;
-    // Loop to consume all '@' directives inside the definition header
     while (p.peek() == '@') {
         p.pos += 1; // Consume '@'
         const directive = try p.readName();
@@ -70,11 +75,21 @@ pub fn parseDefinition(p: *core.Parser) anyerror!network.Definition {
             return error.UnknownDirective;
         }
     }
+
     p.skipWhitespaceAndComments();
     const resolution = try parseResolution(p);
     _ = p.tryConsume(':');
     const section = try parseContainedSection(p, composedKeySegmentCount(resolution));
     try p.expect(']');
+
+    // §12.3.4 — anonymous return. Only top-level definitions synthesize
+    // a return destination; contained entries (key→value rows) have no
+    // return of their own, and synthesis there produces a spurious
+    // destination that the validation layer rejects.
+    const destinations = if (mode == .top_level)
+        try resolveDestinations(p.allocator, raw_destinations, resolution)
+    else
+        raw_destinations;
 
     return network.Definition{
         .name = name,
@@ -87,6 +102,32 @@ pub fn parseDefinition(p: *core.Parser) anyerror!network.Definition {
         .constants = section.constants,
         .contained = section.contained,
     };
+}
+
+
+fn resolveDestinations(
+    allocator: std.mem.Allocator,
+    raw: []const network.Arg,
+    resolution: []const network.Statement,
+) ![]const network.Arg {
+    if (raw.len != 0) return raw;
+
+    // Does the resolution provide a return value?
+    var has_return_source = false;
+    for (resolution) |stmt| {
+        switch (stmt) {
+            .fill => has_return_source = true,
+            .pure_value => |v| {
+                if (syntax.isKeyCompositionHeader(allocator, v)) has_return_source = true;
+            },
+            else => {},
+        }
+    }
+    if (!has_return_source) return raw;
+
+    const synthesized = try allocator.alloc(network.Arg, 1);
+    synthesized[0] = .{ .kind = .place, .name = "ms_result" };
+    return synthesized;
 }
 
 /// How many $-separated segments a contained row's composed key
@@ -184,7 +225,16 @@ pub fn parseContainedSection(p: *core.Parser, expected_segments: usize) anyerror
                     return core.ParseError.AmbiguousComposedKey;
                 }
                 p.pos = save;
-                const def = try parseDefinition(p);
+                const def = try parseDefinitionAsContainedEntry(p);
+              //  std.debug.print("[contained] '{s}': sources={d} dests={d} res.len={d}\n", .{ def.name, def.sources.len, def.destinations.len, def.resolution.len });
+                for (def.resolution) |stmt| {
+                //    std.debug.print("  res[{d}]: {s}\n", .{ i, @tagName(stmt) });
+                    switch (stmt) {
+                        .fill => |f| std.debug.print("    fill: dest='{s}' expr='{s}'\n", .{ f.dest_name, f.expr }),
+                        .pure_value => |v| std.debug.print("    pure_value: '{s}'\n", .{v}),
+                        else => {},
+                    }
+                }
                 try nested.append(p.allocator, def);
                 continue;
             }
