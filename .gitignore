@@ -31,3 +31,4 @@ work-obj08.cf
 
 # analysis scratch (grepai output, refactor notes, temp files)
 .analysis/
+out.txt

@@ -6,45 +6,32 @@ const network = @import("../../network.zig");
 const sanitizer = @import("../sanitizer.zig");
 const sanitizeName = sanitizer.sanitizeName;
 
-pub fn normalizeReturnDestinations(
+/// Rewrites any .fill whose dest_name is empty to target a synthesized
+/// "ms_result" place. A fill with no destination is a return-value
+/// expression, and every downstream consumer (emitter, runtime,
+/// testbench) needs a name to work with. Only top-level definitions
+/// call this; contained entries have no return of their own.
+pub fn normalizeFillDestinations(
     allocator: std.mem.Allocator,
-    raw_def: network.Definition,
-) !network.Definition {
-    if (raw_def.destinations.len != 0) return raw_def;
-
-    var names: std.ArrayListUnmanaged([]const u8) = .empty;
-    defer names.deinit(allocator);
+    resolution: []const network.Statement,
+) ![]const network.Statement {
+    var any_rewritten = false;
     var normalized: std.ArrayListUnmanaged(network.Statement) = .empty;
-
-    for (raw_def.resolution) |stmt| {
+    for (resolution) |stmt| {
         switch (stmt) {
             .fill => |raw_f| {
                 var f = raw_f;
-                if (f.dest_name.len == 0) f.dest_name = "ms_result";
-                var have = false;
-                for (names.items) |n| {
-                    if (std.mem.eql(u8, n, f.dest_name)) {
-                        have = true;
-                        break;
-                    }
+                if (f.dest_name.len == 0) {
+                    f.dest_name = "ms_result";
+                    any_rewritten = true;
                 }
-                if (!have) try names.append(allocator, f.dest_name);
                 try normalized.append(allocator, .{ .fill = f });
             },
             else => try normalized.append(allocator, stmt),
         }
     }
-
-    if (names.items.len > 0) {
-        var dests: std.ArrayListUnmanaged(network.Arg) = .empty;
-        for (names.items) |n| try dests.append(allocator, .{ .kind = .place, .name = n });
-
-        var def = raw_def;
-        def.destinations = try dests.toOwnedSlice(allocator);
-        def.resolution = try normalized.toOwnedSlice(allocator);
-        return def;
-    }
-    return raw_def;
+    if (!any_rewritten) return resolution;
+    return normalized.toOwnedSlice(allocator);
 }
 
 

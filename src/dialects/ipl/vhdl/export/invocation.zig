@@ -73,8 +73,7 @@ pub fn findCallee(def: network.Definition, top: []const network.Definition, name
 /// The form of a definition that is actually emitted. The entity
 /// declaration and every port map derive port names from this one function.
 pub fn emissionForm(allocator: std.mem.Allocator, raw: network.Definition) !network.Definition {
-    const d = try boundary.normalizeReturnDestinations(allocator, raw);
-    return sanitizer.normalizeDefinitionIdentifiers(allocator, d);
+    return sanitizer.normalizeDefinitionIdentifiers(allocator, raw);
 }
 
 fn writeScalarArgument(

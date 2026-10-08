@@ -23,8 +23,7 @@ pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: n
     if (value_transform_analysis.isValueTransformRule(raw_def)) return;
     if (boundary.shouldSkipSpatialGeometry(raw_def)) return;
 
-    var def = try boundary.normalizeReturnDestinations(allocator, raw_def);
-    def = try sanitizer.normalizeDefinitionIdentifiers(allocator, def);
+    const def = try sanitizer.normalizeDefinitionIdentifiers(allocator, raw_def);
 
     const def_id = try invocation.scopedDefinitionName(allocator, scope, def.name);
     defer allocator.free(def_id);

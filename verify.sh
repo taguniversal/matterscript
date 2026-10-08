@@ -12,5 +12,4 @@ fi
 
 rm -rf .zig-cache
 rm -rf .verify_scratch
-zig build test 
-zig build verify-examples $ZIG_FLAGS
+zig build test && zig build verify-examples $ZIG_FLAGS

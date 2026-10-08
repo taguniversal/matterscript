@@ -606,3 +606,52 @@ test "TAG-219 trailing comma in single-segment key is a syntax error" {
         parser.parse(allocator, src),
     );
 }
+
+test "parseDefinition synthesizes ms_result for a definition with an implicit return" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // No destination list; resolution is a bare fill expression.
+    // The parser should synthesize a single ms_result destination.
+    const src =
+        \\IMPLICIT[(a<> b<>)
+        \\  <$a$b()>
+        \\   : 0,0[TRUE]
+        \\     0,1[FALSE]
+        \\     1,0[FALSE]
+        \\     1,1[TRUE]
+        \\]
+    ;
+
+    const net = try parser.parse(allocator, src);
+    const def = net.definitions[0];
+
+    try testing.expectEqual(@as(usize, 1), def.destinations.len);
+    try testing.expectEqualStrings("ms_result", def.destinations[0].name);
+
+    // The fill's dest_name should also have been rewritten by the parser's
+    // fill-normalization pass (§12.3.4).
+    try testing.expect(def.resolution.len > 0);
+    try testing.expect(def.resolution[0] == .fill);
+    try testing.expectEqualStrings("ms_result", def.resolution[0].fill.dest_name);
+}
+
+test "parseDefinition preserves an explicit destination list" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const src =
+        \\MYGATE[(a<> b<>)($q)
+        \\  q<1>
+        \\ :
+        \\]
+    ;
+
+    const net = try parser.parse(allocator, src);
+    const def = net.definitions[0];
+
+    try testing.expectEqual(@as(usize, 1), def.destinations.len);
+    try testing.expectEqualStrings("q", def.destinations[0].name);
+}

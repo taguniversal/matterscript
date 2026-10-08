@@ -338,18 +338,9 @@ pub fn runVectors(
         return badTb(a, label, diag);
     };
 
-    // Apply the same boundary normalization the emitter applies, so the
-    // runtime sees the same destinations the emitted VHDL declares. Without
-    // this, a definition with an implicit return value (no destination list,
-    // key-composition header, contained value-transform rules) has zero
-    // destinations at the runtime layer, and a `.tb.vec` that references the
-    // synthesized `result` is rejected as "not a destination place".
-    const def = boundary.normalizeReturnDestinations(a, raw_def) catch |err| switch (err) {
-        error.OutOfMemory => return error.OutOfMemory,
-    };
 
-    std.debug.print("[runVectors] {s}: about to resolve, dests={d}\n", .{ label, def.destinations.len });
-    const rows = resolve(a, v, def, &diag) catch |err| switch (err) {
+    std.debug.print("[runVectors] {s}: about to resolve, dests={d}\n", .{ label, raw_def.destinations.len });
+    const rows = resolve(a, v, raw_def, &diag) catch |err| switch (err) {
         error.OutOfMemory => return error.OutOfMemory,
         error.MalformedTestbench => return badTb(a, label, diag),
     };
@@ -378,7 +369,7 @@ pub fn runVectors(
 
         std.debug.print("[runVectors] {s}: about to runRow for row '{s}'\n", .{ label, row.label });
 
-        const pres = runRow(a, def, net.definitions, streams) catch |err| {
+        const pres = runRow(a, raw_def, net.definitions, streams) catch |err| {
             try failures.append(a, try std.fmt.allocPrint(a, "line {d} ({s}): runtime error {s}", .{ row.line, row.label, @errorName(err) }));
             continue;
         };

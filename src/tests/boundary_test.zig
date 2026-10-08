@@ -53,56 +53,6 @@ test "shouldSkipSpatialGeometry returns false for spatial1d or when generateBloc
     try std.testing.expect(!boundary.shouldSkipSpatialGeometry(def_gen));
 }
 
-test "normalizeReturnDestinations synthesizes implicit return for empty destinations" {
-    const allocator = std.testing.allocator;
-
-    // A definition with resolution fills but no explicit destinations
-    const fill_stmt = network.Statement{
-        .fill = .{
-            .dest_name = "", // Unnamed fill -> should synthesize "ms_result"
-            .expr = "42",
-        },
-    };
-    var stmts = [_]network.Statement{fill_stmt};
-
-    const raw_def = network.Definition{
-        .name = "implicit_return",
-        .sources = &.{},
-        .destinations = &.{},
-        .resolution = &stmts,
-        .constants = &.{},
-    };
-
-    const normalized = try boundary.normalizeReturnDestinations(allocator, raw_def);
-    defer allocator.free(normalized.destinations);
-    defer allocator.free(normalized.resolution);
-
-    // Verify destination synthesis (§12.3.4)
-    try std.testing.expectEqual(@as(usize, 1), normalized.destinations.len);
-    try std.testing.expectEqualStrings("ms_result", normalized.destinations[0].name);
-
-    // Verify fill destination was updated
-    try std.testing.expectEqualStrings("ms_result", normalized.resolution[0].fill.dest_name);
-}
-
-test "normalizeReturnDestinations passes through definitions with existing destinations" {
-    const allocator = std.testing.allocator;
-
-    var existing_dests = [_]network.Arg{.{ .kind = .place, .name = "out1" }};
-    const raw_def = network.Definition{
-        .name = "explicit_return",
-        .sources = &.{},
-        .destinations = &existing_dests,
-        .resolution = &.{},
-        .constants = &.{},
-    };
-
-    const normalized = try boundary.normalizeReturnDestinations(allocator, raw_def);
-
-    try std.testing.expectEqual(@as(usize, 1), normalized.destinations.len);
-    try std.testing.expectEqualStrings("out1", normalized.destinations[0].name);
-}
-
 test "boundaryCount calculates correct number of ports" {
     var ports = [_]network.Arg{
         .{ .kind = .place, .name = "a" },

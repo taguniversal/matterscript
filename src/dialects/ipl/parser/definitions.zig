@@ -7,6 +7,7 @@ const directives = @import("directives.zig");
 const statements = @import("statements.zig");
 const groups = @import("groups.zig");
 const syntax = @import("syntax.zig");
+const boundary = @import("../vhdl/export/boundary.zig");
 
 const testing = std.testing;
 
@@ -77,7 +78,12 @@ fn parseDefinitionInMode(p: *core.Parser, mode: ParseMode) anyerror!network.Defi
     }
 
     p.skipWhitespaceAndComments();
-    const resolution = try parseResolution(p);
+    const raw_resolution = try parseResolution(p);
+    const resolution = if (mode == .top_level)
+        try boundary.normalizeFillDestinations(p.allocator, raw_resolution)
+    else
+        raw_resolution;
+
     _ = p.tryConsume(':');
     const section = try parseContainedSection(p, composedKeySegmentCount(resolution));
     try p.expect(']');
@@ -103,7 +109,6 @@ fn parseDefinitionInMode(p: *core.Parser, mode: ParseMode) anyerror!network.Defi
         .contained = section.contained,
     };
 }
-
 
 fn resolveDestinations(
     allocator: std.mem.Allocator,
@@ -226,9 +231,9 @@ pub fn parseContainedSection(p: *core.Parser, expected_segments: usize) anyerror
                 }
                 p.pos = save;
                 const def = try parseDefinitionAsContainedEntry(p);
-              //  std.debug.print("[contained] '{s}': sources={d} dests={d} res.len={d}\n", .{ def.name, def.sources.len, def.destinations.len, def.resolution.len });
+                //  std.debug.print("[contained] '{s}': sources={d} dests={d} res.len={d}\n", .{ def.name, def.sources.len, def.destinations.len, def.resolution.len });
                 for (def.resolution) |stmt| {
-                //    std.debug.print("  res[{d}]: {s}\n", .{ i, @tagName(stmt) });
+                    //    std.debug.print("  res[{d}]: {s}\n", .{ i, @tagName(stmt) });
                     switch (stmt) {
                         .fill => |f| std.debug.print("    fill: dest='{s}' expr='{s}'\n", .{ f.dest_name, f.expr }),
                         .pure_value => |v| std.debug.print("    pure_value: '{s}'\n", .{v}),
