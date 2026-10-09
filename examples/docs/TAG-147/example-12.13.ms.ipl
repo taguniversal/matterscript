@@ -1,21 +1,22 @@
 // linear: TAG-147 Parallel bus
-fanout($seloutA $srcA)({outA1< > outA2< > outA3< > outA4< > outA5<>})
 
-fanout($seloutB $srcB)({outB1< > outB2< > outB3< > outB4< > outB5< >})
-fanin($selin1 {$outA1 $outB1})(dest1< >)
-fanin($selin2 {$outA2 $outB2})(dest2< >)
-fanin($selin3 {$outA3 $outB3})(dest3< >)
-fanin($selin4 {$outA4 $outB4})(dest4< >)
-fanin($selin5 {$outA5 $outB5})(dest5< >)
+fanout($seloutA $srcA)({outA1<> outA2<> outA3<> outA4<> outA5<>})
+fanout($seloutB $srcB)({outB1<> outB2<> outB3<> outB4<> outB5<>})
 
-fanout[
-  (select<> input<>)
-  ({$out1 $out2 $out3 $out4 $out5})
-  :
+fanin($selin1 {$outA1 $outB1})(dest1<>)
+fanin($selin2 {$outA2 $outB2})(dest2<>)
+fanin($selin3 {$outA3 $outB3})(dest3<>)
+fanin($selin4 {$outA4 $outB4})(dest4<>)
+fanin($selin5 {$outA5 $outB5})(dest5<>)
+
+fanout[(select<> input<>)({$out1 $out2 $out3 $out4 $out5})
+   $select( ) :  A[out1< $in >]
+                 B[out2< $in >]
+                 C[out3< $in >]
+                 D[out4< $in >]
 ]
 
-fanin[
-  (select<> {in1<> in2<>})
-  ($out)
-  :
+fanin[(select<> {in1<> in2<>})($out)
+   $select( ) :  A[out< $in1 >]
+                 B[out< $in2 >]
 ]

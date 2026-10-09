@@ -1,12 +1,12 @@
 # Example verification results
 
-28 expected outcomes, 5 unexpected outcomes.
+29 expected outcomes, 4 unexpected outcomes.
 
 | Issue | Example | Expected | Parse | Runtime | GHDL | Simulate | Result |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TAG-112 | mobius_ring.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
 | TAG-129 | example-12.19.ms.ipl | Implemented | ok | ok 8/8 | ok | ok | ✅ PASS |
-| TAG-130 | example-12.1.ms.ipl | Implemented | ok | ok 8/8 | ok | FAIL | ❌ FAIL |
+| TAG-130 | example-12.1.ms.ipl | Implemented | ok | ok 8/8 | ok | ok | ✅ PASS |
 | TAG-136 | example-12.45.ms.ipl | Implemented | ok | ok 14/14 | ok | - | ✅ PASS |
 | TAG-137 | example-12.41.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
 | TAG-138 | example-12.40.ms.ipl | Implemented | FAIL | - | - | - | ❌ FAIL |

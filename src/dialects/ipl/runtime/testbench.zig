@@ -96,7 +96,7 @@ pub const Testbench = struct {
                 if (arg.group) |g| try collectOutputs(allocator, env, g.places, outputs);
                 continue;
             }
-            if (arg.name.len == 0) continue;
+         
             switch (env.get(arg.name)) {
                 .valid => |v| try outputs.put(allocator, arg.name, env.symbols.items[v]),
                 .null_value => {},

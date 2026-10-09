@@ -6,12 +6,12 @@ entity example_12_1_tb is
 end example_12_1_tb;
 
 architecture sim of example_12_1_tb is
-  signal result   : ncl_signal;
+  signal ms_result   : ncl_signal;
   signal carryout : ncl_signal;
 begin
   dut : entity work.fulladd_network
     port map(
-      result   => result,
+      ms_result   => ms_result,
       carryout => carryout
     );
 
@@ -19,7 +19,7 @@ begin
   begin
     wait for 1 ns;
 
-    assert result = data_value(1)
+    assert ms_result = data_value(1)
       report "unnamed FULLADD return should carry SUM = 1"
       severity failure;
 

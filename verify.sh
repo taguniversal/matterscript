@@ -10,6 +10,11 @@ if [[ "$*" == *"--verbose"* ]]; then
     ZIG_FLAGS="$ZIG_FLAGS -Dverbose=true"
 fi
 
+mkdir -p .analysis
+
 rm -rf .zig-cache
 rm -rf .verify_scratch
-zig build test && zig build verify-examples $ZIG_FLAGS
+
+{
+    zig build test && zig build verify-examples $ZIG_FLAGS
+} 2>&1 | tee .analysis/out.txt

@@ -123,7 +123,7 @@ fn resolveDestinations(
         switch (stmt) {
             .fill => has_return_source = true,
             .pure_value => |v| {
-                if (syntax.isKeyCompositionHeader(allocator, v)) has_return_source = true;
+                if (syntax.isKeyCompositionHeader(v)) has_return_source = true;
             },
             else => {},
         }

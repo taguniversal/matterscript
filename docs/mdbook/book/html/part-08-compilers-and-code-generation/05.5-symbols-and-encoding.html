@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Introduction - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
+        <title>Symbols and Encoding - MatterScript: A Programmer&#x27;s Guide to Space-Time Computing</title>
 
 
         <!-- Custom HTML head -->
@@ -176,21 +176,239 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="part-v-building-physical-systems"><a class="header" href="#part-v-building-physical-systems">Part V: Building Physical Systems</a></h1>
-<h3 id="introduction"><a class="header" href="#introduction">Introduction</a></h3>
-<p>MatterScript is unique because programs describe physical systems rather than abstract algorithms.</p>
-<p>This section demonstrates how to construct simulations directly from engineering knowledge instead of numerical approximation.</p>
-<p><em>Drafting in progress…</em></p>
+                        <h1 id="symbols-and-encoding"><a class="header" href="#symbols-and-encoding">Symbols and Encoding</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="images/symbols_and_encoding.png" alt="Symbols And Encoding"><span class="img-wrapper"><img src="images/symbols_and_encoding.png" alt="Symbols And Encoding"></span></label>
+By this point in the pipeline, the design has been parsed, its
+transitions analyzed, its places placed, and its delays inserted. What
+remains is to turn it into something a physical medium can carry — bits
+on a wire, gates in silicon, memory cells on a chip. That step is where
+IPL’s symbolic vocabulary has to be reconciled with the fact that
+hardware doesn’t know what a symbol means.</p>
+<p>This chapter is about that reconciliation. It’s not a chapter about any
+particular backend; it’s about the conceptual bridge every backend has
+to cross. Once the bridge is understood, the VHDL emitter, the WGSL
+emitter, the C generator, and the FPGA synthesizer all become readable
+as variations on one theme.</p>
+<h2 id="the-problem"><a class="header" href="#the-problem">The problem</a></h2>
+<p>IPL programs are written in tokens. A transition rule might be:</p>
+<pre><code>S,U,W[K,M]
+</code></pre>
+<p><code>S</code>, <code>U</code>, <code>W</code>, <code>K</code>, and <code>M</code> are all symbols. They have no numeric value.
+They don’t stand for bits. They’re names for tokens — a token being the
+unit of content that flows through a place, in the same sense that a
+number flows through a register or a packet flows through a wire.</p>
+<p>So <code>S,U,W[K,M]</code> reads: <em>when <code>S</code>, <code>U</code>, and <code>W</code> are simultaneously valid
+on their respective source places, assert <code>K</code> and <code>M</code> on their
+respective destinations.</em> The symbols are the operands and results of a
+combinational relationship, and their <em>names</em> are the only thing that
+distinguishes them.</p>
+<p>The hardware, though, wants bits. A wire carries a voltage. A memory
+cell holds a small integer. A gate takes a <code>0</code> or a <code>1</code>. None of these
+substrates can carry the symbol <code>K</code>. They can only carry some encoding
+of it.</p>
+<p>So there’s an implicit step between “the design is correct in terms of
+symbols” and “the design is correct in terms of bits”. That step is
+called <strong>encoding</strong>, and it is the subject of this chapter.</p>
+<h2 id="the-straightforward-approach-one-token-per-wire"><a class="header" href="#the-straightforward-approach-one-token-per-wire">The straightforward approach: one token per wire</a></h2>
+<p>The simplest encoding is also the one that’s used everywhere in the
+current toolchain. Each place is represented by a single wire — a
+signal, in VHDL terms — and that wire carries exactly one token at a
+time. The wire has two parts:</p>
+<ul>
+<li>a <strong>valid bit</strong>, saying whether the wire currently carries any token
+at all, and</li>
+<li>a <strong>payload</strong>, a small integer that identifies which token it carries.</li>
+</ul>
+<p>For a design with at most 128 distinct tokens, the payload is 7 bits
+and the whole wire is 8 bits. This is the <code>ncl_signal</code> type that the
+VHDL emitter produces throughout.</p>
+<pre><code>ncl_signal = { data[6:0], valid }
+</code></pre>
+<p>Every place in every definition maps to exactly one such wire. A
+definition with three source places and two destination places has
+three input wires and two output wires. The transition rule
+<code>S,U,W[K,M]</code> becomes a small combinational block that reads the three
+input wires, checks that each carries the expected token, and drives
+the two output wires with the appropriate tokens.</p>
+<p>The two parts of the wire do different jobs:</p>
+<ul>
+<li>
+<p>The <strong>valid bit</strong> carries the NCL discipline. A wire with <code>valid = 0</code>
+is empty; a wire with <code>valid = 1</code> is ready. Completeness checks,
+synchronization, and the null/data handshake all operate on the valid
+bit alone. They don’t care what the payload says.</p>
+</li>
+<li>
+<p>The <strong>payload</strong> carries the symbolic content. It’s the token’s
+identity, encoded as a small integer.</p>
+</li>
+</ul>
+<p>Splitting the wire this way is what lets the toolchain reason about
+NCL’s correctness properties (completeness, mutual exclusion,
+persistence) independently of what any particular token <em>means</em>. The
+valid bit is the part that’s about timing and synchronization; the
+payload is the part that’s about computation.</p>
+<h2 id="how-tokens-get-their-payload-value"><a class="header" href="#how-tokens-get-their-payload-value">How tokens get their payload value</a></h2>
+<p>The mapping from tokens to payload integers is called <strong>interning</strong>. For
+each definition, the toolchain walks every place the definition mentions
+and every token that could appear on it, and assigns each a distinct
+integer, in first-seen order. So a definition whose first two tokens are
+<code>K</code> and <code>L</code> might intern them as <code>K → 0</code>, <code>L → 1</code>. A definition whose
+first tokens are <code>S</code> and <code>T</code> might intern them as <code>S → 0</code>, <code>T → 1</code>.</p>
+<p>Interning is <em>per definition</em>, not global. This matters because two
+definitions can reuse the same token name — say both use <code>S</code> to mean
+something — and there’s no reason for them to agree on a numeric value.
+Each definition is its own scope; each has its own table.</p>
+<p>Within a definition, though, the table is <em>shared</em>. Every place the
+definition mentions resolves tokens against the same table. If <code>S</code>
+appears as a fill in one rule and as a key in another, both occurrences
+go through the same interning step and produce the same integer. This is
+what makes equality of tokens meaningful: two tokens are the same iff
+their interned ids are the same.</p>
+<p>The interning table is emitted alongside the design, usually as a
+comment. For a small definition it might look like:</p>
+<pre><code class="language-vhdl">-- symbol encoding: S=0, T=1, U=2, V=3, W=4, X=5
+</code></pre>
+<p>This comment is not decoration. It’s the specification of the encoding.
+If you read the emitted VHDL and see <code>data_value(3)</code>, you can look up
+that <code>3</code> in the symbol encoding and know the token is <code>V</code>.</p>
+<h2 id="what-an-encoded-rule-looks-like"><a class="header" href="#what-an-encoded-rule-looks-like">What an encoded rule looks like</a></h2>
+<p>Once tokens have payloads and places have wires, a transition rule
+becomes a small combinational expression over those wires. For the
+FULLADD definition’s rule</p>
+<pre><code>S,U,W[K,M]
+</code></pre>
+<p>the emitted logic is roughly:</p>
+<pre><code>K_valid  &lt;= valid_of(S) and valid_of(U) and valid_of(W)
+K_data   &lt;= data_value(0)      -- K's interned id
+M_valid  &lt;= valid_of(S) and valid_of(U) and valid_of(W)
+M_data   &lt;= data_value(1)      -- M's interned id
+</code></pre>
+<p>In practice it’s wrapped in a <code>process</code> that also handles the
+dispatch-table structure of the definition, but the essential shape is
+what you see: the rule’s <em>guard</em> is a conjunction of valid bits on the
+source places, and the rule’s <em>result</em> is the interned id of the token
+being written, presented on the destination’s payload.</p>
+<p>This is what makes the encoding work. <code>S</code>, <code>U</code>, <code>W</code>, <code>K</code>, <code>M</code> become
+small integers, and those integers travel as payloads on the wires
+between places. Nothing downstream needs to remember that <code>K</code> was
+originally a symbol; it just needs to know that the wire carries
+integer <code>0</code>.</p>
+<h2 id="what-the-encoding-preserves-and-what-it-loses"><a class="header" href="#what-the-encoding-preserves-and-what-it-loses">What the encoding preserves, and what it loses</a></h2>
+<p>Encoding preserves <strong>identity</strong>. Two places that ought to be carrying
+the same token will carry the same integer. Two places that ought to be
+carrying different tokens will carry different integers. Equality of
+integers is the correct notion of equality of tokens.</p>
+<p>Encoding <em>loses</em> <strong>meaning</strong>. The integer <code>0</code> doesn’t mean anything. It
+isn’t “false”, it isn’t “0”, it isn’t “the absence of something”. It’s
+the id of whatever token was interned first in this definition’s table.
+The same definition might use <code>0</code> for <code>K</code> in one compilation and for
+<code>S</code> in another, depending on the order the tokens happen to appear.</p>
+<p>This is fine, because the design doesn’t depend on the meaning of any
+token. It only depends on tokens being distinguishable, and on rules
+firing when their guard tokens are present.</p>
+<p>The consequence is that <strong>you cannot test a design by inspecting its
+encoded form alone</strong>. A signal carrying <code>data_value(0)</code> doesn’t tell you
+whether the design is computing 0 or K or any other symbol — it tells
+you the design interned <em>some</em> token as <code>0</code>. To know which token, you
+consult the symbol encoding table. To know whether the design is
+correct, you run it and compare the emitted tokens against expected
+tokens, symbolically. This is what the testbench does: it drives
+symbolic tokens in, checks symbolic tokens out, and lets the encoding
+remain an internal detail.</p>
+<h2 id="where-the-encoding-boundary-sits"><a class="header" href="#where-the-encoding-boundary-sits">Where the encoding boundary sits</a></h2>
+<p>The encoding is not applied all at once at the end of the pipeline. It
+is applied at the boundary between the <em>symbolic</em> world and the
+<em>physical</em> world, and that boundary is different for each backend:</p>
+<ul>
+<li>
+<p>For <strong>VHDL emission</strong>, the encoding happens at the moment of emission.
+The parser has already produced an AST full of symbols; the VHDL
+emitter walks that AST and translates each symbol into a wire value.
+The result is VHDL that speaks in <code>data_value(N)</code> and <code>valid_of(X)</code>.</p>
+</li>
+<li>
+<p>For the <strong>testbench runtime</strong>, the encoding happens at the moment a
+token is asserted on a place. The testbench receives a symbolic token
+from the vector file (say <code>K</code>), looks it up in the definition’s
+interning table, and stores the integer in the environment. When it
+reads an output back, it does the reverse lookup.</p>
+</li>
+<li>
+<p>For <strong>FPGA synthesis</strong>, the encoding happens once, during the
+front-end translation from IPL to whatever intermediate representation
+the synthesis tool wants. Symbols become integers become signals
+become LUTs.</p>
+</li>
+<li>
+<p>For <strong>WGSL emission</strong>, the encoding can be much lighter — a WGSL
+integer can hold a token id directly, so the “valid bit” and
+“payload” distinction collapses into a single integer where <code>0</code> might
+mean “empty” and everything else means “carrying that token”.</p>
+</li>
+</ul>
+<p>In every case, the <em>shape</em> of the encoding is the same: symbols become
+small integers; wires carry the integers; the mapping is local to each
+definition.</p>
+<h2 id="optimizations-and-where-they-live"><a class="header" href="#optimizations-and-where-they-live">Optimizations and where they live</a></h2>
+<p>The straightforward encoding — 8-bit wires, one per place — is what the
+current toolchain uses everywhere. It is uniform, it is correct, and it
+is worth understanding as the baseline.</p>
+<p>There are two optimizations that are natural extensions of it, and it’s
+useful to know where they’d fit, even though the toolchain doesn’t use
+them yet.</p>
+<p><strong>Binary narrowing.</strong> When a place’s vocabulary is known to be exactly
+<code>{0, 1}</code>, its payload can be dropped to a single bit, and the wire
+becomes 2 bits (one data + one valid) instead of 8. This saves area and
+power in silicon. It does not change behavior. It’s a purely local
+transformation — a definition whose only tokens are <code>0</code> and <code>1</code> can be
+narrowed definition-by-definition, and the surrounding design doesn’t
+need to know.</p>
+<p><strong>Bundling.</strong> When a logical value is inherently wider than one token —
+say, an 8-bit integer that’s meant to be a single value rather than
+eight independent booleans — the natural encoding is a <em>bundle</em>: several
+wires whose union carries the value, with the value split across them
+as bits. This is a different representational choice, not just an
+optimization. It changes the port list, the completeness rules, and the
+testbench syntax. It’s the right model when the design has places that
+are meant to carry multi-bit values as single units, and it’s not
+needed when every place carries a single symbolic token.</p>
+<p>Both of these live <em>after</em> encoding, in the sense that the encoding step
+produces a value and the optimization step chooses how many wires carry
+that value. They are worth thinking about when you’re designing a
+backend, but they’re not part of the core translation from symbols to
+bits. The core translation is: one place, one wire, one interned id.</p>
+<h2 id="why-this-is-worth-knowing-as-a-programmer"><a class="header" href="#why-this-is-worth-knowing-as-a-programmer">Why this is worth knowing as a programmer</a></h2>
+<p>If you write IPL, you’ll eventually read the emitted VHDL, or the
+emitted C, or a waveform dump from a simulation, and you’ll see
+<code>data_value(3)</code> or <code>token 3</code> or a signal that should be carrying <code>K</code>
+but is carrying an integer you don’t recognize. This chapter is what
+lets you read those artifacts. The integer is <code>K</code>’s interned id. The
+comment at the top of the file tells you the mapping. The design doesn’t
+know or care that you once called it <code>K</code>.</p>
+<p>More importantly, understanding the encoding explains a subtle property
+of the whole system: <strong>the design’s behavior is independent of its
+encoding</strong>. Two compilations of the same IPL that intern tokens in
+different orders produce VHDL with different integer constants, but
+the same behavior. Two backends that use different wire types produce
+different physical artifacts, but the same behavior. The encoding is an
+implementation detail of the translation from symbols to substrate, and
+the design’s meaning lives above it, in the symbols.</p>
+<p>That’s the property that makes IPL portable. It’s what lets the same
+program run on VHDL, on WGSL, on POSIX, and on an FPGA, with the same
+results. And it’s what makes the compiler’s job well-defined: translate
+each symbol to its interning id, translate each place to its wire, and
+let the surrounding design do the rest.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../part-05-geometry-becomes-code/07-hardware-fidelity.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../part-08-compilers-and-code-generation/05-delay-insertion.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../part-06-building-physical-systems/01-cellular-automata.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../part-08-compilers-and-code-generation/06-vhdl-generation.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -200,11 +418,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../part-05-geometry-becomes-code/07-hardware-fidelity.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../part-08-compilers-and-code-generation/05-delay-insertion.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../part-06-building-physical-systems/01-cellular-automata.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../part-08-compilers-and-code-generation/06-vhdl-generation.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

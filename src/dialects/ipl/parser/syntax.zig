@@ -5,8 +5,7 @@ const std =@import("std");
 /// "$newbit$currentstate()". Matches the same shape
 /// findComposedDispatchHeader looks for, but at the boundary layer so
 /// it can be checked before any emitter modules are imported.
-pub fn isKeyCompositionHeader(allocator: std.mem.Allocator, expr: []const u8) bool {
-    _ = allocator;
+pub fn isKeyCompositionHeader( expr: []const u8) bool {
     const trimmed = std.mem.trim(u8, expr, " \t\r\n");
     if (trimmed.len < 4) return false; // "$a()" is the shortest valid form
     if (trimmed[0] != '$') return false;

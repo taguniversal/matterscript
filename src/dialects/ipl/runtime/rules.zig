@@ -442,7 +442,7 @@ fn destinationSatisfied(env: *Environment, arg: network.Arg) bool {
             } else false,
         };
     }
-    if (arg.name.len == 0) return true;
+  
     return env.isValid(arg.name);
 }
 

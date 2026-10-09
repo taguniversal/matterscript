@@ -90,6 +90,7 @@
 - [Neighborhood Rules](part-08-compilers-and-code-generation/03-neighborhood-rules.md)
 - [Placement Algorithms](part-08-compilers-and-code-generation/04-placement-algorithms.md)
 - [Delay Insertion](part-08-compilers-and-code-generation/05-delay-insertion.md)
+- [Symbols and Encoding](part-08-compilers-and-code-generation/05.5-symbols-and-encoding.md)
 - [VHDL Generation](part-08-compilers-and-code-generation/06-vhdl-generation.md)
 - [WGSL Generation](part-08-compilers-and-code-generation/07-wgsl-generation.md)
 - [FPGA Synthesis](part-08-compilers-and-code-generation/07-fpga-synthesis.md)
