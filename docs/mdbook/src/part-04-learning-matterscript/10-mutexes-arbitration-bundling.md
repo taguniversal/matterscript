@@ -36,6 +36,37 @@ Likewise, the destination rails `$0` and `$1` are bundled back together and asso
 
 This allows the implementation to operate on the explicit physical representation while the surrounding design works with a more convenient logical representation.
 
+#### Arity of source lists
+
+The number of top-level entries in the invocation's source list must equal the number of top-level entries in the definition's source list. They correspond positionally: the first invocation place is bound to the first definition source, the second to the second, and so on.
+
+A single invocation place may bind to a bracketed group of definition members — that is the unbundling case. But it may not bind to multiple top-level sources. Conversely, a bracket pair in the invocation may not be flattened to multiple definition sources. Arity is measured at the top level, not after unbundling.
+
+For example, `OR($A $B)` has two top-level source entries. The definition `OR[([{A0<> A1<>}] [{B0<> B1<>}])...]` also has two top-level source entries: `[{A0<> A1<>}]` and `[{B0<> B1<>}]`. The correspondence is 1-to-1 even though each side expands to a different number of physical rails when flattened.
+
+<!-- TODO: confirm whether the parser currently reports the entry-source count
+     correctly for `{{...}}` arbitration groups — see the note in the
+     Arbitration section below. -->
+
+#### Where bundle member names live
+
+When a bundle is unbundled, the member names come from the definition's source list, not from the invocation. An invocation that writes `OR($A $B)` and a definition that writes `OR[([{A0<> A1<>}] [{B0<> B1<>}])...]` binds `$A` to the group `{A0, A1}` and `$B` to the group `{B0, B1}`. The names `A0`, `A1`, `B0`, `B1` are canonical; they are what the emitted hardware uses for ports and signals. The invocation's `$A` and `$B` are labels for the association, not names in the physical interface.
+
+When the compiler emits a top-level network entity for such an invocation, the entity's input ports are named after the definition's member names. The invocation's bundle labels do not appear in the port list.
+
+<!-- TODO: when the entry uses explicit bracket syntax
+     `STEP1B([$A0 $A1 $A2 $A3])`, the entry itself names the members and
+     those names become the ports. Confirm the exact precedence rule when
+     both sides provide names. -->
+
+#### Bundles as structure
+
+Conceptually, bundling is similar to a structure or record in conventional programming languages, except that the bundle represents **paths of association** rather than fields of memory.
+
+<!-- TODO: soften or expand this analogy once the language's member-access
+     story is settled. Today there is no named-field access from the
+     invocation side; a bundle is purely a positional grouping. -->
+
 Bundles are not limited to dual-rail logic. They can represent any collection of places that naturally travel together.
 
 A four-digit number, for example, might be represented internally as:
@@ -51,8 +82,6 @@ A<>
 ```
 
 Each level of composition may bundle or unbundle information as appropriate for its level of abstraction.
-
-Conceptually, bundling is similar to a structure or record in conventional programming languages, except that the bundle represents **paths of association** rather than fields of memory.
 
 ### Nested Bundles
 
@@ -151,6 +180,16 @@ Each rule reads a completeness pattern from the sources and asserts a value on t
 
 The `0` and `1` in the rules are **tokens**, not destination names. Because the destination list is a mutex group of places named `$0` and `$1`, and the tokens asserted by the rules are `0` and `1`, the mutex acts as the routing mechanism: asserting token `0` means "activate `$0`", asserting token `1` means "activate `$1`". Only one rule fires per wavefront, so only one destination place receives content — exactly what the mutex declares.
 
+#### Completeness by group kind
+
+The two kinds of group have different completeness conditions on sources and destinations:
+
+| Group kind | Source completeness | Destination completeness |
+|---|---|---|
+| Bundle `[...]` | all members present | all members asserted |
+| Mutex `{...}` | exactly one member present | exactly one member asserted |
+| Arbitration `{{...}}` | at least one member present | (not a destination form) |
+
 #### How mutexes affect emitted hardware
 
 Mutually exclusive destinations are wired as mutually exclusive drivers. When the compiler emits VHDL for the example above, each destination place becomes an output signal driven by a conditional assignment:
@@ -163,7 +202,12 @@ ms_1 <= data_value(1) when (A0_valid = '1' and B1_valid = '1')
              else null_value;
 ```
 
-Each destination's assignment falls back to `null_value` when its condition doesn't hold, so the two signals are never both driven in the same cycle. That's the mutex property, enforced structurally by the emitted code rather than by convention.
+Each destination's assignment falls back to `null_value` when its condition doesn't hold, so the two signals are never both driven in the same cycle. That is the mutex property, enforced structurally by the emitted code rather than by convention.
+
+<!-- TODO: the current compiler emits the surrounding structure (signals,
+     validity extraction, `complete`, port map) but does not yet lower
+     token rules into conditional assignments like the ones shown here.
+     Mark this as aspirational or update once the lowering is in place. -->
 
 #### Design consequences
 
@@ -188,11 +232,9 @@ In conventional software this often becomes a lock, semaphore, message queue, or
 In Matterscript, arbitration is expressed directly as part of the association graph.
 
 ```matterscript
-Arbiter({{$place1 $place2}}(next<>)
+Arbiter({{$place1 $place2}})(next<>)
 
-Arbiter[
-    (placeB<>)
-    ($pass)
+Arbiter[(placeB<>)(pass<>)
     pass<$placeB> :
 ]
 ```
@@ -222,6 +264,42 @@ place3 ──┘
 ```
 
 Arbitration therefore provides the synchronization point between concurrent producers while preserving Matterscript's declarative association model.
+
+#### The `{{...}}` group is a single source
+
+The double braces `{{...}}` denote a single arbitration group. Unlike nested bundles, which use `[[...] [...]]` to mean "a bundle of bundles," the doubled braces are one grouping construct: an arbitration group.
+
+An arbitration group with two members counts as **one** source entry in the invocation's source list, not two. It participates in arity the same way a bracket group does: as a single top-level source that expands internally into its members.
+
+<!-- TODO: confirm the parser produces a single Arg for `{{...}}` rather
+     than two nested groups. If it produces two, that is a parser bug and
+     the doc is describing the intended shape. See TAG-189. -->
+
+#### Arbitration semantics
+
+An arbitration group at a source means: content may arrive on any subset of the members, and the definition receives exactly one wavefront per accepted arrival. If two members arrive in the same wavefront, one is chosen nondeterministically and the other waits for the next cycle. The definition body sees one wavefront at a time, never both competitors simultaneously.
+
+At the destination, the arbiter's output is a single stream of wavefronts, one per accepted source arrival. There is no merging of contents, no queueing at the destination, and no priority — just serialization.
+
+The arbitration property lives at the invocation level. The definition that receives the arbitration group sees a flat single source and processes one wavefront at a time; it does not need to know how many competitors there are.
+
+<!-- TODO: confirm whether the definition side must also declare the group
+     as `{{...}}`, or whether a plain `(...)` source is sufficient when
+     the invocation supplies an arbitration group. TAG-189 currently has
+     `{{...}}` on the invocation and `(...)` on the definition, and the
+     arity check is rejecting it. -->
+
+#### Grammar of grouping brackets
+
+Three bracketing forms exist, each a single syntactic construct:
+
+```text
+group  ::= "[" place* "]"     -- bundle
+         | "{" place* "}"     -- mutex
+         | "{{" place* "}}"   -- arbitration
+```
+
+Each counts as exactly one entry in the surrounding list. Nesting uses additional bracket pairs: `[[...] [...]]` is a bundle of bundles, `[{{...}} {{...}}]` is a bundle of arbiters, and so on.
 
 ### A Hierarchy of Flow
 
