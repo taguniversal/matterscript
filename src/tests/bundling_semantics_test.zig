@@ -32,8 +32,6 @@ const helpers = @import("helpers.zig");
 //   4. The full original 4BITADD script, combining both, with a
 //      verbatim copy of TAG-198's FULLADD supplied ahead of it.
 
-
-
 // --- 1. Bundle group in a DEFINITION's own source-port declaration ---
 test "TAG-211 step 1: bundle group in definition source list" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
@@ -51,9 +49,50 @@ test "TAG-211 step 1: bundle group in definition source list" {
         std.debug.print("step 1 FAILED TO PARSE: {s}\n", .{@errorName(err)});
         return err;
     };
-    helpers.dumpDef("step 1", net.definitions[0]);
-}
 
+    // Always dump — makes the failure mode readable even if assertions
+    // below short-circuit.
+    helpers.dumpDef("step 1", net.definitions[0]);
+
+    // --- Shape assertions ---
+    try testing.expectEqual(@as(usize, 1), net.definitions.len);
+    const def = net.definitions[0];
+    try testing.expectEqualStrings("STEP1", def.name);
+
+    // Source list: exactly 2 top-level args — a place (SEL) and a bundle group.
+    try testing.expectEqual(@as(usize, 2), def.sources.len);
+
+    // Arg 0: scalar place, named "SEL".
+    try testing.expectEqual(network.ArgKind.place, def.sources[0].kind);
+    try testing.expectEqualStrings("SEL", def.sources[0].name);
+    try testing.expect(def.sources[0].group == null);
+
+    // Arg 1: group, kind = bundle, 4 member places A0..A3 in order.
+    const g1 = def.sources[1];
+    try testing.expectEqual(network.ArgKind.group, g1.kind);
+    try testing.expect(g1.group != null);
+    const bundle = g1.group.?;
+    try testing.expectEqual(network.PlaceGroupKind.bundle, bundle.kind);
+    try testing.expectEqual(@as(usize, 4), bundle.places.len);
+
+    const expected_members = [_][]const u8{ "A0", "A1", "A2", "A3" };
+    for (bundle.places, expected_members, 0..) |m, want, i| {
+        testing.expectEqual(network.ArgKind.place, m.kind) catch |err| {
+            std.debug.print(
+                "member[{d}]: expected place, got {s}\n",
+                .{ i, @tagName(m.kind) },
+            );
+            return err;
+        };
+        testing.expectEqualStrings(want, m.name) catch |err| {
+            std.debug.print(
+                "member[{d}]: expected name '{s}', got '{s}'\n",
+                .{ i, want, m.name },
+            );
+            return err;
+        };
+    }
+}
 // --- 1b. Bundle group as an argument AT AN INVOCATION call site ---
 // (a) a top-level entry line passing a bundle instead of flat scalars
 // (b) a .invoke statement inside another definition doing the same
@@ -106,6 +145,101 @@ test "TAG-211 step 2: bundle group of $-refs in destination list" {
     };
     helpers.dumpDef("step 2", net.definitions[0]);
 }
+
+
+// --- 2. Case A: bare place in an invocation resolves through the
+//        enclosing definition's source list, where the bundle is declared.
+test "TAG-211 step 2: bare place in nested invocation gets bundle structure from enclosing scope" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    // A wrapper whose sources declare A and B as 4-bundles and CI scalar.
+    // Its body invokes 4BITADD with the bare names $A $B $CI — no brackets
+    // on the invocation side, because the bundle was declared above.
+     const src =
+        \\WRAPPER([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)(RESULT<>)
+        \\WRAPPER[([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)($RESULT)
+        \\  4BITADD($A $B $CI)($RESULT)
+        \\]
+        \\4BITADD([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)([S0<> S1<> S2<> S3<>] CO<>)
+        \\4BITADD[([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)([SUM0<> SUM1<> SUM2<> SUM3<>] CO<>)
+        \\  $A $B $CI : X[K]  //nonsense since we're not testing the functionality, just the parse shape
+        \\]
+    ;
+    const net = parser.parse(a, src) catch |err| {
+        std.debug.print("step 2 FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        return err;
+    };
+
+    // Dump both definitions so a failure shows the actual shape.
+    for (net.definitions) |d| {
+        helpers.dumpDef("step 2 def", d);
+    }
+
+    // Locate the WRAPPER definition.
+    var wrapper: ?network.Definition = null;
+    for (net.definitions) |d| {
+        if (std.ascii.eqlIgnoreCase(d.name, "WRAPPER")) wrapper = d;
+    }
+    try testing.expect(wrapper != null);
+
+    // --- Enclosing scope shape ---
+    // WRAPPER sources: 3 top-level args — two 4-bundles and a scalar.
+    try testing.expectEqual(@as(usize, 3), wrapper.?.sources.len);
+
+    try testing.expectEqual(network.ArgKind.group, wrapper.?.sources[0].kind);
+    try testing.expectEqual(network.PlaceGroupKind.bundle, wrapper.?.sources[0].group.?.kind);
+    try testing.expectEqual(@as(usize, 4), wrapper.?.sources[0].group.?.places.len);
+
+    try testing.expectEqual(network.ArgKind.group, wrapper.?.sources[1].kind);
+    try testing.expectEqual(network.PlaceGroupKind.bundle, wrapper.?.sources[1].group.?.kind);
+    try testing.expectEqual(@as(usize, 4), wrapper.?.sources[1].group.?.places.len);
+
+    try testing.expectEqual(network.ArgKind.place, wrapper.?.sources[2].kind);
+    try testing.expectEqualStrings("CI", wrapper.?.sources[2].name);
+
+    // --- Nested invocation shape ---
+    // The WRAPPER's resolution should contain a 4BITADD invoke.
+    try testing.expect(wrapper.?.resolution.len >= 1);
+
+    const invoke = wrapper.?.resolution[0].invoke;
+    try testing.expect(std.ascii.eqlIgnoreCase(invoke.name, "4BITADD"));
+
+    // The invocation's sources: 3 bare places. Crucially NOT groups —
+    // the brackets are absent on the invocation side. This is exactly
+    // the shape that trips the current arity check.
+    try testing.expectEqual(@as(usize, 3), invoke.sources.len);
+
+    const expected_names = [_][]const u8{ "A", "B", "CI" };
+    for (invoke.sources, expected_names, 0..) |arg, want, i| {
+        testing.expectEqual(network.ArgKind.place, arg.kind) catch |err| {
+            std.debug.print(
+                "invoke.sources[{d}]: expected bare place, got {s} (name='{s}' text='{s}')\n",
+                .{ i, @tagName(arg.kind), arg.name, arg.text },
+            );
+            return err;
+        };
+        testing.expectEqualStrings(want, arg.name) catch |err| {
+            std.debug.print(
+                "invoke.sources[{d}]: expected name '{s}', got '{s}'\n",
+                .{ i, want, arg.name },
+            );
+            return err;
+        };
+        // No group field should be attached — that's the whole point.
+        try testing.expect(arg.group == null);
+    }
+
+    // --- The paired fact ---
+    // The WRAPPER's scope *does* know A and B are bundles, because they're
+    // declared in wrapper.sources. So the missing information the arity check
+    // needs is available at emit time — it just isn't being looked up.
+    //
+    // Nothing to assert here beyond confirming both facts are in the AST
+    // simultaneously: the invocation has bare names, and the enclosing
+    // source list has the matching bundle declarations.
+}   
 
 // --- 3. Bare invoke-statement chain, no bundling at all ---
 test "TAG-211 step 3: chained invoke statements, no bundling" {

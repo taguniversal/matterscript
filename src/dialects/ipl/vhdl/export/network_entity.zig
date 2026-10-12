@@ -44,6 +44,29 @@ pub fn writeOneNetworkEntity(
         if (std.ascii.eqlIgnoreCase(d.name, entry.name)) break d;
     } else return;
 
+    // --- Flatten entry sources, enforce TOP-LEVEL input arity ---
+    //
+    // Arity is checked at the unflattened arg level: an entry supplies
+    // N args, the DUT declares N args, and they correspond positionally.
+    // A bare `$A` in the entry can legitimately correspond to a bundle
+    // `[{A0<> A1<>}]` in the DUT — the DUT declares the bundle, the entry
+    // names it. Flattening both sides and comparing would wrongly reject
+    // that case, since `$A` flattens to 1 and the DUT group flattens to 2.
+    //
+    // The flattened form (entry_slots) is still needed downstream for
+    // signal declaration and drive logic, so we build it regardless.
+    var entry_slots: std.ArrayListUnmanaged(network.Arg) = .empty;
+    defer entry_slots.deinit(allocator);
+    try flattenEntrySources(allocator, entry.sources, &entry_slots);
+
+    if (entry.sources.len != matched.sources.len) {
+        std.debug.print(
+            "[entity] {s}: input arity mismatch — entry supplies {d} source arg(s), DUT has {d}\n",
+            .{ entry.name, entry.sources.len, matched.sources.len },
+        );
+        return error.EntrySourceArityMismatch;
+    }
+
     // --- DEBUG PRINT: entry.destinations and matched.destinations ---
     std.debug.print("[entity] {s}: entry.destinations.len = {d}\n", .{ entry.name, entry.destinations.len });
     for (entry.destinations, 0..) |d, i| {
@@ -141,14 +164,13 @@ pub fn writeOneNetworkEntity(
     // inputs, references to the missing arg_N signals would never
     // have been declared here at all.
     const dut_source_count = boundary.boundaryCount(matched.sources);
-    const declared_source_count = @max(entry.sources.len, dut_source_count);
-    for (0..declared_source_count) |i| {
-        try writer.print("  signal arg_{d} : ncl_signal;\n", .{i});
+    for (0..dut_source_count) |i| {
+      try writer.print("  signal arg_{d} : ncl_signal;\n", .{i});
     }
     try writer.print("begin\n\n", .{});
 
-    for (entry.sources, 0..) |arg, i| {
-        const text = invocation.argToText(arg);
+    for (entry_slots.items, 0..) |slot, i| {
+        const text = invocation.argToText(slot);
         const trimmed = std.mem.trim(u8, text, " \t\r\n");
         const value = std.fmt.parseInt(u64, trimmed, 10) catch {
             try writer.print("  -- TODO: non-literal entry argument '{s}' not yet supported\n", .{trimmed});
@@ -157,13 +179,10 @@ pub fn writeOneNetworkEntity(
         };
         try writer.print("  arg_{d} <= data_value({d});\n", .{ i, value });
     }
-    // Any DUT inputs beyond what the entry invocation supplied still
-    // need a defined value — tie them to null_value rather than leave
-    // them floating.
-    if (dut_source_count > entry.sources.len) {
-        try writer.print("  -- entry invocation supplied fewer arguments than the DUT has inputs\n", .{});
-        for (entry.sources.len..dut_source_count) |i| {
-            try writer.print("  arg_{d} <= null_value;\n", .{i});
+
+    if (entry_slots.items.len < dut_source_count) {
+         for (entry_slots.items.len..dut_source_count) |i| {
+             try writer.print("  arg_{d} <= null_value;\n", .{i});
         }
     }
 
@@ -183,6 +202,24 @@ pub fn writeOneNetworkEntity(
     }
     try writer.print("\n  );\n", .{});
     try writer.print("\nend rtl;\n", .{});
+}
+
+fn flattenEntrySources(
+    allocator: std.mem.Allocator,
+    sources: []const network.Arg,
+    out: *std.ArrayListUnmanaged(network.Arg),
+) !void {
+    for (sources) |arg| {
+        if (arg.kind == .group) {
+            if (arg.group) |g| {
+                for (g.places) |member| {
+                    try out.append(allocator, member);
+                }
+            }
+            continue;
+        }
+        try out.append(allocator, arg);
+    }
 }
 
 fn writeNetworkSourceMapping(

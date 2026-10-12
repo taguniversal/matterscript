@@ -1,6 +1,6 @@
 # Example verification results
 
-29 expected outcomes, 4 unexpected outcomes.
+28 expected outcomes, 5 unexpected outcomes.
 
 | Issue | Example | Expected | Parse | Runtime | GHDL | Simulate | Result |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -24,7 +24,7 @@
 | TAG-184 | example-12.24.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
 | TAG-185 | case-unique-signals.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-187 | generate_syntax.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
-| TAG-189 | example-12.14-arbitration.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
+| TAG-189 | example-12.14-arbitration.ms.ipl | Implemented | ok | - | FAIL | - | ❌ FAIL |
 | TAG-190 | example-12.5.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-192 | entity_labeling.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-196 | cube.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
