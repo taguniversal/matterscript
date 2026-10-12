@@ -59,12 +59,23 @@ pub fn writeOneNetworkEntity(
     defer entry_slots.deinit(allocator);
     try flattenEntrySources(allocator, entry.sources, &entry_slots);
 
-    if (entry.sources.len != matched.sources.len) {
-        std.debug.print(
-            "[entity] {s}: input arity mismatch — entry supplies {d} source arg(s), DUT has {d}\n",
-            .{ entry.name, entry.sources.len, matched.sources.len },
-        );
-        return error.EntrySourceArityMismatch;
+    // --- DEBUG PRINT: entry.sources and matched.sources ---
+    std.debug.print("[entity] {s}: entry.sources.len = {d}\n", .{ entry.name, entry.sources.len });
+    for (entry.sources, 0..) |s, i| {
+        std.debug.print("  entry.src[{d}]: kind={s} name='{s}' text='{s}'", .{ i, @tagName(s.kind), s.name, s.text });
+        if (s.group) |g| {
+            std.debug.print(" group.kind={s} members={d}", .{ @tagName(g.kind), g.places.len });
+        }
+        std.debug.print("\n", .{});
+    }
+
+    std.debug.print("[entity] {s}: matched.sources.len = {d}\n", .{ entry.name, matched.sources.len });
+    for (matched.sources, 0..) |s, i| {
+        std.debug.print("  matched.src[{d}]: kind={s} name='{s}' text='{s}'", .{ i, @tagName(s.kind), s.name, s.text });
+        if (s.group) |g| {
+            std.debug.print(" group.kind={s} members={d}", .{ @tagName(g.kind), g.places.len });
+        }
+        std.debug.print("\n", .{});
     }
 
     // --- DEBUG PRINT: entry.destinations and matched.destinations ---
@@ -77,7 +88,17 @@ pub fn writeOneNetworkEntity(
     for (matched.destinations, 0..) |d, i| {
         std.debug.print("  matched[{d}]: kind={s} name='{s}' text='{s}'\n", .{ i, @tagName(d.kind), d.name, d.text });
     }
-    // -----------------------------------------------------------------
+    // ---------------------- End Debug -------------------------------------------
+
+    // -------------------- Arity Check --------------------------------
+
+    if (entry.sources.len != matched.sources.len) {
+        std.debug.print(
+            "[entity] {s}: input arity mismatch — entry supplies {d} source arg(s), DUT has {d}\n",
+            .{ entry.name, entry.sources.len, matched.sources.len },
+        );
+        return error.EntrySourceArityMismatch;
+    }
 
     const entry_name_id = try sanitizeName(allocator, entry.name);
     defer allocator.free(entry_name_id);
@@ -169,7 +190,14 @@ pub fn writeOneNetworkEntity(
     }
     try writer.print("begin\n\n", .{});
 
-    for (entry_slots.items, 0..) |slot, i| {
+    // The drive loop must not emit references to arg_N signals that
+    // were never declared. Signals are declared 0..dut_source_count,
+    // so clamp the loop at that bound. This matters when the entry
+    // supplies more *flattened* slots than the DUT has source slots —
+    // e.g. an arbitration group `{{a b}}` flattens to 2 slots but
+    // occupies 1 DUT source position.
+    const drive_count = @min(entry_slots.items.len, dut_source_count);
+    for (entry_slots.items[0..drive_count], 0..) |slot, i| {
         const text = invocation.argToText(slot);
         const trimmed = std.mem.trim(u8, text, " \t\r\n");
         const value = std.fmt.parseInt(u64, trimmed, 10) catch {
@@ -180,11 +208,13 @@ pub fn writeOneNetworkEntity(
         try writer.print("  arg_{d} <= data_value({d});\n", .{ i, value });
     }
 
-    if (entry_slots.items.len < dut_source_count) {
-         for (entry_slots.items.len..dut_source_count) |i| {
+    if (drive_count < dut_source_count) {
+         for (drive_count..dut_source_count) |i| {
              try writer.print("  arg_{d} <= null_value;\n", .{i});
         }
     }
+
+
 
     const def_id = try invocation.scopedDefinitionName(allocator, "", matched.name);
     defer allocator.free(def_id);

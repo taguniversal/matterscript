@@ -1,3 +1,6 @@
 // Linear: TAG-189 Example 12.14 Arbitrated Places
-Arbiter({{$place1 $place2}}(next<>)   ) 
-Arbiter[(placeB<>)($pass) pass<$placeB> : ]
+Arbiter({{$place1 $place2}})((next<>))
+Arbiter[(placeB<>)($pass) 
+  pass<$placeB> 
+  : 
+]
