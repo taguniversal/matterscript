@@ -836,3 +836,120 @@ test "arity invariant: top-level arg counts match across entry and DUT" {
     // source arg count.
     try testing.expectEqual(inner.?.sources.len, invoke.sources.len);
 }
+
+// --- rule decomposition: contained definitions whose names carry patterns ---
+test "rule decomposition: AND's numeric rules are contained defs named by pattern" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const src =
+        \\AND[(A<> B<>)($result)
+        \\  $A$B()
+        \\  :0,0[0]
+        \\   0,1[0]
+        \\   1,0[0]
+        \\   1,1[1]
+        \\]
+    ;
+    const net = parser.parse(a, src) catch |err| {
+        std.debug.print("AND rule test FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        return err;
+    };
+
+    var and_def: ?network.Definition = null;
+    for (net.definitions) |d| {
+        if (std.ascii.eqlIgnoreCase(d.name, "AND")) and_def = d;
+    }
+    try testing.expect(and_def != null);
+
+    // Outer resolution names the input places the rule set observes.
+    try testing.expectEqual(@as(usize, 1), and_def.?.resolution.len);
+    try testing.expectEqual(network.Statement.pure_value, std.meta.activeTag(and_def.?.resolution[0]));
+    const outer = and_def.?.resolution[0].pure_value;
+    try testing.expectEqualStrings("$A$B()", outer);
+
+    // Four contained definitions, one per rule.
+    try testing.expectEqual(@as(usize, 4), and_def.?.contained.len);
+
+    // The contained definitions must be named by their patterns, in
+    // source order. If this fails, the parser is either reordering or
+    // renaming, and buildRules can't rely on names-as-patterns.
+    const expected_names = [_][]const u8{ "0,0", "0,1", "1,0", "1,1" };
+    const expected_bodies = [_][]const u8{ "0", "0", "0", "1" };
+
+    for (and_def.?.contained, expected_names, expected_bodies, 0..) |cd, want_name, want_body, i| {
+        testing.expectEqualStrings(want_name, cd.name) catch |err| {
+            std.debug.print(
+                "contained[{d}].name: expected '{s}', got '{s}'\n",
+                .{ i, want_name, cd.name },
+            );
+            return err;
+        };
+        try testing.expectEqual(@as(usize, 1), cd.resolution.len);
+        try testing.expectEqual(network.Statement.pure_value, std.meta.activeTag(cd.resolution[0]));
+        testing.expectEqualStrings(want_body, cd.resolution[0].pure_value) catch |err| {
+            std.debug.print(
+                "contained[{d}] body: expected '{s}', got '{s}'\n",
+                .{ i, want_body, cd.resolution[0].pure_value },
+            );
+            return err;
+        };
+    }
+}
+
+test "rule decomposition: FULLADD's symbolic rules are contained defs named by pattern" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const src =
+        \\FULLADD[(A<> B<> CI<>)($SUM$CO)
+        \\  $A$B$CI
+        \\  :
+        \\  K,M[SUM0]
+        \\  L,M[SUM1]
+        \\  L,N[CO1]
+        \\]
+    ;
+    const net = parser.parse(a, src) catch |err| {
+        std.debug.print("FULLADD rule test FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        return err;
+    };
+
+    var fa_def: ?network.Definition = null;
+    for (net.definitions) |d| {
+        if (std.ascii.eqlIgnoreCase(d.name, "FULLADD")) fa_def = d;
+    }
+    try testing.expect(fa_def != null);
+
+    // Outer resolution is the input-place composition. The doc says
+    // $A$B$CI and $A$B$CI() are equivalent; the parser may preserve
+    // either form. Assert the content without over-constraining the
+    // exact spelling.
+    try testing.expectEqual(@as(usize, 1), fa_def.?.resolution.len);
+    try testing.expectEqual(network.Statement.pure_value, std.meta.activeTag(fa_def.?.resolution[0]));
+    const outer_raw = fa_def.?.resolution[0].pure_value;
+    const outer = std.mem.trim(u8, outer_raw, " \t\r\n");
+    testing.expectEqualStrings("$A$B$CI", outer) catch |err| {
+        std.debug.print(
+            "FULLADD outer resolution: expected '$A$B$CI', got '{s}' (raw: '{s}')\n",
+            .{ outer, outer_raw },
+        );
+        return err;
+    };
+
+    // Three symbolic rules in this reduced example.
+    try testing.expectEqual(@as(usize, 3), fa_def.?.contained.len);
+
+    const expected_names = [_][]const u8{ "K,M", "L,M", "L,N" };
+    for (fa_def.?.contained, expected_names, 0..) |cd, want_name, i| {
+        testing.expectEqualStrings(want_name, cd.name) catch |err| {
+            std.debug.print(
+                "contained[{d}].name: expected '{s}', got '{s}'\n",
+                .{ i, want_name, cd.name },
+            );
+            return err;
+        };
+    }
+}
