@@ -2,6 +2,8 @@
 const std = @import("std");
 const testing = std.testing;
 const matterscript = @import("matterscript");
+const boundary = matterscript.boundary;
+const network_entity = matterscript.vhdl.network_entity;
 
 // Import the module relative to this test file
 const parser = matterscript.ipl_parser;
@@ -137,8 +139,7 @@ test "TAG-190 Example 12.5 AND Function with value transform rule definitions" {
     // Row 3: 1, 1 [TRUE]
     try testing.expectEqualStrings("1,1", def.contained[3].name);
     try testing.expectEqual(@as(usize, 0), def.contained[3].sources.len);
-
-   }
+}
 
 test "parse TAG-181 controlled fanout expression and definition" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
@@ -654,4 +655,184 @@ test "parseDefinition preserves an explicit destination list" {
 
     try testing.expectEqual(@as(usize, 1), def.destinations.len);
     try testing.expectEqualStrings("q", def.destinations[0].name);
+}
+
+// --- flatten entry sources: arbitration is atomic, bundle and mutex expand ---
+test "flatten entry sources: arbitration is atomic, bundle and mutex expand" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    // INNER gives WRAP something to invoke. WRAP's body calls INNER
+    // with four source args exercising each group kind at the
+    // invocation level:
+    //
+    //   0: bundle [A0 A1]      — flattens to 2 slots
+    //   1: mutex  {B0 B1}      — flattens to 2 slots
+    //   2: arbitration {{C0 C1}} — flattens to 1 slot (atomic)
+    //   3: scalar D            — flattens to 1 slot
+    //
+    // The definitions themselves declare scalar members so INNER's
+    // source list is unremarkable; the interesting structure lives
+    // in the invocation.
+    const src =
+        \\INNER([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
+        \\INNER[([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
+        \\  $A0$A1$B0$B1$C0$C1$D : K[0]
+        \\]
+        \\WRAP([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
+        \\WRAP[([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
+        \\  INNER([$A0 $A1] {$B0 $B1} {{$C0 $C1}} $D)($OUT)
+        \\]
+    ;
+    const net = parser.parse(a, src) catch |err| {
+        std.debug.print("flatten test FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        return err;
+    };
+
+    var wrapper: ?network.Definition = null;
+    for (net.definitions) |d| {
+        if (std.ascii.eqlIgnoreCase(d.name, "WRAP")) wrapper = d;
+    }
+    try testing.expect(wrapper != null);
+    try testing.expect(wrapper.?.resolution.len >= 1);
+
+    // WRAP's resolution[0] must be an invocation of INNER. If the
+    // parser produced a pure_value instead, resolution[0].invoke
+    // would panic; assert the tag first so the failure is readable.
+    const res0 = wrapper.?.resolution[0];
+    const tag = std.meta.activeTag(res0);
+    testing.expectEqualStrings("invoke", @tagName(tag)) catch |err| {
+        std.debug.print(
+            "WRAP.resolution[0]: expected invoke, got {s}\n",
+            .{@tagName(tag)},
+        );
+        return err;
+    };
+
+    const invoke = res0.invoke;
+    try testing.expect(std.ascii.eqlIgnoreCase(invoke.name, "INNER"));
+
+    // The invocation has 4 top-level source args, one per group kind
+    // plus the trailing scalar. Their AST shapes are what we assert.
+    try testing.expectEqual(@as(usize, 4), invoke.sources.len);
+
+    // Arg 0: bundle [A0 A1].
+    try testing.expectEqual(network.ArgKind.group, invoke.sources[0].kind);
+    try testing.expect(invoke.sources[0].group != null);
+    try testing.expectEqual(network.PlaceGroupKind.bundle, invoke.sources[0].group.?.kind);
+    try testing.expectEqual(@as(usize, 2), invoke.sources[0].group.?.places.len);
+
+    // Arg 1: mutex {B0 B1}.
+    try testing.expectEqual(network.ArgKind.group, invoke.sources[1].kind);
+    try testing.expect(invoke.sources[1].group != null);
+    try testing.expectEqual(network.PlaceGroupKind.mutex, invoke.sources[1].group.?.kind);
+    try testing.expectEqual(@as(usize, 2), invoke.sources[1].group.?.places.len);
+
+    // Arg 2: arbitration {{C0 C1}}.
+    try testing.expectEqual(network.ArgKind.group, invoke.sources[2].kind);
+    try testing.expect(invoke.sources[2].group != null);
+    try testing.expectEqual(network.PlaceGroupKind.arbitration, invoke.sources[2].group.?.kind);
+    try testing.expectEqual(@as(usize, 2), invoke.sources[2].group.?.places.len);
+
+    // Arg 3: scalar D.
+    try testing.expectEqual(network.ArgKind.place, invoke.sources[3].kind);
+    try testing.expectEqualStrings("D", invoke.sources[3].name);
+
+    // Flatten and assert the slot list.
+    //
+    //   bundle [A0 A1]        -> 2 slots (A0, A1)
+    //   mutex  {B0 B1}        -> 2 slots (B0, B1)
+    //   arbitration {{C0 C1}} -> 1 slot  (the group itself, atomic)
+    //   scalar D              -> 1 slot  (D)
+    //   total:                = 6 slots
+    var slots: std.ArrayListUnmanaged(network.Arg) = .empty;
+    defer slots.deinit(a);
+    try network_entity.flattenEntrySources(a, invoke.sources, &slots);
+
+    testing.expectEqual(@as(usize, 6), slots.items.len) catch |err| {
+        std.debug.print("flatten produced {d} slots, expected 6:\n", .{slots.items.len});
+        for (slots.items, 0..) |s, i| {
+            std.debug.print(
+                "  slot[{d}]: kind={s} name='{s}' group={s}\n",
+                .{
+                    i,
+                    @tagName(s.kind),
+                    s.name,
+                    if (s.group) |g| @tagName(g.kind) else "none",
+                },
+            );
+        }
+        return err;
+    };
+
+    // Slots 0-1: the bundle's members, in order.
+    try testing.expectEqual(network.ArgKind.place, slots.items[0].kind);
+    try testing.expectEqualStrings("A0", slots.items[0].name);
+    try testing.expectEqual(network.ArgKind.place, slots.items[1].kind);
+    try testing.expectEqualStrings("A1", slots.items[1].name);
+
+    // Slots 2-3: the mutex's members, in order.
+    try testing.expectEqual(network.ArgKind.place, slots.items[2].kind);
+    try testing.expectEqualStrings("B0", slots.items[2].name);
+    try testing.expectEqual(network.ArgKind.place, slots.items[3].kind);
+    try testing.expectEqualStrings("B1", slots.items[3].name);
+
+    // Slot 4: the arbitration group itself, still a group. This is
+    // the atomicity claim — flatten must NOT expand its members.
+    testing.expectEqual(network.ArgKind.group, slots.items[4].kind) catch |err| {
+        std.debug.print(
+            "slot[4]: expected group (arbitration atomic), got {s} name='{s}'\n",
+            .{ @tagName(slots.items[4].kind), slots.items[4].name },
+        );
+        return err;
+    };
+    try testing.expect(slots.items[4].group != null);
+    try testing.expectEqual(
+        network.PlaceGroupKind.arbitration,
+        slots.items[4].group.?.kind,
+    );
+    try testing.expectEqual(@as(usize, 2), slots.items[4].group.?.places.len);
+
+    // Slot 5: the trailing scalar.
+    try testing.expectEqual(network.ArgKind.place, slots.items[5].kind);
+    try testing.expectEqualStrings("D", slots.items[5].name);
+}
+
+test "arity invariant: top-level arg counts match across entry and DUT" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const src =
+        \\INNER([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
+        \\INNER[([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
+        \\  $A0$A1$B0$B1$C0$C1$D : K[0]
+        \\]
+        \\WRAP([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
+        \\WRAP[([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
+        \\  INNER([$A0 $A1] {$B0 $B1} {{$C0 $C1}} $D)($OUT)
+        \\]
+    ;
+    const net = parser.parse(a, src) catch |err| {
+        std.debug.print("arity test FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        return err;
+    };
+
+    var wrapper: ?network.Definition = null;
+    var inner: ?network.Definition = null;
+    for (net.definitions) |d| {
+        if (std.ascii.eqlIgnoreCase(d.name, "WRAP")) wrapper = d;
+        if (std.ascii.eqlIgnoreCase(d.name, "INNER")) inner = d;
+    }
+    try testing.expect(wrapper != null);
+    try testing.expect(inner != null);
+
+    try testing.expect(wrapper.?.resolution.len >= 1);
+    const invoke = wrapper.?.resolution[0].invoke;
+
+    // The invariant the arity check relies on: the entry's top-level
+    // source arg count equals the matched definition's top-level
+    // source arg count.
+    try testing.expectEqual(inner.?.sources.len, invoke.sources.len);
 }

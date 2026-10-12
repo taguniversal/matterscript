@@ -234,7 +234,7 @@ pub fn writeOneNetworkEntity(
     try writer.print("\nend rtl;\n", .{});
 }
 
-fn flattenEntrySources(
+pub fn flattenEntrySources(
     allocator: std.mem.Allocator,
     sources: []const network.Arg,
     out: *std.ArrayListUnmanaged(network.Arg),
@@ -242,6 +242,14 @@ fn flattenEntrySources(
     for (sources) |arg| {
         if (arg.kind == .group) {
             if (arg.group) |g| {
+                // An arbitration group is one slot at the DUT level —
+                // its members compete for access to a single flow path,
+                // they don't occupy separate ports. Emit the group itself
+                // as a single slot rather than expanding its members.
+                if (g.kind == .arbitration) {
+                    try out.append(allocator, arg);
+                    continue;
+                }
                 for (g.places) |member| {
                     try out.append(allocator, member);
                 }
