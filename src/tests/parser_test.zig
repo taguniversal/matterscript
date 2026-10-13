@@ -4,6 +4,7 @@ const testing = std.testing;
 const matterscript = @import("matterscript");
 const boundary = matterscript.boundary;
 const network_entity = matterscript.vhdl.network_entity;
+const rules = matterscript.runtime.rules;
 
 // Import the module relative to this test file
 const parser = matterscript.ipl_parser;
@@ -952,4 +953,122 @@ test "rule decomposition: FULLADD's symbolic rules are contained defs named by p
             return err;
         };
     }
+}
+
+// --- decomposeRules: decompose AND's numeric rule set ---
+test "decomposeRules: AND's numeric rule set decomposes to four literal rules" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const src =
+        \\AND[(A<> B<>)($result)
+        \\  $A$B()
+        \\  :0,0[0]
+        \\   0,1[0]
+        \\   1,0[0]
+        \\   1,1[1]
+        \\]
+    ;
+    const net = parser.parse(a, src) catch |err| {
+        std.debug.print("decomposeRules AND test FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        return err;
+    };
+
+    var and_def: ?network.Definition = null;
+    for (net.definitions) |d| {
+        if (std.ascii.eqlIgnoreCase(d.name, "AND")) and_def = d;
+    }
+    try testing.expect(and_def != null);
+
+    const rs = (try rules.decomposeRules(a, and_def.?)) orelse {
+        std.debug.print("decomposeRules returned null for AND\n", .{});
+        return error.TestUnexpectedResult;
+    };
+
+    // The outer resolution names two input places.
+    try testing.expectEqual(@as(usize, 2), rs.inputs.places.len);
+    try testing.expectEqualStrings("A", rs.inputs.places[0]);
+    try testing.expectEqualStrings("B", rs.inputs.places[1]);
+
+    // Four rules, in source order.
+    try testing.expectEqual(@as(usize, 4), rs.rules.len);
+
+    // Pattern 0,0 -> literal 0
+    try testing.expectEqual(@as(usize, 2), rs.rules[0].pattern.symbols.len);
+    try testing.expectEqualStrings("0", rs.rules[0].pattern.symbols[0]);
+    try testing.expectEqualStrings("0", rs.rules[0].pattern.symbols[1]);
+    try testing.expectEqualDeep(rules.Output{ .literal = 0 }, rs.rules[0].output);
+    // Pattern 0,1 -> literal 0
+    try testing.expectEqualStrings("0", rs.rules[1].pattern.symbols[0]);
+    try testing.expectEqualStrings("1", rs.rules[1].pattern.symbols[1]);
+    try testing.expectEqualDeep(rules.Output{ .literal = 0 }, rs.rules[1].output);
+
+    // Pattern 1,0 -> literal 0
+    try testing.expectEqualStrings("1", rs.rules[2].pattern.symbols[0]);
+    try testing.expectEqualStrings("0", rs.rules[2].pattern.symbols[1]);
+    try testing.expectEqualDeep(rules.Output{ .literal = 0 }, rs.rules[2].output);
+
+    // Pattern 1,1 -> literal 1
+    try testing.expectEqualStrings("1", rs.rules[3].pattern.symbols[0]);
+    try testing.expectEqualStrings("1", rs.rules[3].pattern.symbols[1]);
+    try testing.expectEqual(rules.Output{ .literal = 1 }, rs.rules[3].output);
+}
+
+// --- decomposeRules: decompose FULLADD's symbolic rule set ---
+test "decomposeRules: FULLADD's symbolic rules decompose to symbol outputs" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const src =
+        \\FULLADD[(A<> B<> CI<>)($SUM$CO)
+        \\  $A$B$CI
+        \\  :
+        \\  K,M[SUM0]
+        \\  L,M[SUM1]
+        \\  L,N[CO1]
+        \\]
+    ;
+    const net = parser.parse(a, src) catch |err| {
+        std.debug.print("decomposeRules FULLADD test FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        return err;
+    };
+
+    var fa_def: ?network.Definition = null;
+    for (net.definitions) |d| {
+        if (std.ascii.eqlIgnoreCase(d.name, "FULLADD")) fa_def = d;
+    }
+    try testing.expect(fa_def != null);
+
+    const rs = (try rules.decomposeRules(a, fa_def.?)) orelse {
+        std.debug.print("decomposeRules returned null for FULLADD\n", .{});
+        return error.TestUnexpectedResult;
+    };
+
+    // The outer resolution names three input places.
+    try testing.expectEqual(@as(usize, 3), rs.inputs.places.len);
+    try testing.expectEqualStrings("A", rs.inputs.places[0]);
+    try testing.expectEqualStrings("B", rs.inputs.places[1]);
+    try testing.expectEqualStrings("CI", rs.inputs.places[2]);
+
+    // Three rules.
+    try testing.expectEqual(@as(usize, 3), rs.rules.len);
+
+    // Pattern K,M -> symbol SUM0
+    try testing.expectEqual(@as(usize, 2), rs.rules[0].pattern.symbols.len);
+    try testing.expectEqualStrings("K", rs.rules[0].pattern.symbols[0]);
+    try testing.expectEqualStrings("M", rs.rules[0].pattern.symbols[1]);
+    try testing.expectEqualDeep(rules.Output{ .symbol = "SUM0" }, rs.rules[0].output);
+    try testing.expectEqualDeep(rules.Output{ .symbol = "SUM0" }, rs.rules[0].output);
+    // Pattern L,M -> symbol SUM1
+    try testing.expectEqualStrings("L", rs.rules[1].pattern.symbols[0]);
+    try testing.expectEqualStrings("M", rs.rules[1].pattern.symbols[1]);
+    try testing.expectEqualDeep(rules.Output{ .symbol = "SUM1" }, rs.rules[1].output);
+ 
+    // Pattern L,N -> symbol CO1
+    try testing.expectEqualStrings("L", rs.rules[2].pattern.symbols[0]);
+    try testing.expectEqualStrings("N", rs.rules[2].pattern.symbols[1]);
+    
+    try testing.expectEqualDeep(rules.Output{ .symbol = "CO1" }, rs.rules[2].output);
 }

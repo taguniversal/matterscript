@@ -43,6 +43,177 @@ pub const ExecutableRule = struct {
     action: RuleAction,
 };
 
+/// A single symbol in a rule's pattern. In "S,U,W", each of the three
+/// comma-separated symbols is one entry; in "0,0", the two digits are
+/// two entries.
+pub const PatternSymbol = []const u8;
+
+/// A rule's LHS pattern, decomposed into per-source-place symbols in
+/// order. The number of symbols equals the number of source places the
+/// rule observes.
+pub const Pattern = struct {
+    symbols: []const PatternSymbol,
+};
+
+/// A rule's RHS, the thing the rule asserts when it fires.
+pub const Output = union(enum) {
+    /// A literal integer, e.g. the "0" in "0,0[0]".
+    literal: u64,
+    /// A single symbol, e.g. "K" in "K[Y<K>]".
+    symbol: []const u8,
+    /// A multi-symbol composition, e.g. "K,M" in "S,U,W[K,M]".
+    symbols: []const []const u8,
+};
+
+/// One value-transform rule, in the neutral form both the runtime and
+/// the VHDL emitter consume. Produced by `buildRules` from a parsed
+/// definition; carries no encoding or execution information.
+pub const Rule = struct {
+    pattern: Pattern,
+    output: Output,
+};
+
+/// A definition's source composition, in the form "$A$B$CI" (or the
+/// equivalent "$A$B$CI()"). The `$` prefixes are stripped; each
+/// remaining name is one source place the rule set observes.
+pub const Inputs = struct {
+    places: []const []const u8,
+};
+
+/// The complete decomposed form of a definition's rule set:
+///   - `inputs`: the source places referenced by the outer resolution
+///   - `rules`:  one Rule per contained definition, in source order
+pub const RuleSet = struct {
+    inputs: Inputs,
+    rules: []const Rule,
+};
+
+/// Decompose a parsed Definition into a `RuleSet`.
+///
+/// Reads the shape the parser produces for value-transform rules:
+///   - `def.resolution[0].pure_value` is the outer input composition,
+///     e.g. "$A$B$CI" or "$A$B$CI()", possibly with trailing whitespace.
+///   - Each `def.contained` entry is one rule. Its `name` is the
+///     comma-separated pattern; its `resolution[0].pure_value` is the
+///     output.
+///
+/// Returns null if the definition doesn't match this shape (no
+/// resolution, non-pure_value outer statement, or a contained entry
+/// that isn't a single pure_value). Callers that need to distinguish
+/// "not a rule set" from "empty rule set" should check for null.
+pub fn decomposeRules(
+    allocator: std.mem.Allocator,
+    def: network.Definition,
+) !?RuleSet {
+    // The outer resolution must be exactly one pure_value statement.
+    if (def.resolution.len != 1) return null;
+    if (std.meta.activeTag(def.resolution[0]) != .pure_value) return null;
+
+    const inputs = try parseInputs(allocator, def.resolution[0].pure_value);
+
+    var rules: std.ArrayListUnmanaged(Rule) = .empty;
+    errdefer rules.deinit(allocator);
+
+    for (def.contained) |cd| {
+        // Each rule's body must be a single pure_value. Anything else
+        // (a nested invocation, a fill, a directive) is out of scope
+        // for now.
+        if (cd.resolution.len != 1) continue;
+        if (std.meta.activeTag(cd.resolution[0]) != .pure_value) continue;
+
+        const symbols = try splitPattern(allocator, cd.name);
+        const output = try parseOutput(allocator, cd.resolution[0].pure_value);
+
+        try rules.append(allocator, .{
+            .pattern = .{ .symbols = symbols },
+            .output = output,
+        });
+    }
+
+    return .{
+        .inputs = inputs,
+        .rules = try rules.toOwnedSlice(allocator),
+    };
+}
+
+/// Parse an outer-resolution string like "$A$B$CI" or "$A$B$CI()" into
+/// the list of place names it names. Whitespace and a trailing "()"
+/// are stripped; the "$" prefixes are removed.
+fn parseInputs(
+    allocator: std.mem.Allocator,
+    raw: []const u8,
+) !Inputs {
+    const trimmed = std.mem.trim(u8, raw, " \t\r\n");
+
+    // Strip a trailing "()" if present. Both "$A$B" and "$A$B()" name
+    // the same composition; the doc calls them equivalent.
+    var body = trimmed;
+    if (body.len >= 2 and std.mem.endsWith(u8, body, "()")) {
+        body = body[0 .. body.len - 2];
+    }
+
+    var places: std.ArrayListUnmanaged([]const u8) = .empty;
+    errdefer places.deinit(allocator);
+
+    var it = std.mem.splitScalar(u8, body, '$');
+    // The first split yields the empty prefix before the leading '$'.
+    // Skip it.
+    _ = it.next();
+    while (it.next()) |name| {
+        if (name.len == 0) continue;
+        try places.append(allocator, name);
+    }
+
+    return .{ .places = try places.toOwnedSlice(allocator) };
+}
+
+/// Split a pattern string like "0,0" or "S,U,W" into its symbols.
+/// Whitespace around each symbol is trimmed.
+fn splitPattern(
+    allocator: std.mem.Allocator,
+    raw: []const u8,
+) ![]const []const u8 {
+    const trimmed = std.mem.trim(u8, raw, " \t\r\n");
+ 
+    var symbols: std.ArrayListUnmanaged([]const u8) = .empty;
+    errdefer symbols.deinit(allocator);
+
+    var it = std.mem.splitScalar(u8, trimmed, ',');
+    while (it.next()) |sym| {
+        const s = std.mem.trim(u8, sym, " \t");
+        try symbols.append(allocator, s);
+    }
+
+    return try symbols.toOwnedSlice(allocator);
+}
+
+/// Parse a rule body into an Output. Handles three forms:
+///   - all-digits (e.g. "0", "42")           -> .literal
+///   - single symbol (e.g. "K")              -> .symbol
+///   - comma-separated symbols (e.g. "K,M")  -> .symbols
+///
+/// Whitespace is trimmed. Anything else is treated as .symbol with
+/// the raw (trimmed) text preserved; the emitter can decide whether
+/// it's well-formed later.
+fn parseOutput(
+    allocator: std.mem.Allocator,
+    raw: []const u8,
+) !Output {
+    const trimmed = std.mem.trim(u8, raw, " \t\r\n");
+
+    if (std.fmt.parseInt(u64, trimmed, 10)) |n| {
+        return .{ .literal = n };
+    } else |_| {}
+
+    // Comma-separated composition?
+    if (std.mem.indexOfScalar(u8, trimmed, ',') != null) {
+        const symbols = try splitPattern(allocator, trimmed);
+        return .{ .symbols = symbols };
+    }
+
+    return .{ .symbol = trimmed };
+}
+
 fn findComposedDispatchHeader(allocator: std.mem.Allocator, def: network.Definition) !?[]const []const u8 {
     for (def.resolution) |stmt| {
         if (stmt != .pure_value) continue;
