@@ -57,10 +57,16 @@ pub const Pattern = struct {
 };
 
 /// A rule's RHS, the thing the rule asserts when it fires.
+///
+/// Every name in a rule position is a token name. Digits are not
+/// numbers; `0` and `K` are the same kind of thing. Interning assigns
+/// them ids uniformly, and the ids are what appear in the emitted
+/// VHDL as `data_value(N)`.
 pub const Output = union(enum) {
-    literal: u64,
-    symbol: []const u8,
-    symbols: []const []const u8,
+    /// A single token, e.g. "0", "K", "SUM0".
+    token: []const u8,
+    /// A comma-separated composition of tokens, e.g. "K,M".
+    tokens: []const []const u8,
     /// A destination-with-content form, e.g. "result<0>" or "Y<K>".
     /// The parser produces this as a `.fill` statement whose
     /// `dest_name` is the place and whose `expr` is the content.
@@ -71,9 +77,8 @@ pub const Output = union(enum) {
         content: Content,
 
         pub const Content = union(enum) {
-            literal: u64,
-            symbol: []const u8,
-            symbols: []const []const u8,
+            token: []const u8,
+            tokens: []const []const u8,
         };
     };
 };
@@ -101,27 +106,38 @@ pub const RuleSet = struct {
     rules: []const Rule,
 };
 
-
-fn parseContent(allocator: std.mem.Allocator, raw: []const u8) !Output.Fill.Content {
+/// Parse the content portion of a `dest<content>` fill into a token
+/// or a comma-separated token composition.
+///
+/// Every name in this position is a token. `0`, `K`, and `$A` are the
+/// same kind of thing — a name identifying what to assert on the
+/// destination place. The `$` prefix is source-level decoration that
+/// marks a place reference in the invocation syntax; it is stripped
+/// here so downstream code sees the bare name, matching the
+/// convention used elsewhere in the AST.
+///
+/// Comma-separated content, e.g. "K,M" or "$A,$B", becomes `.tokens`.
+/// A single name becomes `.token`. No digit-vs-letter classification
+/// is attempted; the spelling of a token name is not interpreted.
+fn parseContent(
+    allocator: std.mem.Allocator,
+    raw: []const u8,
+) !Output.Fill.Content {
     var trimmed = std.mem.trim(u8, raw, " \t\r\n");
 
-    // Normalize: strip a leading "$" so symbolic content is a bare
-    // place name, matching how parseInputs handles the outer
-    // composition.
+    // Strip a leading "$" if present, so `Y<$A>` and `Y<A>` produce
+    // the same content name. The parser uses `$` to mark place
+    // references; the AST carries bare names.
     if (trimmed.len > 0 and trimmed[0] == '$') {
         trimmed = trimmed[1..];
     }
 
-    if (std.fmt.parseInt(u64, trimmed, 10)) |n| {
-        return .{ .literal = n };
-    } else |_| {}
-
     if (std.mem.indexOfScalar(u8, trimmed, ',') != null) {
         const symbols = try splitPattern(allocator, trimmed);
-        return .{ .symbols = symbols };
+        return .{ .tokens = symbols };
     }
 
-    return .{ .symbol = trimmed };
+    return .{ .token = trimmed };
 }
 
 /// Decompose a parsed Definition into a `RuleSet`.
@@ -228,31 +244,31 @@ fn splitPattern(
     return try symbols.toOwnedSlice(allocator);
 }
 
-/// Parse a rule body into an Output. Handles three forms:
-///   - all-digits (e.g. "0", "42")           -> .literal
-///   - single symbol (e.g. "K")              -> .symbol
-///   - comma-separated symbols (e.g. "K,M")  -> .symbols
+/// Parse a rule body into an Output.
 ///
-/// Whitespace is trimmed. Anything else is treated as .symbol with
-/// the raw (trimmed) text preserved; the emitter can decide whether
-/// it's well-formed later.
-fn parseOutput(
-    allocator: std.mem.Allocator,
-    raw: []const u8,
-) !Output {
+/// The RHS of a rule names a token to assert — nothing more. `0`, `1`,
+/// `K`, `SUM0` are all token names; the spelling carries no numeric or
+/// symbolic meaning. Two structural forms are recognized:
+///
+///   - a comma-separated composition, e.g. "K,M"  -> .tokens
+///   - a single token, e.g. "0", "K", "SUM0"      -> .token
+///
+/// Whitespace is trimmed. The `dest<content>` fill form is handled by
+/// the caller (decomposeRules), which sees it as a `.fill` statement
+/// rather than a `.pure_value`, so it never reaches this function.
+///
+/// Returns whatever the input says. Classification of a token — place
+/// vs value, digit vs letter — is not attempted here and is not a
+/// property the language has.
+
+fn parseOutput(allocator: std.mem.Allocator, raw: []const u8) !Output {
     const trimmed = std.mem.trim(u8, raw, " \t\r\n");
 
-    if (std.fmt.parseInt(u64, trimmed, 10)) |n| {
-        return .{ .literal = n };
-    } else |_| {}
-
-    // Comma-separated composition?
     if (std.mem.indexOfScalar(u8, trimmed, ',') != null) {
-        const symbols = try splitPattern(allocator, trimmed);
-        return .{ .symbols = symbols };
+        return .{ .tokens = try splitPattern(allocator, trimmed) };
     }
 
-    return .{ .symbol = trimmed };
+    return .{ .token = trimmed };
 }
 
 fn findComposedDispatchHeader(allocator: std.mem.Allocator, def: network.Definition) !?[]const []const u8 {
@@ -817,30 +833,31 @@ pub fn buildSymbolTable(
     return .{ .entries = try entries.toOwnedSlice(allocator) };
 }
 
+/// Intern every token name an Output mentions.
+///
+/// Every name in a rule position is a token name — `0` and `K` are
+/// the same kind of thing. This function walks the Output, interns
+/// each name, and ignores the structural variant it appeared in.
+/// The interning order is: names as encountered in the Output's
+/// natural reading order.
+///
+/// Called by `buildSymbolTable` after the rule's pattern symbols
+/// have already been interned, so output tokens land in the table
+/// after the pattern tokens of the same rule.
 fn internOutputContent(
     allocator: std.mem.Allocator,
     entries: *std.ArrayListUnmanaged([]const u8),
     output: Output,
 ) !void {
     switch (output) {
-        .literal => |n| {
-            var buf: [32]u8 = undefined;
-            const s = std.fmt.bufPrint(&buf, "{d}", .{n}) catch unreachable;
-            _ = try lookup.internSymbol(entries, allocator, s);
-        },
-        .symbol => |s| _ = try lookup.internSymbol(entries, allocator, s),
-        .symbols => |syms| {
+        .token => |s| _ = try lookup.internSymbol(entries, allocator, s),
+        .tokens => |syms| {
             for (syms) |s| _ = try lookup.internSymbol(entries, allocator, s);
         },
         .fill => |f| {
             switch (f.content) {
-                .literal => |n| {
-                    var buf: [32]u8 = undefined;
-                    const s = std.fmt.bufPrint(&buf, "{d}", .{n}) catch unreachable;
-                    _ = try lookup.internSymbol(entries, allocator, s);
-                },
-                .symbol => |s| _ = try lookup.internSymbol(entries, allocator, s),
-                .symbols => |syms| {
+                .token => |s| _ = try lookup.internSymbol(entries, allocator, s),
+                .tokens => |syms| {
                     for (syms) |s| _ = try lookup.internSymbol(entries, allocator, s);
                 },
             }

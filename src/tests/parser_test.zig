@@ -839,7 +839,7 @@ test "arity invariant: top-level arg counts match across entry and DUT" {
 }
 
 // --- rule decomposition: contained definitions whose names carry patterns ---
-test "rule decomposition: AND's numeric rules are contained defs named by pattern" {
+test "rule decomposition: AND's rules are contained defs named by pattern" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
@@ -899,7 +899,7 @@ test "rule decomposition: AND's numeric rules are contained defs named by patter
     }
 }
 
-test "rule decomposition: FULLADD's symbolic rules are contained defs named by pattern" {
+test "rule decomposition: FULLADD's rules are contained defs named by pattern" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
@@ -940,7 +940,7 @@ test "rule decomposition: FULLADD's symbolic rules are contained defs named by p
         return err;
     };
 
-    // Three symbolic rules in this reduced example.
+    // Three rules in this reduced example.
     try testing.expectEqual(@as(usize, 3), fa_def.?.contained.len);
 
     const expected_names = [_][]const u8{ "K,M", "L,M", "L,N" };
@@ -955,8 +955,8 @@ test "rule decomposition: FULLADD's symbolic rules are contained defs named by p
     }
 }
 
-// --- decomposeRules: decompose AND's numeric rule set ---
-test "decomposeRules: AND7's numeric rule set decomposes to four literal rules" {
+// --- decomposeRules: decompose AND7's token rule set ---
+test "decomposeRules: AND7's rule set decomposes to four fill outputs" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
@@ -995,28 +995,41 @@ test "decomposeRules: AND7's numeric rule set decomposes to four literal rules" 
     // Four rules, in source order.
     try testing.expectEqual(@as(usize, 4), rs.rules.len);
 
-    // Pattern 0,0 -> literal 0
+    // Pattern 0,0 -> result<0>
     try testing.expectEqual(@as(usize, 2), rs.rules[0].pattern.symbols.len);
     try testing.expectEqualStrings("0", rs.rules[0].pattern.symbols[0]);
     try testing.expectEqualStrings("0", rs.rules[0].pattern.symbols[1]);
-    try testing.expectEqualDeep(rules.Output{ .fill = .{ .dest = "result", .content = .{ .literal = 0 } } }, rs.rules[0].output);
+    try testing.expectEqualDeep(
+        rules.Output{ .fill = .{ .dest = "result", .content = .{ .token = "0" } } },
+        rs.rules[0].output,
+    );
 
-    // Pattern 0,1 -> literal 0
+    // Pattern 0,1 -> result<0>
     try testing.expectEqualStrings("0", rs.rules[1].pattern.symbols[0]);
     try testing.expectEqualStrings("1", rs.rules[1].pattern.symbols[1]);
-    try testing.expectEqualDeep(rules.Output{ .fill = .{ .dest = "result", .content = .{ .literal = 0 } } }, rs.rules[1].output);
-    // Pattern 1,0 -> literal 0
+    try testing.expectEqualDeep(
+        rules.Output{ .fill = .{ .dest = "result", .content = .{ .token = "0" } } },
+        rs.rules[1].output,
+    );
+
+    // Pattern 1,0 -> result<0>
     try testing.expectEqualStrings("1", rs.rules[2].pattern.symbols[0]);
     try testing.expectEqualStrings("0", rs.rules[2].pattern.symbols[1]);
-    try testing.expectEqualDeep(rules.Output{ .fill = .{ .dest = "result", .content = .{ .literal = 0 } } }, rs.rules[2].output);
-    // Pattern 1,1 -> literal 1
+    try testing.expectEqualDeep(
+        rules.Output{ .fill = .{ .dest = "result", .content = .{ .token = "0" } } },
+        rs.rules[2].output,
+    );
+
+    // Pattern 1,1 -> result<1>
     try testing.expectEqualStrings("1", rs.rules[3].pattern.symbols[0]);
     try testing.expectEqualStrings("1", rs.rules[3].pattern.symbols[1]);
-    try testing.expectEqualDeep(rules.Output{ .fill = .{ .dest = "result", .content = .{ .literal = 1 } } }, rs.rules[3].output);
+    try testing.expectEqualDeep(
+        rules.Output{ .fill = .{ .dest = "result", .content = .{ .token = "1" } } },
+        rs.rules[3].output,
+    );
 }
-
-// --- decomposeRules: decompose FULLADD's symbolic rule set ---
-test "decomposeRules: FULLADD's symbolic rules decompose to symbol outputs" {
+// --- decomposeRules: decompose FULLADD's rule set ---
+test "decomposeRules: FULLADD's rules decompose to token outputs" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
@@ -1055,26 +1068,26 @@ test "decomposeRules: FULLADD's symbolic rules decompose to symbol outputs" {
     // Three rules.
     try testing.expectEqual(@as(usize, 3), rs.rules.len);
 
-    // Pattern K,M -> symbol SUM0
+    // Pattern K,M -> token SUM0
     try testing.expectEqual(@as(usize, 2), rs.rules[0].pattern.symbols.len);
     try testing.expectEqualStrings("K", rs.rules[0].pattern.symbols[0]);
     try testing.expectEqualStrings("M", rs.rules[0].pattern.symbols[1]);
-    try testing.expectEqualDeep(rules.Output{ .symbol = "SUM0" }, rs.rules[0].output);
-    try testing.expectEqualDeep(rules.Output{ .symbol = "SUM0" }, rs.rules[0].output);
-    // Pattern L,M -> symbol SUM1
+    try testing.expectEqualDeep(rules.Output{ .token = "SUM0" }, rs.rules[0].output);
+    try testing.expectEqualDeep(rules.Output{ .token = "SUM0" }, rs.rules[0].output);
+    // Pattern L,M -> token SUM1
     try testing.expectEqualStrings("L", rs.rules[1].pattern.symbols[0]);
     try testing.expectEqualStrings("M", rs.rules[1].pattern.symbols[1]);
-    try testing.expectEqualDeep(rules.Output{ .symbol = "SUM1" }, rs.rules[1].output);
+    try testing.expectEqualDeep(rules.Output{ .token = "SUM1" }, rs.rules[1].output);
 
-    // Pattern L,N -> symbol CO1
+    // Pattern L,N -> token CO1
     try testing.expectEqualStrings("L", rs.rules[2].pattern.symbols[0]);
     try testing.expectEqualStrings("N", rs.rules[2].pattern.symbols[1]);
 
-    try testing.expectEqualDeep(rules.Output{ .symbol = "CO1" }, rs.rules[2].output);
+    try testing.expectEqualDeep(rules.Output{ .token = "CO1" }, rs.rules[2].output);
 }
 
-// --- decomposeRules: fill with symbolic content normalizes the name ---
-test "decomposeRules: fill output normalizes symbolic content" {
+// --- decomposeRules: fill with name content normalizes the name ---
+test "decomposeRules: fill output normalizes name content" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
@@ -1104,15 +1117,16 @@ test "decomposeRules: fill output normalizes symbolic content" {
 
     try testing.expectEqual(@as(usize, 1), rs.rules.len);
 
-    // Pattern: one symbol, "K".
+    // Pattern: one token, "K".
     try testing.expectEqual(@as(usize, 1), rs.rules[0].pattern.symbols.len);
     try testing.expectEqualStrings("K", rs.rules[0].pattern.symbols[0]);
 
-    // Output: fill { dest = "Y", content = symbol "A" }.
+    // Output: fill { dest = "Y", content = token "A" }.
     //
-    // Normalized: the "$" prefix is stripped from the source reference,
-    // so downstream consumers see the bare place name. Same convention
-    // as parseInputs, which strips "$" from the outer composition.
+    // The "$" prefix on the source reference is decoration; it is
+    // stripped during parsing so the AST carries the bare token name.
+    // Same convention as parseInputs, which strips "$" from the outer
+    // composition.
     const output = rs.rules[0].output;
     const fill = switch (output) {
         .fill => |f| f,
@@ -1124,9 +1138,9 @@ test "decomposeRules: fill output normalizes symbolic content" {
     try testing.expectEqualStrings("Y", fill.dest);
 
     const content = switch (fill.content) {
-        .symbol => |s| s,
+        .token => |s| s,
         else => {
-            std.debug.print("expected .symbol content, got .{s}\n", .{@tagName(fill.content)});
+            std.debug.print("expected .token content, got .{s}\n", .{@tagName(fill.content)});
             return error.TestUnexpectedResult;
         },
     };
@@ -1182,7 +1196,7 @@ test "buildSymbolTable: AND8 interns 0 and 1 in first-seen order" {
     try testing.expect(table.nameOf(2) == null);
 }
 
-test "buildSymbolTable: FULLADD2 interns symbolic names in first-seen order" {
+test "buildSymbolTable: FULLADD2 interns token names in first-seen order" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
