@@ -12,6 +12,7 @@ const std = @import("std");
 const network = @import("../network.zig");
 const value_transform = @import("../value_transform.zig");
 const environment = @import("environment.zig");
+const lookup = @import("../vhdl/lookup.zig");
 
 const max_invocation_depth = 32;
 
@@ -57,12 +58,24 @@ pub const Pattern = struct {
 
 /// A rule's RHS, the thing the rule asserts when it fires.
 pub const Output = union(enum) {
-    /// A literal integer, e.g. the "0" in "0,0[0]".
     literal: u64,
-    /// A single symbol, e.g. "K" in "K[Y<K>]".
     symbol: []const u8,
-    /// A multi-symbol composition, e.g. "K,M" in "S,U,W[K,M]".
     symbols: []const []const u8,
+    /// A destination-with-content form, e.g. "result<0>" or "Y<K>".
+    /// The parser produces this as a `.fill` statement whose
+    /// `dest_name` is the place and whose `expr` is the content.
+    fill: Fill,
+
+    pub const Fill = struct {
+        dest: []const u8,
+        content: Content,
+
+        pub const Content = union(enum) {
+            literal: u64,
+            symbol: []const u8,
+            symbols: []const []const u8,
+        };
+    };
 };
 
 /// One value-transform rule, in the neutral form both the runtime and
@@ -87,6 +100,29 @@ pub const RuleSet = struct {
     inputs: Inputs,
     rules: []const Rule,
 };
+
+
+fn parseContent(allocator: std.mem.Allocator, raw: []const u8) !Output.Fill.Content {
+    var trimmed = std.mem.trim(u8, raw, " \t\r\n");
+
+    // Normalize: strip a leading "$" so symbolic content is a bare
+    // place name, matching how parseInputs handles the outer
+    // composition.
+    if (trimmed.len > 0 and trimmed[0] == '$') {
+        trimmed = trimmed[1..];
+    }
+
+    if (std.fmt.parseInt(u64, trimmed, 10)) |n| {
+        return .{ .literal = n };
+    } else |_| {}
+
+    if (std.mem.indexOfScalar(u8, trimmed, ',') != null) {
+        const symbols = try splitPattern(allocator, trimmed);
+        return .{ .symbols = symbols };
+    }
+
+    return .{ .symbol = trimmed };
+}
 
 /// Decompose a parsed Definition into a `RuleSet`.
 ///
@@ -115,14 +151,19 @@ pub fn decomposeRules(
     errdefer rules.deinit(allocator);
 
     for (def.contained) |cd| {
-        // Each rule's body must be a single pure_value. Anything else
-        // (a nested invocation, a fill, a directive) is out of scope
-        // for now.
         if (cd.resolution.len != 1) continue;
-        if (std.meta.activeTag(cd.resolution[0]) != .pure_value) continue;
 
         const symbols = try splitPattern(allocator, cd.name);
-        const output = try parseOutput(allocator, cd.resolution[0].pure_value);
+        const stmt = cd.resolution[0];
+
+        const output: Output = switch (stmt) {
+            .pure_value => |text| try parseOutput(allocator, text),
+            .fill => |f| .{ .fill = .{
+                .dest = try allocator.dupe(u8, f.dest_name),
+                .content = try parseContent(allocator, f.expr),
+            } },
+            else => continue,
+        };
 
         try rules.append(allocator, .{
             .pattern = .{ .symbols = symbols },
@@ -174,7 +215,7 @@ fn splitPattern(
     raw: []const u8,
 ) ![]const []const u8 {
     const trimmed = std.mem.trim(u8, raw, " \t\r\n");
- 
+
     var symbols: std.ArrayListUnmanaged([]const u8) = .empty;
     errdefer symbols.deinit(allocator);
 
@@ -613,7 +654,7 @@ fn destinationSatisfied(env: *Environment, arg: network.Arg) bool {
             } else false,
         };
     }
-  
+
     return env.isValid(arg.name);
 }
 
@@ -643,7 +684,7 @@ pub fn run(
         for (rules) |rule| {
             if (env.isValid(rule.dest)) continue;
             if (!env.allValid(rule.inputs)) continue;
-               std.debug.print("[rules.run] firing rule dest='{s}' inputs.len={d} action={s}\n",.{ rule.dest, rule.inputs.len, @tagName(rule.action) });
+            std.debug.print("[rules.run] firing rule dest='{s}' inputs.len={d} action={s}\n", .{ rule.dest, rule.inputs.len, @tagName(rule.action) });
             switch (rule.action) {
                 .literal => |v| try env.assertLiteral(rule.dest, v),
                 .copy_from => |src| try env.copyFrom(rule.dest, src),
@@ -713,4 +754,96 @@ pub fn run(
     }
 
     return .{ .complete = !incomplete, .stuck = try stuck.toOwnedSlice(allocator) };
+}
+
+/// A per-definition symbol table. Assigns each distinct token name a
+/// small integer id, in first-seen order across the definition's rule
+/// set. The id is what travels as a payload on the wire; the name is
+/// what the source refers to. This is the interning step the Symbols
+/// and Encoding chapter describes.
+pub const SymbolTable = struct {
+    entries: []const []const u8,
+
+    /// Return the id assigned to `name`, or null if `name` isn't in
+    /// the table.
+    pub fn lookup(self: SymbolTable, name: []const u8) ?u64 {
+        for (self.entries, 0..) |existing, i| {
+            if (std.mem.eql(u8, existing, name)) return @intCast(i);
+        }
+        return null;
+    }
+
+    /// Reverse lookup: return the name for a given id, or null if the
+    /// id is out of range.
+    pub fn nameOf(self: SymbolTable, id: u64) ?[]const u8 {
+        if (id >= self.entries.len) return null;
+        return self.entries[@intCast(id)];
+    }
+};
+
+/// Build the symbol table for a rule set.
+///
+/// Walks rules in source order. For each rule: intern each pattern
+/// symbol, then intern the rule's output content (if it names a
+/// symbol or composition). First-seen order is the interning order.
+///
+/// Literals (`.literal = 0`) are interned by their decimal-string
+/// form ("0"), so a pattern symbol "0" and an output content
+/// `.literal = 0` intern to the same id. This is what makes a rule
+/// like `0,0[result<0>]` self-consistent: the pattern tests for
+/// token "0" and the output writes token "0", and both resolve to
+/// the same integer.
+///
+/// Input place names (from `rule_set.inputs.places`) are NOT interned.
+/// They name wires, not tokens. A wire's payload is the id of whatever
+/// token is currently on it; the wire itself has no id.
+pub fn buildSymbolTable(
+    allocator: std.mem.Allocator,
+    rule_set: RuleSet,
+) !SymbolTable {
+    var entries: std.ArrayListUnmanaged([]const u8) = .empty;
+    errdefer {
+        for (entries.items) |e| allocator.free(e);
+        entries.deinit(allocator);
+    }
+
+    for (rule_set.rules) |rule| {
+        for (rule.pattern.symbols) |sym| {
+            _ = try lookup.internSymbol(&entries, allocator, sym);
+        }
+        try internOutputContent(allocator, &entries, rule.output);
+    }
+
+    return .{ .entries = try entries.toOwnedSlice(allocator) };
+}
+
+fn internOutputContent(
+    allocator: std.mem.Allocator,
+    entries: *std.ArrayListUnmanaged([]const u8),
+    output: Output,
+) !void {
+    switch (output) {
+        .literal => |n| {
+            var buf: [32]u8 = undefined;
+            const s = std.fmt.bufPrint(&buf, "{d}", .{n}) catch unreachable;
+            _ = try lookup.internSymbol(entries, allocator, s);
+        },
+        .symbol => |s| _ = try lookup.internSymbol(entries, allocator, s),
+        .symbols => |syms| {
+            for (syms) |s| _ = try lookup.internSymbol(entries, allocator, s);
+        },
+        .fill => |f| {
+            switch (f.content) {
+                .literal => |n| {
+                    var buf: [32]u8 = undefined;
+                    const s = std.fmt.bufPrint(&buf, "{d}", .{n}) catch unreachable;
+                    _ = try lookup.internSymbol(entries, allocator, s);
+                },
+                .symbol => |s| _ = try lookup.internSymbol(entries, allocator, s),
+                .symbols => |syms| {
+                    for (syms) |s| _ = try lookup.internSymbol(entries, allocator, s);
+                },
+            }
+        },
+    }
 }
