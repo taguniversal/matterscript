@@ -5,7 +5,7 @@ const matterscript = @import("matterscript");
 const boundary = matterscript.boundary;
 const network_entity = matterscript.vhdl.network_entity;
 const rules = matterscript.runtime.rules;
-
+const export_value_transform = matterscript.vhdl.value_transform_export;
 // Import the module relative to this test file
 const parser = matterscript.ipl_parser;
 pub const network = matterscript.network;
@@ -1251,4 +1251,66 @@ test "buildSymbolTable: FULLADD2 interns token names in first-seen order" {
     try testing.expectEqual(@as(u64, 4), table.lookup("SUM1").?);
     try testing.expectEqual(@as(u64, 5), table.lookup("N").?);
     try testing.expectEqual(@as(u64, 6), table.lookup("CO1").?);
+}
+
+test "lowerRules: AND8 emits a case statement with four branches" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const src =
+        \\AND8[(A<> B<>)($result)
+        \\  $A$B()
+        \\  :0,0[result<0>]
+        \\   0,1[result<0>]
+        \\   1,0[result<0>]
+        \\   1,1[result<1>]
+        \\]
+    ;
+    const net = parser.parse(a, src) catch |err| {
+        std.debug.print("lowerRules AND8 FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        return err;
+    };
+
+    var and_def: ?network.Definition = null;
+    for (net.definitions) |d| {
+        if (std.ascii.eqlIgnoreCase(d.name, "AND8")) and_def = d;
+    }
+    try testing.expect(and_def != null);
+
+    const rs = (try rules.decomposeRules(a, and_def.?)) orelse {
+        std.debug.print("decomposeRules returned null for AND8\n", .{});
+        return error.TestUnexpectedResult;
+    };
+    const table = try rules.buildSymbolTable(a, rs);
+
+    var aw: std.Io.Writer.Allocating = .init(a);
+    defer aw.deinit();
+
+    try export_value_transform.lowerRules(a, &aw.writer, and_def.?, rs, table);
+
+    const vhdl = aw.written();
+    std.debug.print("\n--- lowerRules AND8 output ---\n{s}\n--- end ---\n", .{vhdl});
+
+    // Symbol encoding comment lists both tokens in interning order.
+    try testing.expect(std.mem.indexOf(u8, vhdl, "-- symbol encoding: 0=0, 1=1") != null);
+
+    // Case statement is present.
+    try testing.expect(std.mem.indexOf(u8, vhdl, "case ") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "end case;") != null);
+
+    // Four branches with the expected case labels.
+    // The DATA_WIDTH in the library is 7, so each token occupies
+    // 7 bits. "0" interns to id 0 -> "0000000"; "1" to id 1 -> "0000001".
+    try testing.expect(std.mem.indexOf(u8, vhdl,
+        "when \"0000000\" & \"0000000\" => result <= data_value(0);") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl,
+        "when \"0000000\" & \"0000001\" => result <= data_value(0);") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl,
+        "when \"0000001\" & \"0000000\" => result <= data_value(0);") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl,
+        "when \"0000001\" & \"0000001\" => result <= data_value(1);") != null);
+
+    // Default fallback.
+    try testing.expect(std.mem.indexOf(u8, vhdl, "when others => null;") != null);
 }

@@ -26,6 +26,7 @@ pub const invocation = @import("dialects/ipl/vhdl/export/invocation.zig");
 // VHDL export namespace
 pub const vhdl = struct {
     //pub const definition = @import("dialects/ipl/vhdl/export/definition.zig");
+    pub const value_transform_export = @import("dialects/ipl/vhdl/export/value_transform.zig");
     pub const boundary = @import("dialects/ipl/vhdl/export/boundary.zig");
     pub const network_entity = @import("dialects/ipl/vhdl/export/network_entity.zig");
 };
