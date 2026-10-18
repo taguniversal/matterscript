@@ -15,6 +15,7 @@ const component = @import("export/component.zig");
 pub const value_transform_export = @import("export/value_transform.zig");
 const value_transform_analysis = @import("../value_transform.zig");
 pub const rom_lookup = @import("export/rom_lookup.zig");
+pub const rules = @import("../runtime/rules.zig");
 
 /// Emits a VHDL entity and architecture body for a single MatterScript definition,
 /// normalizing destination defaults and identifiers, and recursively processing any
@@ -182,7 +183,30 @@ pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: n
     try rom_lookup.writeKeyComposition(allocator, writer, def);
     try rom_lookup.writeRomLookupProcess(allocator, writer, def);
 
-    try value_transform_export.writeTransformRules(allocator, writer, transform_rules);
+    // New path: rule lowering for token-transform definitions.
+    // Only fires when the definition's rule set matches the shape
+    // lowerRules understands. Other shapes (fanin/fanout's select
+    // action, entity-labeling's compose syntax) fall through to the
+    // old writeTransformRules path, which handles them.
+    var lowered = false;
+    if (try rules.decomposeRules(allocator, def)) |rule_set| {
+        const shape_ok = value_transform_export.isLowerableShape(rule_set);
+        std.debug.print("[emit] {s}: rules={d} inputs={d} shape_ok={}\n", .{
+            def.name, rule_set.rules.len, rule_set.inputs.places.len, shape_ok,
+        });
+        if (shape_ok) {
+            const table = try rules.buildSymbolTable(allocator, rule_set);
+            try value_transform_export.lowerRules(allocator, writer, rule_set, table);
+            lowered = true;
+        }
+    } else {
+        std.debug.print("[emit] {s}: decomposeRules returned null\n", .{def.name});
+    }
+
+    if (!lowered) {
+       std.debug.print("[emit] {s}: fallback transform_rules.len={d}\n", .{ def.name, transform_rules.len }); 
+       try value_transform_export.writeTransformRules(allocator, writer, transform_rules);
+    }
 
     try signal.writeDestinationFills(allocator, writer, def);
 

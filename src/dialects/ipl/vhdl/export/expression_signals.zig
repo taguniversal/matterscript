@@ -7,7 +7,6 @@ const sanitizer = @import("../sanitizer.zig");
 const sanitizeName = sanitizer.sanitizeName;
 const lookup = @import("../lookup.zig");
 
-
 pub fn writeIntermediatePlaceSignal(
     allocator: std.mem.Allocator,
     writer: anytype,
@@ -26,7 +25,7 @@ pub fn writeIntermediatePlaceSignal(
             if (raw_name.len == 0) return;
 
             // Avoid declaring signals for ports already declared on the boundary
-            if (boundary.isBoundaryPort(allocator,def, raw_name)) return;
+            if (boundary.isBoundaryPort(allocator, def, raw_name)) return;
 
             // Avoid duplicate declarations
             for (intermediate_names.items) |existing| {
@@ -82,7 +81,6 @@ pub fn writeDollarReferenceSignals(
     }
 }
 
-
 /// Attempts to evaluate and emit an expression fill (such as direct signal mapping
 /// or equality checks against constants), returning `true` if successfully handled.
 pub fn writeExpressionFill(
@@ -124,41 +122,45 @@ pub fn writeExpressionFill(
     return false;
 }
 
-
 pub fn writeDestinationFills(
     allocator: std.mem.Allocator,
     writer: anytype,
     def: network.Definition,
 ) !void {
     try writer.print("\n  -- destination fills (outputs)\n", .{});
-    if (!try lookup.writeContainedLookupTable(allocator, writer, def)) {
-        for (def.resolution) |stmt| {
-            switch (stmt) {
-                .fill => |f| {
-                    const literal = std.fmt.parseInt(u64, std.mem.trim(u8, f.expr, " \t\r\n"), 10) catch null;
-                    if (literal) |value| {
-                        const dest_id = try sanitizeName(allocator, f.dest_name);
-                        defer allocator.free(dest_id);
-                        try writer.print("  {s} <= data_value({d});\n", .{ dest_id, value });
-                    } else if (!try writeExpressionFill(allocator, writer, f)) {
-                        const dest_id = try sanitizeName(allocator, f.dest_name);
-                        defer allocator.free(dest_id);
-                        try writer.print("  {s} <= null_value;\n", .{dest_id});
-                    }
-                },
-                .invoke => |inv| {
-                    _ = inv;
-                },
-                .pure_value => |v| {
-                    if (v.len == 0 or v[0] != '$') {
-                        try writer.print("  -- TODO: pure value expression {s} (not a recognized lookup-table shape)\n", .{v});
-                    }
-                },
-                .directive => |d| {
-                    try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
-                },
-            }
+
+    // writeContainedLookupTable handles the contained-row ROM shapes
+    // (anonymous pure_value rows, structured fill rows, and the
+    // multi-destination FULLADD shape) that lowerRules does not yet
+    // cover. Remove only once lowerRules handles all three.
+    if (try lookup.writeContainedLookupTable(allocator, writer, def)) {
+        return;
+    }
+    for (def.resolution) |stmt| {
+        switch (stmt) {
+            .fill => |f| {
+                const literal = std.fmt.parseInt(u64, std.mem.trim(u8, f.expr, " \t\r\n"), 10) catch null;
+                if (literal) |value| {
+                    const dest_id = try sanitizeName(allocator, f.dest_name);
+                    defer allocator.free(dest_id);
+                    try writer.print("  {s} <= data_value({d});\n", .{ dest_id, value });
+                } else if (!try writeExpressionFill(allocator, writer, f)) {
+                    const dest_id = try sanitizeName(allocator, f.dest_name);
+                    defer allocator.free(dest_id);
+                    try writer.print("  {s} <= null_value;\n", .{dest_id});
+                }
+            },
+            .invoke => |inv| {
+                _ = inv;
+            },
+            .pure_value => |v| {
+                if (v.len == 0 or v[0] != '$') {
+                    try writer.print("  -- TODO: pure value expression {s} (not a recognized lookup-table shape)\n", .{v});
+                }
+            },
+            .directive => |d| {
+                try writer.print("  -- @{s}({s}) (directive not yet interpreted)\n", .{ d.name, d.args });
+            },
         }
     }
 }
-

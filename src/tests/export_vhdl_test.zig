@@ -81,13 +81,13 @@ test "composed two-variable lookup with comma-separated keys resolves to a case 
     const allocator = arena.allocator();
 
     const src =
-        \\OR[(A<> B<>)
-        \\  <$A$B()>
+        \\OR[(A<> B<>)($result)
+        \\  $A$B()
         \\  :
-        \\   0,0[0]
-        \\   0,1[1]
-        \\   1,0[1]
-        \\   1,1[1] ]
+        \\   0,0[result<0>]
+        \\   0,1[result<1>]
+        \\   1,0[result<0>]
+        \\   1,1[result<1>] ]
     ;
 
     const vhdl = try exportToString(allocator, src);

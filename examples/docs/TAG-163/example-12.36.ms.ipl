@@ -1,24 +1,44 @@
 // Linear - TAG-163 Set of definitions establishing correspondence name connvention
 
-binaryequal[(a<> b<>) 
-    $a$b() 
-   : 0,0[TRUE] 
-     0,1[FALSE] 
-     1,0[FALSE]
-     1,1[TRUE]  ]
+TAG163_TOP[(a<> b<>)($result)
+  BINEQ($a $b)(eq<>)
+  BIGT($a $b)(gt<>)
+  LAND($a $b)(andout<>)
+  LNOT($a)(notout<>)
 
-binarygreater[(a<> b<>) 
-    $a$b() 
-      : 0,0[FALSE] 
-        0,1[FALSE] 
-        1,0[TRUE]
-        1,1[FALSE]  ]
+  $eq$gt$andout$notout() :
+    TRUE,FALSE,FALSE,FALSE[result<TRUE>]
+    TRUE,FALSE,FALSE,TRUE[result<FALSE>]
+    FALSE,TRUE,FALSE,FALSE[result<FALSE>]
+    FALSE,TRUE,FALSE,TRUE[result<TRUE>]
+]
 
-logicaland[(a<> b<>) 
-    $a$b() 
-  :  FALSE,FALSE[FALSE]
-     FALSE,TRUE[FALSE]
-     TRUE,FALSE[FALSE]
-     TRUE,TRUE[TRUE]  ]
+BINEQ[(a<> b<>)($eq)
+  $a$b() :
+    0,0[eq<TRUE>]
+    0,1[eq<FALSE>]
+    1,0[eq<FALSE>]
+    1,1[eq<TRUE>]
+]
 
-logicalnot[(a<>) $a() : TRUE[FALSE] FALSE[TRUE]  ]
+BIGT[(a<> b<>)($gt)
+  $a$b() :
+    0,0[gt<FALSE>]
+    0,1[gt<FALSE>]
+    1,0[gt<TRUE>]
+    1,1[gt<FALSE>]
+]
+
+LAND[(a<> b<>)($andout)
+  $a$b() :
+    FALSE,FALSE[andout<FALSE>]
+    FALSE,TRUE[andout<FALSE>]
+    TRUE,FALSE[andout<FALSE>]
+    TRUE,TRUE[andout<TRUE>]
+]
+
+LNOT[(a<>)($notout)
+  $a() :
+    TRUE[notout<FALSE>]
+    FALSE[notout<TRUE>]
+]

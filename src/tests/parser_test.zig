@@ -1287,7 +1287,7 @@ test "lowerRules: AND8 emits a case statement with four branches" {
     var aw: std.Io.Writer.Allocating = .init(a);
     defer aw.deinit();
 
-    try export_value_transform.lowerRules(a, &aw.writer, and_def.?, rs, table);
+    try export_value_transform.lowerRules(a, &aw.writer, rs, table);
 
     const vhdl = aw.written();
     std.debug.print("\n--- lowerRules AND8 output ---\n{s}\n--- end ---\n", .{vhdl});

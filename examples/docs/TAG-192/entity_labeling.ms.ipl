@@ -5,8 +5,8 @@ U2: AND($C $D)
 AND[($A, $B)(result<>)
    $A$B()
    :
-   0,0[0]
-   0,1[0]
-   1,0[0]
-   1,1[1]
+   0,0[result<0>]
+   0,1[result<0>]
+   1,0[result<0>]
+   1,1[result<1>]
 ]

@@ -1,4 +1,4 @@
-// linear: TAG-147 Parallel bus
+// linear: TAG-147 Example 12.13 Parallel bus
 
 fanout($seloutA $srcA)({outA1<> outA2<> outA3<> outA4<> outA5<>})
 fanout($seloutB $srcB)({outB1<> outB2<> outB3<> outB4<> outB5<>})

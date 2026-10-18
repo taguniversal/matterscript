@@ -90,7 +90,7 @@ test "writeContainedLookupTable handles anonymous pure-value definitions" {
     try std.testing.expect(std.mem.indexOf(u8, vhdl, "-- lookup for RESULT") != null);
     try std.testing.expect(std.mem.indexOf(u8, vhdl, "when \"0000\" => result <= data_value(0);") != null);
     try std.testing.expect(std.mem.indexOf(u8, vhdl, "when \"0001\" => result <= data_value(1);") != null);
-    
+
    }
 
 test "writeContainedLookupTable handles structured named-fill definitions" {

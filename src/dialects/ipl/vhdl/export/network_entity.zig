@@ -214,8 +214,6 @@ pub fn writeOneNetworkEntity(
         }
     }
 
-
-
     const def_id = try invocation.scopedDefinitionName(allocator, "", matched.name);
     defer allocator.free(def_id);
     try writer.print("\n  dut : entity work.{s} port map (\n", .{def_id});
