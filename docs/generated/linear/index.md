@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 30  |  🟡 Partial: 5  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 131  |  Total: 167
+✅ Implemented: 30  |  🟡 Partial: 5  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 136  |  Total: 172
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-222: 2D/3D HP (Hydrophobic-Polar) Lattice Folding Model](TAG-222.md)
@@ -89,7 +89,7 @@
 - ⬜ Not started [TAG-121: Round-trip validation: mesh-driven network compiles and passes topology checks](TAG-121.md)
 - ⬜ Not started [TAG-122: Language to Mesh map stability](TAG-122.md)
 - ✅ Implemented [TAG-129: Example 12.19 Imperative form of expression](TAG-129.md)
-- ✅ Implemented [TAG-130: Example 12.1 Unnamed source place in an invocation](TAG-130.md)
+- 🟡 Partial [TAG-130: Example 12.1 Unnamed source place in an invocation](TAG-130.md)
 - ⬜ Not started [TAG-133: Example 12.16 Occasional Source Place](TAG-133.md)
 - ⬜ Not started [TAG-134: Example 12.46 A Streetlight control program](TAG-134.md)
 - ⬜ Not started [TAG-135: Example 12.47 Linear Feedback Shift Register](TAG-135.md)
@@ -99,7 +99,7 @@
 - ⬜ Not started [TAG-139: Figure 12.28 Experience Memory](TAG-139.md)
 - ⬜ Not started [TAG-140: Figure 12.23 Protocol behavior of interlinked cycles](TAG-140.md)
 - ⬜ Not started [TAG-141: Example 12.4 Nested Invocations](TAG-141.md)
-- 🟡 Partial [TAG-142: Example 12.3 Further abbreviated expression of a single return to place of invocation](TAG-142.md)
+- ✅ Implemented [TAG-142: Example 12.3 Further abbreviated expression of a single return to place of invocation](TAG-142.md)
 - ✅ Implemented [TAG-143: Example 12.2 Expressing a single return to place of invocation](TAG-143.md)
 - ⬜ Not started [TAG-144: Parser stops at first entry-shaped invocation, silently discarding trailing definitions](TAG-144.md)
 - ✅ Implemented [TAG-147: Example 12.13 Parallel Bus](TAG-147.md)
@@ -166,6 +166,11 @@
 - ⬜ Not started [TAG-220: `value_transform.collectValueTransformRules` produces token-input rules for bare-source-header definitions](TAG-220.md)
 - ⬜ Not started [TAG-221: VHDL emitter: emit callee entities](TAG-221.md)
 - ⬜ Not started [TAG-223: Normalize anonymous destinations at parse time](TAG-223.md)
+- ⬜ Not started [TAG-224: Composed-dispatch rules don't collect `.pure_value` contained entries](TAG-224.md)
+- ⬜ Not started [TAG-225: `Emitter: contained dispatch cases shouldn't emit standalone entities`](TAG-225.md)
+- ⬜ Not started [TAG-226: `Emitter: entry-invocation place-name arguments don't become ports`](TAG-226.md)
+- ⬜ Not started [TAG-227: `Emitter: entry-invocation mutex-group arguments aren't unwrapped into member ports`](TAG-227.md)
+- ⬜ Not started [TAG-228: TileScript domain sub-language](TAG-228.md)
 - ⬜ Not started [TAG-46: Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [TAG-47: Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [TAG-80: The Completeness Dialogue](TAG-80.md)

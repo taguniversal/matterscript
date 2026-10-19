@@ -563,7 +563,7 @@ fn buildRulesAtDepth(
                 if (stmt != .fill) continue;
                 const f = stmt.fill;
                 const expr = std.mem.trim(u8, f.expr, " \t\r\n");
-
+                if (expr.len == 0) continue;
                 const inputs = try allocator.alloc([]const u8, 1);
                 inputs[0] = contained.name;
 

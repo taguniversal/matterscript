@@ -292,6 +292,19 @@ fn parseOneConstantTable(p: *core.Parser) !network.TableDef {
     return .{ .composed_name = composed, .kind = .{ .explicit = try entries.toOwnedSlice(p.allocator) } };
 }
 
+/// True for "$X$Y()", "$select()", "$A()", etc.: a '$'-joined name
+/// chain ending in "()". Same shape as parseInvocationArgs accepts.
+fn isComposedKeyForm(expr: []const u8) bool {
+    if (expr.len < 3) return false;
+    if (expr[0] != '$') return false;
+    if (!std.mem.endsWith(u8, expr, "()")) return false;
+    // No whitespace inside the name chain.
+    for (expr[0 .. expr.len - 2]) |ch| {
+        if (ch == ' ' or ch == '\t') return false;
+    }
+    return true;
+}
+
 pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
     var stmts: std.ArrayListUnmanaged(network.Statement) = .empty;
     errdefer stmts.deinit(p.allocator);
@@ -305,7 +318,7 @@ pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
         if (c == '<') {
             const first = try statements.parseSourceFill(p, "");
             if (first == .fill and first.fill.expr.len == 0) {
-                // Bare '<>': the content may follow in a second '<...>'
+                // Variant A - Bare '<>': the content may follow in a second '<...>'
                 // (variant form). If so, merge into a single fill.
                 p.skipWhitespaceAndComments();
                 if (p.peek() == '<') {
@@ -313,6 +326,27 @@ pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
                     try stmts.append(p.allocator, .{
                         .fill = .{ .dest_name = "", .expr = second.fill.expr },
                     });
+                    continue;
+                }
+
+                // Variant B: bare '<>' followed by '$composed_key()'.
+                if (p.peek() == '$') {
+                    const expr = try expressions.parseILExpr(p);
+                    // Only merge when the expression is a composed-key form
+                    // ($X$Y() etc.) — a plain $name is a distinct statement
+                    // the definition author meant as a pure value, and merging
+                    // it would silently change its meaning.
+                    const trimmed = std.mem.trim(u8, expr, " \t\r\n");
+                    if (isComposedKeyForm(trimmed)) {
+                        try stmts.append(p.allocator, .{
+                            .fill = .{ .dest_name = first.fill.dest_name, .expr = trimmed },
+                        });
+                        continue;
+                    }
+                    // Not a composed key — leave the two statements
+                    // independent, matching pre-existing behavior.
+                    try stmts.append(p.allocator, first);
+                    try stmts.append(p.allocator, .{ .pure_value = expr });
                     continue;
                 }
             }

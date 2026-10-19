@@ -57,6 +57,13 @@ pub const Presentation = struct {
     outputs: std.StringHashMapUnmanaged([]const u8),
 };
 
+fn allStreamsExhausted(streams: []const PortStream) bool {
+    for (streams) |s| {
+        if (!s.exhausted()) return false;
+    }
+    return true;
+}
+
 pub const Testbench = struct {
     allocator: std.mem.Allocator,
     def: network.Definition,
@@ -96,7 +103,7 @@ pub const Testbench = struct {
                 if (arg.group) |g| try collectOutputs(allocator, env, g.places, outputs);
                 continue;
             }
-         
+
             switch (env.get(arg.name)) {
                 .valid => |v| try outputs.put(allocator, arg.name, env.symbols.items[v]),
                 .null_value => {},
@@ -113,20 +120,11 @@ pub const Testbench = struct {
         outer: while (true) {
             var env = Environment{ .allocator = self.allocator };
 
-            // If every stream is exhausted, no further wavefront can complete.
-            // Without this check, a rule that fires on an empty environment
-            // (producing a trivially-complete report) spins this loop forever.
-            var any_live_stream = false;
-            for (self.streams) |s| {
-                if (!s.exhausted()) {
-                    any_live_stream = true;
-                    break;
-                }
-            }
-            if (!any_live_stream) break :outer;
+            if (allStreamsExhausted(self.streams)) break :outer;
 
             const fed_this_wavefront = try self.allocator.alloc(bool, self.streams.len);
             @memset(fed_this_wavefront, false);
+            defer self.allocator.free(fed_this_wavefront);
             // Pre-check: if all streams are exhausted, no more wavefronts can complete.
             var any_stream_live = false;
             for (self.streams) |*s| if (!s.exhausted()) {
@@ -137,6 +135,19 @@ pub const Testbench = struct {
 
             var report = try rules_mod.run(self.allocator, &env, self.def, self.rules);
             std.debug.print("[tb.run] initial report.complete = {}, dests.len = {d}, dests[0].name='{s}'\n", .{ report.complete, self.def.destinations.len, if (self.def.destinations.len > 0) self.def.destinations[0].name else "" });
+
+            if (report.complete and !allStreamsExhausted(self.streams)) {
+                // A rule set that completes with no inputs seeded is suspicious:
+                // either the definition has no inputs (testbench misuse), or
+                // buildRules produced a spurious zero-input rule. Fail loudly
+                // rather than silently producing zero-progress presentations
+                // and looping forever.
+                std.debug.print("[tb.run] WARNING: complete=true with unconsumed streams; " ++
+                    "rule set likely contains a spurious zero-input rule\n", .{});
+                // Optionally return an error, or just break to avoid the loop.
+                break :outer;
+            }
+
             while (!report.complete) {
                 var fed_any = false;
                 for (self.streams, 0..) |*stream, i| {
