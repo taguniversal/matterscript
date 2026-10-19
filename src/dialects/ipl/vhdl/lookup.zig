@@ -3,8 +3,7 @@ const evaluator = @import("evaluator.zig");
 const network = @import("../network.zig");
 const sanitizer = @import("sanitizer.zig");
 const sanitizeName = sanitizer.sanitizeName;
-const constants =   @import("constants.zig");
-
+const constants = @import("constants.zig");
 
 fn requiredWidth(symbol_count: usize) usize {
     var bits: usize = 0;
@@ -14,7 +13,6 @@ fn requiredWidth(symbol_count: usize) usize {
     }
     return bits + 1; // +1 reserved for the VALID/NULL flag
 }
-
 
 // Responsibility: Generates VHDL lookup tables, handles symbol interning,
 // constructs case-statement blocks, and emits VHDL for cellular automata networks.
@@ -206,6 +204,19 @@ fn writeLookupCaseBlock(
         "  end process;\n", .{});
 }
 
+fn writeSymbolEncodingComment(
+    writer: anytype,
+    symbols: []const []const u8,
+) !void {
+    if (symbols.len == 0) return;
+    try writer.print("  -- symbol encoding: ", .{});
+    for (symbols, 0..) |sym, i| {
+        if (i > 0) try writer.print(", ", .{});
+        try writer.print("{s}={d}", .{ sym, i });
+    }
+    try writer.print("\n", .{});
+}
+
 /// Detects which of the two contained-lookup shapes (if either)
 /// applies to `def`, and dispatches to writeLookupCaseBlock
 /// accordingly. See writeLookupCaseBlock's doc comment for the shapes.
@@ -242,15 +253,6 @@ pub fn writeContainedLookupTable(
         symbols.deinit(allocator);
     }
 
-    if (symbols.items.len > 0) {
-        try writer.print("  -- symbol encoding: ", .{});
-        for (symbols.items, 0..) |sym, i| {
-            if (i > 0) try writer.print(", ", .{});
-            try writer.print("{s}={d}", .{ sym, i });
-        }
-        try writer.print("\n", .{});
-    }
-
     if (all_anonymous) {
         for (def.resolution) |stmt| {
             if (stmt != .fill) continue;
@@ -260,6 +262,7 @@ pub fn writeContainedLookupTable(
                 if (std.mem.indexOf(u8, f.expr, s.name) == null) mentions_all = false;
             }
             if (!mentions_all) continue;
+            try writeSymbolEncodingComment(writer, symbols.items);
             try writeLookupCaseBlock(allocator, writer, def, f.dest_name, &symbols, true);
             return true;
         }
@@ -282,6 +285,8 @@ pub fn writeContainedLookupTable(
             if (!have) try covered.append(allocator, dname);
         }
     }
+    if (covered.items.len == 0) return false;
+    try writeSymbolEncodingComment(writer, symbols.items);
     for (covered.items) |dest_name| {
         try writeLookupCaseBlock(allocator, writer, def, dest_name, &symbols, false);
     }

@@ -1,4 +1,4 @@
-// Responsibility: Handles all boundary counting, port generation (writeBoundaryPorts), 
+// Responsibility: Handles all boundary counting, port generation (writeBoundaryPorts),
 // valid declarations, assignments, and validation expressions
 
 const std = @import("std");
@@ -33,7 +33,6 @@ pub fn normalizeFillDestinations(
     if (!any_rewritten) return resolution;
     return normalized.toOwnedSlice(allocator);
 }
-
 
 pub fn argContainsName(arg: network.Arg, name: []const u8) bool {
     switch (arg.kind) {
@@ -207,10 +206,25 @@ pub fn writeBoundaryValidExpression(
 ) !void {
     switch (arg.kind) {
         .group => if (arg.group) |grp| {
+            // A group with more than one member needs parentheses,
+            // because the surrounding composition (writeDefinition
+            // joins per-source expressions with " and ") would
+            // otherwise bind tighter than the group's own operator.
+            // E.g. mutex {A0 A1} + mutex {B0 B1} should read
+            //   (a0_valid or a1_valid) and (b0_valid or b1_valid)
+            // not
+            //   a0_valid or a1_valid and b0_valid or b1_valid
+            // The parens are harmless for single-member groups.
+            const op: []const u8 = switch (grp.kind) {
+                .bundle => " and ",
+                .mutex, .arbitration => " or ",
+            };
+            if (grp.places.len > 1) try writer.print("(", .{});
             for (grp.places, 0..) |child, i| {
-                if (i > 0) try writer.print(" and ", .{});
+                if (i > 0) try writer.print("{s}", .{op});
                 try writeBoundaryValidExpression(allocator, writer, child);
             }
+            if (grp.places.len > 1) try writer.print(")", .{});
         },
         .place => {
             const port_id = try sanitizeName(allocator, arg.name);
@@ -220,7 +234,6 @@ pub fn writeBoundaryValidExpression(
         else => {},
     }
 }
-
 
 /// Mirrors writeBoundaryPorts' own traversal (group -> recurse,
 /// place -> sanitized name, anything else -> skipped) but collects
