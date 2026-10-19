@@ -1,4 +1,4 @@
-// linear: TAG-149 Mutually exclusive completeness
+// linear: TAG-149 Example 12.9 Mutually exclusive completeness
 
 OR[({A0<> A1<>}{B0<> B1<>})({$0 $1})
   :

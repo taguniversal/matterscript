@@ -1314,3 +1314,181 @@ test "lowerRules: AND8 emits a case statement with four branches" {
     // Default fallback.
     try testing.expect(std.mem.indexOf(u8, vhdl, "when others => null;") != null);
 }
+
+test "TAG-143: unnamed destination parses to ms_result with composed-key fill" {
+    const allocator = std.testing.allocator;
+    var arena_state = std.heap.ArenaAllocator.init(allocator);
+    defer arena_state.deinit();
+    const a = arena_state.allocator();
+
+    const src =
+        \\AND143($A $B)
+        \\AND143[(X<>Y<>)
+        \\<$X$Y()>
+        \\:
+        \\   0,0[0]
+        \\   0,1[0]
+        \\   1,1[1]
+        \\   1,0[0]
+        \\]
+    ;
+
+    const net = try parser.parse(a, src);
+
+    // ---- Locate the definition ----
+    const def = for (net.definitions) |d| {
+        if (std.ascii.eqlIgnoreCase(d.name, "AND143")) break d;
+    } else return error.DefinitionNotFound;
+
+    // ---- Definition: sources ----
+    try std.testing.expectEqual(@as(usize, 2), def.sources.len);
+    try std.testing.expectEqualStrings("X", def.sources[0].name);
+    try std.testing.expectEqual(network.ArgKind.place, def.sources[0].kind);
+    try std.testing.expectEqualStrings("X<>", def.sources[0].text);
+    try std.testing.expectEqualStrings("Y", def.sources[1].name);
+    try std.testing.expectEqual(network.ArgKind.place, def.sources[1].kind);
+    try std.testing.expectEqualStrings("Y<>", def.sources[1].text);
+
+    // ---- Definition: destinations ----
+    // An unnamed destination `<$X$Y()>` is normalized by the parser
+    // into a single synthesized place named "ms_result" whose text
+    // is empty (it doesn't appear literally in the source).
+    try std.testing.expectEqual(@as(usize, 1), def.destinations.len);
+    try std.testing.expectEqual(network.ArgKind.place, def.destinations[0].kind);
+    try std.testing.expectEqualStrings("ms_result", def.destinations[0].name);
+    try std.testing.expectEqualStrings("", def.destinations[0].text);
+
+    // ---- Definition: resolution ----
+    // Exactly one statement: a fill routing the composed key
+    // "$X$Y()" into the synthesized ms_result destination.
+    try std.testing.expectEqual(@as(usize, 1), def.resolution.len);
+    const res0 = def.resolution[0];
+    try std.testing.expectEqual(std.meta.Tag(network.Statement).fill, std.meta.activeTag(res0));
+    try std.testing.expectEqualStrings("ms_result", res0.fill.dest_name);
+    try std.testing.expectEqualStrings("$X$Y()", res0.fill.expr);
+
+    // ---- Definition: contained rows ----
+    try std.testing.expectEqual(@as(usize, 4), def.contained.len);
+
+    const RowExpect = struct { name: []const u8, value: []const u8 };
+    const expected_rows = [_]RowExpect{
+        .{ .name = "0,0", .value = "0" },
+        .{ .name = "0,1", .value = "0" },
+        .{ .name = "1,1", .value = "1" },
+        .{ .name = "1,0", .value = "0" },
+    };
+
+    for (def.contained, expected_rows) |row, exp| {
+        try std.testing.expectEqualStrings(exp.name, row.name);
+        try std.testing.expectEqual(@as(usize, 0), row.sources.len);
+        try std.testing.expectEqual(@as(usize, 0), row.destinations.len);
+        try std.testing.expectEqual(@as(usize, 1), row.resolution.len);
+
+        const stmt = row.resolution[0];
+        try std.testing.expectEqual(
+            std.meta.Tag(network.Statement).pure_value,
+            std.meta.activeTag(stmt),
+        );
+        try std.testing.expectEqualStrings(exp.value, stmt.pure_value);
+    }
+
+    // ---- Entry ----
+    // The entry invocation `AND143($A $B)` has no explicit destination
+    // in the source; the parser synthesizes one named "ms_result" so
+    // the network wrapper can bind it to the DUT's output port.
+    const entry = for (net.entries) |e| {
+        if (std.ascii.eqlIgnoreCase(e.name, "AND143")) break e;
+    } else return error.EntryNotFound;
+
+    try std.testing.expectEqual(@as(usize, 2), entry.sources.len);
+    try std.testing.expectEqualStrings("A", entry.sources[0].name);
+    try std.testing.expectEqualStrings("$A", entry.sources[0].text);
+    try std.testing.expectEqualStrings("B", entry.sources[1].name);
+    try std.testing.expectEqualStrings("$B", entry.sources[1].text);
+
+    try std.testing.expectEqual(@as(usize, 1), entry.destinations.len);
+    try std.testing.expectEqual(network.ArgKind.place, entry.destinations[0].kind);
+    try std.testing.expectEqualStrings("ms_result", entry.destinations[0].name);
+    try std.testing.expectEqualStrings("", entry.destinations[0].text);
+}
+
+test "TAG-144 variant: unnamed source-place destination parses to ms_result" {
+    const allocator = std.testing.allocator;
+    var arena_state = std.heap.ArenaAllocator.init(allocator);
+    defer arena_state.deinit();
+    const a = arena_state.allocator();
+
+    const src =
+        \\AND144($A $B)
+        \\AND144[(X<>Y<>)<>
+        \\<$X$Y()>
+        \\:
+        \\   0,0[0]
+        \\   0,1[0]
+        \\   1,1[1]
+        \\   1,0[0]
+        \\]
+    ;
+
+    const net = try parser.parse(a, src);
+
+    const def = for (net.definitions) |d| {
+        if (std.ascii.eqlIgnoreCase(d.name, "AND144")) break d;
+    } else return error.DefinitionNotFound;
+
+    // ---- Sources: unchanged ----
+    try std.testing.expectEqual(@as(usize, 2), def.sources.len);
+    try std.testing.expectEqualStrings("X", def.sources[0].name);
+    try std.testing.expectEqualStrings("X<>", def.sources[0].text);
+    try std.testing.expectEqualStrings("Y", def.sources[1].name);
+    try std.testing.expectEqualStrings("Y<>", def.sources[1].text);
+
+    // ---- Destinations: same synthesized ms_result ----
+    // The `<>` after the source list is an *unnamed destination*
+    // expressed in source-list position. The parser normalizes it to
+    // the same synthesized place as the bare `<$X$Y()>` form, so
+    // the emitted VHDL is identical between the two variants.
+    try std.testing.expectEqual(@as(usize, 1), def.destinations.len);
+    try std.testing.expectEqual(network.ArgKind.place, def.destinations[0].kind);
+    try std.testing.expectEqualStrings("ms_result", def.destinations[0].name);
+    try std.testing.expectEqualStrings("", def.destinations[0].text);
+
+    // ---- Resolution: same composed-key fill ----
+    try std.testing.expectEqual(@as(usize, 1), def.resolution.len);
+    const res0 = def.resolution[0];
+    try std.testing.expectEqual(
+        std.meta.Tag(network.Statement).fill,
+        std.meta.activeTag(res0),
+    );
+    try std.testing.expectEqualStrings("ms_result", res0.fill.dest_name);
+    try std.testing.expectEqualStrings("$X$Y()", res0.fill.expr);
+
+    // ---- Contained rows: identical to the non-variant test ----
+    try std.testing.expectEqual(@as(usize, 4), def.contained.len);
+    const RowExpect = struct { name: []const u8, value: []const u8 };
+    const expected_rows = [_]RowExpect{
+        .{ .name = "0,0", .value = "0" },
+        .{ .name = "0,1", .value = "0" },
+        .{ .name = "1,1", .value = "1" },
+        .{ .name = "1,0", .value = "0" },
+    };
+    for (def.contained, expected_rows) |row, exp| {
+        try std.testing.expectEqualStrings(exp.name, row.name);
+        try std.testing.expectEqual(@as(usize, 1), row.resolution.len);
+        const stmt = row.resolution[0];
+        try std.testing.expectEqual(
+            std.meta.Tag(network.Statement).pure_value,
+            std.meta.activeTag(stmt),
+        );
+        try std.testing.expectEqualStrings(exp.value, stmt.pure_value);
+    }
+
+    // ---- Entry: same as before ----
+    const entry = for (net.entries) |e| {
+        if (std.ascii.eqlIgnoreCase(e.name, "AND144")) break e;
+    } else return error.EntryNotFound;
+    try std.testing.expectEqual(@as(usize, 2), entry.sources.len);
+    try std.testing.expectEqual(@as(usize, 1), entry.destinations.len);
+    try std.testing.expectEqualStrings("ms_result", entry.destinations[0].name);
+    try std.testing.expectEqualStrings("", entry.destinations[0].text);
+}

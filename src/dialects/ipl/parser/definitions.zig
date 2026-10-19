@@ -303,7 +303,20 @@ pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
 
         // 1. Top-level Source Fill: "< $in >" (no destination variable prefix)
         if (c == '<') {
-            try stmts.append(p.allocator, try statements.parseSourceFill(p, ""));
+            const first = try statements.parseSourceFill(p, "");
+            if (first == .fill and first.fill.expr.len == 0) {
+                // Bare '<>': the content may follow in a second '<...>'
+                // (variant form). If so, merge into a single fill.
+                p.skipWhitespaceAndComments();
+                if (p.peek() == '<') {
+                    const second = try statements.parseSourceFill(p, "");
+                    try stmts.append(p.allocator, .{
+                        .fill = .{ .dest_name = "", .expr = second.fill.expr },
+                    });
+                    continue;
+                }
+            }
+            try stmts.append(p.allocator, first);
             continue;
         }
 
