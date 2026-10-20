@@ -1,0 +1,16 @@
+// TAG-149 example-12.9: mutex completeness on OR's group sources.
+//
+// The source `{A0<> A1<>}` is a mutex: at most one member is valid
+// at a time. Same for `{B0<> B1<>}`. Each row picks one member from
+// each group (the other is `null`) and checks the OR response: the
+// four valid combinations map to ms_0=0 or ms_1=1 per the row table.
+//
+// Each row runs in its own Environment (fresh Testbench per row in
+// runVectors), so no reset rows are needed between them.
+@dut(OR)
+@vectors(A0,A1,B0,B1 : 0,1)
+
+0,null,0,null    : 0,-
+0,null,null,1    : -,1
+null,1,0,null    : -,1
+null,1,null,1    : -,1

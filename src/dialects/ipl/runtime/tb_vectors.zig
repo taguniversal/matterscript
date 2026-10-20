@@ -13,6 +13,9 @@
 //   v,v,... : v,v,...                   one row = one wavefront
 //   v,v,... : !stall                    wavefront must NOT complete
 //   `-` in an output cell               don't care
+//   null in an input cell               drive null_value on that port this
+//                                       wavefront (mutex-group selection,
+//                                       missing-input testing)
 //
 // Cells are raw tokens: the token driven on an input place, or the token
 // expected on an output place. No value<->symbol mapping is provided or
@@ -64,6 +67,20 @@ pub const Vectors = struct {
 pub const Diag = struct {
     line: usize = 0, // 0 = not tied to a line
     msg: []const u8 = "",
+};
+
+const InCell = union(enum) {
+    literal: []const u8,
+    carry_from: []const u8, // name of the output column to pull from
+    null_value: void,
+};
+
+const Resolved = struct {
+    line: usize,
+    label: []const u8,
+    in_cells: []const InCell, // was in_syms: []const []const u8
+    out_syms: []const ?[]const u8,
+    stall: bool,
 };
 
 const ParseError = error{ MalformedTestbench, OutOfMemory };
@@ -206,19 +223,6 @@ pub fn parse(a: std.mem.Allocator, source: []const u8, diag: *Diag) ParseError!V
     return v;
 }
 
-const InCell = union(enum) {
-    literal: []const u8,
-    carry_from: []const u8, // name of the output column to pull from
-};
-
-const Resolved = struct {
-    line: usize,
-    label: []const u8,
-    in_cells: []const InCell, // was in_syms: []const []const u8
-    out_syms: []const ?[]const u8,
-    stall: bool,
-};
-
 // Group aware search
 fn portExists(args: []const network.Arg, name: []const u8) bool {
     for (args) |arg| {
@@ -264,6 +268,8 @@ fn resolve(a: std.mem.Allocator, v: Vectors, def: network.Definition, diag: *Dia
         for (row.inputs, 0..) |cell, j| {
             in_cells[j] = if (std.mem.eql(u8, cell, "_"))
                 .{ .carry_from = carryTarget(v, v.in_cols[j]) }
+            else if (std.mem.eql(u8, cell, "null"))
+                .{ .null_value = {} }
             else
                 .{ .literal = cell };
         }
@@ -338,7 +344,6 @@ pub fn runVectors(
         return badTb(a, label, diag);
     };
 
-
     std.debug.print("[runVectors] {s}: about to resolve, dests={d}\n", .{ label, raw_def.destinations.len });
     const rows = resolve(a, v, raw_def, &diag) catch |err| switch (err) {
         error.OutOfMemory => return error.OutOfMemory,
@@ -360,6 +365,7 @@ pub fn runVectors(
                     row_had_carry_error = true;
                     break;
                 },
+                .null_value => "",  // sentinel: Testbench will interpret this as "seed null"
             };
             const toks = try a.alloc([]const u8, 1);
             toks[0] = resolved;

@@ -30,6 +30,7 @@ pub const ExecutableRule = rules_mod.ExecutableRule;
 pub const PortStream = struct {
     port: []const u8,
     tokens: []const []const u8,
+    nulls: ?[]const bool = null,
     index: usize = 0,
 
     fn exhausted(self: *const PortStream) bool {
@@ -38,7 +39,7 @@ pub const PortStream = struct {
 
     fn current(self: *const PortStream) ?[]const u8 {
         if (self.exhausted()) return null;
-        return self.tokens[self.index];
+        return self.tokens[self.index]; // "" = null token (present no value this wavefront)
     }
 
     fn advance(self: *PortStream) void {
@@ -164,6 +165,15 @@ pub const Testbench = struct {
                     // port-name places are simply never read), necessary
                     // when a single definition genuinely needs both, as
                     // this one does.
+                    if (tok.len == 0) {
+                        // Null token: consume the stream position, mark fed, but
+                        // don't seed anything — this port is not presenting a token
+                        // this wavefront (mutex selection, missing-input testing).
+                        stream.advance();
+                        fed_this_wavefront[i] = true;
+                        fed_any = true;
+                        continue;
+                    }
                     try env.seed(stream.port, tok);
                     try env.seed(tok, tok);
                     stream.advance();
