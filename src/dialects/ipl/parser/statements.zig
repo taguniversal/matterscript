@@ -11,11 +11,33 @@ const expressions = @import("expressions.zig");
 pub fn parseSourceFill(p: *core.Parser, name: []const u8) !network.Statement {
     _ = p.advance(); // consume '<'
     p.skipWhitespaceAndComments();
+
+    // Invocation-fill form: `dest< InstName($arg1 $arg2 ...) >`. Peek
+    // for an identifier followed by `(`; if found, parse as an
+    // invocation with `name` as the destination. Otherwise fall
+    // through to the ordinary source-fill path (place reference,
+    // composed key, or simple expression).
+    if (looksLikeInvocationFill(p)) {
+        const save = p.pos;
+        const maybe_name = p.readName() catch {
+            p.pos = save;
+            return parseSourceFillExpr(p, name);
+        };
+        p.skipWhitespaceAndComments();
+        const inv = try parseInvocation(p, null, maybe_name, name);
+        p.skipWhitespaceAndComments();
+        try p.expect('>');
+        return inv;
+    }
+
+    return parseSourceFillExpr(p, name);
+}
+
+/// The original body, factored out so both paths can fall back to it.
+fn parseSourceFillExpr(p: *core.Parser, name: []const u8) !network.Statement {
     const expr = try expressions.parseILExpr(p);
-
     p.skipWhitespaceAndComments();
-    try p.expect('>'); // expect() validates p.peek() == '>' AND advances p.pos
-
+    try p.expect('>');
     return network.Statement{ .fill = .{
         .dest_name = name,
         .expr = expr,
@@ -23,7 +45,42 @@ pub fn parseSourceFill(p: *core.Parser, name: []const u8) !network.Statement {
     } };
 }
 
-pub fn parseInvocation(p: *core.Parser, label: ?[]const u8, name: []const u8) !network.Statement {
+fn looksLikeInvocationFill(p: *core.Parser) bool {
+    const save = p.pos;
+    defer p.pos = save;
+
+    const c = p.peek() orelse return false;
+    if (!(std.ascii.isAlphanumeric(c) or c == '_')) return false;
+
+    const name_start = p.pos;
+    _ = p.readName() catch return false;
+    const name_end = p.pos;
+    p.skipWhitespaceAndComments();
+    if (p.peek() != '(') return false;
+
+    const name = p.src[name_start..name_end];
+    // Geometry primitives (point/edge/loop/face) are supplied by the
+    // @domain directive, not by user definitions. They must remain
+    // .fill statements so the mesh exporter (which reads fill.expr
+    // for coordinates) and validate.zig's geometry-aware handling
+    // continue to see them unchanged. Only user-defined callees
+    // trigger the invocation-fill classification.
+    return !isGeometryPrimitive(name);
+}
+
+fn isGeometryPrimitive(name: []const u8) bool {
+    return std.mem.eql(u8, name, "point")
+        or std.mem.eql(u8, name, "edge")
+        or std.mem.eql(u8, name, "loop")
+        or std.mem.eql(u8, name, "face");
+}
+
+pub fn parseInvocation(
+    p: *core.Parser,
+    label: ?[]const u8,
+    name: []const u8,
+    dest_override: ?[]const u8,
+) !network.Statement {
     const name_start = @intFromPtr(name.ptr) - @intFromPtr(p.src.ptr);
 
     var sources: []const network.Arg = &.{};
@@ -37,24 +94,42 @@ pub fn parseInvocation(p: *core.Parser, label: ?[]const u8, name: []const u8) !n
 
         p.skipWhitespaceAndComments();
 
-        if (p.peek() == '(') {
-            // Two lists present: first is sources, second is destinations
+        if (dest_override) |dest_name| {
+            // Invocation-fill form: `dest< InstName(args) >`. The
+            // args in the paren list are the sources; the destination
+            // is named externally by the enclosing fill. Any second
+            // paren group here would be a syntax the fill form
+            // doesn't support — reject it so we don't silently
+            // ignore a destination list.
+            if (p.peek() == '(') {
+                return error.UnexpectedDestinationListInFillInvocation;
+            }
+            sources = first_list;
+            const dest_list = try p.allocator.alloc(network.Arg, 1);
+            dest_list[0] = .{ .kind = .place, .name = dest_name };
+            destinations = dest_list;
+        } else if (p.peek() == '(') {
+            // Two lists present: first is sources, second is destinations.
             sources = first_list;
             destinations = try arguments.parseArgList(p, ')');
             p.skipWhitespaceAndComments();
         } else {
-            // One list present
+            // One list present.
             if (label == null) {
-                // Unlabeled with one list decays to pure_value
+                // Unlabeled with one list decays to pure_value.
                 if (first_list.len > 0) {
                     p.allocator.free(first_list);
                 }
                 return network.Statement{ .pure_value = p.src[name_start..end_pos_args] };
             } else {
-                // Labeled with one list: single list is sources
+                // Labeled with one list: single list is sources.
                 sources = first_list;
             }
         }
+    } else if (dest_override != null) {
+        // `dest< InstName >` with no arg list. Allowed by the grammar
+        // (the callee might have zero sources), but only if the
+        // callee exists.
     }
 
     return network.Statement{ .invoke = .{
@@ -82,7 +157,7 @@ pub fn parseEntryInvocation(p: *core.Parser, label: ?[]const u8, name: []const u
     // form. This is the single producer for the entry-invocation side
     // of the anonymous-destination refactor; the emitter-side fallback
     // in network_entity.zig is now unreachable for this path.
-    
+
     //  Why ms_result is the right name
     // It matches the prefix sanitizer.zig already uses for synthesized VHDL identifiers (ms_0s0, ms_process, etc. — visible in the sanitizer tests). That means:
     //

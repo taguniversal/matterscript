@@ -394,7 +394,7 @@ pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
             try stmts.append(p.allocator, try statements.parseSourceFill(p, name));
         } else if (next == '(') {
             // Component Invocation: "[label:] InstName(...)"
-            try stmts.append(p.allocator, try statements.parseInvocation(p, label, name));
+            try stmts.append(p.allocator, try statements.parseInvocation(p, label, name, null));
         } else if (next == ',') {
             // Multi-segment/Comma-separated keys
             p.pos = tok_start;

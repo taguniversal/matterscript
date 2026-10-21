@@ -44,7 +44,7 @@ test "parseInvocation - unlabeled without destinations produces pure_value" {
     var p = initParser(allocator, src);
 
     const name = try p.readName(); // consumes "LT"
-    const stmt = try statements.parseInvocation(&p, null, name);
+    const stmt = try statements.parseInvocation(&p, null, name, null);
 
     try testing.expectEqual(std.meta.Tag(network.Statement).pure_value, std.meta.activeTag(stmt));
     try testing.expectEqualStrings("LT($a, $b)", stmt.pure_value);
@@ -56,7 +56,7 @@ test "parseInvocation - labeled without destinations stays invoke" {
     var p = initParser(allocator, src);
 
     const name = try p.readName();
-    const stmt = try statements.parseInvocation(&p, "U1", name);
+    const stmt = try statements.parseInvocation(&p, "U1", name, null);
     defer allocator.free(stmt.invoke.sources);
     defer allocator.free(stmt.invoke.destinations);
 
@@ -73,7 +73,7 @@ test "parseInvocation - full invocation with sources and destinations" {
     var p = initParser(allocator, src);
 
     const name = try p.readName();
-    const stmt = try statements.parseInvocation(&p, "U2", name);
+    const stmt = try statements.parseInvocation(&p, "U2", name, null);
     defer allocator.free(stmt.invoke.sources);
     defer allocator.free(stmt.invoke.destinations);
 
@@ -89,7 +89,7 @@ test "parseInvocation - invocation with no source list" {
     const src = "()($out)"; // Explicit empty source list, followed by destination list
     var p = initParser(allocator, src);
 
-    const stmt = try statements.parseInvocation(&p, "U3", "GEN");
+    const stmt = try statements.parseInvocation(&p, "U3", "GEN", null);
     defer allocator.free(stmt.invoke.sources);
     defer allocator.free(stmt.invoke.destinations);
 

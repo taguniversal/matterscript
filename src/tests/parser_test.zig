@@ -10,6 +10,33 @@ const export_value_transform = matterscript.vhdl.value_transform_export;
 const parser = matterscript.ipl_parser;
 pub const network = matterscript.network;
 
+fn dumpAst(def: network.Definition) void {
+    std.debug.print("\n=== AST DUMP FOR: {s} ===\n", .{def.name});
+    std.debug.print("Sources ({d}):\n", .{def.sources.len});
+    for (def.sources, 0..) |s, i| {
+        std.debug.print("  [{d}] kind={s}, name='{s}', text='{s}'\n", .{ i, @tagName(s.kind), s.name, s.text });
+    }
+    std.debug.print("Destinations ({d}):\n", .{def.destinations.len});
+    for (def.destinations, 0..) |d, i| {
+        std.debug.print("  [{d}] kind={s}, name='{s}', text='{s}'\n", .{ i, @tagName(d.kind), d.name, d.text });
+    }
+    std.debug.print("Resolution ({d}):\n", .{def.resolution.len});
+    for (def.resolution, 0..) |stmt, i| {
+        std.debug.print("  [{d}] tag={s}\n", .{ i, @tagName(stmt) });
+        switch (stmt) {
+            .fill => |f| std.debug.print("      fill: dest='{s}', expr='{s}'\n", .{ f.dest_name, f.expr }),
+            .pure_value => |v| std.debug.print("      pure_value: '{s}'\n", .{v}),
+            .invoke => |inv| std.debug.print("      invoke: name='{s}', label='{s}'\n", .{ inv.name, inv.label orelse "none" }),
+            else => {},
+        }
+    }
+    std.debug.print("Contained ({d}):\n", .{def.contained.len});
+    for (def.contained, 0..) |c, i| {
+        std.debug.print("  [{d}] name='{s}', resolution.len={d}\n", .{ i, c.name, c.resolution.len });
+    }
+    std.debug.print("===============================\n", .{});
+}
+
 // Force-reference your submodules so Zig's test runner discovers them
 test "reference submodules for testing" {
     _ = parser.core;
@@ -1302,14 +1329,10 @@ test "lowerRules: AND8 emits a case statement with four branches" {
     // Four branches with the expected case labels.
     // The DATA_WIDTH in the library is 7, so each token occupies
     // 7 bits. "0" interns to id 0 -> "0000000"; "1" to id 1 -> "0000001".
-    try testing.expect(std.mem.indexOf(u8, vhdl,
-        "when \"0000000\" & \"0000000\" => result <= data_value(0);") != null);
-    try testing.expect(std.mem.indexOf(u8, vhdl,
-        "when \"0000000\" & \"0000001\" => result <= data_value(0);") != null);
-    try testing.expect(std.mem.indexOf(u8, vhdl,
-        "when \"0000001\" & \"0000000\" => result <= data_value(0);") != null);
-    try testing.expect(std.mem.indexOf(u8, vhdl,
-        "when \"0000001\" & \"0000001\" => result <= data_value(1);") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "when \"0000000\" & \"0000000\" => result <= data_value(0);") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "when \"0000000\" & \"0000001\" => result <= data_value(0);") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "when \"0000001\" & \"0000000\" => result <= data_value(0);") != null);
+    try testing.expect(std.mem.indexOf(u8, vhdl, "when \"0000001\" & \"0000001\" => result <= data_value(1);") != null);
 
     // Default fallback.
     try testing.expect(std.mem.indexOf(u8, vhdl, "when others => null;") != null);
@@ -1586,4 +1609,95 @@ test "TAG-142 variant: unbracketed composed key after bare '<>' parses to ms_res
     try std.testing.expectEqual(network.ArgKind.place, entry.destinations[0].kind);
     try std.testing.expectEqualStrings("ms_result", entry.destinations[0].name);
     try std.testing.expectEqualStrings("", entry.destinations[0].text);
+}
+
+test "TAG-151: bundling mutually exclusive paths into a single path" {
+    const allocator = std.testing.allocator;
+    var arena_state = std.heap.ArenaAllocator.init(allocator);
+    defer arena_state.deinit();
+    const a = arena_state.allocator();
+
+    const src =
+        \\OR151($A $B)(Y< >)
+        \\OR151[( [{A0< > A1< >}] [{B0< > B1< >}] ) ( [{$0 $1}] )
+        \\     1< 3of6($A1 $A1 $A0 $B0 $B1 $B1) >  // output = 1
+        \\     0< 2of2($A0 $B0) >                  // output = 0
+        \\     : 
+        \\]
+        \\
+        \\2of2[(A<> B<>)(Y<>)
+        \\  $A$B : K[Y<0>]
+        \\]
+        \\
+        \\3of6[(I0<> I1<> I2<> I3<> I4<> I5<>)(Y<>)
+        \\  $I0$I1$I2$I3$I4$I5() : K[Y<0>]
+        \\]
+    ;
+
+    const net = try parser.parse(a, src);
+
+    // ---- Verify top-level definitions ----
+    try std.testing.expectEqual(@as(usize, 3), net.definitions.len);
+
+    const def = for (net.definitions) |d| {
+        dumpAst(d);
+        if (std.ascii.eqlIgnoreCase(d.name, "OR151")) break d;
+    } else return error.DefinitionNotFound;
+
+    // Because 2of2 and 3of6 are top-level definitions, OR151 has no contained definitions
+    try std.testing.expectEqual(@as(usize, 0), def.contained.len);
+
+    // ---- Sources: bundled mutex groups ----
+    try std.testing.expectEqual(@as(usize, 2), def.sources.len);
+    try std.testing.expectEqual(network.ArgKind.group, def.sources[0].kind);
+    try std.testing.expectEqual(network.ArgKind.group, def.sources[1].kind);
+
+    // ---- Destinations: bundled mutex group output ----
+    try std.testing.expectEqual(@as(usize, 1), def.destinations.len);
+    try std.testing.expectEqual(network.ArgKind.group, def.destinations[0].kind);
+
+    // ---- Resolution: two invocations, one per destination member ----
+    try std.testing.expectEqual(@as(usize, 2), def.resolution.len);
+
+    // res[0]: `1< 3of6($A1 $A1 $A0 $B0 $B1 $B1) >`
+    const res0 = def.resolution[0];
+    try std.testing.expectEqual(
+        std.meta.Tag(network.Statement).invoke,
+        std.meta.activeTag(res0),
+    );
+    try std.testing.expectEqualStrings("3of6", res0.invoke.name);
+    try std.testing.expectEqual(@as(usize, 6), res0.invoke.sources.len);
+    try std.testing.expectEqualStrings("A1", res0.invoke.sources[0].name);
+    try std.testing.expectEqualStrings("A1", res0.invoke.sources[1].name);
+    try std.testing.expectEqualStrings("A0", res0.invoke.sources[2].name);
+    try std.testing.expectEqualStrings("B0", res0.invoke.sources[3].name);
+    try std.testing.expectEqualStrings("B1", res0.invoke.sources[4].name);
+    try std.testing.expectEqualStrings("B1", res0.invoke.sources[5].name);
+    try std.testing.expectEqual(@as(usize, 1), res0.invoke.destinations.len);
+    try std.testing.expectEqualStrings("1", res0.invoke.destinations[0].name);
+
+    // res[1]: `0< 2of2($A0 $B0) >`
+    const res1 = def.resolution[1];
+    try std.testing.expectEqual(
+        std.meta.Tag(network.Statement).invoke,
+        std.meta.activeTag(res1),
+    );
+    try std.testing.expectEqualStrings("2of2", res1.invoke.name);
+    try std.testing.expectEqual(@as(usize, 2), res1.invoke.sources.len);
+    try std.testing.expectEqualStrings("A0", res1.invoke.sources[0].name);
+    try std.testing.expectEqualStrings("B0", res1.invoke.sources[1].name);
+    try std.testing.expectEqual(@as(usize, 1), res1.invoke.destinations.len);
+    try std.testing.expectEqualStrings("0", res1.invoke.destinations[0].name);
+    
+    // ---- Entry: flattened interface mapping ----
+    const entry = for (net.entries) |e| {
+        if (std.ascii.eqlIgnoreCase(e.name, "OR151")) break e;
+    } else return error.EntryNotFound;
+
+    try std.testing.expectEqual(@as(usize, 2), entry.sources.len);
+    try std.testing.expectEqualStrings("A", entry.sources[0].name);
+    try std.testing.expectEqualStrings("B", entry.sources[1].name);
+
+    try std.testing.expectEqual(@as(usize, 1), entry.destinations.len);
+    try std.testing.expectEqualStrings("Y", entry.destinations[0].name);
 }

@@ -24,6 +24,7 @@ pub const ParseError = error{
     /// rejected rather than silently misparsed. Separate each value
     /// with a comma (e.g. "0,0[0]").
     AmbiguousComposedKey,
+    UnexpectedDestinationListInFillInvocation,
 };
 
 pub const Parser = struct {
