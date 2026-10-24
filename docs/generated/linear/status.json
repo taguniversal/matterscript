@@ -336,7 +336,7 @@
   },
   "TAG-160": {
     "implementation_status": "Implemented",
-    "simulation_requested": false,
+    "simulation_requested": true,
     "workflow_state": "In Progress"
   },
   "TAG-158": {
@@ -372,7 +372,7 @@
   "TAG-151": {
     "implementation_status": "Implemented",
     "simulation_requested": true,
-    "workflow_state": "In Progress"
+    "workflow_state": "Done"
   },
   "TAG-150": {
     "implementation_status": null,

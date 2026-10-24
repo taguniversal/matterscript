@@ -1,0 +1,11 @@
+// TAG-160 example-12.33: conditional invocation-name with anonymous
+// contained rows. The definition returns to the place of invocation
+// via the synthesized `ms_result` (from `<$A$B()>`), and each contained
+// row's bare value is what gets asserted when its pattern matches.
+@dut(OR180)
+@vectors(A,B : ms_result)
+
+0,0 : 0
+0,1 : 1
+1,0 : 1
+1,1 : 1

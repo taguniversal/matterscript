@@ -1,9 +1,10 @@
 // Linear: TAG-160 Example 12.33 Conditional invocationname
 // Invocation without destination list
-OR[(A<>B<>)
+OR180[(A<>B<>)
   <$A$B()>
 : 
    0,0[0] 
    0,1[1] 
    1,0[1] 
-   1,1[1] ]
+   1,1[1] 
+]

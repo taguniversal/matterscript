@@ -378,14 +378,76 @@ test "TAG-160 comma-separated multi-source keys parse as rules" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    const src = "OR[(A<>B<>)<$A$B()>: 0,0[0] 0,1[1] 1,0[1] 1,1[1]]";
+    const src = "OR160[(A<>B<>)<$A$B()>: 0,0[0] 0,1[1] 1,0[1] 1,1[1]]";
 
     const net = try parser.parse(allocator, src);
-    const def = net.definitions[0];
 
+    // Exactly one definition in this source.
+    try testing.expectEqual(@as(usize, 1), net.definitions.len);
+    const def = net.definitions[0];
+    try testing.expectEqualStrings("OR160", def.name);
+
+    // ---- Sources: two flat places ----
+    try testing.expectEqual(@as(usize, 2), def.sources.len);
+    try testing.expectEqualStrings("A", def.sources[0].name);
+    try testing.expectEqualStrings("B", def.sources[1].name);
+
+    // ---- Destination: synthesized from the anonymous < $A$B() > ----
+    // The `<...>` form with no `($name)` header means the definition
+    // returns to the place of invocation; the parser synthesizes a
+    // single place named "ms_result".
+    try testing.expectEqual(@as(usize, 1), def.destinations.len);
+    try testing.expectEqual(network.ArgKind.place, def.destinations[0].kind);
+    try testing.expectEqualStrings("ms_result", def.destinations[0].name);
+    try testing.expectEqualStrings("", def.destinations[0].text);
+
+    // ---- Resolution: one fill with the composed key ----
+    // `<$A$B()>` becomes fill { dest='ms_result', expr='$A$B()' }.
+    try testing.expectEqual(@as(usize, 1), def.resolution.len);
+    const res0 = def.resolution[0];
+    try testing.expectEqual(
+        std.meta.Tag(network.Statement).fill,
+        std.meta.activeTag(res0),
+    );
+    try testing.expectEqualStrings("ms_result", res0.fill.dest_name);
+    try testing.expectEqualStrings("$A$B()", res0.fill.expr);
+
+    // ---- Contained rows: anonymous key→value, NOT fills ----
+    // This is the crux: `0,0[0]` parses as name="0,0" with a single
+    // `.pure_value` statement, NOT as a fill. The value `0` is what
+    // gets asserted on the synthesized destination once the pattern
+    // matches. If this ever becomes a `.fill` or `.invoke`, the
+    // contained-lookup emitter (writeContainedLookupTable's
+    // all_anonymous branch) will stop recognizing the shape.
     try testing.expectEqual(@as(usize, 4), def.contained.len);
-    try testing.expectEqualStrings("0,0", def.contained[0].name);
-    // ...assert .fill shape as in the tests above...
+
+    const RowExpect = struct { name: []const u8, value: []const u8 };
+    const expected_rows = [_]RowExpect{
+        .{ .name = "0,0", .value = "0" },
+        .{ .name = "0,1", .value = "1" },
+        .{ .name = "1,0", .value = "1" },
+        .{ .name = "1,1", .value = "1" },
+    };
+
+    for (def.contained, expected_rows) |row, exp| {
+        try testing.expectEqualStrings(exp.name, row.name);
+        try testing.expectEqual(@as(usize, 0), row.sources.len);
+        try testing.expectEqual(@as(usize, 0), row.destinations.len);
+        try testing.expectEqual(@as(usize, 1), row.resolution.len);
+
+        const stmt = row.resolution[0];
+        try testing.expectEqual(
+            std.meta.Tag(network.Statement).pure_value,
+            std.meta.activeTag(stmt),
+        );
+        try testing.expectEqualStrings(exp.value, stmt.pure_value);
+    }
+
+    // ---- No entry invocation in this source ----
+    // The source has no top-level `OR(...)` line, so `net.entries`
+    // should be empty. (If you later add one to the source, this
+    // assertion changes to check the entry's synthesized ms_result.)
+    try testing.expectEqual(@as(usize, 0), net.entries.len);
 }
 
 test "a single-source definition's multi-character row names are not flagged as ambiguous" {
