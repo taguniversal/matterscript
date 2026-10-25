@@ -126,6 +126,7 @@ pub fn writeDestinationFills(
     allocator: std.mem.Allocator,
     writer: anytype,
     def: network.Definition,
+    skip_lookup: bool,
 ) !void {
     try writer.print("\n  -- destination fills (outputs)\n", .{});
 
@@ -133,7 +134,7 @@ pub fn writeDestinationFills(
     // (anonymous pure_value rows, structured fill rows, and the
     // multi-destination FULLADD shape) that lowerRules does not yet
     // cover. Remove only once lowerRules handles all three.
-    if (try lookup.writeContainedLookupTable(allocator, writer, def)) {
+    if (!skip_lookup and try lookup.writeContainedLookupTable(allocator, writer, def)) {
         return;
     }
     for (def.resolution) |stmt| {

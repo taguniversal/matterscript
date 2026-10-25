@@ -1763,3 +1763,118 @@ test "TAG-151: bundling mutually exclusive paths into a single path" {
     try std.testing.expectEqual(@as(usize, 1), entry.destinations.len);
     try std.testing.expectEqualStrings("Y", entry.destinations[0].name);
 }
+
+test "TAG-163: set of definitions establishing correspondence name convention" {
+    const allocator = std.testing.allocator;
+    var arena_state = std.heap.ArenaAllocator.init(allocator);
+    defer arena_state.deinit();
+    const a = arena_state.allocator();
+
+    const src =
+        \\// Linear - TAG-163 Set of definitions establishing correspondence name convention
+        \\
+        \\TAG163_TOP[(a<> b<>)($result)
+        \\  BINEQ($a $b)(eq<>)
+        \\  BIGT($a $b)(gt<>)
+        \\  LAND($a $b)(andout<>)
+        \\  LNOT($a)(notout<>)
+        \\
+        \\  $eq$gt$andout$notout() :
+        \\    TRUE,FALSE,TRUE,FALSE[result<TRUE>]      // (TRUE,TRUE)
+        \\    FALSE,TRUE,FALSE,FALSE[result<FALSE>]    // (TRUE,FALSE)
+        \\    FALSE,FALSE,FALSE,TRUE[result<FALSE>]    // (FALSE,TRUE)
+        \\    TRUE,FALSE,FALSE,TRUE[result<TRUE>]      // (FALSE,FALSE)
+        \\]
+        \\
+        \\BINEQ[(a<> b<>)($eq)
+        \\  $a$b() :
+        \\    FALSE,FALSE[eq<TRUE>]
+        \\    FALSE,TRUE[eq<FALSE>]
+        \\    TRUE,FALSE[eq<FALSE>]
+        \\    TRUE,TRUE[eq<TRUE>]
+        \\]
+        \\
+        \\BIGT[(a<> b<>)($gt)
+        \\  $a$b() :
+        \\    FALSE,FALSE[gt<FALSE>]
+        \\    FALSE,TRUE[gt<FALSE>]
+        \\    TRUE,FALSE[gt<TRUE>]
+        \\    TRUE,TRUE[gt<FALSE>]
+        \\]
+        \\
+        \\LAND[(a<> b<>)($andout)
+        \\  $a$b() :
+        \\    FALSE,FALSE[andout<FALSE>]
+        \\    FALSE,TRUE[andout<FALSE>]
+        \\    TRUE,FALSE[andout<FALSE>]
+        \\    TRUE,TRUE[andout<TRUE>]
+        \\]
+        \\
+        \\LNOT[(a<>)($notout)
+        \\  $a() :
+        \\    TRUE[notout<FALSE>]
+        \\    FALSE[notout<TRUE>]
+        \\]
+    ;
+
+    const net = try parser.parse(a, src);
+
+    // ---- Verify top-level definitions (TAG163_TOP, BINEQ, BIGT, LAND, LNOT) ----
+    try std.testing.expectEqual(@as(usize, 5), net.definitions.len);
+
+    for (net.definitions) |d| {
+        dumpAst(d);
+    }
+
+    // ---- Verify TAG163_TOP definition shape ----
+    const top_def = for (net.definitions) |d| {
+        if (std.ascii.eqlIgnoreCase(d.name, "TAG163_TOP")) break d;
+    } else return error.DefinitionNotFound;
+
+    // Sources: (a<> b<>)
+    try std.testing.expectEqual(@as(usize, 2), top_def.sources.len);
+    try std.testing.expectEqualStrings("a", top_def.sources[0].name);
+    try std.testing.expectEqualStrings("b", top_def.sources[1].name);
+
+    // Destinations: ($result) synthesized or explicit
+    try std.testing.expectEqual(@as(usize, 1), top_def.destinations.len);
+    try std.testing.expectEqualStrings("result", top_def.destinations[0].name);
+
+    // Resolution: 4 invocations + 1 composed-key pure_value header = 5 statements
+    try std.testing.expectEqual(@as(usize, 5), top_def.resolution.len);
+
+    // Check invocations
+    try std.testing.expectEqual(network.Statement.invoke, std.meta.activeTag(top_def.resolution[0]));
+    try std.testing.expectEqualStrings("BINEQ", top_def.resolution[0].invoke.name);
+
+    try std.testing.expectEqual(network.Statement.invoke, std.meta.activeTag(top_def.resolution[1]));
+    try std.testing.expectEqualStrings("BIGT", top_def.resolution[1].invoke.name);
+
+    try std.testing.expectEqual(network.Statement.invoke, std.meta.activeTag(top_def.resolution[2]));
+    try std.testing.expectEqualStrings("LAND", top_def.resolution[2].invoke.name);
+
+    try std.testing.expectEqual(network.Statement.invoke, std.meta.activeTag(top_def.resolution[3]));
+    try std.testing.expectEqualStrings("LNOT", top_def.resolution[3].invoke.name);
+
+    // Check composed-key pure_value statement
+    try std.testing.expectEqual(network.Statement.pure_value, std.meta.activeTag(top_def.resolution[4]));
+    try std.testing.expectEqualStrings("$eq$gt$andout$notout()", top_def.resolution[4].pure_value);
+
+    // Contained rows for TAG163_TOP truth-table
+    try std.testing.expectEqual(@as(usize, 4), top_def.contained.len);
+    try std.testing.expectEqualStrings("TRUE,FALSE,TRUE,FALSE", top_def.contained[0].name);
+    try std.testing.expectEqualStrings("FALSE,TRUE,FALSE,FALSE", top_def.contained[1].name);
+    try std.testing.expectEqualStrings("FALSE,FALSE,FALSE,TRUE", top_def.contained[2].name);
+    try std.testing.expectEqualStrings("TRUE,FALSE,FALSE,TRUE", top_def.contained[3].name);
+
+    // ---- Verify Leaf Definition: BINEQ ----
+    const bineq_def = for (net.definitions) |d| {
+        if (std.ascii.eqlIgnoreCase(d.name, "BINEQ")) break d;
+    } else return error.DefinitionNotFound;
+
+    try std.testing.expectEqual(@as(usize, 2), bineq_def.sources.len);
+    try std.testing.expectEqual(@as(usize, 1), bineq_def.destinations.len);
+    try std.testing.expectEqualStrings("eq", bineq_def.destinations[0].name);
+    try std.testing.expectEqual(@as(usize, 4), bineq_def.contained.len);
+    try std.testing.expectEqualStrings("FALSE,FALSE", bineq_def.contained[0].name);
+}

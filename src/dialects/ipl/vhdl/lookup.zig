@@ -217,6 +217,21 @@ fn writeSymbolEncodingComment(
     try writer.print("\n", .{});
 }
 
+fn composedKeySegmentCountFromPureValue(resolution: []const network.Statement) usize {
+    for (resolution) |stmt| {
+        if (stmt != .pure_value) continue;
+        const expr = std.mem.trim(u8, stmt.pure_value, " \t\r\n");
+        if (expr.len < 3 or expr[0] != '$' or !std.mem.endsWith(u8, expr, "()")) continue;
+        const body = expr[0 .. expr.len - 2];
+        var count: usize = 0;
+        for (body) |ch| {
+            if (ch == '$') count += 1;
+        }
+        return count;
+    }
+    return 0;
+}
+
 /// Detects which of the two contained-lookup shapes (if either)
 /// applies to `def`, and dispatches to writeLookupCaseBlock
 /// accordingly. See writeLookupCaseBlock's doc comment for the shapes.
@@ -227,15 +242,62 @@ pub fn writeContainedLookupTable(
 ) !bool {
     if (def.sources.len == 0 or def.contained.len == 0) return false;
 
+    // Determine expected segment count BEFORE the per-row check.
+    // Default is def.sources.len; if resolution has a composed-key
+    // .pure_value (`$X$Y()...`), row keys correspond to that
+    // composition's places, not def.sources.
+    var expected_segments: usize = def.sources.len;
+    var has_invoke = false;
+    for (def.resolution) |stmt| {
+        if (stmt == .invoke) {
+            has_invoke = true;
+            break;
+        }
+    }
+    if (has_invoke) {
+        const pv_segments = composedKeySegmentCountFromPureValue(def.resolution);
+        if (pv_segments > 0) expected_segments = pv_segments;
+    }
+
     for (def.contained) |row| {
         if (row.sources.len != 0 or row.destinations.len != 0) return false;
         var seg_count: usize = 1;
         for (row.name) |ch| {
             if (ch == ',') seg_count += 1;
         }
-        if (seg_count != def.sources.len) return false;
+        if (seg_count != expected_segments) return false;
         if (row.resolution.len == 0) return false;
     }
+
+    // DEBUG PRINT
+    std.debug.print("\n[wclt] === {s} ===\n", .{def.name});
+    std.debug.print("[wclt] sources.len={d} contained.len={d}\n", .{ def.sources.len, def.contained.len });
+    if (def.sources.len == 0 or def.contained.len == 0) {
+        std.debug.print("[wclt] → false (no sources/contained)\n", .{});
+        return false;
+    }
+
+    for (def.contained, 0..) |row, i| {
+        std.debug.print("[wclt] row[{d}] name='{s}' sources={d} dests={d} res.len={d}\n", .{ i, row.name, row.sources.len, row.destinations.len, row.resolution.len });
+        if (row.sources.len != 0 or row.destinations.len != 0) {
+            std.debug.print("[wclt] → false (row {d} has sources/dests)\n", .{i});
+            return false;
+        }
+        var seg_count: usize = 1;
+        for (row.name) |ch| if (ch == ',') {
+            seg_count += 1;
+        };
+        std.debug.print("[wclt] seg_count={d} expected={d}\n", .{ seg_count, expected_segments });
+        if (seg_count != expected_segments) {
+            std.debug.print("[wclt] → false (segment mismatch)\n", .{});
+            return false;
+        }
+        if (row.resolution.len == 0) {
+            std.debug.print("[wclt] → false (row {d} empty resolution)\n", .{i});
+            return false;
+        }
+    }
+    // END DEUG PRINT
 
     var all_anonymous = true;
     var all_structured = true;
@@ -253,7 +315,24 @@ pub fn writeContainedLookupTable(
         symbols.deinit(allocator);
     }
 
+    // Variant 2 (composed-key .pure_value): rows may be .fill or .pure_value
+    for (def.resolution) |stmt| {
+        if (stmt != .pure_value) continue;
+        const key_expr = std.mem.trim(u8, stmt.pure_value, " \t\r\n");
+        const places = try extractComposedKeyPlaces(allocator, key_expr) orelse continue;
+        defer {
+            for (places) |p| allocator.free(p);
+            allocator.free(places);
+        }
+        if (def.destinations.len != 1) continue;
+        const dest_name = def.destinations[0].name;
+        try writeSymbolEncodingComment(writer, symbols.items);
+        try writeComposedKeyLookupBlock(allocator, writer, def, dest_name, places, &symbols);
+        return true;
+    }
+
     if (all_anonymous) {
+        // Variant 1: composed key in a .fill (existing).
         for (def.resolution) |stmt| {
             if (stmt != .fill) continue;
             const f = stmt.fill;
@@ -266,6 +345,7 @@ pub fn writeContainedLookupTable(
             try writeLookupCaseBlock(allocator, writer, def, f.dest_name, &symbols, true);
             return true;
         }
+
         return false;
     }
 
@@ -291,6 +371,91 @@ pub fn writeContainedLookupTable(
         try writeLookupCaseBlock(allocator, writer, def, dest_name, &symbols, false);
     }
     return true;
+}
+
+fn extractComposedKeyPlaces(
+    allocator: std.mem.Allocator,
+    expr: []const u8,
+) !?[]const []const u8 {
+    const trimmed = std.mem.trim(u8, expr, " \t\r\n");
+    if (trimmed.len < 3) return null;
+    if (trimmed[0] != '$') return null;
+    if (!std.mem.endsWith(u8, trimmed, "()")) return null;
+
+    const body = trimmed[0 .. trimmed.len - 2];
+
+    var places: std.ArrayListUnmanaged([]const u8) = .empty;
+    var it = std.mem.splitScalar(u8, body, '$');
+    _ = it.next(); // skip empty prefix
+    while (it.next()) |name| {
+        const n = std.mem.trim(u8, name, " \t");
+        if (n.len == 0) return null;
+        try places.append(allocator, try allocator.dupe(u8, n));
+    }
+    if (places.items.len == 0) return null;
+    return try places.toOwnedSlice(allocator);
+}
+
+fn writeComposedKeyLookupBlock(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    def: network.Definition,
+    dest_name: []const u8,
+    places: []const []const u8,
+    symbols: *std.ArrayListUnmanaged([]const u8),
+) !void {
+    const dest_id = try sanitizeName(allocator, dest_name);
+    defer allocator.free(dest_id);
+
+    const width = constants.DATA_WIDTH;
+
+    try writer.print("\n  -- lookup for {s}\n", .{dest_name});
+    try writer.print("  process(", .{});
+    for (places, 0..) |place, i| {
+        if (i > 0) try writer.print(", ", .{});
+        const id = try sanitizeName(allocator, place);
+        defer allocator.free(id);
+        try writer.print("{s}", .{id});
+    }
+    try writer.print(", complete) begin\n", .{});
+    try writer.print("    {s} <= null_value;\n", .{dest_id});
+    try writer.print("    if complete = '1' then\n", .{});
+    try writer.print("      case ", .{});
+    for (places, 0..) |place, i| {
+        if (i > 0) try writer.print(" & ", .{});
+        const id = try sanitizeName(allocator, place);
+        defer allocator.free(id);
+        try writer.print("{s}({d} downto 1)", .{ id, width });
+    }
+    try writer.print(" is\n", .{});
+
+    for (def.contained) |row| {
+        var key_buf: [256]u8 = undefined;
+        var key_pos: usize = 0;
+        var it = std.mem.splitScalar(u8, row.name, ',');
+        while (it.next()) |seg| {
+            const seg_value = try internSymbol(symbols, allocator, std.mem.trim(u8, seg, " \t\r\n"));
+            const piece = binStr(key_buf[key_pos..], seg_value, width);
+            key_pos += piece.len;
+        }
+        const key_str = key_buf[0..key_pos];
+
+        var value_text: ?[]const u8 = null;
+        for (row.resolution) |stmt| {
+            if (stmt == .fill and std.mem.eql(u8, stmt.fill.dest_name, dest_name)) {
+                value_text = stmt.fill.expr;
+                break;
+            }
+        }
+        const vt = value_text orelse continue;
+        const out_value = try internSymbol(symbols, allocator, std.mem.trim(u8, vt, " \t\r\n"));
+        try writer.print("        when \"{s}\" => {s} <= data_value({d});\n", .{ key_str, dest_id, out_value });
+    }
+
+    try writer.print("        when others => null;\n", .{});
+    try writer.print("      end case;\n", .{});
+    try writer.print("    end if;\n", .{});
+    try writer.print("  end process;\n", .{});
 }
 
 pub fn internSymbol(list: *std.ArrayListUnmanaged([]const u8), allocator: std.mem.Allocator, token: []const u8) !u64 {

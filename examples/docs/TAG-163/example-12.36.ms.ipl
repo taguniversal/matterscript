@@ -7,26 +7,26 @@ TAG163_TOP[(a<> b<>)($result)
   LNOT($a)(notout<>)
 
   $eq$gt$andout$notout() :
-    TRUE,FALSE,FALSE,FALSE[result<TRUE>]
-    TRUE,FALSE,FALSE,TRUE[result<FALSE>]
-    FALSE,TRUE,FALSE,FALSE[result<FALSE>]
-    FALSE,TRUE,FALSE,TRUE[result<TRUE>]
+    TRUE,FALSE,TRUE,FALSE[result<TRUE>]      // (TRUE,TRUE)
+    FALSE,TRUE,FALSE,FALSE[result<FALSE>]    // (TRUE,FALSE)
+    FALSE,FALSE,FALSE,TRUE[result<FALSE>]    // (FALSE,TRUE)
+    TRUE,FALSE,FALSE,TRUE[result<TRUE>]      // (FALSE,FALSE)
 ]
 
 BINEQ[(a<> b<>)($eq)
   $a$b() :
-    0,0[eq<TRUE>]
-    0,1[eq<FALSE>]
-    1,0[eq<FALSE>]
-    1,1[eq<TRUE>]
+    FALSE,FALSE[eq<TRUE>]
+    FALSE,TRUE[eq<FALSE>]
+    TRUE,FALSE[eq<FALSE>]
+    TRUE,TRUE[eq<TRUE>]
 ]
 
 BIGT[(a<> b<>)($gt)
   $a$b() :
-    0,0[gt<FALSE>]
-    0,1[gt<FALSE>]
-    1,0[gt<TRUE>]
-    1,1[gt<FALSE>]
+    FALSE,FALSE[gt<FALSE>]
+    FALSE,TRUE[gt<FALSE>]
+    TRUE,FALSE[gt<TRUE>]
+    TRUE,TRUE[gt<FALSE>]
 ]
 
 LAND[(a<> b<>)($andout)

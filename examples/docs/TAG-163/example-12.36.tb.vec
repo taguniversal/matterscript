@@ -1,0 +1,12 @@
+// TAG-163 example-12.36: correspondence-name convention
+//
+// TAG163_TOP composes BINEQ, BIGT, LAND, LNOT (all TRUE/FALSE-
+// alphabet) and looks up `result` by the composed key of the four
+// intermediate outputs. The table's result is eq (a == b).
+@dut(TAG163_TOP)
+@vectors(a,b : result)
+
+TRUE,TRUE   : TRUE     // eq=TRUE
+TRUE,FALSE  : FALSE    // gt=TRUE, eq=FALSE
+FALSE,TRUE  : FALSE    // all FALSE except notout=TRUE
+FALSE,FALSE : TRUE     // eq=TRUE, notout=TRUE

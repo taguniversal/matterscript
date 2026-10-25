@@ -44,7 +44,10 @@ pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: n
 
     // 1. Write children/contained definitions first (so they are declared before instantiation)
     for (def.contained) |contained| {
-        if (contained.name.len == 0 or std.ascii.isDigit(contained.name[0])) continue;
+        if (contained.name.len == 0) continue;
+        // Lookup-table row: no sources, no destinations, one resolution.
+        if (contained.sources.len == 0 and contained.destinations.len == 0 and
+            contained.resolution.len == 1) continue;
         if (value_transform_analysis.isValueTransformRule(contained)) continue;
         try writer.print("\n", .{});
 
@@ -203,12 +206,21 @@ pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: n
         std.debug.print("[emit] {s}: decomposeRules returned null\n", .{def.name});
     }
 
-    if (!lowered) {
+       if (!lowered) {
        std.debug.print("[emit] {s}: fallback transform_rules.len={d}\n", .{ def.name, transform_rules.len }); 
        try value_transform_export.writeTransformRules(allocator, writer, transform_rules);
     }
 
-    try signal.writeDestinationFills(allocator, writer, def);
+    // When lowerRules handled the definition, it already emitted a
+    // case block driving the destination. writeDestinationFills would
+    // call writeContainedLookupTable, which also recognizes the same
+    // shape and emits a second case block on the same signal — a
+    // multi-driver. Skip the lookup-table delegation in that case;
+    // the other branches of writeDestinationFills (literal fills,
+    // expression fills, null-value fallbacks) are unaffected because
+    // the shapes lowerRules handles have no .fill statements in
+    // resolution.
+    try signal.writeDestinationFills(allocator, writer, def, lowered);
 
     try writer.print("\nend rtl;\n", .{});
 }
