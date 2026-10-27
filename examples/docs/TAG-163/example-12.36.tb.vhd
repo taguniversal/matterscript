@@ -10,19 +10,20 @@ architecture sim of example_12_36_tb is
   signal a, b : ncl_signal := null_value;
   signal result : ncl_signal;
 
-  type row_t is record
-    a_sym : integer;    -- 0 = FALSE, 1 = TRUE
-    b_sym : integer;
-    expected : integer; -- 0 = FALSE, 1 = TRUE
-  end record;
+ type row_t is record
+  a_sym : integer;    -- 0 = TRUE, 1 = FALSE (matches emitted encoding)
+  b_sym : integer;
+  expected : integer; -- 0 = TRUE, 1 = FALSE
+end record;
 
-  type vector_array_t is array (natural range <>) of row_t;
-  constant vectors : vector_array_t := (
-    (a_sym => 1, b_sym => 1, expected => 1),  -- TRUE, TRUE   → TRUE
-    (a_sym => 1, b_sym => 0, expected => 0),  -- TRUE, FALSE  → FALSE
-    (a_sym => 0, b_sym => 1, expected => 0),  -- FALSE, TRUE  → FALSE
-    (a_sym => 0, b_sym => 0, expected => 1)   -- FALSE, FALSE → TRUE
-  );
+type vector_array_t is array (natural range <>) of row_t;
+constant vectors : vector_array_t := (
+  (a_sym => 0, b_sym => 0, expected => 0),  -- TRUE, TRUE   → TRUE
+  (a_sym => 0, b_sym => 1, expected => 1),  -- TRUE, FALSE  → FALSE
+  (a_sym => 1, b_sym => 0, expected => 1),  -- FALSE, TRUE  → FALSE
+  (a_sym => 1, b_sym => 1, expected => 0)   -- FALSE, FALSE → TRUE
+);
+
 begin
   dut : entity work.tag163_top
     port map (
