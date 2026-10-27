@@ -98,36 +98,38 @@ pub fn emitCellularAutomatonVHDL(
     try writer.writeAll("  end process;\n");
 }
 
-/// Builds one symbol table shared across an ENTIRE contained-lookup
-/// definition — every comma-separated key segment in every row's
-/// name, and every row's own value (a bare pure_value, or each named
-/// fill's expr), all interned into the same table. Sharing it across
-/// the whole definition (not per-destination) matters for state
-/// machines: "S1" must encode to the same integer whether it appears
-/// in a key segment or a fill value, since a destination's output can
-/// feed back as a future invocation's source.
-fn buildSharedSymbolTable(
+/// Look up a symbol's id without mutating the table. Returns null
+/// if `token` isn't present — which, after the hierarchy-driven
+/// interning pass, would be a bug (something was emitted that the
+/// hierarchy builder didn't pre-intern).
+fn findSymbolInSlice(symbols: []const []const u8, token: []const u8) ?u64 {
+    for (symbols, 0..) |existing, i| {
+        if (std.mem.eql(u8, existing, token)) return @intCast(i);
+    }
+    return null;
+}
+
+fn internContainedSymbols(
     allocator: std.mem.Allocator,
+    table: *std.ArrayListUnmanaged([]const u8),
     contained: []const network.Definition,
-) !std.ArrayListUnmanaged([]const u8) {
-    var symbols: std.ArrayListUnmanaged([]const u8) = .empty;
+) !void {
     for (contained) |row| {
         var it = std.mem.splitScalar(u8, row.name, ',');
         while (it.next()) |seg| {
-            _ = try internSymbol(&symbols, allocator, std.mem.trim(u8, seg, " \t\r\n"));
+            _ = try internSymbol(table, allocator, std.mem.trim(u8, seg, " \t\r\n"));
         }
         for (row.resolution) |stmt| {
             const value_text = switch (stmt) {
                 .pure_value => |v| v,
                 .fill => |f| f.expr,
-                .invoke => continue,
-                .directive => continue, // TODO
+                .invoke, .directive => continue,
             };
-            _ = try internSymbol(&symbols, allocator, std.mem.trim(u8, value_text, " \t\r\n"));
+            _ = try internSymbol(table, allocator, std.mem.trim(u8, value_text, " \t\r\n"));
         }
     }
-    return symbols;
 }
+
 
 /// Emits one ROM/case-select for a single outer destination.
 /// `anonymous` selects how to read each row's value: true means every
@@ -142,13 +144,13 @@ fn writeLookupCaseBlock(
     writer: anytype,
     def: network.Definition,
     dest_name: []const u8,
-    symbols: *std.ArrayListUnmanaged([]const u8),
+    symbols: []const []const u8,
     anonymous: bool,
 ) !void {
     const dest_id = try sanitizeName(allocator, dest_name);
     defer allocator.free(dest_id);
 
-    const width = requiredWidth(symbols.items.len);
+    const width = requiredWidth(symbols.len);
 
     try writer.print("\n  -- lookup for {s}\n", .{dest_name});
     try writer.print("  process(", .{});
@@ -188,13 +190,12 @@ fn writeLookupCaseBlock(
         var key_pos: usize = 0;
         var it = std.mem.splitScalar(u8, row.name, ',');
         while (it.next()) |seg| {
-            const seg_value = try internSymbol(symbols, allocator, std.mem.trim(u8, seg, " \t\r\n"));
+            const seg_value = findSymbolInSlice(symbols, std.mem.trim(u8, seg, " \t\r\n")) orelse return error.SymbolNotPreInterned;
             const piece = binStr(key_buf[key_pos..], seg_value, width);
             key_pos += piece.len;
         }
         const key_str = key_buf[0..key_pos];
-
-        const out_value = try internSymbol(symbols, allocator, std.mem.trim(u8, vt, " \t\r\n"));
+        const out_value = findSymbolInSlice(symbols, std.mem.trim(u8, vt, " \t\r\n")) orelse return error.SymbolNotPreInterned;
         try writer.print("        when \"{s}\" => {s} <= data_value({d});\n", .{ key_str, dest_id, out_value });
     }
 
@@ -239,6 +240,7 @@ pub fn writeContainedLookupTable(
     allocator: std.mem.Allocator,
     writer: anytype,
     def: network.Definition,
+    symbols: []const []const u8,
 ) !bool {
     if (def.sources.len == 0 or def.contained.len == 0) return false;
 
@@ -309,11 +311,6 @@ pub fn writeContainedLookupTable(
     }
     if (!all_anonymous and !all_structured) return false;
 
-    var symbols = try buildSharedSymbolTable(allocator, def.contained);
-    defer {
-        for (symbols.items) |s| allocator.free(s);
-        symbols.deinit(allocator);
-    }
 
     // Variant 2 (composed-key .pure_value): rows may be .fill or .pure_value
     for (def.resolution) |stmt| {
@@ -326,8 +323,8 @@ pub fn writeContainedLookupTable(
         }
         if (def.destinations.len != 1) continue;
         const dest_name = def.destinations[0].name;
-        try writeSymbolEncodingComment(writer, symbols.items);
-        try writeComposedKeyLookupBlock(allocator, writer, def, dest_name, places, &symbols);
+        try writeSymbolEncodingComment(writer, symbols);
+        try writeComposedKeyLookupBlock(allocator, writer, def, dest_name, places, symbols);
         return true;
     }
 
@@ -341,8 +338,8 @@ pub fn writeContainedLookupTable(
                 if (std.mem.indexOf(u8, f.expr, s.name) == null) mentions_all = false;
             }
             if (!mentions_all) continue;
-            try writeSymbolEncodingComment(writer, symbols.items);
-            try writeLookupCaseBlock(allocator, writer, def, f.dest_name, &symbols, true);
+            try writeSymbolEncodingComment(writer, symbols);
+            try writeLookupCaseBlock(allocator, writer, def, f.dest_name, symbols, true);
             return true;
         }
 
@@ -366,9 +363,9 @@ pub fn writeContainedLookupTable(
         }
     }
     if (covered.items.len == 0) return false;
-    try writeSymbolEncodingComment(writer, symbols.items);
+    try writeSymbolEncodingComment(writer, symbols);
     for (covered.items) |dest_name| {
-        try writeLookupCaseBlock(allocator, writer, def, dest_name, &symbols, false);
+        try writeLookupCaseBlock(allocator, writer, def, dest_name, symbols, false);
     }
     return true;
 }
@@ -402,7 +399,7 @@ fn writeComposedKeyLookupBlock(
     def: network.Definition,
     dest_name: []const u8,
     places: []const []const u8,
-    symbols: *std.ArrayListUnmanaged([]const u8),
+    symbols: []const []const u8, 
 ) !void {
     const dest_id = try sanitizeName(allocator, dest_name);
     defer allocator.free(dest_id);
@@ -434,7 +431,7 @@ fn writeComposedKeyLookupBlock(
         var key_pos: usize = 0;
         var it = std.mem.splitScalar(u8, row.name, ',');
         while (it.next()) |seg| {
-            const seg_value = try internSymbol(symbols, allocator, std.mem.trim(u8, seg, " \t\r\n"));
+            const seg_value =  findSymbolInSlice(symbols, std.mem.trim(u8, seg, " \t\r\n")) orelse return error.SymbolNotPreInterned;
             const piece = binStr(key_buf[key_pos..], seg_value, width);
             key_pos += piece.len;
         }
@@ -448,7 +445,7 @@ fn writeComposedKeyLookupBlock(
             }
         }
         const vt = value_text orelse continue;
-        const out_value = try internSymbol(symbols, allocator, std.mem.trim(u8, vt, " \t\r\n"));
+        const out_value =  findSymbolInSlice(symbols, std.mem.trim(u8, vt, " \t\r\n")) orelse return error.SymbolNotPreInterned;
         try writer.print("        when \"{s}\" => {s} <= data_value({d});\n", .{ key_str, dest_id, out_value });
     }
 

@@ -4,6 +4,7 @@ const matterscript = @import("matterscript");
 const lookup = matterscript.lookup;
 const evaluator = matterscript.evaluator;
 const network = matterscript.network;
+const hierarchy = matterscript.hierarchy;
 
 test "binStr generates exact binary representation with given width" {
     var buf: [64]u8 = undefined;
@@ -77,7 +78,20 @@ test "writeContainedLookupTable handles anonymous pure-value definitions" {
     var aw: std.Io.Writer.Allocating = .init(allocator);
     defer aw.deinit();
 
-    const handled = try lookup.writeContainedLookupTable(allocator, &aw.writer, def);
+    // Intern symbols into a local buffer, then hand the slice to
+    // writeContainedLookupTable. (The emitter path uses
+    // hierarchy.Tables, which wraps the same interning logic per
+    // hierarchy; here we build a single-definition table since the
+    // test constructs one definition by hand.)
+    var symbols: std.ArrayListUnmanaged([]const u8) = .empty;
+    defer {
+        for (symbols.items) |s| allocator.free(s);
+        symbols.deinit(allocator);
+    }
+
+    try hierarchy.internDefinitionSymbols(allocator, &symbols, def);
+
+    const handled = try lookup.writeContainedLookupTable(allocator, &aw.writer, def, symbols.items);
     try std.testing.expect(handled);
 
     const vhdl = aw.written();
@@ -131,7 +145,19 @@ test "writeContainedLookupTable handles structured named-fill definitions" {
     var aw: std.Io.Writer.Allocating = .init(allocator);
     defer aw.deinit();
 
-    const handled = try lookup.writeContainedLookupTable(allocator, &aw.writer, def);
+    // Intern symbols into a local buffer, then hand the slice to
+    // writeContainedLookupTable. (The emitter path uses
+    // hierarchy.Tables, which wraps the same interning logic per
+    // hierarchy; here we build a single-definition table since the
+    // test constructs one definition by hand.)
+    var symbols: std.ArrayListUnmanaged([]const u8) = .empty;
+    defer {
+        for (symbols.items) |s| allocator.free(s);
+        symbols.deinit(allocator);
+    }
+    try hierarchy.internDefinitionSymbols(allocator, &symbols, def);
+
+    const handled = try lookup.writeContainedLookupTable(allocator, &aw.writer, def,symbols.items);
     try std.testing.expect(handled);
 
     const vhdl = aw.written();

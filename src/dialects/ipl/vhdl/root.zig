@@ -18,6 +18,7 @@ pub const sanitizer = @import("sanitizer.zig");
 const definition = @import("definition.zig");
 const invocation = @import("export/invocation.zig");
 const boundary = @import("export/boundary.zig");
+const hierarchy = @import("hierarchy.zig");
 
 pub fn writeVhdlNetwork(
     io: std.Io,
@@ -39,19 +40,14 @@ pub fn writeVhdlNetwork(
 }
 
 pub fn write(allocator: std.mem.Allocator, writer: anytype, net: network.Network) !void {
-    // Emit callees before callers so that an `entity work.X` reference
-    // never precedes `entity X is` in the output file. GHDL analyzes
-    // strictly top-to-bottom; an instantiation of an entity that is
-    // declared later fails with "unit X not found", and every
-    // subsequent architecture for that entity then fails with
-    // "entity X was not analysed". The previous flat loop emitted
-    // definitions in net.definitions order, which for examples like
-    // TAG-218 (WRAP invoking INNER) put the caller first.
     var emitted: std.StringHashMapUnmanaged(void) = .empty;
     defer emitted.deinit(allocator);
 
+    var tables = try hierarchy.build(allocator, net);
+    defer hierarchy.deinit(allocator, &tables) catch {};
+
     for (net.definitions) |def| {
-        try emitDefWithDeps(allocator, writer, def, net.definitions, &emitted);
+        try emitDefWithDeps(allocator, writer, def, net.definitions, &emitted, tables);
     }
     try network_entity.writeNetworkEntity(allocator, writer, net);
 }
@@ -71,6 +67,7 @@ fn emitDefWithDeps(
     def: network.Definition,
     top: []const network.Definition,
     emitted: *std.StringHashMapUnmanaged(void),
+    tables: hierarchy.Tables,
 ) !void {
     const gop = try emitted.getOrPut(allocator, def.name);
     if (gop.found_existing) return;
@@ -84,10 +81,10 @@ fn emitDefWithDeps(
     for (def.resolution) |stmt| {
         if (stmt != .invoke) continue;
         const callee = invocation.findCallee(def, top, stmt.invoke.name) orelse continue;
-        try emitDefWithDeps(allocator, writer, callee, top, emitted);
+        try emitDefWithDeps(allocator, writer, callee, top, emitted, tables);
     }
-
-    try definition.writeDefinition(allocator, writer, def, "", top);
+    const table = tables.get(def.name);
+    try definition.writeDefinition(allocator, writer, def, "", top, table);
 }
 
 /// True if every definition in the network would be skipped by the

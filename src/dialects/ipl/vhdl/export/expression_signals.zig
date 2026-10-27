@@ -6,6 +6,8 @@ const boundary = @import("boundary.zig");
 const sanitizer = @import("../sanitizer.zig");
 const sanitizeName = sanitizer.sanitizeName;
 const lookup = @import("../lookup.zig");
+const hierarchy = @import("../hierarchy.zig");
+const runtime_rules = @import("../../runtime/rules.zig");
 
 pub fn writeIntermediatePlaceSignal(
     allocator: std.mem.Allocator,
@@ -127,14 +129,17 @@ pub fn writeDestinationFills(
     writer: anytype,
     def: network.Definition,
     skip_lookup: bool,
+    table: ?runtime_rules.SymbolTable,
 ) !void {
     try writer.print("\n  -- destination fills (outputs)\n", .{});
+   
 
     // writeContainedLookupTable handles the contained-row ROM shapes
     // (anonymous pure_value rows, structured fill rows, and the
     // multi-destination FULLADD shape) that lowerRules does not yet
     // cover. Remove only once lowerRules handles all three.
-    if (!skip_lookup and try lookup.writeContainedLookupTable(allocator, writer, def)) {
+    const tbl = table orelse return error.NoSymbolTable;
+    if (!skip_lookup and try lookup.writeContainedLookupTable(allocator, writer, def, tbl.entries)) {
         return;
     }
     for (def.resolution) |stmt| {

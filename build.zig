@@ -428,6 +428,19 @@ pub fn build(b: *std.Build) void {
 
     const run_tb_vectors_test = b.addRunArtifact(tb_vectors_test);
 
+    const hierarchy_test = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/hierarchy_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+            },
+        }),
+    });
+
+    const run_hierarchy_test = b.addRunArtifact(hierarchy_test);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
@@ -457,7 +470,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_bundling_semantics_test.step);
     test_step.dependOn(&run_validate_test.step);
     test_step.dependOn(&run_tb_vectors_test.step);
-
+    test_step.dependOn(&run_hierarchy_test.step);
     // --- Code Coverage Step (using kcov) ---
     const coverage_step = b.step("coverage", "Generate code coverage report using kcov");
 

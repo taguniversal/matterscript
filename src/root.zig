@@ -22,6 +22,7 @@ pub const ipl_export_mesh = @import("dialects/ipl/export/mesh.zig");
 pub const validate = @import("dialects/ipl/validate.zig");
 pub const boundary = @import("dialects/ipl/vhdl/export/boundary.zig");
 pub const invocation = @import("dialects/ipl/vhdl/export/invocation.zig");
+pub const hierarchy = @import("dialects/ipl/vhdl/hierarchy.zig");
 
 // VHDL export namespace
 pub const vhdl = struct {

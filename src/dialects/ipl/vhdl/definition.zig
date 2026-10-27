@@ -16,17 +16,25 @@ pub const value_transform_export = @import("export/value_transform.zig");
 const value_transform_analysis = @import("../value_transform.zig");
 pub const rom_lookup = @import("export/rom_lookup.zig");
 pub const rules = @import("../runtime/rules.zig");
+const hierarchy = @import("hierarchy.zig");
+const runtime_rules = @import("../runtime/rules.zig");
 
 /// Emits a VHDL entity and architecture body for a single MatterScript definition,
 /// normalizing destination defaults and identifiers, and recursively processing any
 /// nested child definitions.
-pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: network.Definition, scope: []const u8, top: []const network.Definition) !void {
+pub fn writeDefinition(allocator: std.mem.Allocator, 
+                       writer: anytype, 
+                       raw_def: network.Definition,
+                       scope: []const u8, 
+                       top: []const network.Definition,
+                       table: ?runtime_rules.SymbolTable) !void {
     if (value_transform_analysis.isValueTransformRule(raw_def)) return;
     if (boundary.shouldSkipSpatialGeometry(raw_def)) return;
 
     const def = try sanitizer.normalizeDefinitionIdentifiers(allocator, raw_def);
-
+    
     const def_id = try invocation.scopedDefinitionName(allocator, scope, def.name);
+
     defer allocator.free(def_id);
 
     try writer.print(
@@ -54,7 +62,7 @@ pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: n
         const child_scope = try invocation.scopedDefinitionName(allocator, def_id, contained.name);
         defer allocator.free(child_scope);
 
-        try writeDefinition(allocator, writer, contained, def_id, top);
+        try writeDefinition(allocator, writer, contained, def_id, top, table);
     }
 
     // 2. Then write the parent definition/architecture that instantiates them
@@ -198,8 +206,7 @@ pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: n
             def.name, rule_set.rules.len, rule_set.inputs.places.len, shape_ok,
         });
         if (shape_ok) {
-            const table = try rules.buildSymbolTable(allocator, rule_set);
-            try value_transform_export.lowerRules(allocator, writer, rule_set, table);
+            try value_transform_export.lowerRules(allocator, writer, rule_set,  table orelse return error.NoSymbolTable);
             lowered = true;
         }
     } else {
@@ -220,7 +227,7 @@ pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: n
     // expression fills, null-value fallbacks) are unaffected because
     // the shapes lowerRules handles have no .fill statements in
     // resolution.
-    try signal.writeDestinationFills(allocator, writer, def, lowered);
+    try signal.writeDestinationFills(allocator, writer, def, lowered, table);
 
     try writer.print("\nend rtl;\n", .{});
 }
