@@ -19,6 +19,7 @@ pub const rules = @import("../runtime/rules.zig");
 const hierarchy = @import("hierarchy.zig");
 const runtime_rules = @import("../runtime/rules.zig");
 
+
 /// Emits a VHDL entity and architecture body for a single MatterScript definition,
 /// normalizing destination defaults and identifiers, and recursively processing any
 /// nested child definitions.
@@ -35,6 +36,8 @@ pub fn writeDefinition(allocator: std.mem.Allocator,
     
     const def_id = try invocation.scopedDefinitionName(allocator, scope, def.name);
 
+    std.debug.print("[shape] {s}: {s}\n", .{ def.name, classifyShape(def) });
+    
     defer allocator.free(def_id);
 
     try writer.print(
@@ -218,6 +221,10 @@ pub fn writeDefinition(allocator: std.mem.Allocator,
        try value_transform_export.writeTransformRules(allocator, writer, transform_rules);
     }
 
+    const lookup_shape = lookup.isContainedLookupShape(allocator, def);
+    std.debug.print("[dispatch] {s}: lowered={} transform_rules={d} lookup_shape={}\n", .{
+    def.name, lowered, transform_rules.len, lookup_shape});
+
     // When lowerRules handled the definition, it already emitted a
     // case block driving the destination. writeDestinationFills would
     // call writeContainedLookupTable, which also recognizes the same
@@ -230,4 +237,29 @@ pub fn writeDefinition(allocator: std.mem.Allocator,
     try signal.writeDestinationFills(allocator, writer, def, lowered, table);
 
     try writer.print("\nend rtl;\n", .{});
+}
+
+
+fn classifyShape(def: network.Definition) []const u8 {
+    // Where does the output come from?
+    //
+    // 1. Lookup: contained rows present, or a composed-key fill/pure_value
+    //    drives the resolution.
+    // 2. Invocation: resolution contains .invoke statements.
+    // 3. Constant: resolution is a single .fill with a literal expr, or
+    //    destinations are empty and resolution drives a fixed value.
+    // 4. Nothing: destinations are empty and resolution is empty.
+
+    if (def.destinations.len == 0 and def.resolution.len == 0) return "SHAPE:nothing";
+    if (def.contained.len > 0) return "SHAPE:lookup";
+    for (def.resolution) |stmt| {
+        if (stmt == .invoke) return "SHAPE:invocation";
+    }
+    for (def.resolution) |stmt| {
+        if (stmt == .fill) return "SHAPE:constant_or_fill";
+    }
+    for (def.resolution) |stmt| {
+        if (stmt == .pure_value) return "SHAPE:composed-key lookup"; // composed-key shape
+    }
+    return "SHAPE:unknown";
 }

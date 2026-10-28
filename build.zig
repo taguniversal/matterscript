@@ -441,6 +441,19 @@ pub fn build(b: *std.Build) void {
 
     const run_hierarchy_test = b.addRunArtifact(hierarchy_test);
 
+    const classifier_shapes_test = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/dialects/ipl/vhdl/classifier_shapes.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+            },
+        }),
+    });
+
+    const run_classifier_shapes_test = b.addRunArtifact(classifier_shapes_test);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
@@ -471,6 +484,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_validate_test.step);
     test_step.dependOn(&run_tb_vectors_test.step);
     test_step.dependOn(&run_hierarchy_test.step);
+    test_step.dependOn(&run_classifier_shapes_test.step);
     // --- Code Coverage Step (using kcov) ---
     const coverage_step = b.step("coverage", "Generate code coverage report using kcov");
 

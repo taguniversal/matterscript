@@ -218,7 +218,7 @@ fn writeSymbolEncodingComment(
     try writer.print("\n", .{});
 }
 
-fn composedKeySegmentCountFromPureValue(resolution: []const network.Statement) usize {
+pub fn composedKeySegmentCountFromPureValue(resolution: []const network.Statement) usize {
     for (resolution) |stmt| {
         if (stmt != .pure_value) continue;
         const expr = std.mem.trim(u8, stmt.pure_value, " \t\r\n");
@@ -231,6 +231,51 @@ fn composedKeySegmentCountFromPureValue(resolution: []const network.Statement) u
         return count;
     }
     return 0;
+}
+
+
+/// Predicate version of writeContainedLookupTable's shape detection.
+/// Returns true iff writeContainedLookupTable would handle this
+/// definition (i.e. would return true without emitting). Pure, no
+/// side effects, no allocation beyond a scratch allocator for the
+/// composed-key segment count.
+pub fn isContainedLookupShape(
+    allocator: std.mem.Allocator,
+    def: network.Definition,
+) bool {
+    _ = allocator;
+    
+    if (def.sources.len == 0 or def.contained.len == 0) return false;
+
+    var expected_segments: usize = def.sources.len;
+    var has_invoke = false;
+    for (def.resolution) |stmt| {
+        if (stmt == .invoke) { has_invoke = true; break; }
+    }
+    if (has_invoke) {
+        const pv_segments = composedKeySegmentCountFromPureValue(def.resolution);
+        if (pv_segments > 0) expected_segments = pv_segments;
+    }
+
+    for (def.contained) |row| {
+        if (row.sources.len != 0 or row.destinations.len != 0) return false;
+        var seg_count: usize = 1;
+        for (row.name) |ch| if (ch == ',') { seg_count += 1; };
+        if (seg_count != expected_segments) return false;
+        if (row.resolution.len == 0) return false;
+    }
+
+    var all_anonymous = true;
+    var all_structured = true;
+    for (def.contained) |row| {
+        if (!(row.resolution.len == 1 and row.resolution[0] == .pure_value)) all_anonymous = false;
+        for (row.resolution) |stmt| {
+            if (stmt != .fill) all_structured = false;
+        }
+    }
+    if (!all_anonymous and !all_structured) return false;
+
+    return true;
 }
 
 /// Detects which of the two contained-lookup shapes (if either)
