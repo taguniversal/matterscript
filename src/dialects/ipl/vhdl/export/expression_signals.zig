@@ -128,18 +128,17 @@ pub fn writeDestinationFills(
     allocator: std.mem.Allocator,
     writer: anytype,
     def: network.Definition,
-    skip_lookup: bool,
     table: ?runtime_rules.SymbolTable,
 ) !void {
     try writer.print("\n  -- destination fills (outputs)\n", .{});
    
 
-    // writeContainedLookupTable handles the contained-row ROM shapes
-    // (anonymous pure_value rows, structured fill rows, and the
-    // multi-destination FULLADD shape) that lowerRules does not yet
-    // cover. Remove only once lowerRules handles all three.
+    // Contained-row ROM shapes (anonymous pure_value rows, structured fill
+    // rows, the multi-destination FULLADD shape). Reached only for
+    // .contained_lookup; .transform_rules and .lowered_rules are dispatched
+    // by the classifier and never enter here.
     const tbl = table orelse return error.NoSymbolTable;
-    if (!skip_lookup and try lookup.writeContainedLookupTable(allocator, writer, def, tbl.entries)) {
+    if (try lookup.writeContainedLookupTable(allocator, writer, def, tbl.entries)) {
         return;
     }
     for (def.resolution) |stmt| {

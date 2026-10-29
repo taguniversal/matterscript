@@ -18,26 +18,21 @@ pub const rom_lookup = @import("export/rom_lookup.zig");
 pub const rules = @import("../runtime/rules.zig");
 const hierarchy = @import("hierarchy.zig");
 const runtime_rules = @import("../runtime/rules.zig");
-
+const classifier_shapes = @import("classifier_shapes.zig");
 
 /// Emits a VHDL entity and architecture body for a single MatterScript definition,
 /// normalizing destination defaults and identifiers, and recursively processing any
 /// nested child definitions.
-pub fn writeDefinition(allocator: std.mem.Allocator, 
-                       writer: anytype, 
-                       raw_def: network.Definition,
-                       scope: []const u8, 
-                       top: []const network.Definition,
-                       table: ?runtime_rules.SymbolTable) !void {
+pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: network.Definition, scope: []const u8, top: []const network.Definition, table: ?runtime_rules.SymbolTable) !void {
     if (value_transform_analysis.isValueTransformRule(raw_def)) return;
     if (boundary.shouldSkipSpatialGeometry(raw_def)) return;
 
     const def = try sanitizer.normalizeDefinitionIdentifiers(allocator, raw_def);
-    
     const def_id = try invocation.scopedDefinitionName(allocator, scope, def.name);
 
-    std.debug.print("[shape] {s}: {s}\n", .{ def.name, classifyShape(def) });
-    
+    const shape = try classifier_shapes.classifyEmissionShape(allocator, def);
+    std.debug.print("[dispatch] {s}: shape={s}\n", .{ def.name, @tagName(shape) });
+
     defer allocator.free(def_id);
 
     try writer.print(
@@ -197,69 +192,16 @@ pub fn writeDefinition(allocator: std.mem.Allocator,
     try rom_lookup.writeKeyComposition(allocator, writer, def);
     try rom_lookup.writeRomLookupProcess(allocator, writer, def);
 
-    // New path: rule lowering for token-transform definitions.
-    // Only fires when the definition's rule set matches the shape
-    // lowerRules understands. Other shapes (fanin/fanout's select
-    // action, entity-labeling's compose syntax) fall through to the
-    // old writeTransformRules path, which handles them.
-    var lowered = false;
-    if (try rules.decomposeRules(allocator, def)) |rule_set| {
-        const shape_ok = value_transform_export.isLowerableShape(rule_set);
-        std.debug.print("[emit] {s}: rules={d} inputs={d} shape_ok={}\n", .{
-            def.name, rule_set.rules.len, rule_set.inputs.places.len, shape_ok,
-        });
-        if (shape_ok) {
-            try value_transform_export.lowerRules(allocator, writer, rule_set,  table orelse return error.NoSymbolTable);
-            lowered = true;
-        }
-    } else {
-        std.debug.print("[emit] {s}: decomposeRules returned null\n", .{def.name});
+    switch (shape) {
+        .contained_lookup => try signal.writeDestinationFills(allocator, writer, def, table),
+        .lowered_rules => {
+            const rule_set = (try rules.decomposeRules(allocator, def)) orelse
+                return error.DecomposeRulesFailed;
+            try value_transform_export.lowerRules(allocator, writer, rule_set, table orelse return error.NoSymbolTable);
+        },
+        .transform_rules => try value_transform_export.writeTransformRules(allocator, writer, transform_rules),
+        .invocations_only, .none => {},
     }
-
-       if (!lowered) {
-       std.debug.print("[emit] {s}: fallback transform_rules.len={d}\n", .{ def.name, transform_rules.len }); 
-       try value_transform_export.writeTransformRules(allocator, writer, transform_rules);
-    }
-
-    const lookup_shape = lookup.isContainedLookupShape(allocator, def);
-    std.debug.print("[dispatch] {s}: lowered={} transform_rules={d} lookup_shape={}\n", .{
-    def.name, lowered, transform_rules.len, lookup_shape});
-
-    // When lowerRules handled the definition, it already emitted a
-    // case block driving the destination. writeDestinationFills would
-    // call writeContainedLookupTable, which also recognizes the same
-    // shape and emits a second case block on the same signal — a
-    // multi-driver. Skip the lookup-table delegation in that case;
-    // the other branches of writeDestinationFills (literal fills,
-    // expression fills, null-value fallbacks) are unaffected because
-    // the shapes lowerRules handles have no .fill statements in
-    // resolution.
-    try signal.writeDestinationFills(allocator, writer, def, lowered, table);
-
     try writer.print("\nend rtl;\n", .{});
 }
 
-
-fn classifyShape(def: network.Definition) []const u8 {
-    // Where does the output come from?
-    //
-    // 1. Lookup: contained rows present, or a composed-key fill/pure_value
-    //    drives the resolution.
-    // 2. Invocation: resolution contains .invoke statements.
-    // 3. Constant: resolution is a single .fill with a literal expr, or
-    //    destinations are empty and resolution drives a fixed value.
-    // 4. Nothing: destinations are empty and resolution is empty.
-
-    if (def.destinations.len == 0 and def.resolution.len == 0) return "SHAPE:nothing";
-    if (def.contained.len > 0) return "SHAPE:lookup";
-    for (def.resolution) |stmt| {
-        if (stmt == .invoke) return "SHAPE:invocation";
-    }
-    for (def.resolution) |stmt| {
-        if (stmt == .fill) return "SHAPE:constant_or_fill";
-    }
-    for (def.resolution) |stmt| {
-        if (stmt == .pure_value) return "SHAPE:composed-key lookup"; // composed-key shape
-    }
-    return "SHAPE:unknown";
-}

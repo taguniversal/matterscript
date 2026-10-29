@@ -443,7 +443,7 @@ pub fn build(b: *std.Build) void {
 
     const classifier_shapes_test = b.addTest(.{
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/dialects/ipl/vhdl/classifier_shapes.zig"),
+            .root_source_file = b.path("src/tests/classifier_shape_test.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{

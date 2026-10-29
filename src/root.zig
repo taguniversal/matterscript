@@ -23,6 +23,7 @@ pub const validate = @import("dialects/ipl/validate.zig");
 pub const boundary = @import("dialects/ipl/vhdl/export/boundary.zig");
 pub const invocation = @import("dialects/ipl/vhdl/export/invocation.zig");
 pub const hierarchy = @import("dialects/ipl/vhdl/hierarchy.zig");
+pub const classifier_shapes = @import("dialects/ipl/vhdl/classifier_shapes.zig");
 
 // VHDL export namespace
 pub const vhdl = struct {
