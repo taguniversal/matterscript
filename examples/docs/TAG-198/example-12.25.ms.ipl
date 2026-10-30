@@ -1,6 +1,7 @@
-FULLADD($A,$B,$C)(< > CARRYOUT< >)
-FULLADD[(A< > B< > CI< >)($SUM $CO)
-
+// Linear: TAG-198 Pure Value Expression
+FULLADD198($A,$B,$C)(< > CARRYOUT< >)
+FULLADD198[(A< > B< > CI< >)($SUM $CO)
+@runtime(consumable)
 $A $B $CI :
 K[SUM<K>] L[SUM<L>] M[CO<M>] N[CO<N>]
 S,U,W[K,M] S,U,X[L,M] S,V,W[L,M] S,V,X[K,N]

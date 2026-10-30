@@ -1,5 +1,5 @@
 // full adder, token vocabulary S/T/U/V/W/X in, K/L/M/N out
-@dut(FULLADD)
+@dut(FULLADD198)
 @vectors(A,B,CI : SUM,CO)
 @mode(wavefront)
 

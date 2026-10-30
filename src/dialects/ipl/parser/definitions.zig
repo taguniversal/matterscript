@@ -97,6 +97,67 @@ fn parseDefinitionInMode(p: *core.Parser, mode: ParseMode) anyerror!network.Defi
     else
         raw_destinations;
 
+    // TAG-229: bare `[N]` in a contained-row bracket means "emit symbol N
+    // on the (sole) destination". With more than one destination — or a
+    // single group destination with more than one member — that is
+    // ambiguous: nothing says which destination receives the symbol.
+    // Require `[dest<sym>]` (which parses as an ordinary .fill) whenever
+    // the containing definition's destination is not a single place.
+    //
+    // A row's bracket contents parse to:
+    //   [0]       -> .pure_value = "0"     (bare, ambiguous)
+    //   [0<0>]    -> .fill { dest="0", expr="0" }  (explicit)
+    // so "has a .pure_value resolution" == "used the bare bracket".
+    //
+    // Only run for top-level definitions. A contained entry's own
+    // `destinations` is empty (`raw_destinations == &.{}`), so without
+    // the mode guard the check would trivially fire for every bare-
+    // bracket row inside a valid singleton-destination definition like
+    // TAG-160/137/143/142/190. The containing definition catches the
+    // same rows from outside, where the destination count is known.
+    //
+    // Runs after resolveDestinations because a top-level definition
+    // with no explicit destination list gets a synthesized `ms_result`
+    // place destination (TAG-160 shape) — bare `[N]` is unambiguous
+    // there, and the check must see that single synthesized
+    // destination before deciding.
+    if (mode == .top_level and runtime_kind != .consumable) {
+        const dest_is_ambiguous =
+            destinations.len != 1 or
+            (destinations.len == 1 and destinations[0].kind == .group);
+        if (dest_is_ambiguous) {
+            for (section.contained) |row| {
+                for (row.resolution) |stmt| {
+                    if (stmt == .pure_value) {
+                        std.debug.print(
+                            "[ambiguous] def='{s}' dests={d} row='{s}' pv='{s}'\n",
+                            .{ name, destinations.len, row.name, stmt.pure_value },
+                        );
+                        std.debug.print("[ambiguous] def='{s}' @{x} row='{s}' stmt={s}\n", .{
+                            name, @intFromPtr(&section), row.name, @tagName(stmt),
+                        });
+                        return core.ParseError.AmbiguousContainedDestination;
+                    }
+                }
+            }
+        }
+    }
+
+    //DEBUG
+    if (std.ascii.eqlIgnoreCase(name, "OR")) {
+        std.debug.print("[OR-debug] def='{s}' @{x} first_row='{s}' res[0]={s}\n", .{
+            name,                                         @intFromPtr(&section), section.contained[0].name,
+            @tagName(section.contained[0].resolution[0]),
+        });
+        std.debug.print("[OR-debug] contained.len={d}\n", .{section.contained.len});
+        for (section.contained, 0..) |row, i| {
+            std.debug.print("[OR-debug] row[{d}] name='{s}' res.len={d}\n", .{ i, row.name, row.resolution.len });
+            for (row.resolution) |stmt| {
+                std.debug.print("[OR-debug]   stmt={s}\n", .{@tagName(stmt)});
+            }
+        }
+    }
+    // END DEBUG
     return network.Definition{
         .name = name,
         .sources = sources,

@@ -67,7 +67,7 @@ test "normalizeDefinitionIdentifiers leaves non-duplicated destinations untouche
     const allocator = arena.allocator();
 
     const raw_def = network.Definition{
-        .name = "FULLADD",
+        .name = "FULLADD7",
         .sources = &.{},
         .destinations = &.{
             .{ .kind = .place, .name = "SUM", .text = "SUM" },

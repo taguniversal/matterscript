@@ -1,5 +1,5 @@
 // example-12-26.tb.vec: Fant Example 12.26, pure-value full adder
-@dut(FULLADD)
+@dut(FULLADD177)
 @vectors(X,Y,CI : SUM,CARRY)
 @mode(wavefront)
 

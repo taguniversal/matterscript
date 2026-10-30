@@ -24,6 +24,7 @@ pub const boundary = @import("dialects/ipl/vhdl/export/boundary.zig");
 pub const invocation = @import("dialects/ipl/vhdl/export/invocation.zig");
 pub const hierarchy = @import("dialects/ipl/vhdl/hierarchy.zig");
 pub const classifier_shapes = @import("dialects/ipl/vhdl/classifier_shapes.zig");
+pub const value_transform_analysis = @import("dialects/ipl/value_transform.zig");
 
 // VHDL export namespace
 pub const vhdl = struct {

@@ -29,8 +29,8 @@ pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: n
 
     const def = try sanitizer.normalizeDefinitionIdentifiers(allocator, raw_def);
     const def_id = try invocation.scopedDefinitionName(allocator, scope, def.name);
-
-    const shape = try classifier_shapes.classifyEmissionShape(allocator, def);
+    const transform_rules = try value_transform_analysis.collectValueTransformRules(allocator, def);
+    const shape = try classifier_shapes.classifyEmissionShape(allocator, def, transform_rules);
     std.debug.print("[dispatch] {s}: shape={s}\n", .{ def.name, @tagName(shape) });
 
     defer allocator.free(def_id);
@@ -105,7 +105,7 @@ pub fn writeDefinition(allocator: std.mem.Allocator, writer: anytype, raw_def: n
         }
     }
 
-    const transform_rules = try value_transform_analysis.collectValueTransformRules(allocator, def);
+   
     try value_transform_analysis.assertNoTransformRuleSymbolCollidesWithPort(def, transform_rules);
 
     for (transform_rules) |rule| {

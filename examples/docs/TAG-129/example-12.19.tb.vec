@@ -1,4 +1,4 @@
-@dut(FULLADD)
+@dut(FULLADD129)
 @vectors(X,Y,C : SUM,CARRY)
 
 0,0,0 : 0,0

@@ -54,13 +54,13 @@ test "validate: duplicate top-level definition names are rejected" {
     defer arena.deinit();
 
     const net = network.Network{
-        .definitions = &.{ validate.stubDef("FULLADD", &.{}), validate.stubDef("FULLADD", &.{}) },
+        .definitions = &.{ validate.stubDef("FULLADD8", &.{}), validate.stubDef("FULLADD8", &.{}) },
         .entries = &.{},
         .free_destinations = &.{},
     };
     var diag: validate.Diagnostic = .{};
     try std.testing.expectError(error.DuplicateDefinition, validate.validateWithDiagnostic(arena.allocator(), net, &diag));
-    try std.testing.expectEqualStrings("FULLADD", diag.name);
+    try std.testing.expectEqualStrings("FULLADD8", diag.name);
 }
 
 test "validate: an ordinary lookup-table entry in contained is fine" {
@@ -70,7 +70,7 @@ test "validate: an ordinary lookup-table entry in contained is fine" {
     // Shape of a real fill-shaped child, e.g. K[SUM<K>]: no ports, one
     // .fill statement.
     const net = network.Network{
-        .definitions = &.{validate.stubDefIn("FULLADD", &.{}, &.{validate.stubDef("K", &.{validate.stubFill("SUM", "$K")})})},
+        .definitions = &.{validate.stubDefIn("FULLADD9", &.{}, &.{validate.stubDef("K", &.{validate.stubFill("SUM", "$K")})})},
         .entries = &.{},
         .free_destinations = &.{},
     };

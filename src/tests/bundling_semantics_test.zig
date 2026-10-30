@@ -164,7 +164,7 @@ test "TAG-211 step 2: bare place in nested invocation gets bundle structure from
         \\]
         \\4BITADD([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)([S0<> S1<> S2<> S3<>] CO<>)
         \\4BITADD[([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)([SUM0<> SUM1<> SUM2<> SUM3<>] CO<>)
-        \\  $A $B $CI : X[K]  //nonsense since we're not testing the functionality, just the parse shape
+        \\  $A $B $CI : X[CO<K>]  //nonsense since we're not testing the functionality, just the parse shape
         \\]
     ;
     const net = parser.parse(a, src) catch |err| {
@@ -248,8 +248,9 @@ test "TAG-211 step 3: chained invoke statements, no bundling" {
     const a = arena.allocator();
 
     const src =
-        \\FULLADD($A,$B,$C)(< > CARRYOUT< >)
-        \\FULLADD[(A< > B< > CI< >)($SUM$CO)
+        \\FULLADDTEST211($A,$B,$C)(< > CARRYOUT< >)
+        \\FULLADDTEST211[(A< > B< > CI< >)($SUM$CO)
+        \\ @runtime(consumable)
         \\$A$B$CI :
         \\K[SUM<K>] L[SUM<L>] M[CO<M>] N[CO<N>]
         \\S,U,W[K,M] S,U,X[L,M] S,V,W[L,M] S,V,X[K,N]
@@ -258,8 +259,8 @@ test "TAG-211 step 3: chained invoke statements, no bundling" {
         \\
         \\CHAIN($X0 $X1 $X2)(SUM0<> SUM1<> COUT<>)
         \\CHAIN[(X0<> X1<> X2<>)($SUM0 $SUM1 $COUT)
-        \\  FULLADD($X0 $X1 $X2)(SUM0<> C1<>)
-        \\  FULLADD($X0 $X1 $C1)(SUM1<> COUT<>)
+        \\  FULLADDTEST211($X0 $X1 $X2)(SUM0<> C1<>)
+        \\  FULLADDTEST211($X0 $X1 $C1)(SUM1<> COUT<>)
         \\]
     ;
     const net = parser.parse(a, src) catch |err| {
@@ -276,8 +277,8 @@ test "TAG-211 step 4: full 4BITADD with bundling and invocation combined" {
     const a = arena.allocator();
 
     const src =
-        \\FULLADD($A,$B,$C)(< > CARRYOUT< >)
-        \\FULLADD[(A< > B< > CI< >)($SUM$CO)
+        \\FULLADDTEST211STEP4($A,$B,$C)(< > CARRYOUT< >)
+        \\FULLADDTEST211STEP4[(A< > B< > CI< >)($SUM$CO)
         \\$A$B$CI :
         \\K[SUM<K>] L[SUM<L>] M[CO<M>] N[CO<N>]
         \\S,U,W[K,M] S,U,X[L,M] S,V,W[L,M] S,V,X[K,N]
@@ -288,10 +289,10 @@ test "TAG-211 step 4: full 4BITADD with bundling and invocation combined" {
         \\4BITADD[([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)
         \\  ([$SUM0 $SUM1 $SUM2 $SUM3] $CO)
         \\
-        \\  FULLADD($A0 $B0 $CI)(SUM0<> C1<>)
-        \\  FULLADD($A1 $B1 $C1)(SUM1<> C2<>)
-        \\  FULLADD($A2 $B2 $C2)(SUM2<> C3<>)
-        \\  FULLADD($A3 $B3 $C3)(SUM3<> CO<>)
+        \\  FULLADDTEST211STEP4($A0 $B0 $CI)(SUM0<> C1<>)
+        \\  FULLADDTEST211STEP4($A1 $B1 $C1)(SUM1<> C2<>)
+        \\  FULLADDTEST211STEP4($A2 $B2 $C2)(SUM2<> C3<>)
+        \\  FULLADDTEST211STEP4($A3 $B3 $C3)(SUM3<> CO<>)
         \\  :
         \\]
     ;
@@ -358,12 +359,12 @@ test "Example 12.9: two adjacent mutex source groups" {
     const a = arena.allocator();
 
     const src =
-        \\OR[({A0<> A1<>}{B0<> B1<>})({$0 $1})
+        \\ORTestExample129[({A0<> A1<>}{B0<> B1<>})({$0 $1})
         \\  :
-        \\  A0,B0[0]
-        \\  A0,B1[1]
-        \\  A1,B0[1]
-        \\  A1,B1[1]
+        \\  A0,B0[0<0>]
+        \\  A0,B1[1<1>]
+        \\  A1,B0[1<1>]
+        \\  A1,B1[1<1>]
         \\]
     ;
     const net = parser.parse(a, src) catch |err| {

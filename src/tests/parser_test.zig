@@ -264,9 +264,9 @@ test "parse TAG-184 Pure Value Place of Resolution - explicit contained rows" {
     const src =
         \\// Linear: TAG-184 Pure Value Place of Resolution
         \\
-        \\FULLADD($A,$B,$C)(<> CARRYOUT<>)
+        \\FULLADDTEST184($A,$B,$C)(<> CARRYOUT<>)
         \\
-        \\FULLADD[(A<> B<> CI<> )($SUM $CO)
+        \\FULLADDTEST184[(A<> B<> CI<> )($SUM $CO)
         \\
         \\$A$B$CI :
         \\
@@ -284,7 +284,7 @@ test "parse TAG-184 Pure Value Place of Resolution - explicit contained rows" {
     try testing.expectEqual(@as(usize, 1), net.definitions.len);
     const def = net.definitions[0];
 
-    try testing.expectEqualStrings("FULLADD", def.name);
+    try testing.expectEqualStrings("FULLADDTEST184", def.name);
     try testing.expectEqual(@as(usize, 3), def.sources.len);
     try testing.expectEqual(@as(usize, 2), def.destinations.len);
 
@@ -994,22 +994,22 @@ test "rule decomposition: FULLADD's rules are contained defs named by pattern" {
     const a = arena.allocator();
 
     const src =
-        \\FULLADD[(A<> B<> CI<>)($SUM $CO)
+        \\FULLADDTESTDECOMP[(A<> B<> CI<>)($SUM $CO)
         \\  $A$B$CI
         \\  :
-        \\  K,M[SUM0]
-        \\  L,M[SUM1]
-        \\  L,N[CO1]
+        \\  K,M[SUM<0>]
+        \\  L,M[SUM<1>]
+        \\  L,N[CO<1>]
         \\]
     ;
     const net = parser.parse(a, src) catch |err| {
-        std.debug.print("FULLADD rule test FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        std.debug.print("FULLADDTESTDECOMP rule test FAILED TO PARSE: {s}\n", .{@errorName(err)});
         return err;
     };
 
     var fa_def: ?network.Definition = null;
     for (net.definitions) |d| {
-        if (std.ascii.eqlIgnoreCase(d.name, "FULLADD")) fa_def = d;
+        if (std.ascii.eqlIgnoreCase(d.name, "FULLADDTESTDECOMP")) fa_def = d;
     }
     try testing.expect(fa_def != null);
 
@@ -1023,7 +1023,7 @@ test "rule decomposition: FULLADD's rules are contained defs named by pattern" {
     const outer = std.mem.trim(u8, outer_raw, " \t\r\n");
     testing.expectEqualStrings("$A$B$CI", outer) catch |err| {
         std.debug.print(
-            "FULLADD outer resolution: expected '$A$B$CI', got '{s}' (raw: '{s}')\n",
+            "FULLADDTESTDECOMP outer resolution: expected '$A$B$CI', got '{s}' (raw: '{s}')\n",
             .{ outer, outer_raw },
         );
         return err;
@@ -1124,7 +1124,7 @@ test "decomposeRules: FULLADD's rules decompose to token outputs" {
     const a = arena.allocator();
 
     const src =
-        \\FULLADD[(A<> B<> CI<>)($SUM$CO)
+        \\FULLADDTESTDECOMP1[(A<> B<> CI<>)($SUM$CO)
         \\  $A$B$CI
         \\  :
         \\  K,M[SUM0]
@@ -1133,13 +1133,13 @@ test "decomposeRules: FULLADD's rules decompose to token outputs" {
         \\]
     ;
     const net = parser.parse(a, src) catch |err| {
-        std.debug.print("decomposeRules FULLADD test FAILED TO PARSE: {s}\n", .{@errorName(err)});
+        std.debug.print("decomposeRules FULLADDTESTDECOMP1 test FAILED TO PARSE: {s}\n", .{@errorName(err)});
         return err;
     };
 
     var fa_def: ?network.Definition = null;
     for (net.definitions) |d| {
-        if (std.ascii.eqlIgnoreCase(d.name, "FULLADD")) fa_def = d;
+        if (std.ascii.eqlIgnoreCase(d.name, "FULLADDTESTDECOMP1")) fa_def = d;
     }
     try testing.expect(fa_def != null);
 
@@ -1750,7 +1750,7 @@ test "TAG-151: bundling mutually exclusive paths into a single path" {
     try std.testing.expectEqualStrings("B0", res1.invoke.sources[1].name);
     try std.testing.expectEqual(@as(usize, 1), res1.invoke.destinations.len);
     try std.testing.expectEqualStrings("0", res1.invoke.destinations[0].name);
-    
+
     // ---- Entry: flattened interface mapping ----
     const entry = for (net.entries) |e| {
         if (std.ascii.eqlIgnoreCase(e.name, "OR151")) break e;
@@ -1877,4 +1877,110 @@ test "TAG-163: set of definitions establishing correspondence name convention" {
     try std.testing.expectEqualStrings("eq", bineq_def.destinations[0].name);
     try std.testing.expectEqual(@as(usize, 4), bineq_def.contained.len);
     try std.testing.expectEqualStrings("FALSE,FALSE", bineq_def.contained[0].name);
+}
+
+test "TAG-149: mutex completeness with explicit per-row destinations" {
+    const allocator = std.testing.allocator;
+    var arena_state = std.heap.ArenaAllocator.init(allocator);
+    defer arena_state.deinit();
+    const a = arena_state.allocator();
+
+    const src =
+        \\ORTest149[({A0<> A1<>}{B0<> B1<>})({$0 $1})
+        \\  :
+        \\  A0,B0[0<0>]
+        \\  A0,B1[1<1>]
+        \\  A1,B0[1<1>]
+        \\  A1,B1[1<1>]
+        \\]
+    ;
+
+    const net = try parser.parse(a, src);
+
+    // ---- One top-level definition, no entries needed for this test ----
+    try std.testing.expectEqual(@as(usize, 1), net.definitions.len);
+    const def = net.definitions[0];
+    try std.testing.expectEqualStrings("ORTest149", def.name);
+
+    // ---- Sources: two mutex groups ----
+    try std.testing.expectEqual(@as(usize, 2), def.sources.len);
+    try std.testing.expectEqual(network.ArgKind.group, def.sources[0].kind);
+    try std.testing.expectEqual(network.ArgKind.group, def.sources[1].kind);
+    {
+        const sg0 = def.sources[0].group.?;
+        const sg1 = def.sources[1].group.?;
+        try std.testing.expectEqual(network.PlaceGroupKind.mutex, sg0.kind);
+        try std.testing.expectEqual(network.PlaceGroupKind.mutex, sg1.kind);
+        try std.testing.expectEqual(@as(usize, 2), sg0.places.len);
+        try std.testing.expectEqual(@as(usize, 2), sg1.places.len);
+    }
+
+    // ---- Destination: one mutex group with two members ----
+    try std.testing.expectEqual(@as(usize, 1), def.destinations.len);
+    try std.testing.expectEqual(network.ArgKind.group, def.destinations[0].kind);
+    {
+        const dg = def.destinations[0].group.?;
+        try std.testing.expectEqual(network.PlaceGroupKind.mutex, dg.kind);
+        try std.testing.expectEqual(@as(usize, 2), dg.places.len);
+        try std.testing.expectEqualStrings("0", dg.places[0].name);
+        try std.testing.expectEqualStrings("1", dg.places[1].name);
+    }
+    // ---- Resolution: no fill/pure_value at top level (rules-only shape) ----
+    try std.testing.expectEqual(@as(usize, 0), def.resolution.len);
+
+    // ---- Contained rows: composed-key names + explicit <dest> fills ----
+    try std.testing.expectEqual(@as(usize, 4), def.contained.len);
+
+    const expected = [_]struct {
+        name: []const u8,
+        dest: []const u8,
+        expr: []const u8,
+    }{
+        .{ .name = "A0,B0", .dest = "0", .expr = "0" },
+        .{ .name = "A0,B1", .dest = "1", .expr = "1" },
+        .{ .name = "A1,B0", .dest = "1", .expr = "1" },
+        .{ .name = "A1,B1", .dest = "1", .expr = "1" },
+    };
+
+    for (def.contained, expected) |row, want| {
+        try std.testing.expectEqualStrings(want.name, row.name);
+
+        // A contained row is a nested Definition with no I/O...
+        try std.testing.expectEqual(@as(usize, 0), row.sources.len);
+        try std.testing.expectEqual(@as(usize, 0), row.destinations.len);
+
+        // ...and exactly one synthesized fill from the [sym<dest>] bracket.
+        try std.testing.expectEqual(@as(usize, 1), row.resolution.len);
+        const stmt = row.resolution[0];
+        try std.testing.expectEqual(
+            std.meta.Tag(network.Statement).fill,
+            std.meta.activeTag(stmt),
+        );
+        try std.testing.expectEqualStrings(want.dest, stmt.fill.dest_name);
+        try std.testing.expectEqualStrings(want.expr, stmt.fill.expr);
+    }
+}
+
+test "TAG-149: bare [N] on a group destination is rejected as ambiguous" {
+    const allocator = std.testing.allocator;
+    var arena_state = std.heap.ArenaAllocator.init(allocator);
+    defer arena_state.deinit();
+    const a = arena_state.allocator();
+
+    // TAG-149 Example 12.9 as currently written: bare [0]/[1] brackets
+    // against a two-member mutex destination {$0 $1}. The bracket says
+    // "emit symbol N" but does not say which of $0/$1 receives it. The
+    // parser should reject this; the [sym<dest>] form (A0,B0[0<0>])
+    // disambiguates.
+    const src =
+        \\OR[({A0<> A1<>}{B0<> B1<>})({$0 $1})
+        \\  :
+        \\  A0,B0[0]
+        \\  A0,B1[1]
+        \\  A1,B0[1]
+        \\  A1,B1[1]
+        \\]
+    ;
+
+    try std.testing.expectError(error.AmbiguousContainedDestination, parser.parse(a, src));
 }

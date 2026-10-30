@@ -18,7 +18,7 @@ architecture sim of example_12_19_tb is
 begin
 
     -- Instantiate the generated fulladd entity with correct port mappings
-    dut : entity work.fulladd
+    dut : entity work.fulladd129
         port map (
             x     => x_sig,
             y     => y_sig,
@@ -32,7 +32,7 @@ begin
             variable act_sum   : integer := -1;
             variable act_carry : integer := -1;
         begin
-            report "=== Starting Exhaustive FULLADD Truth Table Test ===" severity note;
+            report "=== Starting Exhaustive FULLADD129 Truth Table Test ===" severity note;
         
             -- Force an immediate error to test if assertions are active
             assert false report "DEBUG: Forced testbench crash check" severity error;
@@ -78,7 +78,7 @@ begin
         end procedure;
 
     begin
-        report "=== Starting Exhaustive FULLADD Truth Table Test ===" severity note;
+        report "=== Starting Exhaustive FULLADD129 Truth Table Test ===" severity note;
 
         -- Exhaustive test suite for full adder
         apply_test(0, 0, 0, 0, 0);
@@ -90,7 +90,7 @@ begin
         apply_test(1, 1, 0, 0, 1);
         apply_test(1, 1, 1, 1, 1);
 
-        report "=== FULLADD Simulation Completed Successfully ===" severity note;
+        report "=== FULLADD129  Simulation Completed Successfully ===" severity note;
         wait;
     end process;
 

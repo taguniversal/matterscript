@@ -1,23 +1,23 @@
 // linear: TAG-129 Imperative form of expression
 
 
-FULLADD[(X< >Y< >C< >) ($SUM $CARRY)
-NOT($X)(OP1< >)
-AND($OP1 $Y)(OP4< >)
-NOT($Y)(OP2< >)
-AND($X $OP2)(OP3< >)
-OR($OP4 $OP3)(FIRSTSUM< >)
-NOT($FIRSTSUM)(OP6< >)
-AND($C $OP6)(OP7< >)
-NOT($C)(OP5< >)
-AND($OP5 $FIRSTSUM)(OP8< >)
-OR($OP7 $OP8)(SUM< >)
-AND($X $Y)(OP10< >)
-AND($C $FIRSTSUM)(OP9< >)
-OR($OP10 $OP9)(CARRY< >)
+FULLADD129[(X< >Y< >C< >) ($SUM $CARRY)
+NOT129($X)(OP1< >)
+AND129($OP1 $Y)(OP4< >)
+NOT129($Y)(OP2< >)
+AND129($X $OP2)(OP3< >)
+OR129($OP4 $OP3)(FIRSTSUM< >)
+NOT129($FIRSTSUM)(OP6< >)
+AND129($C $OP6)(OP7< >)
+NOT129($C)(OP5< >)
+AND129($OP5 $FIRSTSUM)(OP8< >)
+OR129($OP7 $OP8)(SUM< >)
+AND129($X $Y)(OP10< >)
+AND129($C $FIRSTSUM)(OP9< >)
+OR129($OP10 $OP9)(CARRY< >)
 : 
 ]
 
-OR[(A< > B< >)($res) res<$A$B()> :0,0[0] 0,1[1] 1,0[1] 1,1[1] ]
-AND[(A< > B< >)($res) res<$A$B()> :0,0[0] 0,1[0] 1,0[0] 1,1[1] ]
-NOT[(A< >)($res) res<$A()> :1[0] 0[1] ] 
+OR129[(A< > B< >)($res) res<$A$B()> :0,0[0] 0,1[1] 1,0[1] 1,1[1] ]
+AND129[(A< > B< >)($res) res<$A$B()> :0,0[0] 0,1[0] 1,0[0] 1,1[1] ]
+NOT129[(A< >)($res) res<$A()> :1[0] 0[1] ] 

@@ -9,7 +9,7 @@ architecture sim of example_12_1_tb is
   signal ms_result   : ncl_signal;
   signal carryout : ncl_signal;
 begin
-  dut : entity work.fulladd_network
+  dut : entity work.fulladd130_network
     port map(
       ms_result   => ms_result,
       carryout => carryout

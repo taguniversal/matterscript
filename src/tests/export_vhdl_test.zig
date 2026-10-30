@@ -136,7 +136,7 @@ test "an invocation's port map uses the target entity's real port names, not gen
     const allocator = arena.allocator();
 
     const src =
-        \\FULLADD[(X<> Y<>)($OUT)
+        \\FULLADD112[(X<> Y<>)($OUT)
         \\  NOT($X)(OP1<>)
         \\  OP1<$OP1>
         \\:

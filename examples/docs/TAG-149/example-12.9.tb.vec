@@ -7,7 +7,7 @@
 //
 // Each row runs in its own Environment (fresh Testbench per row in
 // runVectors), so no reset rows are needed between them.
-@dut(OR)
+@dut(OR149)
 @vectors(A0,A1,B0,B1 : 0,1)
 
 0,null,0,null    : 0,-

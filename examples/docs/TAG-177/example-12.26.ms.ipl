@@ -1,6 +1,7 @@
 // Linear: TAG-177 Pure Value Expression
-FULLADD($A,$B,$C)(<> CARRYOUT<>)
-FULLADD[(X<>Y<>CI<>)( $SUM $CARRY)
+FULLADD177($A,$B,$C)(<> CARRYOUT<>)
+FULLADD177[(X<>Y<>CI<>)( $SUM $CARRY)
+  @runtime(consumable)
   $X $Y $CI:
 ///"fan-out input symbols"
 A[g,k,o] B[h,l,p] C[G,K,O] D[H,L,P] E[I,M,Q] F[J,N,R]

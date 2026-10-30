@@ -9,9 +9,9 @@ const runtime = matterscript.runtime;
 // Example 12.26 with the carry-stage symbol X renamed to Z
 // (X collides with boundary port X).
 const example_12_26_script =
-    \\FULLADD($A,$B,$C)(<> CARRYOUT<>)
-    \\FULLADD[(X<>Y<>CI<>)( $SUM $CARRY)
-    \\  
+    \\FULLADD1226($A,$B,$C)(<> CARRYOUT<>)
+    \\FULLADD1226[(X<>Y<>CI<>)( $SUM $CARRY)
+    \\  @runtime(consumable)
     \\  $X $Y $CI:
     \\A[g,k,o] B[h,l,p] C[G,K,O] D[H,L,P] E[I,M,Q] F[J,N,R]
     \\G,I[S] G,J[T] H,I[S] H,J[S]

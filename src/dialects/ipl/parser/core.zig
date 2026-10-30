@@ -25,6 +25,7 @@ pub const ParseError = error{
     /// with a comma (e.g. "0,0[0]").
     AmbiguousComposedKey,
     UnexpectedDestinationListInFillInvocation,
+    AmbiguousContainedDestination,
 };
 
 pub const Parser = struct {

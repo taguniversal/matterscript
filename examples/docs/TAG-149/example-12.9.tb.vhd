@@ -44,7 +44,7 @@ architecture sim of example_12_9_tb is
      ms_0_v => '0', ms_1_v => '1', ms_0_sym => -1, ms_1_sym => 1)
   );
 begin
-  dut : entity work.ms_or
+  dut : entity work.ms_or149
     port map (
       a0 => a0, a1 => a1,
       b0 => b0, b1 => b1,

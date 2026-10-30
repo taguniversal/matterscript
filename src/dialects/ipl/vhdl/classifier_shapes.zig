@@ -26,6 +26,7 @@ const std = @import("std");
 const network = @import("../network.zig");
 const rules = @import("../runtime/rules.zig");
 const value_transform_export = @import("export/value_transform.zig");
+const value_transform_analysis = @import("../value_transform.zig");
 
 /// The classifier's answer. Exactly one per definition.
 pub const EmissionShape = enum {
@@ -51,12 +52,35 @@ pub const EmissionShape = enum {
 /// This is a REFINEMENT within `.contained_lookup`, not a separate shape.
 pub const LookupKey = enum { contained_rows, composed_fill, composed_pure_value };
 
+fn containedRowsHaveFills(contained: []const network.Definition) bool {
+    for (contained) |row| {
+        for (row.resolution) |stmt| switch (stmt) {
+            .fill => return true,
+            else => {},
+        };
+    }
+    return false;
+}
+
+fn containedRowNamesAreComposedKeys(def: network.Definition) bool {
+    if (def.contained.len == 0 or def.sources.len == 0) return false;
+    for (def.contained) |row| {
+        var segs: usize = 1;
+        for (row.name) |c| if (c == ',') {
+            segs += 1;
+        };
+        if (segs != def.sources.len) return false;
+    }
+    return true;
+}
+
 /// Pure function: no I/O. `allocator` is kept for parity with the ticket's
 /// proposed signature and so future sub-classification can allocate; the
 /// current implementation does not need it.
 pub fn classifyEmissionShape(
     allocator: std.mem.Allocator,
     def: network.Definition,
+    transform_rules: []const value_transform_analysis.ValueTransformRule,
 ) !EmissionShape {
 
     // 1. No destinations / pure geometry / constant-with-no-emission -> none.
@@ -79,40 +103,50 @@ pub fn classifyEmissionShape(
         return .none;
     }
 
-
-// 4. Lowerable shape? Decompose and ask the *same* function the old
-//    dispatch used. This is the only way to reproduce the log's verdict;
-//    a Definition-level reimplementation diverges (CODE, NOT).
-if (def.destinations.len == 1 and def.contained.len > 0) {
-    if (try rules.decomposeRules(allocator, def)) |rule_set| {
-        if (value_transform_export.isLowerableShape(rule_set)) {
-            return .lowered_rules;
+    // 4. Lowerable shape? Decompose and ask the *same* function the old
+    //    dispatch used. This is the only way to reproduce the log's verdict;
+    //    a Definition-level reimplementation diverges (CODE, NOT).
+    if (def.destinations.len == 1 and def.contained.len > 0) {
+        if (try rules.decomposeRules(allocator, def)) |rule_set| {
+            if (value_transform_export.isLowerableShape(rule_set)) {
+                return .lowered_rules;
+            }
         }
     }
-}
 
-    // 5. Composed-key lookup ...
+    std.debug.print(
+        "[classify] def='{s}' dest_kind={s} sources.len={d} rowNamesComposed={any}\n",
+        .{ def.name, @tagName(def.destinations[0].kind), def.sources.len, containedRowNamesAreComposedKeys(def) },
+    );
 
     // 5. Composed-key lookup with contained rows? writeContainedLookupTable's
     //    shape. Fires for BOTH .fill and .pure_value composed keys, as long as
     //    the contained rows are anonymous.
     if (allContainedAnonymous(def.contained) and
-        composedKeyPresent(def.resolution) and
+        composedKeyPresent(def.contained) and
         def.contained.len > 0)
     {
-        // Guard from the log: a group destination with a .pure_value
-        // composition (fanout) must NOT route here -- it produced an
-        // empty-destination case block in TAG-163's follow-up. Treat it as
-        // .none for now; it is a known refinement gap (see ticket "Shapes the
-        // classifier's enum needs to cover").
-        if (def.destinations[0].kind == .group) return .none;
+        // Group destination: routable per-member ONLY when the contained
+        // rows' names are composed keys over def.sources (TAG-149's OR
+        // shape: rows "A0,B0" against two source groups, one case block
+        // per group member). When the row names are single tokens
+        // (fanout's shape: rows A/B/C/D against two sources), the case
+        // selector can't be built from them, so keep .none. Note that
+        // this is about row NAMES, not row BODIES: TAG-149's rows carry
+        // synthesized `.fill` bodies after the [sym<dest>] migration, but
+        // their names are still the composed keys the case block is
+        // selected on.
+ 
+        if (def.destinations[0].kind == .group and !containedRowNamesAreComposedKeys(def)) {
+            return .none;
+        }
         return .contained_lookup;
     }
 
-    // 6. Fallback: validity-gated formulas. (FULLADD 177/198, REACTION, AND2.)
-    if (def.contained.len > 0 or has_fill_or_pure) {
-        return .transform_rules;
-    }
+    // 6. Fallback: only if there are rules to emit. MYGATE / MYCONST /
+    //    Arbiter have empty rule lists and therefore classify as .none,
+    //    matching the log's "no emission".
+    if (transform_rules.len > 0) return .transform_rules;
 
     return .none;
 }
@@ -129,7 +163,7 @@ fn hasInvoke(res: []const network.Statement) bool {
     return false;
 }
 
-fn hasFillOrPure(res: []const network.Statement) bool {
+pub fn hasFillOrPure(res: []const network.Statement) bool {
     for (res) |stmt| switch (stmt) {
         .fill, .pure_value => return true,
         else => {},
@@ -137,12 +171,21 @@ fn hasFillOrPure(res: []const network.Statement) bool {
     return false;
 }
 
+fn containedRowsArePureValues(contained: []const network.Definition) bool {
+    if (contained.len == 0) return false;
+    for (contained) |row| {
+        if (row.resolution.len != 1) return false;
+        if (row.resolution[0] != .pure_value) return false;
+    }
+    return true;
+}
+
 /// A "contained row" in the real AST is a nested Definition with an empty
 /// name and a resolution of one pure_value. `allContainedAnonymous` in the
 /// stub conflated this with "has sources/destinations"; here the real
 /// condition is just "every contained entry is a lookup row, not a nested
 /// sub-network with its own I/O".
-fn allContainedAnonymous(contained: []const network.Definition) bool {
+pub fn allContainedAnonymous(contained: []const network.Definition) bool {
     for (contained) |row| {
         if (row.sources.len != 0) return false;
         if (row.destinations.len != 0) return false;
@@ -150,29 +193,12 @@ fn allContainedAnonymous(contained: []const network.Definition) bool {
     return true;
 }
 
-fn composedKeyPresent(res: []const network.Statement) bool {
-    return hasFillOrPure(res);
-}
-
-/// Replicates isLowerableShape's verdict from value_transform.zig.
-///
-/// Single destination place, non-empty contained rows, and every .fill in
-/// resolution targets that same destination. This reproduces the log's
-/// "dest mismatch X vs Y" rejections:
-///   fanout (TAG-147/180): fills target out1 vs out2  -> reject
-///   test   (TAG-185):     fills target 0 vs 1         -> reject
-fn isLowerableShape(def: network.Definition) bool {
-    if (def.destinations.len != 1) return false;
-    if (def.contained.len == 0) return false;
-
-    const want = def.destinations[0].name;
-
-    for (def.resolution) |stmt| switch (stmt) {
-        .fill => |f| {
-            if (!std.mem.eql(u8, f.dest_name, want)) return false;
-        },
-        else => {},
-    };
-
-    return true;
+fn composedKeyPresent(contained: []const network.Definition) bool {
+    for (contained) |row| {
+        for (row.resolution) |stmt| switch (stmt) {
+            .fill, .pure_value => return true,
+            else => {},
+        };
+    }
+    return false;
 }

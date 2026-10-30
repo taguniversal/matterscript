@@ -185,6 +185,7 @@ test "TAG-142 single return to place of invocation" {
         \\ ]
         \\
         \\INNER[(A<>)
+        \\ @runtime(consumable)
         \\  $A
         \\  :
         \\  K[K]
