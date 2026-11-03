@@ -22,7 +22,7 @@ const ExampleCase = struct {
 
 const example_table = [_]ExampleCase{
     // --- clean lowered_rules: `lowered=true` ---
-    .{ .tag = "TAG-147", .def_name = "fanin", .expected = .lowered_rules, .note = "lowered=true transform_rules=0 lookup_shape=false" },
+    .{ .tag = "TAG-147", .def_name = "fanout", .expected = .selector_demux, .note = "selector-gated demux: single-token rows A/B/C/D, group dest, selector=select (was .none pre-TAG-180)" },
     .{ .tag = "TAG-163", .def_name = "BINEQ", .expected = .lowered_rules, .note = "lowered=true transform_rules=0 lookup_shape=true" },
     .{ .tag = "TAG-163", .def_name = "BIGT", .expected = .lowered_rules, .note = "lowered=true transform_rules=0 lookup_shape=true" },
     .{ .tag = "TAG-163", .def_name = "LAND", .expected = .lowered_rules, .note = "lowered=true transform_rules=0 lookup_shape=true" },
@@ -68,8 +68,8 @@ const example_table = [_]ExampleCase{
     .{ .tag = "TAG-218", .def_name = "WRAP", .expected = .invocations_only, .note = "lowered=false tr=0 ls=false" },
 
     // --- none: all false, no invokes (constant/geometry/unknown) ---
-    .{ .tag = "TAG-147", .def_name = "fanout", .expected = .none, .note = "lookup-shaped but group dest; rejects lowered; falls through (refinement gap)" },
-    .{ .tag = "TAG-180", .def_name = "fanout", .expected = .none, .note = "same refinement gap" },
+    .{ .tag = "TAG-147", .def_name = "fanout", .expected = .selector_demux, .note = "lookup-shaped but group dest; rejects lowered; falls through (refinement gap)" },
+    .{ .tag = "TAG-180", .def_name = "fanout", .expected = .selector_demux, .note = "same shape, second example" },
     .{ .tag = "TAG-189", .def_name = "Arbiter", .expected = .none, .note = "constant_or_fill, no emission" },
     .{ .tag = "TAG-210", .def_name = "rule30", .expected = .none, .note = "unknown, no emission" },
 };
@@ -79,12 +79,12 @@ fn loadNetworkForTag(allocator: std.mem.Allocator, tag: []const u8) !network.Net
     const root = repoRoot();
 
     var dir_path_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const dir_path = try std.fmt.bufPrint(&dir_path_buf, "{s}/examples/docs/{s}", .{root,tag});
+    const dir_path = try std.fmt.bufPrint(&dir_path_buf, "{s}/examples/docs/{s}", .{ root, tag });
 
     var dir = std.Io.Dir.cwd().openDir(io, dir_path, .{ .iterate = true }) catch |err| {
-    std.debug.print("loadNetworkForTag: openDir('{s}') failed: {s}\n", .{ dir_path, @errorName(err) });
-    return err;
-};
+        std.debug.print("loadNetworkForTag: openDir('{s}') failed: {s}\n", .{ dir_path, @errorName(err) });
+        return err;
+    };
     defer dir.close(io);
 
     var it = dir.iterate();
@@ -155,8 +155,11 @@ test "TAG-229 AC#2: classifier matches the table for every example" {
             return error.DefinitionNotFound;
         };
 
-        const transform_rules = try value_transform_analysis.collectValueTransformRules(arena, def);
-        const shape = try classifier_shapes.classifyEmissionShape(arena, def, transform_rules);
+        const sanitizer = matterscript.sanitizer;
+        const normalized = try sanitizer.normalizeDefinitionIdentifiers(arena, def);
+
+        const transform_rules = try value_transform_analysis.collectValueTransformRules(arena, normalized);
+        const shape = try classifier_shapes.classifyEmissionShape(arena, normalized, transform_rules);
         if (shape != case.expected) {
             std.debug.print(
                 "example {s} def '{s}': expected {s}, got {s}\n  note: {s}\n",
@@ -180,5 +183,38 @@ test "TAG-229 AC#2: classifier matches the table for every example" {
             );
         }
         try std.testing.expectEqual(case.expected, shape);
+    }
+}
+
+test "selector_demux: fanout is routed there; fanin is lowered_rules" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+
+    // fanout: predicate true, classifier routes to .selector_demux.
+    {
+        const net = try loadNetworkForTag(arena, "TAG-147");
+        const fanout_raw = findDefinition(net, "fanout") orelse return error.DefinitionNotFound;
+        const fanout = try matterscript.sanitizer.normalizeDefinitionIdentifiers(arena, fanout_raw);
+        try std.testing.expect(classifier_shapes.containedRowsAreSelectorGated(fanout));
+        const tr = try value_transform_analysis.collectValueTransformRules(arena, fanout);
+        const shape = try classifier_shapes.classifyEmissionShape(arena, fanout, tr);
+        try std.testing.expectEqual(classifier_shapes.EmissionShape.selector_demux, shape);
+    }
+
+    // fanin: classifier routes to .lowered_rules at step 4 (single destination,
+    // lowerable rules). The predicate is NOT asserted here: fanin's routed
+    // sources are group members, not top-level sources, so
+    // containedRowsAreSelectorGated correctly returns false for it. The
+    // asymmetry is: selector_demux requires top-level-source routing, and
+    // fanin's shape is a multiplexer over a group source, which lowering
+    // handles.
+    {
+        const net = try loadNetworkForTag(arena, "TAG-147");
+        const fanin_raw = findDefinition(net, "fanin") orelse return error.DefinitionNotFound;
+        const fanin = try matterscript.sanitizer.normalizeDefinitionIdentifiers(arena, fanin_raw);
+        const tr = try value_transform_analysis.collectValueTransformRules(arena, fanin);
+        const shape = try classifier_shapes.classifyEmissionShape(arena, fanin, tr);
+        try std.testing.expectEqual(classifier_shapes.EmissionShape.lowered_rules, shape);
     }
 }

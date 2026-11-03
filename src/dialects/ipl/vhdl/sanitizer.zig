@@ -142,6 +142,7 @@ pub fn normalizeDefinitionIdentifiers(allocator: std.mem.Allocator, raw_def: net
 
     def.resolution = try normalizeStatements(allocator, &names, &alias_map, raw_def.resolution);
     def.constants = try normalizeConstants(allocator, &names, raw_def.constants);
+    def.contained = try normalizeContained(allocator, &names, &alias_map, raw_def.contained);   // NEW
     return def;
 }
 
@@ -153,6 +154,40 @@ fn normalizePlaces(
     var list: std.ArrayListUnmanaged(network.Arg) = .empty;
     for (places) |arg| {
         try list.append(allocator, try normalizeArg(allocator, names, arg));
+    }
+    return list.toOwnedSlice(allocator);
+}
+
+/// Normalize a definition's contained rows, recursing into nested
+/// contained definitions. Contained rows are (in the AST) full
+/// `network.Definition`s with empty sources/destinations; their
+/// `resolution` is a single `.fill` (or `.pure_value`) whose `expr`
+/// carries `$references` into the *parent's* scope. Those references
+/// must be rewritten through the same `names`/`alias_map` the parent
+/// used, or a source renamed `in`→`input` at parse time will still be
+/// referenced as `$in` inside the row, producing VHDL that names an
+/// undeclared port. The row *name* is a selector key (e.g. `A`,
+/// `0,0`), not a place reference, and is intentionally left
+/// unrewritten.
+fn normalizeContained(
+    allocator: std.mem.Allocator,
+    names: *IdentifierMap,
+    alias_map: *DestinationAliasMap,
+    contained: []const network.Definition,
+) ![]const network.Definition {
+    var list: std.ArrayListUnmanaged(network.Definition) = .empty;
+    for (contained) |raw_row| {
+        var row = raw_row;
+        // Row name is a selector key, not a place reference — leave it.
+        // Row sources/destinations are empty by construction (anonymous
+        // lookup row), but normalize them anyway for safety and so a
+        // future non-anonymous contained definition recurses correctly.
+        row.sources = try normalizePlaces(allocator, names, raw_row.sources);
+        row.destinations = try normalizeDestinations(allocator, names, alias_map, raw_row.destinations);
+        row.resolution = try normalizeStatements(allocator, names, alias_map, raw_row.resolution);
+        row.constants = try normalizeConstants(allocator, names, raw_row.constants);
+        row.contained = try normalizeContained(allocator, names, alias_map, raw_row.contained);
+        try list.append(allocator, row);
     }
     return list.toOwnedSlice(allocator);
 }

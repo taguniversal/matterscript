@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 30  |  🟡 Partial: 5  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 137  |  Total: 173
+✅ Implemented: 30  |  🟡 Partial: 5  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 138  |  Total: 174
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-222: 2D/3D HP (Hydrophobic-Polar) Lattice Folding Model](TAG-222.md)
@@ -172,6 +172,7 @@
 - ⬜ Not started [TAG-227: `Emitter: entry-invocation mutex-group arguments aren't unwrapped into member ports`](TAG-227.md)
 - ⬜ Not started [TAG-228: TileScript domain sub-language](TAG-228.md)
 - ⬜ Not started [TAG-229: Consolidate the three rule-emission paths behind a single shape classifier](TAG-229.md)
+- ⬜ Not started [TAG-230: Emit selector-gated demultiplex shapes (`fanout`) via a new `.selector_demux` emission shape](TAG-230.md)
 - ⬜ Not started [TAG-46: Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [TAG-47: Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [TAG-80: The Completeness Dialogue](TAG-80.md)

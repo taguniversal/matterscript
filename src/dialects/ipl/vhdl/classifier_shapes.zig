@@ -10,6 +10,10 @@
 //!   - lowered_rules    : same idea, but the rules lower cleanly to a case
 //!                        block over def.sources (single destination, no
 //!                        contained-row ambiguity). Handled by lowerRules.
+//!   - selector_demux   : output is a case block over a selector source that
+//!                        routes one source value to one of N group-member
+//!                        destinations, or (future) N sources to one
+//!                        destination. Handled by writeSelectorDemux.
 //!   - transform_rules  : output is an OR-of-ANDs validity formula over the
 //!                        inputs (multi-destination / non-lowerable shape).
 //!   - invocations_only : output is whatever sub-invocations produce; no
@@ -37,6 +41,17 @@ pub const EmissionShape = enum {
     /// Rules directly expressible as a case block over def.sources.
     /// Handled by lowerRules.
     lowered_rules,
+    /// Selector-gated case block over a group destination (demultiplex,
+    /// `fanout`'s shape) or, in a future refinement, a group source into a
+    /// single destination (multiplex, `fanin`'s shape). Handled by
+    /// writeSelectorDemux. The `fanin` multiplex direction is NOT routed
+    /// through this shape today: `fanin` classifies as `.lowered_rules`,
+    /// which is correct for its single-destination case block. The
+    /// `containedRowsAreSelectorGated` predicate recognizes both directions
+    /// so that a future multiplex shape which `.lowered_rules` cannot
+    /// express can migrate without a classifier change. See the predicate's
+    /// doc comment.
+    selector_demux,
     /// No anonymous contained rows; rules must be emitted as validity-gated
     /// boolean formulas (older shape).
     transform_rules,
@@ -51,6 +66,14 @@ pub const EmissionShape = enum {
 /// Distinguishes the two ways a lookup can be keyed, for the sub-emitter.
 /// This is a REFINEMENT within `.contained_lookup`, not a separate shape.
 pub const LookupKey = enum { contained_rows, composed_fill, composed_pure_value };
+
+/// Direction of a selector-gated case block. REFINEMENT within
+/// `.selector_demux`, not a separate shape. `demultiplex` is the shape routed
+/// today (`fanout`: one source → N group-member destinations). `multiplex`
+/// is `fanin`'s shape (N sources → one destination); it is recognized by
+/// `containedRowsAreSelectorGated` but routed to `.lowered_rules`, not
+/// `.selector_demux`, because `lowered_rules` already emits it correctly.
+pub const SelectorDirection = enum { multiplex, demultiplex };
 
 fn containedRowsHaveFills(contained: []const network.Definition) bool {
     for (contained) |row| {
@@ -71,6 +94,78 @@ fn containedRowNamesAreComposedKeys(def: network.Definition) bool {
         };
         if (segs != def.sources.len) return false;
     }
+    return true;
+}
+
+/// True when a definition's contained rows express a selector-gated case
+/// block: every row is anonymous, every row name is a single token (a
+/// symbolic selector value, not a composed key), every row has exactly one
+/// `.fill` body, and exactly one of the definition's top-level sources is
+/// unreferenced in the row bodies (that source is the selector).
+///
+/// This predicate recognizes the DEMULTIPLEX direction (`fanout`): one
+/// routed top-level source, N group-member destinations. Row bodies
+/// reference the routed source; the unreferenced source is the selector.
+///
+/// It does NOT recognize multiplex-with-group-source (`fanin`): there,
+/// the routed values are group members, not top-level sources, so
+/// `def.sources` contains a group whose members are referenced rather
+/// than the group itself. `fanin` classifies as `.lowered_rules` at
+/// step 4 of the classifier, before this predicate is consulted, so
+/// the mismatch is harmless — but the predicate's contract is
+/// top-level-source routing, not group-source routing.
+pub fn containedRowsAreSelectorGated(def: network.Definition) bool {
+    if (def.contained.len == 0) {
+        return false;
+    }
+    if (def.sources.len < 2) {
+        return false;
+    }
+    if (!allContainedAnonymous(def.contained)) {
+        return false;
+    }
+
+    for (def.contained) |row| {
+        if (std.mem.indexOfScalar(u8, row.name, ',') != null) {
+            return false;
+        }
+        if (row.resolution.len != 1) {
+            return false;
+        }
+        if (row.resolution[0] != .fill) {
+            return false;
+        }
+    }
+
+    var referenced = std.StringHashMapUnmanaged(void).empty;
+    defer referenced.deinit(std.heap.page_allocator);
+    for (def.contained) |row| {
+        const expr = row.resolution[0].fill.expr;
+
+        var i: usize = 0;
+        while (i < expr.len) {
+            if (expr[i] != '$') {
+                i += 1;
+                continue;
+            }
+            i += 1;
+            const start = i;
+            while (i < expr.len and (std.ascii.isAlphanumeric(expr[i]) or expr[i] == '_')) i += 1;
+            if (i > start) {
+                referenced.put(std.heap.page_allocator, expr[start..i], {}) catch return false;
+            }
+        }
+    }
+
+    var selector_count: usize = 0;
+    for (def.sources) |src| {
+        const in_map = referenced.contains(src.name);
+
+        if (!in_map) selector_count += 1;
+    }
+
+    if (selector_count != 1) return false;
+    if (referenced.count() == 0) return false;
     return true;
 }
 
@@ -106,12 +201,32 @@ pub fn classifyEmissionShape(
     // 4. Lowerable shape? Decompose and ask the *same* function the old
     //    dispatch used. This is the only way to reproduce the log's verdict;
     //    a Definition-level reimplementation diverges (CODE, NOT).
+    //
+    //    `fanin` lands here: single destination (`out`), contained rows,
+    //    `decomposeRules` succeeds, `isLowerableShape` accepts (all rules
+    //    write `out`). Return `.lowered_rules` and never reach 4b.
     if (def.destinations.len == 1 and def.contained.len > 0) {
         if (try rules.decomposeRules(allocator, def)) |rule_set| {
             if (value_transform_export.isLowerableShape(rule_set)) {
                 return .lowered_rules;
             }
         }
+    }
+
+    // 4b. Selector-gated group destination? `fanout`'s shape: single group
+    //     destination, contained rows are single-token selector values, row
+    //     bodies route one source to one group member each. `fanin` also
+    //     satisfies `containedRowsAreSelectorGated`, but step 4 already
+    //     returned `.lowered_rules` for it, so 4b is only reached by
+    //     non-lowerable shapes. The `destinations[0].kind == .group` guard
+    //     restricts 4b to the demultiplex direction; a future multiplex
+    //     shape that `.lowered_rules` cannot express would need this guard
+    //     relaxed (and `fanin` migrated alongside it).
+    if (def.destinations.len == 1 and
+        def.destinations[0].kind == .group and
+        containedRowsAreSelectorGated(def))
+    {
+        return .selector_demux;
     }
 
     std.debug.print(
@@ -131,12 +246,13 @@ pub fn classifyEmissionShape(
         // shape: rows "A0,B0" against two source groups, one case block
         // per group member). When the row names are single tokens
         // (fanout's shape: rows A/B/C/D against two sources), the case
-        // selector can't be built from them, so keep .none. Note that
-        // this is about row NAMES, not row BODIES: TAG-149's rows carry
-        // synthesized `.fill` bodies after the [sym<dest>] migration, but
-        // their names are still the composed keys the case block is
-        // selected on.
- 
+        // selector can't be built from them.
+        //
+        // NOTE: `fanout`-shaped definitions no longer reach this guard —
+        // step 4b catches them as `.selector_demux`. This guard now fires
+        // only for group-destination shapes that are genuinely unrouted
+        // (neither lowerable, nor selector-gated, nor composed-key lookup).
+        // The `.none` set is smaller by exactly `fanout`'s shape.
         if (def.destinations[0].kind == .group and !containedRowNamesAreComposedKeys(def)) {
             return .none;
         }
