@@ -19,7 +19,7 @@
 | TAG-160 | example-12.33.ms.ipl | Implemented | ok | ok 4/4 | ok | ok | ✅ PASS |
 | TAG-163 | example-12.36.ms.ipl | Implemented | ok | ok 4/4 | ok | ok | ✅ PASS |
 | TAG-177 | example-12.26.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
-| TAG-180 | example-12.10.ms.ipl | Implemented | ok | ok 20/20 | ok | - | ✅ PASS |
+| TAG-180 | example-12.10.ms.ipl | Implemented | ok | ok 20/20 | ok | ok | ✅ PASS |
 | TAG-181 | example-12.11.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
 | TAG-184 | example-12.24.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
 | TAG-185 | case-unique-signals.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |

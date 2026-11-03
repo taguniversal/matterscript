@@ -14,7 +14,6 @@
 /// on the sources; `fanout`'s shape reads the contained rows' fills directly,
 /// keyed on the row names. The case-block *emission* is structurally
 /// identical; the path to the rule data is not.
-
 const std = @import("std");
 const network = @import("../../network.zig");
 const sanitize = @import("../sanitizer.zig");
@@ -57,11 +56,29 @@ pub fn writeSelectorDemux(
     const group = def.destinations[0].group orelse
         return error.SelectorDemuxRequiresGroupDestination;
 
-    // 4. Null-value prelude: declare every group member to null_value at
-    //    process entry, so unselected members stay incomplete per the
-    //    completeness convention.
+    // 3b. Find the routed source. Every contained row's fill expression
+    //     references the same source (`$in` for `fanout`); the predicate
+    //     guaranteed exactly one source is unreferenced (the selector) and
+    //     at least one is referenced (the routed source). We read it from
+    //     the first row and reuse it for the sensitivity list and for every
+    //     arm body.
+    if (def.contained.len == 0) return error.SelectorDemuxNoRows;
+    const first_stmt = def.contained[0].resolution[0];
+    if (first_stmt != .fill) return error.SelectorDemuxRowMissingFill;
+    const first_expr = std.mem.trim(u8, first_stmt.fill.expr, " \t\r\n");
+    const routed_source_name = stripDollar(first_expr) orelse
+        return error.SelectorDemuxUnsupportedSourceExpr;
+    const routed_source_id = try sanitize.sanitizeName(allocator, routed_source_name);
+    defer allocator.free(routed_source_id);
+
+    // 4. Null-value prelude and process header. The routed source is in
+    //    the sensitivity list because the arm bodies copy its live value
+    //    (`outN <= routed`); the process must re-fire when the routed
+    //    source changes, not only when the selector changes. (Contrast
+    //    `lowerRules`, whose arms assign `data_value(N)` constants and
+    //    therefore do not need the routed sources in the list.)
     try writer.print("\n  -- selector demux for {s}\n", .{selector});
-    try writer.print("  process({s}, complete) begin\n", .{selector_id});
+    try writer.print("  process({s}, {s}, complete) begin\n", .{ selector_id, routed_source_id });
     for (group.places) |member| {
         const member_id = try sanitize.sanitizeName(allocator, member.name);
         defer allocator.free(member_id);
@@ -70,30 +87,21 @@ pub fn writeSelectorDemux(
     try writer.print("    if complete = '1' then\n", .{});
     try writer.print("      case {s}({d} downto 1) is\n", .{ selector_id, constants.DATA_WIDTH });
 
-    // 5. One arm per contained row: the case label is the row name
-    //    (symbol-encoded via the symbol table, same as lowerRules's
-    //    caseLabel), the body is the row's `.fill`: `dest <= src`.
+    // 5. One arm per contained row. The case label is the row name
+    //    (symbol-encoded), the body routes the shared routed source to the
+    //    row's destination member.
     for (def.contained) |row| {
         const stmt = row.resolution[0];
         if (stmt != .fill) return error.SelectorDemuxRowMissingFill;
         const dest_name = stmt.fill.dest_name;
-        const src_expr = std.mem.trim(u8, stmt.fill.expr, " \t\r\n");
 
-        // The routed source expression is "$src" — strip the `$` and
-        // sanitize the bare name. If the expr is more complex than a single
-        // `$name` reference, that's not a shape this emitter handles.
-        const src_name = stripDollar(src_expr) orelse
-            return error.SelectorDemuxUnsupportedSourceExpr;
-        const src_id = try sanitize.sanitizeName(allocator, src_name);
-        defer allocator.free(src_id);
         const dest_id = try sanitize.sanitizeName(allocator, dest_name);
         defer allocator.free(dest_id);
 
-        // Case label: the row name as a symbol-encoded literal.
         const label = try symbolCaseLabel(allocator, row.name, table);
         defer allocator.free(label);
 
-        try writer.print("        when {s} => {s} <= {s};\n", .{ label, dest_id, src_id });
+        try writer.print("        when {s} => {s} <= {s};\n", .{ label, dest_id, routed_source_id });
     }
 
     try writer.print("        when others => null;\n", .{});
