@@ -34,7 +34,7 @@ Ask the question of every definition in the 32 examples, and a small number of a
 
 **From nothing.** The definition has no output at all, or its output is entirely determined by something other than rule emission — geometry, directives, validation-only constructs. `fanout@147`'s shape, in its current form, is here: the definition has destinations, but the emitter has no template for its structure, and `.none` is the honest answer. Some geometry primitives are here too: their behavior is elaborated elsewhere and needs no architecture body.
 
-Four answers. Not four emitters — three of the four answers are handled by existing emitters, and the fourth (`none`) is handled by emitting nothing. But four *kinds of output origin*, and every definition in the corpus has exactly one of them.
+Four answers. Not four emitters — the four answers are handled by six emitters (lookup splits into three templates, invocation and constant each have one, and none is handled by emitting nothing). But four kinds of output origin, and every definition in the corpus has exactly one of them.
 
 ## Why four, and not three or five
 
@@ -56,11 +56,11 @@ The four shapes are exactly the four ways `resolution` and `rules` can combine t
 
 That is the exhaust. There is no fifth way for a definition to combine `resolution` and `rules`, because those two sections are the only places a definition's output can come from, and their combination possibilities are constrained by the grammar's structure.
 
-The five-shape enum in the classifier is the four answers, with lookup split into two emitter paths (`contained_lookup` and `lowered_rules`). That split is a refinement — both are the same answer, "from a lookup on the inputs," handled by two sub-emitters because the two sub-emitters have different preconditions and produce different (though similar) VHDL. The four-shape model is the conceptual frame; the five-shape enum is the implementation.
+The six-shape enum in the classifier is the four answers, with lookup split into three emitter paths (contained_lookup, lowered_rules, and selector_demux). The split is a refinement — all three are the same answer, "from a lookup on the inputs," handled by three sub-emitters because the sub-emitters have different preconditions and produce structurally different VHDL. contained_lookup and lowered_rules both emit one case block over the source value space, differing in how strictly they prove the table covers that space. selector_demux emits a case block over a selector source, with arms routing to different destinations — a demultiplexer, not a lookup table indexed by an input combination. The four-shape model is the conceptual frame; the six-shape enum is the implementation.
 
 ## Why this is the right level of classification
 
-The classifier could go finer. It could distinguish `contained_lookup` with composed row names from `contained_lookup` with fill-keyed rows from `contained_lookup` with pure-value-keyed rows — and in fact the `LookupKey` refinement does exactly that, but at the sub-emitter level, not in the classifier's return type. It could distinguish `invocations_only` with one instance from `invocations_only` with a chain of instances. It could distinguish `transform_rules` with a single destination from `transform_rules` with multiple. All of those distinctions exist in the code.
+The classifier could go finer. It could distinguish contained_lookup with composed row names from contained_lookup with fill-keyed rows from contained_lookup with pure-value-keyed rows — and in fact the LookupKey refinement does exactly that, but at the sub-emitter level, not in the classifier's return type. It could distinguish selector_demux's demultiplex direction from its multiplex direction — and the SelectorDirection refinement names them, even though only the demultiplex direction is routed today. It could distinguish invocations_only with one instance from invocations_only with a chain of instances. It could distinguish transform_rules with a single destination from transform_rules with multiple. All of those distinctions exist in the code.
 
 The classifier does not make them, because none of them change the answer to "where does the output come from?" A `contained_lookup` by any key form still comes from a lookup on the inputs. An `invocations_only` by any chain length still comes from sub-definitions. A `transform_rules` definition by any destination count still comes from a formula over the inputs. The classification's purpose is to separate the *architectures*, and the architecture is determined by the origin, not by the details of how the origin is expressed.
 
@@ -78,9 +78,9 @@ The classifier removes the accident. There is one decision per definition, one a
 
 ## The chapter's argument, in one paragraph
 
-The rest of this chapter is the argument that one classification function can organize an entire VHDL emitter. The function answers one question — where does a definition's output come from? — with one of five shapes. The emitter translates each shape to one of five architectures. The parser produces an AST that the classifier can read; the runtime dispatches separately; the backend writes VHDL. Each layer has one job, and the classifier is the wall between the front end (parser, AST) and the back end (emitter, architecture). That wall is what makes "two paths both fire" and "no path fires for a shape that should be handled" structurally impossible. It is also what makes the chapter writable: five shapes, five templates, five architectures, one classifier, one question.
+The rest of this chapter is the argument that one classification function can organize an entire VHDL emitter. The function answers one question — where does a definition's output come from? — with one of six shapes. The emitter translates each shape to one of six architectures. The parser produces an AST that the classifier can read; the runtime dispatches separately; the backend writes VHDL. Each layer has one job, and the classifier is the wall between the front end (parser, AST) and the back end (emitter, architecture). That wall is what makes "two paths both fire" and "no path fires for a shape that should be handled" structurally impossible. It is also what makes the chapter writable: six shapes, six templates, six architectures, one classifier, one question.
 
-The remaining sections unpack that paragraph. §2 describes the AST the classifier sees. §3 walks the classifier's decision order. §4 presents the five templates. §5 uses the `fanout` case to make "shape is structural, not syntactic" concrete. §6 tells the overlap story. §7 says what the classifier deliberately does not decide. §8 walks one example through the whole pipeline. §9 looks forward.
+The remaining sections unpack that paragraph. §2 describes the AST the classifier sees. §3 walks the classifier's decision order. §4 presents the six templates. §5 uses the fanout case to make "shape is structural, not syntactic" concrete. §6 tells the overlap story. §7 says what the classifier deliberately does not decide. §8 walks one example through the whole pipeline. §9 looks forward.
 
 # 2. The AST the classifier sees
 
@@ -200,10 +200,9 @@ The classifier's decision order is the sequence of questions that turns those fi
 
 That is the AST the classifier sees, and that is why the classifier is testable in isolation: the AST is a self-contained description of the definition's shape-relevant structure, and the classifier is a self-contained function over that structure. The next section walks the decision order that function implements.
 
-
 # 3. `classifyEmissionShape` — the single decision point
 
-By the time a definition reaches the emitter, the parser has already done its work. The `.ms.ipl` source has become a `network.Definition` — a struct with a name, a source list, a destination list, a resolution area, a set of contained rows, and a handful of directives. What the emitter needs to know, before it writes a single line of VHDL, is which of the five architecture templates this definition calls for.
+By the time a definition reaches the emitter, the parser has already done its work. The `.ms.ipl` source has become a `network.Definition` — a struct with a name, a source list, a destination list, a resolution area, a set of contained rows, and a handful of directives. What the emitter needs to know, before it writes a single line of VHDL, is which of the six architecture templates this definition calls for.
 
 That question is answered in one place. The function is `classifyEmissionShape`:
 
@@ -215,12 +214,13 @@ pub fn classifyEmissionShape(
 ) !EmissionShape
 ```
 
-It takes a definition and the value-transform rules already collected from its contained rows, and returns exactly one of five shapes:
+It takes a definition and the value-transform rules already collected from its contained rows, and returns exactly one of six shapes:
 
 ```rust
 pub const EmissionShape = enum {
     contained_lookup,
     lowered_rules,
+    selector_demux,
     transform_rules,
     invocations_only,
     none,
@@ -231,15 +231,16 @@ Each variant answers "where does this definition's output come from?" in a diffe
 
 - **`contained_lookup`** — the output is a table indexed by the inputs. The table comes from the definition's contained rows, keyed either by a `.fill` composition or a `.pure_value` composition. One case block per destination.
 - **`lowered_rules`** — the same idea, but the rules lower cleanly to a case block over `def.sources` with a single destination and no contained-row ambiguity. The output is still a table, but the emitter can go straight to a case statement without going through the contained-row machinery.
-- **`transform_rules`** — the output is an OR-of-ANDs validity formula over the inputs. This is the fallback shape for multi-destination definitions and any other case the first two paths don't route.
+- **`selector_demux`** — the output is a case block over a selector source, with one arm per contained row, each arm routing a source value to one group-member destination. The demultiplexer shape.
+- **`transform_rules`** — the output is an OR-of-ANDs validity formula over the inputs. This is the fallback shape for multi-destination definitions and any other case the first three paths don't route.
 - **`invocations_only`** — the output is whatever the sub-invocations produce. The definition's own resolution is wiring; no table, no formula, only component instantiation.
 - **`none`** — nothing to emit. The definition has empty resolution, is pure geometry, is a constant with no emission, or is a shape the emitter does not yet route.
 
-There is a sixth enum in the same module — `LookupKey { contained_rows, composed_fill, composed_pure_value }` — but it is *not* a shape. It is a refinement *within* `contained_lookup`, telling the sub-emitter which of three ways to key its case selector. The classifier never returns a `LookupKey`; it returns `contained_lookup` and lets the lookup writer pick the key form. The distinction matters because the shape question ("where does the output come from?") and the key question ("how is the table indexed?") are different questions, asked at different levels, and conflating them was one of the coordination bugs the classifier exists to prevent.
+There are two refinement enums in the same module — `LookupKey { contained_rows, composed_fill, composed_pure_value }` and `SelectorDirection { multiplex, demultiplex }` — but neither is a shape. `LookupKey` refines *within* `contained_lookup`, telling the sub-emitter which of three ways to key its case selector. `SelectorDirection` refines *within* `selector_demux`, naming the two directions of the selector-gated pattern. The classifier never returns a `LookupKey` or a `SelectorDirection`; it returns the shape and lets the sub-emitter pick the refinement. The distinction matters because the shape question ("where does the output come from?") and the refinement question ("how is the table keyed?" / "which direction is the selector-gated routing?") are different questions, asked at different levels, and conflating them was one of the coordination bugs the classifier exists to prevent.
 
 ## The decision order
 
-The classifier is a sequence of seven checks, each eliminating one possibility. The ordering is not arbitrary: each step is placed where it is because a later step would misinterpret a definition that the earlier step already answered correctly. Reading the order top to bottom is reading the reasons the classifier works.
+The classifier is a sequence of eight checks, each eliminating one possibility. The ordering is not arbitrary: each step is placed where it is because a later step would misinterpret a definition that the earlier step already answered correctly. Reading the order top to bottom is reading the reasons the classifier works.
 
 **1. `destinations.len == 0` → `.none`.**
 
@@ -273,9 +274,30 @@ This step calls *the same functions* the old dispatch used — `decomposeRules` 
 
 Fourth, because the lowering path only fires for single-destination definitions with contained rows. A multi-destination definition cannot be `.lowered_rules` no matter what its rules look like — the case block needs a single destination to write to. If we checked this later, we would produce a `.lowered_rules` verdict for a shape that cannot lower, and the emitter would fail.
 
+**4b. Group destination, contained rows, selector-gated → `.selector_demux`.**
+
+If lowering did not apply, the classifier checks the selector-gated demultiplexer path before the contained-lookup path:
+
+```rust
+if (def.destinations.len == 1 and
+    def.destinations[0].kind == .group and
+    containedRowsAreSelectorGated(def))
+{
+    return .selector_demux;
+}
+```
+
+The three conditions are: exactly one destination, a *group* destination, and the contained rows express a selector-gated case block — anonymous rows, single-token row names, one `.fill` per row, and exactly one source unreferenced in the row bodies (the selector).
+
+This is `fanout`'s shape: one routed source, N group-member destinations, a selector source that chooses which member receives the routed value. The `destinations[0].kind == .group` guard restricts step 4b to the demultiplex direction. A single-place destination never reaches 4b, because step 4 has already returned `.lowered_rules` for the lowerable case (that is `fanin`'s multiplex shape), and step 5 handles the non-group lookup cases.
+
+Fourth-and-a-half, because the selector-gated path sits between lowering and contained lookup in the structural hierarchy. A definition that *could* lower should lower (step 4); one that cannot lower but *is* a demultiplexer should demultiplex (step 4b); one that is neither but is lookup-shaped falls to step 5. The ordering matches the specificity of the template: lowering is the tightest proof, demultiplexing is the next-tightest structural match, and contained lookup is the loosest.
+
+The predicate behind the guard, `containedRowsAreSelectorGated`, is written generally: it recognizes both `fanout`'s demultiplex shape and `fanin`'s multiplex shape. The classifier routes only the demultiplex direction through step 4b, because `fanin` never reaches 4b (step 4 catches it). The asymmetry is documented in the predicate and asserted in a test, so that a future change to the decision order — moving 4b above 4, or removing the group-destination guard — fails loudly rather than silently rerouting `fanin`.
+
 **5. Composed-key lookup with contained rows → `.contained_lookup`.**
 
-If lowering did not apply, the classifier checks the contained-lookup path:
+If lowering and demultiplexing did not apply, the classifier checks the contained-lookup path:
 
 ```rust
 if (allContainedAnonymous(def.contained) and
@@ -295,11 +317,13 @@ The three positive conditions are: every contained row is anonymous (no sources,
 
 The negative condition inside is the group-destination refinement guard. When the definition's destination is a *group* (a bundle, mutex, or arbitration set) and the contained rows' *names* are single tokens rather than composed keys over `def.sources`, the case selector cannot be built. The row names are the case labels; if they are `A`, `B`, `C`, `D` rather than `0,0`, `0,1`, `1,0`, `1,1`, there is no way to select on them. Returning `.contained_lookup` for such a shape would produce an empty-destination case block — exactly the bug the classifier exists to prevent. So the guard returns `.none` explicitly.
 
-Fifth, after lowering has been ruled out, because a definition that *could* lower should lower — the lowered form is tighter and the VHDL is cleaner — and a definition that cannot lower but is lookup-shaped falls to this step as the next-best answer.
+The guard now fires only for group-destination shapes that are neither lowerable nor selector-gated. That is a smaller set than before step 4b existed: `fanout` used to be its most prominent member, and step 4b now catches `fanout` before the guard can run. What remains in the guard's domain are the genuinely unrouted group-destination shapes — the ones with neither a lowering proof nor a selector-gated structure. The `.none` set shrinks by exactly `fanout`'s shape.
+
+Fifth, after lowering and demultiplexing have been ruled out, because a definition that *could* lower should lower, one that is a demultiplexer should demultiplex, and a definition that is neither but is lookup-shaped falls to this step as the next-best answer.
 
 **6. `transform_rules.len > 0` → `.transform_rules`.**
 
-If lowering failed and the contained-lookup shape did not match, but there are transform rules to emit, the classifier returns the OR-of-ANDs path. This is the multi-destination `.fill`-over-anonymous-rows shape (`FULLADD` in TAG-177/198/211), the shapes that have rules but no single destination to write them to as a case block, and the older fallback shapes. Sixth, because it is the fallback — the answer of last resort for a definition that has rules to emit but does not fit either of the more specific shapes.
+If lowering failed, demultiplexing did not match, and the contained-lookup shape did not match, but there are transform rules to emit, the classifier returns the OR-of-ANDs path. This is the multi-destination `.fill`-over-anonymous-rows shape (`FULLADD` in TAG-177/198/211), the shapes that have rules but no single destination to write them to as a case block, and the older fallback shapes. Sixth, because it is the fallback — the answer of last resort for a definition that has rules to emit but does not fit any of the more specific shapes.
 
 **7. Else → `.none`.**
 
@@ -313,20 +337,22 @@ The pre-TAG-229 emitter had three dispatch paths coordinated by booleans: `lower
 
 The classifier eliminates both classes structurally. It returns exactly one shape. It cannot return two. It cannot return zero. The emitter dispatches on that shape and calls one sub-emitter — one, not two — and the definition's output is whatever that sub-emitter writes. "Two paths both fire" is not a condition the emitter can reach. "No path fires for a shape that should be handled" is not a condition either: the classifier returns `.none` for genuinely unrouted shapes, and `.none` is itself a decision the emitter respects, not an absence of decision.
 
-The cost of this structure is that the classifier must be *complete* — every definition the emitter will ever be asked to emit must produce a shape that routes correctly. That is why the classifier is tested against all 32 examples in a table: the table is the proof of completeness, and any future shape addition is caught by the table's well-formedness test before it ships. The benefit is that the emitter can be read as five independent sub-emitters, none of which needs to know about the others. The classifier is the wall between them.
+The cost of this structure is that the classifier must be *complete* — every definition the emitter will ever be asked to emit must produce a shape that routes correctly. That is why the classifier is tested against all 32 examples in a table: the table is the proof of completeness, and any future shape addition is caught by the table's well-formedness test before it ships. The table covers six shapes, with `fanout` listed under `.selector_demux` and `fanin` listed under `.lowered_rules`. The well-formedness test catches contradictions — no `(tag, def)` pair appears with two different expected shapes — and the predicate test asserts that `containedRowsAreSelectorGated(fanout)` is true while `containedRowsAreSelectorGated(fanin)` is false, which is the asymmetry documented at step 4b. The benefit is that the emitter can be read as six independent sub-emitters, none of which needs to know about the others. The classifier is the wall between them.
 
+---
 
-# 4. The five emission templates
+# 4. The six emission templates
 
-The classifier returns one shape per definition. The emitter's job is now mechanical: for each shape, call one sub-emitter, and let that sub-emitter do the one thing its shape calls for. There are five shapes, so there are five templates. Each is presented here in the same form: a real example from the 32, the shape of the VHDL it emits, and what the template's characteristic structure is. The parallelism is the point — the five templates are not five unrelated bits of code; they are five ways of answering the same question, each with a distinct architecture.
+The classifier returns one shape per definition. The emitter's job is now mechanical: for each shape, call one sub-emitter, and let that sub-emitter do the one thing its shape calls for. There are six shapes, so there are six templates. Each is presented here in the same form: a real example from the 32, the shape of the VHDL it emits, and what the template's characteristic structure is. The parallelism is the point — the six templates are not six unrelated bits of code; they are six ways of answering the same question, each with a distinct architecture.
 
-The five templates are:
+The six templates are:
 
 1. **`contained_lookup`** — a case block, one per destination.
 2. **`lowered_rules`** — a case block, keyed directly on sources.
-3. **`transform_rules`** — an OR-of-ANDs validity formula per target.
-4. **`invocations_only`** — component instances only, no rule emission.
-5. **`none`** — an empty architecture.
+3. **`selector_demux`** — a case block over a selector source, one arm per destination member.
+4. **`transform_rules`** — an OR-of-ANDs validity formula per target.
+5. **`invocations_only`** — component instances only, no rule emission.
+6. **`none`** — an empty architecture.
 
 In the same order the classifier checks for them.
 
@@ -390,7 +416,44 @@ The selector, the arms, and the completeness guard are all the same shape as `co
 
 The choice is not "which output looks nicer." It is "which path can the definition go through without being re-interpreted." `lowered_rules` proves that the definition is a case block over its sources; `contained_lookup` treats the definition's contained rows as a table without proving the table covers the source value space. For `BINEQ`, the proof succeeds, and `lowered_rules` is the honest template. For `AND@142`, the proof succeeds too — but `lowered_rules` would be less efficient than writing the case block directly from the four rows, and `contained_lookup` already has the right structure. The classifier returns whichever comes first in the decision order, and both are correct emissions of the definition's output.
 
-## 4.3 `transform_rules` — the OR-of-ANDs
+## 4.3 `selector_demux` — the demultiplexer case block
+
+**Example:** `fanout@147`.
+
+`fanout` has two sources (`select`, `in`), one group destination (`{out1<> out2<> out3<> out4<>}`), a resolution area with two `.pure_value` statements (`$select()` and `$in`), and four contained rows: `A`, `B`, `C`, `D`, each with a single `.fill` driving one of the group's members from `$in`.
+
+The emitted VHDL is a case block over the selector source:
+
+```vhdl
+process(ms_select, ms_in, complete) begin
+  out1 <= null_value;
+  out2 <= null_value;
+  out3 <= null_value;
+  out4 <= null_value;
+  if complete = '1' then
+    case ms_select(7 downto 1) is
+      when "0000000" => out1 <= ms_in;
+      when "0000010" => out2 <= ms_in;
+      when "0000100" => out3 <= ms_in;
+      when "0000110" => out4 <= ms_in;
+      when others => null;
+    end case;
+  end if;
+end process;
+```
+
+Three structural features. The **selector** is `ms_select(7 downto 1)` — the selector source sliced to the symbol payload width, matching `lowered_rules`'s convention for reading a symbol value from an `ncl_signal`. The **case arms** are the contained rows' names, symbol-encoded. The **arm bodies** are all the same: `outN <= ms_in`, where `ms_in` is the routed source — the source referenced in every row's fill expression. The template emits all four destination members to `null_value` at process entry, so unselected members stay incomplete, and the `complete = '1'` guard is the same convention every template uses.
+
+The template's two invariants are worth stating explicitly, because they are what distinguish it from the `contained_lookup` template it superficially resembles:
+
+- **The case selector is a slice, not the full signal.** `ms_select` is an `ncl_signal`, which is wider than the symbol payload. The template reads `ms_select(7 downto 1)` — a 7-bit slice whose width matches `constants.DATA_WIDTH` and therefore matches the width of the `data_value(N)`-encoded case labels. `contained_lookup` uses `X & Y` (a concatenation of source slices) for its selector; the demultiplexer uses a single source's slice, because its selector is one source, not a composition.
+- **The routed source is in the sensitivity list.** The process header is `process(ms_select, ms_in, complete)`, not `process(ms_select, complete)`. The arm bodies *copy* the routed source's value (`out1 <= ms_in`), so the process must re-fire when `ms_in` changes, not only when the selector changes. `lowered_rules`'s arms assign `data_value(N)` constants and do not need the routed sources in the sensitivity list; the demultiplexer's arms do, because they route a live value.
+
+The contrast with `contained_lookup` is the **destination structure**. `contained_lookup` writes one case block per destination; the demultiplexer writes one case block total, with each arm targeting a different group-member destination. Both use a case selector built from a source (or sources), but `contained_lookup`'s selector is a composition over the source *value space* — the row names are the values — while the demultiplexer's selector is a single source's *symbol value* and the row names are the cases that value selects. The two emit different VHDL because they are different shapes: a lookup table indexed by an input combination, versus a demultiplexer gated on a selector.
+
+The contrast with `transform_rules` is the **case-block form**. `transform_rules` has no case block — its arms are boolean formulas, not case arms. The demultiplexer's arms are mutually exclusive (a selector value matches one case arm), which is what a case block expresses; `transform_rules`'s clauses are independent (a rule fires whenever its inputs are present), which is what OR-of-ANDs expresses. The classifier distinguishes them because the shapes are structurally different — one is a dispatch, the other is a set of independent assertions — and the VHDL forms differ accordingly.
+
+## 4.4 `transform_rules` — the OR-of-ANDs
 
 **Example:** `FULLADD@177`, `REACTION@201`.
 
@@ -408,13 +471,13 @@ CARRY <= '1' when (A and g and k and o) or
 
 Each rule becomes one AND-clause in the formula for its target; the target's formula is the OR of all its clauses. The output is a boolean expression that says "this target is high whenever any of its rules fire," which is a direct translation of the rule set into combinational logic.
 
-The `transform_rules` template is the fallback. It fires when the definition's rules cannot lower (`decomposeRules` failed, or `isLowerableShape` rejected the rule set) and the definition does not fit the contained-lookup shape. The shapes that land here are the multi-destination definitions with rules over anonymous contained rows — `FULLADD`'s shape, and `REACTION@201`'s reaction rules — and the older shapes the emitter has not yet routed elsewhere.
+The `transform_rules` template is the fallback. It fires when the definition's rules cannot lower (`decomposeRules` failed, or `isLowerableShape` rejected the rule set) and the definition does not fit the selector-gated or contained-lookup shapes. The shapes that land here are the multi-destination definitions with rules over anonymous contained rows — `FULLADD`'s shape, and `REACTION@201`'s reaction rules — and the older shapes the emitter has not yet routed elsewhere.
 
 The contrast with `contained_lookup` is the **destination count**. `contained_lookup` writes one case block per destination. `transform_rules` writes one formula per *target*, where a target may be a member of a multi-member destination. The two are not the same shape; the classifier distinguishes them because the destination structure drives the emission structure, and the two structures do not reduce to one another.
 
-For a single-destination definition, `transform_rules` and `contained_lookup` would be near-synonyms — "output is high when any rule's inputs fire" versus "case block indexed by the inputs." For a multi-destination definition, they are not. `contained_lookup` would need one case block per destination; `transform_rules` needs one formula per target, and the formulas share their rule clauses. `FULLADD` is multi-destination, so it goes through `transform_rules`.
+`selector_demux` is also multi-destination, but its arms are mutually exclusive — the selector picks one destination, so a case block is the right form. `transform_rules` is multi-destination with *overlapping* clauses — several rules may fire for the same target, and the target is high if any of them do, so an OR-of-ANDs is the right form. The classifier distinguishes all three because the shape of the rule set — mutually exclusive vs. overlapping, selector-gated vs. source-composed — determines the VHDL form. `FULLADD` is multi-destination with overlapping clauses, so it goes through `transform_rules`.
 
-## 4.4 `invocations_only` — the component instantiator
+## 4.5 `invocations_only` — the component instantiator
 
 **Example:** `WRAP@218`, `4BITADD@211`.
 
@@ -438,52 +501,51 @@ No process, no case block, no formula. `WRAP`'s architecture is a port map, full
 
 The contrast with `transform_rules` is direct. Both shapes can be multi-destination. Both can have complex resolution behavior. But `transform_rules` has rules to emit *in this definition's own architecture*, while `invocations_only` has no rules — the rules live in the invoked definitions, and they are emitted there. The classifier distinguishes them because the emitter's architecture body is a different thing for the two: a formula for `transform_rules`, a port map for `invocations_only`.
 
-## 4.5 `none` — the empty architecture
+## 4.6 `none` — the empty architecture
 
-**Example:** `MYCONST`, `fanout@147`.
+**Example:** `MYCONST`.
 
 `MYCONST` is a constant definition — no sources, no rules, no invocation, a fixed value on a synthesized destination. The classifier returns `.none`, and the emitter writes an empty architecture. There is nothing to emit.
 
-`fanout@147` is the more interesting case, and §5 covers why: group destination, single-token row names, the case selector cannot be built. The classifier returns `.none`, and the emitter writes an empty architecture for the same reason — there is no template for this shape yet.
-
 The empty-architecture template is not a placeholder for "we should emit something but don't." It is the correct emission for definitions that do not need architecture bodies. Some definitions are pure interfaces — their behavior is entirely in their port declarations. Some are geometry primitives, elaborated elsewhere. Some are constants that the emitter routes through a different path. For all of them, `.none` is the answer, and the emitter's correct action is to write nothing.
 
-The temptation is to treat `.none` as a fallback — "we don't know what shape this is, so do nothing." That is exactly what `.none` is not. `.none` is the classifier's *decision* that this definition needs no architecture. The distinction between "no template applies, so fall through to nothing" (the pre-TAG-229 behavior) and "no template applies, and that is the correct answer" (the classifier's behavior) is the difference between accidental silence and deliberate silence. `MYCONST` needs no architecture; `fanout` needs one that the emitter does not yet have. Both classify as `.none`, and both emit an empty architecture, because both are shapes the emitter does not route — and routing nothing is the correct emission for a shape the emitter does not route. The classifier's comments say *why* each shape is `.none`, so that a future template can be added without ambiguity about which shape it is for.
+The temptation is to treat `.none` as a fallback — "we don't know what shape this is, so do nothing." That is exactly what `.none` is not. `.none` is the classifier's *decision* that this definition needs no architecture. The distinction between "no template applies, so fall through to nothing" (the pre-TAG-229 behavior) and "no template applies, and that is the correct answer" (the classifier's behavior) is the difference between accidental silence and deliberate silence. `MYCONST` needs no architecture; a genuinely unrouted shape needs one that the emitter does not yet have. Both classify as `.none`, and both emit an empty architecture, because both are shapes the emitter does not route — and routing nothing is the correct emission for a shape the emitter does not route. The classifier's comments say *why* each shape is `.none`, so that a future template can be added without ambiguity about which shape it is for.
+
+The history of `fanout` (chapters §5) is the clearest illustration of what `.none` means: it was `.none` before TAG-230 added the `.selector_demux` template, and it became `.selector_demux` when the template existed. The `.none` verdict was never wrong — it was the honest answer for a shape the emitter did not route. When the emitter's inventory grew, the shape's classification changed, but the shape itself did not. That is `.none` working as designed.
 
 ## The template map
 
-Five shapes, five templates, five architectures. In table form:
+Six shapes, six templates, six architectures. In table form:
 
 | Shape | Selector | Emits | Example |
 |---|---|---|---|
 | `contained_lookup` | Case on composed key | One case block per destination | `AND@142` |
 | `lowered_rules` | Case on sources | One case block per destination | `BINEQ@163` |
+| `selector_demux` | Case on selector source | One case block, N destinations | `fanout@147` |
 | `transform_rules` | None (boolean) | OR-of-ANDs per target | `FULLADD@177` |
 | `invocations_only` | None (port map) | Component instances | `WRAP@218` |
 | `none` | None | Empty architecture | `MYCONST` |
 
-The templates are not five variations on one theme. They are five distinct architectures, each corresponding to one answer to "where does the output come from?":
+The templates are not six variations on one theme. They are six distinct architectures, each corresponding to one answer to "where does the output come from?":
 
-- A lookup answers "from a table over the inputs" — case block.
+- A lookup answers "from a table over the inputs" — case block, one per destination.
 - A lowerable lookup answers "from a table the rules prove covers the inputs" — case block over sources, proven.
+- A demultiplexer answers "from routing one input to one of N destinations based on a selector" — case block over a selector, one arm per destination.
 - A transform-rule definition answers "from a formula over the inputs" — OR-of-ANDs.
 - An invocation-only definition answers "from a sub-definition's output" — component instance.
 - Nothing answers "no output" — empty.
 
-Each template is the direct VHDL translation of its answer. The classifier is what makes the translation *unique*: for each definition, exactly one answer is correct, and the emitter produces exactly one architecture. The five templates are the five architectures; the classifier is what selects among them.
+Each template is the direct VHDL translation of its answer. The classifier is what makes the translation *unique*: for each definition, exactly one answer is correct, and the emitter produces exactly one architecture. The six templates are the six architectures; the classifier is what selects among them.
 
-That is the chapter's architecture, stated one more time. One classifier, five shapes, five templates, five architectures, all determined by one question: *where does the output come from?* The rest of this chapter walks the pipeline that implements it.
+That is the chapter's architecture, stated one more time. One classifier, six shapes, six templates, six architectures, all determined by one question: *where does the output come from?* The rest of this chapter walks the pipeline that implements it.
 
+## 5. The `fanout` guard — shape is structural, not syntactic
 
-# 5. The `fanout` guard — shape is structural, not syntactic
-
-Most of the classifier's decisions are unsurprising once you have the five-shape model in hand. A definition with contained rows and a single destination is a lookup; a definition with only invocations is invocations-only; a definition with rules that cannot lower is transform-rules. The classifier's logic reads like a restatement of what you already knew.
+Most of the classifier's decisions are unsurprising once you have the shape model in hand. A definition with contained rows and a single destination is a lookup; a definition with only invocations is invocations-only; a definition with rules that cannot lower is transform-rules. The classifier's logic reads like a restatement of what you already knew.
 
 Then there is `fanout`.
 
-`fanout` is the one definition in the 32 examples where the classifier's verdict is genuinely non-obvious. It has contained rows. One of them carries a `.fill`. Its resolution is a composed `.pure_value`. By any syntactic measure, it looks like a lookup-shaped definition, and the classifier should return `.contained_lookup`. Instead it returns `.none`.
-
-Understanding why it returns `.none` — and why that is the *right* answer, not a fallthrough — is what separates "the classifier is a cleanup" from "the classifier is an architecture." `fanout` is the case that makes the difference visible.
+`fanout` is the one definition in the corpus where the classifier's verdict has been genuinely non-obvious *twice* — once when the classifier was built (it correctly returned `.none` because no template existed), and once when the shape model was extended (it correctly returned `.selector_demux` because a template was added). The two-act history makes `fanout` the chapter's best example of what "a shape is structural, not syntactic" actually means: the classifier's verdict for `fanout` changed, but the *definition* didn't. What changed was the emitter's inventory of architectures.
 
 ## The definition
 
@@ -500,7 +562,11 @@ The surface reading is straightforward. Two sources: `select` and `in`. A group 
 
 A lookup, surely. The contained rows are a table; the row bodies route the input to one of four destinations based on the selector. This is what a lookup *is* — a mapping from a key to an output, expressed as rows. The classifier should classify it as `contained_lookup`.
 
-It does not. The classifier's step 5 returns `.none`:
+It does not. And understanding *why it does not* — and why the "why" changed when the shape model grew — is what separates "the classifier is a cleanup" from "the classifier is an architecture."
+
+## Act one: why `.none` was the honest answer
+
+The classifier's step 5 is where `fanout` used to land:
 
 ```rust
 if (def.destinations[0].kind == .group and
@@ -512,66 +578,111 @@ if (def.destinations[0].kind == .group and
 
 The reason is in the row *names*: `A`, `B`, `C`, `D`. Single tokens. Not composed keys.
 
-## Why single-token row names matter
-
 The contained-lookup emitter works by turning the contained rows into a `case` statement. The `when` arms are built from the row *names* — `when "00" =>`, `when "01" =>`, `when "10" =>`, `when "11" =>`. The case *selector* is built from the definition's sources — the inputs to the lookup.
 
 For that to work, the row names must match the sources' value space. When `AND@142` has rows `0,0`, `0,1`, `1,0`, `1,1` and two sources `X`, `Y`, the selector is `X & Y`, and each row name is a valid value of that selector. The mapping is total: every input combination has a row, and every row has an input combination that selects it.
 
 For `fanout`, the row names are `A`, `B`, `C`, `D`. These are not values of the source `select`. The source `select` has some value space — the definition does not say what — and the row names `A` through `D` do not name positions in it. They name cases. The `select` value is not `A`; it is some symbol that *selects* case `A`.
 
-The emitter cannot build a case selector from that. It knows the row names (`A`, `B`, `C`, `D`), and it knows the sources (`select`, `in`), but it does not know how `select`'s values map to `A`, `B`, `C`, `D`. That mapping would have to come from somewhere — from a composed key in the resolution area, from a `.fill` composition, from a source declaration that says `select` takes values `A`, `B`, `C`, `D`. None of those are present. The definition is, from the emitter's point of view, underspecified: it says "when select is A, drive out1; when select is B, drive out2" without saying how `select` becomes A, B, C, D.
+The emitter cannot build a case selector from that. It knows the row names (`A`, `B`, `C`, `D`), and it knows the sources (`select`, `in`), but it does not know how `select`'s values map to `A`, `B`, `C`, `D`. That mapping would have to come from somewhere — from a composed key in the resolution area, from a `.fill` composition, from a source declaration that says `select` takes values `A`, `B`, `C`, `D`. None of those are present. The definition is, from the contained-lookup emitter's point of view, underspecified: it says "when select is A, drive out1; when select is B, drive out2" without saying how `select` becomes A, B, C, D.
 
-The pre-TAG-229 emitter did not know this. The `writeContainedLookupTable` guards had `destinations[0].kind == .place` to catch the group-destination case, but they did not check whether the row names could actually key the selector. For `fanout`, the group-destination guard fired, `writeContainedLookupTable` was skipped, and the definition fell through to `transform_rules`. The transform-rule path produced a set of OR-of-ANDs formulas for the fills — and those worked, because they did not need a case selector. They just said "when select is A, drive out1 from in" as a conditional formula.
+Before TAG-229, the `writeContainedLookupTable` guards had `destinations[0].kind == .place` to catch the group-destination case, but they did not check whether the row names could actually key the selector. For `fanout`, the group-destination guard fired, `writeContainedLookupTable` was skipped, and the definition fell through to `transform_rules`. The transform-rule path produced a set of OR-of-ANDs formulas for the fills — and those worked, because they did not need a case selector. They just said "when select is A, drive out1 from in" as a conditional formula.
 
 That was correct behavior. But it was *accidental* correct behavior — the emitter did the right thing because two unrelated guards happened to align, not because it understood the shape of `fanout`.
 
-## The structural reading
+TAG-229's classifier replaced the accident with a decision. Step 5's group-destination guard says, explicitly: `fanout` has a group destination, and its contained rows' names are single tokens. The case selector cannot be built from single-token names over an unspecified source value space. Therefore `fanout` is not a lookup in the sense the `contained_lookup` template requires. It is a shape the emitter does not route. Return `.none`.
 
-The classifier's reading is different. It says: `fanout` has a group destination, and its contained rows' names are single tokens. The case selector cannot be built from single-token names over an unspecified source value space. Therefore `fanout` is not a lookup in the sense the emitter's case-block template requires. It is a shape the emitter does not route. Return `.none`.
+That was the correct answer *at the time*. Not because `fanout` is unroutable — it clearly has a coherent shape, a demultiplexer — but because the emitter had no template for demultiplexing. `.none` was the honest verdict: "no template applies." And `.none` is a *decision*, not a fallthrough. The classifier returned it because of an explicit guard, and the guard documented the structural condition. If a future emitter acquired a template for the shape, the classifier would need to be extended, and the guard was the place it would be introduced. The `.none` verdict was a placeholder for "unrouted, waiting for a template," not a shrug.
 
-This is a *structural* claim, not a syntactic one. The syntax of `fanout` — contained rows, fills, pure values, a group destination — could belong to several shapes. The *structure* — the relationship between the row names and the source's value space — belongs to only one, and that one is not lookup. The classifier is answering "where does the output come from?" structurally: `fanout`'s output comes from routing an input to one of four destinations based on an unspecified selector, and the emitter has no template for that shape. `.none` is the honest answer.
+## Act two: why `.selector_demux` is the honest answer now
 
-Why does the answer matter, beyond correctness? Because `.none` is a *decision*, not a fallthrough. The classifier returns `.none` for `fanout` because of an explicit guard, and that guard documents a real structural condition: *group destination with single-token row names → the case selector is not buildable → the lookup template cannot apply.* If a future emitter *does* acquire a template for this shape — say, a selector enum derived from the source declaration — that template will have to be added as a new shape, and the guard will be the place it is introduced. The `.none` verdict is a placeholder for "unrouted shape, waiting for a template," not a shrug.
+TAG-230 added the template. `fanout` is a **selector-gated demultiplexer**: one routed source, N group-member destinations, a selector source that chooses which member receives the routed value. The shape is not "a lookup over the source value space" — it is "a demultiplexer over a selector." The two are structurally different, and the classifier's job is to distinguish them.
+
+The classifier grew in four mechanical steps.
+
+**One: the shape enum gained a variant.**
+
+```rust
+pub const EmissionShape = enum {
+    contained_lookup,
+    lowered_rules,
+    selector_demux,
+    transform_rules,
+    invocations_only,
+    none,
+};
+```
+
+`selector_demux` sits between `lowered_rules` and `transform_rules`, matching where it appears in the decision order.
+
+**Two: a predicate was added that recognizes the pattern.**
+
+```rust
+pub fn containedRowsAreSelectorGated(def: network.Definition) bool {
+    // Every contained row is anonymous (a lookup row, not a sub-network).
+    // Every row name is a single token (a selector value, not a composed key).
+    // Every row has exactly one .fill body.
+    // Exactly one source is unreferenced in the row bodies — that is the selector.
+    // At least one source IS referenced — that is the routed source.
+}
+```
+
+The predicate is written generally. It recognizes *both* directions of the selector-gated pattern: `fanout`'s demultiplexer shape (one routed source, N destinations) and `fanin`'s multiplexer shape (N routed sources, one destination). The predicate doesn't know which direction it's looking at — it just answers "do the row bodies express a selector-gated case block?" — and the classifier decides the routing based on the destination structure.
+
+**Three: a step was added to the decision order.**
+
+```rust
+// 4b. Selector-gated group destination?
+if (def.destinations.len == 1 and
+    def.destinations[0].kind == .group and
+    containedRowsAreSelectorGated(def))
+{
+    return .selector_demux;
+}
+```
+
+Between step 4 (lowering) and step 5 (contained lookup). `fanin` hits step 4 and returns `.lowered_rules`; `fanout` fails step 4's `isLowerableShape` (multi-destination) and reaches step 4b, which catches it before step 5's group-destination guard can return `.none`. The step-5 guard now fires only for group-destination shapes that are *not* selector-gated — the `.none` set shrinks by exactly `fanout`'s shape.
+
+**Four: a template was added.**
+
+`writeSelectorDemux` emits a case block over the selector source, with one arm per contained row, each arm filling one group-member destination from the routed source. The template's structure is the direct VHDL translation of "demultiplex the routed value over the selector." It shares the null-value prelude and the `complete = '1'` guard with the other templates, and adds its own two invariants: the case selector is sliced to the symbol width (`ms_select(DATA_WIDTH downto 1)`), and the routed source is included in the process sensitivity list (because the arms copy its value, and the process must re-fire when it changes).
+
+Four edits. No re-architecture. The classifier's structure — one decision point, one return value, one emitter called per shape — is what made the extension mechanical. TAG-230 didn't reopen the design questions TAG-229 settled; it answered a question TAG-229 had explicitly deferred.
 
 ## The contrast with `fanin`
 
-`fanin` — `fanout`'s dual, defined in the same examples — has the opposite shape, and the contrast is instructive.
+`fanin` — `fanout`'s dual, defined in the same examples — is the sharpest illustration of why the classifier is structural rather than syntactic.
 
 ```
-fanin[(select<> in1<> in2<> in3<> in4<>)(out<>)
-  $select() $in1 $in2 $in3 $in4:
-  A[out<$in1>] B[out<$in2>] C[out<$in3>] D[out<$in4>]
+fanin[(select<> {in1<> in2<>})($out)
+  $select() : A[out<$in1>] B[out<$in2>]
 ]
 ```
 
-Four sources, one destination. Row names `A`, `B`, `C`, `D`. The row bodies each route one of the four inputs to the single destination, selected by `select`. Same single-token row names; different shape.
+Two sources, one of them a group; one destination. Row names `A`, `B`. The row bodies route one of the group members to the single destination, selected by `select`. Same single-token row names as `fanout`; different shape.
 
-`fanin` classifies as `.lowered_rules` — not `.contained_lookup`, not `.none`. The reason is that `fanin`'s rules lower cleanly to a case block over `def.sources` (specifically over `select`), with `out` as the single destination. The case arms are built from `select`'s value space, and the row names `A` through `D` are the *values* that `select` takes in the case — they are not lookup keys over `in1` through `in4`, they are the dispatch values of `select`.
+`fanin` classifies as `.lowered_rules` — not `.selector_demux`, not `.contained_lookup`. The reason is that `fanin`'s rules lower cleanly to a case block over `def.sources` (specifically over `select`), with `out` as the single destination. The classifier's step 4 sees this: single destination, contained rows, `decomposeRules` succeeds, `isLowerableShape` returns true. `.lowered_rules`. `fanin` never reaches step 4b.
 
-The classifier's lowering step (step 4) sees this: single destination, contained rows, `decomposeRules` succeeds, `isLowerableShape` returns true. `fanin` classifies as `.lowered_rules`.
+So `fanout` and `fanin` have the *same syntactic row names* (`A`, `B`, `C`, `D` vs. `A`, `B`) and the *same syntactic contained shape* (rows with single-token names, one fill each), but different shapes: `fanout` is `.selector_demux`, `fanin` is `.lowered_rules`. The difference is structural:
 
-So `fanout` and `fanin` have the *same syntactic row names* (`A`, `B`, `C`, `D`) and the *same syntactic contained shape* (four rows, one fill each), but different shapes: `fanout` is `.none`, `fanin` is `.lowered_rules`. The difference is structural:
+- `fanin`'s rows map N inputs to one output via a selector. That is a case block over the selector, with the output as the single destination — the exact shape `lowered_rules` handles. Lowerable.
+- `fanout`'s rows map one input to N outputs via a selector. That is *not* a case block over a single destination — it is N separate drivers, each gated on a selector value, on a bundle of destinations. Not lowerable, and not contained-lookup-shapeable (the destination is a group, and the row names cannot key the selector). `.selector_demux` — the demultiplexer shape.
 
-- `fanin`'s four rows map four inputs to one output via a selector. That is a case block over the selector, with the output as the destination. Lowerable.
-- `fanout`'s four rows map one input to four outputs via a selector. That is *not* a case block — it is four separate drivers, each gated on a selector value, on a bundle of destinations. Not lowerable, and not lookup-shapeable (the destination is a group, and the row names cannot key the selector).
-
-The classifier distinguishes the two because it asks "where does the output come from?" rather than "what does the syntax look like?" `fanin`'s output comes from a case selection over its inputs; the case arms are the input routes. `fanout`'s output comes from routing one input to one of four destinations based on a selector — a demultiplexer, not a table. The classifier's answer reflects that, and the answer drives different emission behavior.
+The classifier distinguishes the two because it asks "where does the output come from?" rather than "what does the syntax look like?" `fanin`'s output comes from a case selection over its inputs. `fanout`'s output comes from routing one input to one of N destinations based on a selector. The two are structural opposites, and the classifier's answers reflect that.
 
 ## The general principle
 
 `fanout` is the chapter's example of a general principle: **a shape is a structural claim, not a syntactic one.**
 
-Syntactically, `fanout` and `fanin` are near-twins. They have the same row count, the same row names, the same number of fills per row, the same resolution shape. A syntactic classifier — one that checks `contained.len > 0`, `resolution[0] == .pure_value`, `row_names_have_commas` — would classify both the same way. It would get one of them wrong.
+Syntactically, `fanout` and `fanin` are near-twins. They have the same row count (roughly), the same row names (single tokens), the same number of fills per row, the same resolution shape. A syntactic classifier — one that checks `contained.len > 0`, `resolution[0] == .pure_value`, `row_names_have_commas` — would classify both the same way. It would get one of them wrong.
 
-Structurally, `fanout` and `fanin` are opposite. `fanout` routes one input to N destinations; `fanin` routes N inputs to one destination. `fanout`'s selector value space is not expressible in the row names; `fanin`'s selector value space *is* the row names. The classifier gets both right because it asks the structural question — *where does the output come from?* — and the structural answers differ.
+Structurally, `fanout` and `fanin` are opposite. `fanout` routes one input to N destinations; `fanin` routes N inputs to one destination. `fanout`'s selector value space is not expressible in the row names; `fanin`'s selector value space *is* the row names (the row names are the case arms, and the arms route different sources to the same destination). The classifier gets both right because it asks the structural question — *where does the output come from?* — and the structural answers differ.
 
-This is why the classifier's group-destination guard is not a heuristic. It is not "group destinations are usually non-lookup shapes, so reject them." It is "a group destination with single-token row names cannot have a case selector built for it, because there is no way to relate the row names to the destination members." That is a structural fact about the emitter's template, not a statistical observation about the examples.
+This is why the classifier's group-destination guard was not a heuristic, and why step 4b is not either. Step 5's guard says: "a group destination with single-token row names cannot have a case selector built for it *by the contained-lookup template*." That is a structural fact about the contained-lookup template. Step 4b adds: "but the shape those rows express — selector-gated routing over a group destination — is a demultiplexer, and a demultiplexer has a template." The two together cover the group-destination space: some group destinations are unrouted (step 5's `.none` remains for them), some are demultiplexers (step 4b's `.selector_demux`).
 
-The same principle explains why `fanout` returns `.none` rather than falling through to `transform_rules`. It *could* fall through — the transform-rule path would produce OR-of-ANDs formulas that work, as the pre-TAG-229 code did. But those formulas are not the shape's shape. They are a workaround: an emitter that happens to produce correct behavior on a shape it does not understand. The classifier returns `.none` because `.none` is the honest answer for "the emitter has no template for this structure," and returning a shape the emitter *does* have a template for, just because the template happens to work, is exactly the kind of accidental correctness that TAG-229 was built to eliminate.
+The two acts of `fanout`'s history make the principle concrete in a way one act could not. In act one, the classifier correctly returns `.none` for a shape with no template. In act two, the classifier correctly returns `.selector_demux` for the same shape once a template exists. The classifier's *logic* changed (a step was added, a predicate was added), but the definition's *shape* did not — and the classifier's verdict changed for the right reason: the emitter's architecture inventory grew. That is what "shape is structural" means in practice. The verdict tracks the structure. The structure is stable. What changes is the set of architectures the emitter knows how to build.
 
-If `fanout`'s shape becomes worth emitting in the future — if a selector-enum template is added, or if the parser learns to derive a selector value space from the source declaration — then `fanout` will classify as a new shape, the classifier will return that shape, and the emitter will have a template for it. Until then, `.none` says "unrouted, and we know why." That is a stronger statement than "falls through to whatever works."
-
+If a future shape becomes worth emitting — a different demultiplexer structure, a multiplexer that `lowered_rules` can't express, a nested selector-gated shape — it will classify as a new shape, the classifier will return that shape, and the emitter will have a template for it. The `.none` verdict remains the honest answer for shapes the emitter does not route, and the classifier's guards document *why* each `.none` shape is unrouted. Adding a shape is not adding a syntactic special case; it is extending the classifier's inventory of structural patterns, and the classifier's architecture is what makes that extension mechanical.
 
 # 6. The overlap story — why the classifier exists
 
@@ -660,6 +771,8 @@ There are four concerns the classifier deliberately leaves alone. Each was a rea
 
 ## 1. Which sub-emitter within `contained_lookup`
 
+Both `contained_lookup` and `selector_demux` are shapes with refinements. contained_lookup's refinement is LookupKey; `elector_demux`'s is SelectorDirection. In both cases, the classifier returns the shape and the sub-emitter consults the refinement. The pattern is worth naming because it is the model for how future shapes with internal variants should be structured.
+
 `contained_lookup` is one shape but three sub-shapes. The lookup key can come from:
 
 - **contained rows** — the classic composed-key lookup, where the rows' *names* are the key values (`0,0`, `0,1`, `1,0`, `1,1`) and the case selector is built directly from them.
@@ -672,6 +785,8 @@ Why is this not a shape? Because it does not change the answer to "where does th
 
 This distinction matters because it tells future work where to add a new lookup key form. If a fourth way to key a lookup emerges, the classifier does not change — only `LookupKey` and `writeContainedLookupTable` do. The classifier stays at five shapes, and the shape enum stays the stable interface between the dispatch layer and the emitters. The refinement layer is free to grow underneath it.
 
+`selector_demux` follows the same pattern with `SelectorDirection`. The classifier returns `selector_demux` for any selector-gated routing shape; the sub-emitter consults `SelectorDirection` to know whether it is emitting a demultiplexer (one routed source, N destinations — fanout's shape, routed today) or a multiplexer (N routed sources, one destination — fanin's shape, which never reaches `selector_demux` because lowered_rules handles it). The refinement names the second direction even though the classifier does not route it today: `fanin` is a multiplexer, and if a future multiplex shape cannot be expressed as lowered_rules (group sources into a group destination, say), the classifier can migrate fanin and the new shape to `selector_demux` without restructuring the enum. The refinement is a placeholder for the pattern's second direction, just as `.none` was a placeholder for `fanout`'s template before TAG-230.
+
 ## 2. Runtime dispatch
 
 The runtime has its own dispatch logic, and it is not the classifier's concern.
@@ -681,7 +796,7 @@ The runtime dispatches on `buildRulesAtDepth` and `appendSelectRules` — functi
 - **Classifier:** which VHDL architecture template does this definition need?
 - **Runtime:** which rules does this definition contribute to the running network?
 
-The pre-TAG-229 emitter had a third dispatch that overlapped with both: the `lowered` flag, threaded through `writeDestinationFills`, decided which rule-emission path the VHDL emitter would take. That dispatch is now gone — absorbed into the classifier. But the runtime's dispatch was already correct and stays untouched. TAG-229's scope is emission, not execution.
+The pre-TAG-229 emitter had a third dispatch that overlapped with both: the `lowered` flag, threaded through `writeDestinationFills`, decided which rule-emission path the VHDL emitter would take. That dispatch is now gone — absorbed into the classifier. But the runtime's dispatch was already correct and stays untouched. TAG-229's scope is *emission*, not execution.
 
 The temptation during the refactor was to see the runtime's dispatch and the emitter's dispatch as the same problem in two places, and to unify them. That would have been wrong. The runtime is a *model* of a definition's rule-firing behavior; the emitter is a *translation* of a definition into VHDL. They both walk the same AST, but they ask different questions of it, and the correct unification would be a shared "which rules does this definition assert?" function — a separate ticket, not part of TAG-229. For now, the classifier's scope is the emitter, and the runtime's scope is the runtime, and the boundary is the `network.Definition` they both consume.
 
@@ -712,7 +827,7 @@ The distinction *is* useful to someone debugging why a definition emits nothing.
 
 This is why `none` is one variant, not four. The enum says what the emitter does; the classifier's comments say why. Conflating the two — adding `none_unrouted` to the enum because it's interesting to debug — would confuse the enum's purpose, which is to tell the emitter what to emit, not to tell the reader why a shape is unemitted.
 
-The `fanout` case is the sharpest example. It is the only `.none` shape where the classifier's *decision* is non-trivial: a shape that looked like it should be `.contained_lookup` (it has contained rows, one of them carries a fill, it has a composed `.pure_value`) returns `.none` because of a single structural condition — the group destination's members cannot be selected on from single-token row names. The classifier does not return a shape for "unrouted because of a group-destination guard"; it returns `.none`, and the guard's presence in the code is the answer. This is deliberate. The shape enum is for the emitter, and the emitter's action for `.none` is "skip." The debugging information lives in the classifier, where the question "why is this `.none`?" is answered by reading one paragraph of code.
+The `fanout` case was the sharpest example, and its history is now the chapter's illustration of how `.none` grows into a shape. Before TAG-230, `fanout` looked like it should be `.contained_lookup` — it has contained rows, one of them carries a fill, it has a composed `.pure_value` — but returned `.none` because of a single structural condition: the group destination's members could not be selected on from single-token row names. The classifier returned `.none`, and the guard's presence in the code was the answer. The `.none` verdict was never wrong; it was the honest answer for a shape the emitter did not route. When TAG-230 added `selector_demux`, `fanout`'s verdict changed — but the shape did not. The classifier's inventory of architectures grew, and the definition's classification tracked the inventory. That is `.none` working as designed: the shape enum is for the emitter, and the emitter's action for .none is "skip" until a template exists. When a template is added, the shape migrates out of .none, and a new .none shape takes its place as the "unrouted, waiting for a template" placeholder.
 
 The `.none` shapes illustrate the classifier's design principle one last time: **the classifier answers the emitter's question, and only the emitter's question.** What the answer *means* — which sub-shape, which reason, which debugging path — is a separate concern, and belongs either in the sub-emitter or in the classifier's own code, not in the shape enum.
 
@@ -726,9 +841,9 @@ Four concerns, four reasons for being out of scope, one principle:
 - The parser decides *what the AST looks like*, before the classifier sees it.
 - The classifier's comments decide *why* a shape is what it is, for the reader.
 
-These five layers are distinct. Conflating any two of them was, in the pre-TAG-229 code, the source of every bug the classifier was built to eliminate. The classifier's value is not just that it consolidates the three emission paths — it is that it establishes a boundary, and everything on the other side of the boundary is allowed to be simple because the boundary is firm.
+These five layers are distinct. Conflating any two of them was, in the pre-TAG-229 code, the source of every bug the classifier was built to eliminate. The classifier's value is not just that it consolidates the three emission paths — it is that it establishes a boundary, and everything on the other side of the boundary is allowed to be simple because the boundary is firm. The boundary's stability is what makes adding a shape a mechanical operation: TAG-230 added `selector_demux` by adding one enum variant, one predicate, one decision step, and one template, without reopening any of the questions the boundary settles. `LookupKey` and `SelectorDirection` are the pattern for future refinements; `.none` is the pattern for shapes still waiting for a template.
 
-That is what "consolidate the three rule-emission paths behind a single shape classifier" actually meant, in the end. Not a refactor of scheduling. Not a cleaner way to make the same choice. An architecture: one classifier, five shapes, five sub-emitters, and a boundary that holds because the classifier refuses to do anything but answer its one question.
+That is what "consolidate the three rule-emission paths behind a single shape classifier" actually meant, in the end. Not a refactor of scheduling. Not a cleaner way to make the same choice. An architecture: one classifier, six shapes, six sub-emitters, and a boundary that holds because the classifier refuses to do anything but answer its one question.
 
 
 # 8. The pipeline, end to end
