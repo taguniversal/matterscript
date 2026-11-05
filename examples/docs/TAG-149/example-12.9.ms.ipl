@@ -1,5 +1,7 @@
 // linear: TAG-149 Example 12.9 Mutually exclusive completeness
 
+OR149({$A0 $A1} {$B0 $B1})(ms_0<> ms_1<>)
+
 OR149[({A0<> A1<>}{B0<> B1<>})({$0 $1})
   :
   A0,B0[0<0>]

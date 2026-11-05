@@ -30,21 +30,22 @@ architecture sim of example_12_9_tb is
 
   type vector_array_t is array (natural range <>) of row_t;
   constant vectors : vector_array_t := (
-    -- A0=valid, B0=valid  → ms_0 = 0, ms_1 = null
-    (a0_v => '1', a1_v => '0', b0_v => '1', b1_v => '0',
-     ms_0_v => '1', ms_1_v => '0', ms_0_sym => 0, ms_1_sym => -1),
-    -- A0=valid, B1=valid  → ms_0 = null, ms_1 = 1
-    (a0_v => '1', a1_v => '0', b0_v => '0', b1_v => '1',
-     ms_0_v => '0', ms_1_v => '1', ms_0_sym => -1, ms_1_sym => 1),
-    -- A1=valid, B0=valid  → ms_0 = null, ms_1 = 1
-    (a1_v => '1', a0_v => '0', b0_v => '1', b1_v => '0',
-     ms_0_v => '0', ms_1_v => '1', ms_0_sym => -1, ms_1_sym => 1),
-    -- A1=valid, B1=valid  → ms_0 = null, ms_1 = 1
-    (a1_v => '1', a0_v => '0', b0_v => '0', b1_v => '1',
-     ms_0_v => '0', ms_1_v => '1', ms_0_sym => -1, ms_1_sym => 1)
-  );
+  -- A0 valid, B0 valid → ms_0 = symbol "0" (ID 2), ms_1 = null
+  (a0_v => '1', a1_v => '0', b0_v => '1', b1_v => '0',
+   ms_0_v => '1', ms_1_v => '0', ms_0_sym => 2, ms_1_sym => -1),
+  -- A0 valid, B1 valid → ms_0 = null, ms_1 = symbol "1" (ID 4)
+  (a0_v => '1', a1_v => '0', b0_v => '0', b1_v => '1',
+   ms_0_v => '0', ms_1_v => '1', ms_0_sym => -1, ms_1_sym => 4),
+  -- A1 valid, B0 valid → ms_0 = null, ms_1 = symbol "1" (ID 4)
+  (a1_v => '1', a0_v => '0', b0_v => '1', b1_v => '0',
+   ms_0_v => '0', ms_1_v => '1', ms_0_sym => -1, ms_1_sym => 4),
+  -- A1 valid, B1 valid → ms_0 = null, ms_1 = symbol "1" (ID 4)
+  (a1_v => '1', a0_v => '0', b0_v => '0', b1_v => '1',
+   ms_0_v => '0', ms_1_v => '1', ms_0_sym => -1, ms_1_sym => 4)
+);
+
 begin
-  dut : entity work.ms_or149
+  dut : entity work.or149
     port map (
       a0 => a0, a1 => a1,
       b0 => b0, b1 => b1,

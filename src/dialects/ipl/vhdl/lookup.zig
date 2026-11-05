@@ -4,6 +4,7 @@ const network = @import("../network.zig");
 const sanitizer = @import("sanitizer.zig");
 const sanitizeName = sanitizer.sanitizeName;
 const constants = @import("constants.zig");
+const boundary = @import("export/boundary.zig");
 
 fn requiredWidth(symbol_count: usize) usize {
     var bits: usize = 0;
@@ -130,40 +131,29 @@ fn internContainedSymbols(
     }
 }
 
-
-/// Emits one ROM/case-select for a single outer destination.
-/// `anonymous` selects how to read each row's value: true means every
-/// row is a single bare pure_value (OR/AND/NOT's shape) and
-/// `dest_name` is fixed externally (the triggering fill's own
-/// destination); false means each row may carry a named fill for
-/// `dest_name` specifically (TAG-136's shape) — a row missing a fill
-/// for this destination is simply skipped, correctly leaving that
-/// case to `others` per Fant's Occasional Output (§12.5.6).
-fn writeLookupCaseBlock(
+/// Emit a case block for a flat-source lookup definition (all sources
+/// are `.place`, no groups). This is the original `writeLookupCaseBlock`
+/// body, unchanged: one slice per source, `case {slices} is`, one arm
+/// per row.
+///
+/// `dest_id` is the already-sanitized destination name. `width` is the
+/// per-segment bit width (`requiredWidth(symbols.len)`), computed by
+/// the caller. `anonymous` selects how the row value is read:
+/// `.pure_value` (true) vs `.fill` targeting `dest_name` (false).
+fn writeFlatSourceCaseBlock(
     allocator: std.mem.Allocator,
     writer: anytype,
     def: network.Definition,
+    dest_id: []const u8,
     dest_name: []const u8,
     symbols: []const []const u8,
     anonymous: bool,
+    width: usize,
 ) !void {
-    const dest_id = try sanitizeName(allocator, dest_name);
-    defer allocator.free(dest_id);
-
-    const width = requiredWidth(symbols.len);
-
-    try writer.print("\n  -- lookup for {s}\n", .{dest_name});
-    try writer.print("  process(", .{});
-    for (def.sources, 0..) |source, i| {
-        if (i > 0) try writer.print(", ", .{});
-        const source_id = try sanitizeName(allocator, source.name);
-        defer allocator.free(source_id);
-        try writer.print("{s}", .{source_id});
-    }
-    try writer.print(", complete) begin\n" ++
-        "    {s} <= null_value;\n" ++
-        "    if complete = '1' then\n" ++
-        "      case ", .{dest_id});
+    // Case selector: one {width}-bit slice per source, concatenated
+    // with `&`. For flat sources every `source.kind` is `.place`, so
+    // `source.name` is the sanitized identifier.
+    try writer.print("      case ", .{});
     for (def.sources, 0..) |source, i| {
         const source_id = try sanitizeName(allocator, source.name);
         defer allocator.free(source_id);
@@ -190,19 +180,127 @@ fn writeLookupCaseBlock(
         var key_pos: usize = 0;
         var it = std.mem.splitScalar(u8, row.name, ',');
         while (it.next()) |seg| {
-            const seg_value = findSymbolInSlice(symbols, std.mem.trim(u8, seg, " \t\r\n")) orelse return error.SymbolNotPreInterned;
+            const seg_value = findSymbolInSlice(symbols, std.mem.trim(u8, seg, " \t\r\n")) orelse
+                return error.SymbolNotPreInterned;
             const piece = binStr(key_buf[key_pos..], seg_value, width);
             key_pos += piece.len;
         }
         const key_str = key_buf[0..key_pos];
-        const out_value = findSymbolInSlice(symbols, std.mem.trim(u8, vt, " \t\r\n")) orelse return error.SymbolNotPreInterned;
+        const out_value = findSymbolInSlice(symbols, std.mem.trim(u8, vt, " \t\r\n")) orelse
+            return error.SymbolNotPreInterned;
         try writer.print("        when \"{s}\" => {s} <= data_value({d});\n", .{ key_str, dest_id, out_value });
     }
 
-    try writer.print("        when others => null;\n" ++
-        "      end case;\n" ++
-        "    end if;\n" ++
-        "  end process;\n", .{});
+    try writer.print("        when others => null;\n", .{});
+    try writer.print("      end case;\n", .{});
+}
+
+/// Emits one ROM/case-select for a single outer destination.
+/// `anonymous` selects how to read each row's value: true means every
+/// row is a single bare pure_value (OR/AND/NOT's shape) and
+/// `dest_name` is fixed externally (the triggering fill's own
+/// destination); false means each row may carry a named fill for
+/// `dest_name` specifically (TAG-136's shape) — a row missing a fill
+/// for this destination is simply skipped, correctly leaving that
+/// case to `others` per Fant's Occasional Output (§12.5.6).
+fn writeLookupCaseBlock(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    def: network.Definition,
+    dest_name: []const u8,
+    symbols: []const []const u8,
+    anonymous: bool,
+) !void {
+    const dest_id = try sanitizeName(allocator, dest_name);
+    defer allocator.free(dest_id);
+
+    const width = requiredWidth(symbols.len);
+
+    var has_group_source = false;
+    for (def.sources) |src| if (src.kind == .group) {
+        has_group_source = true;
+        break;
+    };
+
+    const sensitivity = try boundary.collectBoundaryPortNames(allocator, def.sources);
+    defer {
+        for (sensitivity) |name| allocator.free(name);
+        allocator.free(sensitivity);
+    }
+
+    try writer.print("\n  -- lookup for {s}\n", .{dest_name});
+    try writer.print("  process(", .{});
+    for (sensitivity, 0..) |name, i| {
+        if (i > 0) try writer.print(", ", .{});
+        try writer.print("{s}", .{name});
+    }
+    try writer.print(", complete) begin\n", .{});
+    try writer.print("    {s} <= null_value;\n", .{dest_id});
+    try writer.print("    if complete = '1' then\n", .{});
+
+    if (has_group_source) {
+        try writeGroupSourceIfChain(allocator, writer, def, dest_id, dest_name, symbols, anonymous, width);
+    } else {
+        try writeFlatSourceCaseBlock(allocator, writer, def, dest_id, dest_name, symbols, anonymous, width);
+    }
+
+    try writer.print("    end if;\n", .{});
+    try writer.print("  end process;\n", .{});
+}
+
+fn writeGroupSourceIfChain(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    def: network.Definition,
+    dest_id: []const u8,
+    dest_name: []const u8,
+    symbols: []const []const u8,
+    anonymous: bool,
+    width: usize,
+) !void {
+    _ = width; // unused: the if/elsif form uses presence checks, not slices
+    std.debug.print("[gsif] dest_name='{s}' dest_id='{s}'\n", .{ dest_name, dest_id });
+    var first = true;
+    for (def.contained) |row| {
+        var value_text: ?[]const u8 = null;
+        if (anonymous) {
+            value_text = row.resolution[0].pure_value;
+        } else {
+            for (row.resolution) |stmt| {
+                if (stmt == .fill) {
+                    std.debug.print("[gsif]   row='{s}' fill.dest='{s}'\n", .{ row.name, stmt.fill.dest_name });
+                    if (std.mem.eql(u8, stmt.fill.dest_name, dest_name)) {
+                        value_text = stmt.fill.expr;
+                        break;
+                    }
+                }
+            }
+        }
+        const vt = value_text orelse continue;
+
+        if (first) {
+            try writer.print("      if ", .{});
+            first = false;
+        } else {
+            try writer.print("      elsif ", .{});
+        }
+
+        var it = std.mem.splitScalar(u8, row.name, ',');
+        var seg_idx: usize = 0;
+        while (it.next()) |seg| : (seg_idx += 1) {
+            const seg_clean = std.mem.trim(u8, seg, " \t\r\n");
+            if (seg_idx >= def.sources.len) return error.TooManyRowSegments;
+            const src = def.sources[seg_idx];
+            if (src.kind != .group) return error.ExpectedGroupSource;
+            const member_id = try sanitizeName(allocator, seg_clean);
+            defer allocator.free(member_id);
+            if (seg_idx > 0) try writer.print(" and ", .{});
+            try writer.print("valid_of({s}) = '1'", .{member_id});
+        }
+        const out_value = findSymbolInSlice(symbols, std.mem.trim(u8, vt, " \t\r\n")) orelse return error.SymbolNotPreInterned;
+        try writer.print(" then\n        {s} <= data_value({d});\n", .{ dest_id, out_value });
+    }
+    try writer.print("      end if;\n", .{});
 }
 
 fn writeSymbolEncodingComment(
@@ -233,7 +331,6 @@ pub fn composedKeySegmentCountFromPureValue(resolution: []const network.Statemen
     return 0;
 }
 
-
 /// Predicate version of writeContainedLookupTable's shape detection.
 /// Returns true iff writeContainedLookupTable would handle this
 /// definition (i.e. would return true without emitting). Pure, no
@@ -244,13 +341,16 @@ pub fn isContainedLookupShape(
     def: network.Definition,
 ) bool {
     _ = allocator;
-    
+
     if (def.sources.len == 0 or def.contained.len == 0) return false;
 
     var expected_segments: usize = def.sources.len;
     var has_invoke = false;
     for (def.resolution) |stmt| {
-        if (stmt == .invoke) { has_invoke = true; break; }
+        if (stmt == .invoke) {
+            has_invoke = true;
+            break;
+        }
     }
     if (has_invoke) {
         const pv_segments = composedKeySegmentCountFromPureValue(def.resolution);
@@ -260,7 +360,9 @@ pub fn isContainedLookupShape(
     for (def.contained) |row| {
         if (row.sources.len != 0 or row.destinations.len != 0) return false;
         var seg_count: usize = 1;
-        for (row.name) |ch| if (ch == ',') { seg_count += 1; };
+        for (row.name) |ch| if (ch == ',') {
+            seg_count += 1;
+        };
         if (seg_count != expected_segments) return false;
         if (row.resolution.len == 0) return false;
     }
@@ -356,7 +458,6 @@ pub fn writeContainedLookupTable(
     }
     if (!all_anonymous and !all_structured) return false;
 
-
     // Variant 2 (composed-key .pure_value): rows may be .fill or .pure_value
     for (def.resolution) |stmt| {
         if (stmt != .pure_value) continue;
@@ -444,7 +545,7 @@ fn writeComposedKeyLookupBlock(
     def: network.Definition,
     dest_name: []const u8,
     places: []const []const u8,
-    symbols: []const []const u8, 
+    symbols: []const []const u8,
 ) !void {
     const dest_id = try sanitizeName(allocator, dest_name);
     defer allocator.free(dest_id);
@@ -476,7 +577,7 @@ fn writeComposedKeyLookupBlock(
         var key_pos: usize = 0;
         var it = std.mem.splitScalar(u8, row.name, ',');
         while (it.next()) |seg| {
-            const seg_value =  findSymbolInSlice(symbols, std.mem.trim(u8, seg, " \t\r\n")) orelse return error.SymbolNotPreInterned;
+            const seg_value = findSymbolInSlice(symbols, std.mem.trim(u8, seg, " \t\r\n")) orelse return error.SymbolNotPreInterned;
             const piece = binStr(key_buf[key_pos..], seg_value, width);
             key_pos += piece.len;
         }
@@ -490,7 +591,7 @@ fn writeComposedKeyLookupBlock(
             }
         }
         const vt = value_text orelse continue;
-        const out_value =  findSymbolInSlice(symbols, std.mem.trim(u8, vt, " \t\r\n")) orelse return error.SymbolNotPreInterned;
+        const out_value = findSymbolInSlice(symbols, std.mem.trim(u8, vt, " \t\r\n")) orelse return error.SymbolNotPreInterned;
         try writer.print("        when \"{s}\" => {s} <= data_value({d});\n", .{ key_str, dest_id, out_value });
     }
 
