@@ -32,7 +32,6 @@ pub fn writeNetworkEntity(
         try writeOneNetworkEntity(allocator, writer, net, entry, &used_names);
     }
 }
-
 pub fn writeOneNetworkEntity(
     allocator: std.mem.Allocator,
     writer: anytype,
@@ -44,53 +43,11 @@ pub fn writeOneNetworkEntity(
         if (std.ascii.eqlIgnoreCase(d.name, entry.name)) break d;
     } else return;
 
-    // --- Flatten entry sources, enforce TOP-LEVEL input arity ---
-    //
-    // Arity is checked at the unflattened arg level: an entry supplies
-    // N args, the DUT declares N args, and they correspond positionally.
-    // A bare `$A` in the entry can legitimately correspond to a bundle
-    // `[{A0<> A1<>}]` in the DUT — the DUT declares the bundle, the entry
-    // names it. Flattening both sides and comparing would wrongly reject
-    // that case, since `$A` flattens to 1 and the DUT group flattens to 2.
-    //
-    // The flattened form (entry_slots) is still needed downstream for
-    // signal declaration and drive logic, so we build it regardless.
     var entry_slots: std.ArrayListUnmanaged(network.Arg) = .empty;
     defer entry_slots.deinit(allocator);
     try flattenEntrySources(allocator, entry.sources, &entry_slots);
 
-    // --- DEBUG PRINT: entry.sources and matched.sources ---
-    std.debug.print("[entity] {s}: entry.sources.len = {d}\n", .{ entry.name, entry.sources.len });
-    for (entry.sources, 0..) |s, i| {
-        std.debug.print("  entry.src[{d}]: kind={s} name='{s}' text='{s}'", .{ i, @tagName(s.kind), s.name, s.text });
-        if (s.group) |g| {
-            std.debug.print(" group.kind={s} members={d}", .{ @tagName(g.kind), g.places.len });
-        }
-        std.debug.print("\n", .{});
-    }
-
-    std.debug.print("[entity] {s}: matched.sources.len = {d}\n", .{ entry.name, matched.sources.len });
-    for (matched.sources, 0..) |s, i| {
-        std.debug.print("  matched.src[{d}]: kind={s} name='{s}' text='{s}'", .{ i, @tagName(s.kind), s.name, s.text });
-        if (s.group) |g| {
-            std.debug.print(" group.kind={s} members={d}", .{ @tagName(g.kind), g.places.len });
-        }
-        std.debug.print("\n", .{});
-    }
-
-    // --- DEBUG PRINT: entry.destinations and matched.destinations ---
-    std.debug.print("[entity] {s}: entry.destinations.len = {d}\n", .{ entry.name, entry.destinations.len });
-    for (entry.destinations, 0..) |d, i| {
-        std.debug.print("  dest[{d}]: kind={s} name='{s}' text='{s}'\n", .{ i, @tagName(d.kind), d.name, d.text });
-    }
-
-    std.debug.print("[entity] {s}: matched.destinations.len = {d}\n", .{ entry.name, matched.destinations.len });
-    for (matched.destinations, 0..) |d, i| {
-        std.debug.print("  matched[{d}]: kind={s} name='{s}' text='{s}'\n", .{ i, @tagName(d.kind), d.name, d.text });
-    }
-    // ---------------------- End Debug -------------------------------------------
-
-    // -------------------- Arity Check --------------------------------
+    // ... existing [entity] debug prints ...
 
     if (entry.sources.len != matched.sources.len) {
         std.debug.print(
@@ -104,52 +61,55 @@ pub fn writeOneNetworkEntity(
     defer allocator.free(entry_name_id);
     const base_id = try std.fmt.allocPrint(allocator, "{s}_network", .{entry_name_id});
     defer allocator.free(base_id);
-    // Multiple entries can invoke the same definition (e.g. several
-    // fanin(...) calls with different literal inputs) — uniquify so
-    // GHDL never sees the same entity declared twice in one file.
     const entity_id = try sanitizer.uniqueVhdlName(allocator, used_names.items, base_id);
     try used_names.append(allocator, try allocator.dupe(u8, entity_id));
 
     var output_names: std.ArrayListUnmanaged([]const u8) = .empty;
     for (entry.destinations) |output| {
-        // A group destination contributes one output port per member,
-        // not a single port named after the group's raw source text.
-        // The DUT side already flattens groups this way
-        // (boundary.collectBoundaryPortNamesInto); mirror it here so
-        // the entry's port list matches what writeNetworkDestMapping
-        // will reference.
         var member_names: std.ArrayListUnmanaged([]const u8) = .empty;
         try boundary.collectBoundaryPortNamesInto(allocator, output, &member_names);
         for (member_names.items) |name| {
-            // An unnamed entry destination (`<>` in the source) is an
-            // unnamed source place of the invocation (§12.3.4). It still
-            // needs a VHDL identifier, so substitute the synthesized
-            // `ms_result` name here; `uniqueVhdlName` then disambiguates
-            // against any real names already in the list.
             const candidate = if (name.len == 0) "ms_result" else name;
             const unique = try sanitizer.uniqueVhdlName(allocator, output_names.items, candidate);
             try output_names.append(allocator, unique);
         }
     }
-    // The entry invocation can name fewer destinations than the DUT
-    // actually has (fanout's 5 outputs vs. an entry that only cares
-    // about one, say). writeNetworkDestMapping below falls back to a
-    // placeholder for every DUT output beyond what output_names
-    // covers — that placeholder must actually be declared as a port
-    // here, or ghdl reports "no declaration for ms_result" on the
-    // resulting port-map reference.
     const dut_output_count = boundary.boundaryCount(matched.destinations);
     while (output_names.items.len < dut_output_count) {
         const unique = try sanitizer.uniqueVhdlName(allocator, output_names.items, "ms_result");
         try output_names.append(allocator, unique);
     }
 
-    // --- DEBUG PRINT: output_names after building & padding ---
-    std.debug.print("[entity] {s}: output_names =", .{entry.name});
-    for (output_names.items) |n| std.debug.print(" '{s}'", .{n});
-    std.debug.print("\n", .{});
-    // -----------------------------------------------------------
+    const dut_source_count = boundary.boundaryCount(matched.sources);
+    const mixed_shape = entry_slots.items.len != dut_source_count;
 
+    var input_names: std.ArrayListUnmanaged([]const u8) = .empty;
+    defer {
+        for (input_names.items) |n| if (n.len > 0) allocator.free(n);
+        input_names.deinit(allocator);
+    }
+    for (entry_slots.items) |slot| {
+        if (mixed_shape) {
+            try input_names.append(allocator, "");
+            continue;
+        }
+        switch (slot.kind) {
+            .place => {
+                const text = invocation.argToText(slot);
+                const trimmed = std.mem.trim(u8, text, " \t\r\n");
+                const is_numeric = if (std.fmt.parseInt(u64, trimmed, 10)) |_| true else |_| false;
+                if (is_numeric or slot.name.len == 0) {
+                    try input_names.append(allocator, "");
+                } else {
+                    const unique = try sanitizer.uniqueVhdlName(allocator, input_names.items, slot.name);
+                    try input_names.append(allocator, unique);
+                }
+            },
+            else => try input_names.append(allocator, ""),
+        }
+    }
+
+    // Entity block.
     try writer.print(
         \\-- generated by MatterScript IPL
         \\-- top-level network entity for entry invocation: {s}
@@ -161,43 +121,46 @@ pub fn writeOneNetworkEntity(
         \\
     , .{entry.name});
 
-    if (output_names.items.len == 0) {
-        // No outputs — VHDL doesn't allow an empty port list, so omit
-        // the port clause entirely rather than emit port();
+    var port_count: usize = 0;
+    for (input_names.items) |n| if (n.len > 0) {
+        port_count += 1;
+    };
+    port_count += output_names.items.len;
+
+    if (port_count == 0) {
         try writer.print("entity {s} is\nend {s};\n\n", .{ entity_id, entity_id });
     } else {
         try writer.print("entity {s} is\n  port(\n", .{entity_id});
-        for (output_names.items, 0..) |name, i| {
+        var port_idx: usize = 0;
+        for (input_names.items) |name| {
+            if (name.len == 0) continue;
             const id = try sanitizeName(allocator, name);
             defer allocator.free(id);
-            const last = i == output_names.items.len - 1;
-            try writer.print("    {s} : out ncl_signal{s}\n", .{ id, if (last) "" else ";" });
+            port_idx += 1;
+            try writer.print("    {s} : in ncl_signal{s}\n", .{ id, if (port_idx == port_count) "" else ";" });
+        }
+        for (output_names.items) |name| {
+            const id = try sanitizeName(allocator, name);
+            defer allocator.free(id);
+            port_idx += 1;
+            try writer.print("    {s} : out ncl_signal{s}\n", .{ id, if (port_idx == port_count) "" else ";" });
         }
         try writer.print("  );\nend {s};\n\n", .{entity_id});
     }
 
+    // Architecture: declare arg_N for internal slots, drive them, instantiate.
     try writer.print("architecture rtl of {s} is\n", .{entity_id});
-    // Same padding issue as output_names above, mirrored on the
-    // source side: writeNetworkSourceMapping walks matched.sources
-    // (the DUT's real, flattened input count) and increments a
-    // shared arg_index for each one, so if the entry invocation
-    // supplied fewer literal arguments than the DUT actually has
-    // inputs, references to the missing arg_N signals would never
-    // have been declared here at all.
-    const dut_source_count = boundary.boundaryCount(matched.sources);
-    for (0..dut_source_count) |i| {
-      try writer.print("  signal arg_{d} : ncl_signal;\n", .{i});
+
+    const decl_count = @max(entry_slots.items.len, dut_source_count);
+    for (0..decl_count) |i| {
+        const is_port = i < input_names.items.len and input_names.items[i].len > 0;
+        if (!is_port) try writer.print("  signal arg_{d} : ncl_signal;\n", .{i});
     }
     try writer.print("begin\n\n", .{});
 
-    // The drive loop must not emit references to arg_N signals that
-    // were never declared. Signals are declared 0..dut_source_count,
-    // so clamp the loop at that bound. This matters when the entry
-    // supplies more *flattened* slots than the DUT has source slots —
-    // e.g. an arbitration group `{{a b}}` flattens to 2 slots but
-    // occupies 1 DUT source position.
-    const drive_count = @min(entry_slots.items.len, dut_source_count);
-    for (entry_slots.items[0..drive_count], 0..) |slot, i| {
+    for (entry_slots.items, 0..) |slot, i| {
+        const is_port = i < input_names.items.len and input_names.items[i].len > 0;
+        if (is_port) continue;
         const text = invocation.argToText(slot);
         const trimmed = std.mem.trim(u8, text, " \t\r\n");
         const value = std.fmt.parseInt(u64, trimmed, 10) catch {
@@ -208,9 +171,9 @@ pub fn writeOneNetworkEntity(
         try writer.print("  arg_{d} <= data_value({d});\n", .{ i, value });
     }
 
-    if (drive_count < dut_source_count) {
-         for (drive_count..dut_source_count) |i| {
-             try writer.print("  arg_{d} <= null_value;\n", .{i});
+    if (entry_slots.items.len < dut_source_count) {
+        for (entry_slots.items.len..dut_source_count) |i| {
+            try writer.print("  arg_{d} <= null_value;\n", .{i});
         }
     }
 
@@ -218,10 +181,17 @@ pub fn writeOneNetworkEntity(
     defer allocator.free(def_id);
     try writer.print("\n  dut : entity work.{s} port map (\n", .{def_id});
 
-    var arg_index: usize = 0;
     var first_port = true;
+    var source_slot: usize = 0;
     for (matched.sources) |src| {
-        try writeNetworkSourceMapping(allocator, writer, src, &arg_index, entry, &first_port);
+        try writeNetworkSourceMappingMixed(
+            allocator,
+            writer,
+            src,
+            &source_slot,
+            input_names.items,
+            &first_port,
+        );
     }
 
     var output_index: usize = 0;
@@ -230,6 +200,94 @@ pub fn writeOneNetworkEntity(
     }
     try writer.print("\n  );\n", .{});
     try writer.print("\nend rtl;\n", .{});
+}
+
+fn writeNetworkSourceMappingMixed(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    arg: network.Arg,
+    source_slot: *usize,
+    input_names: []const []const u8,
+    first_port: *bool,
+) !void {
+    switch (arg.kind) {
+        .group => if (arg.group) |grp| {
+            for (grp.places) |child| {
+                try writeNetworkSourceMappingMixed(allocator, writer, child, source_slot, input_names, first_port);
+            }
+        },
+        .place => {
+            const dut_port_id = try sanitizeName(allocator, arg.name);
+            defer allocator.free(dut_port_id);
+
+            const slot = source_slot.*;
+            source_slot.* += 1;
+
+            const rhs = if (slot < input_names.len and input_names[slot].len > 0) blk: {
+                const wrapper_id = try sanitizeName(allocator, input_names[slot]);
+                break :blk wrapper_id;
+            } else blk: {
+                const arg_name = try std.fmt.allocPrint(allocator, "arg_{d}", .{slot});
+                break :blk arg_name;
+            };
+            defer allocator.free(rhs);
+
+            if (first_port.*) {
+                try writer.print("\n    {s} => {s}", .{ dut_port_id, rhs });
+                first_port.* = false;
+            } else {
+                try writer.print(",\n    {s} => {s}", .{ dut_port_id, rhs });
+            }
+        },
+        else => {},
+    }
+}
+
+/// Walk the DUT's source arg, emitting a `{dut_port} => {wrapper_port}`
+/// pair for each flattened place. `input_names` supplies the wrapper
+/// port names in the same order `entry_slots` was built (both flatten
+/// groups top-to-bottom).
+///
+/// Assumes `input_names.len == boundaryCount(matched.sources)` — the
+/// flattened arity check in `writeOneNetworkEntity` guarantees this
+/// before we reach here. Mixed-shape pairings (entry `$A` vs DUT
+/// `[{A0 A1}]`) are rejected earlier, not silently mismatched here.
+fn writeNetworkSourceMappingPort(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    arg: network.Arg,
+    source_slot: *usize,
+    input_names: []const []const u8,
+    first_port: *bool,
+) !void {
+    switch (arg.kind) {
+        .group => if (arg.group) |grp| {
+            for (grp.places) |child| {
+                try writeNetworkSourceMappingPort(allocator, writer, child, source_slot, input_names, first_port);
+            }
+        },
+        .place => {
+            const dut_port_id = try sanitizeName(allocator, arg.name);
+            defer allocator.free(dut_port_id);
+
+            if (source_slot.* >= input_names.len) {
+                // Defensive: the arity check should have caught this.
+                return error.FlattenedInputArityMismatch;
+            }
+            const wrapper_name = input_names[source_slot.*];
+            const wrapper_port_id = try sanitizeName(allocator, wrapper_name);
+            defer allocator.free(wrapper_port_id);
+
+            if (first_port.*) {
+                try writer.print("\n    {s} => {s}", .{ dut_port_id, wrapper_port_id });
+                first_port.* = false;
+            } else {
+                try writer.print(",\n    {s} => {s}", .{ dut_port_id, wrapper_port_id });
+            }
+            source_slot.* += 1;
+        },
+        else => {},
+    }
 }
 
 pub fn flattenEntrySources(
