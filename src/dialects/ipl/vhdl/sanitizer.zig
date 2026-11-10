@@ -75,6 +75,35 @@ pub fn sanitizeName(allocator: std.mem.Allocator, composed: []const u8) ![]u8 {
     return allocator.dupe(u8, trimmed);
 }
 
+/// Translate a source-form member reference (`X.0`) to the generated
+/// member name (`X0`). Non-member references pass through unchanged.
+///
+/// The translation is textual: the part before the `.` is the bundle
+/// prefix, the part after is the index (digits only). The result is
+/// the concatenation, matching the names `parseRangeGroup` generates
+/// from `[X<> 0..N]` (which produces `X0`, `X1`, ...).
+///
+/// `X.foo` (a non-numeric suffix) is not translated — it passes
+/// through unchanged, since named bundle members aren't a supported
+/// form in the current language version. This preserves the original
+/// spelling so a downstream error can name it accurately.
+///
+/// Callers must free the returned slice when it differs from the
+/// input. The returned slice is always heap-allocated (never the
+/// input) to make the ownership rule uniform.
+pub fn translateMemberRef(allocator: std.mem.Allocator, name: []const u8) ![]u8 {
+    const dot = std.mem.indexOfScalar(u8, name, '.') orelse {
+        return allocator.dupe(u8, name);
+    };
+    const prefix = name[0..dot];
+    const index = name[dot + 1 ..];
+    if (index.len == 0) return allocator.dupe(u8, name);
+    for (index) |c| {
+        if (!std.ascii.isDigit(c)) return allocator.dupe(u8, name);
+    }
+    return std.fmt.allocPrint(allocator, "{s}{s}", .{ prefix, index });
+}
+
 fn isVhdlReserved(name: []const u8) bool {
     const reserved = [_][]const u8{
         "abs",     "access",  "after",     "alias",  "all",        "and",    "architecture", "array",         "assert",    "attribute",
@@ -377,6 +406,41 @@ test "sanitizeName lowercases, strips punctuation, and prefixes reserved/digit-l
     const digit_led = try sanitizeName(allocator, "0S0");
     defer allocator.free(digit_led);
     try testing.expectEqualStrings("ms_0s0", digit_led);
+}
+
+test "translateMemberRef: X.0 → X0" {
+    const allocator = testing.allocator;
+    const translated = try translateMemberRef(allocator, "X.0");
+    defer allocator.free(translated);
+    try testing.expectEqualStrings("X0", translated);
+}
+
+test "translateMemberRef: X.123 → X123" {
+    const allocator = testing.allocator;
+    const translated = try translateMemberRef(allocator, "X.123");
+    defer allocator.free(translated);
+    try testing.expectEqualStrings("X123", translated);
+}
+
+test "translateMemberRef: X passes through unchanged" {
+    const allocator = testing.allocator;
+    const translated = try translateMemberRef(allocator, "X");
+    defer allocator.free(translated);
+    try testing.expectEqualStrings("X", translated);
+}
+
+test "translateMemberRef: X.foo passes through (non-numeric suffix)" {
+    const allocator = testing.allocator;
+    const translated = try translateMemberRef(allocator, "X.foo");
+    defer allocator.free(translated);
+    try testing.expectEqualStrings("X.foo", translated);
+}
+
+test "translateMemberRef: internalBundleFoo.0 → internalBundleFoo0" {
+    const allocator = testing.allocator;
+    const translated = try translateMemberRef(allocator, "internalBundleFoo.0");
+    defer allocator.free(translated);
+    try testing.expectEqualStrings("internalBundleFoo0", translated);
 }
 
 

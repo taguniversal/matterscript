@@ -78,8 +78,24 @@ pub fn writeDollarReferenceSignals(
         }
         i += 1;
         const start = i;
+        // Accept `.digit+` as part of the name, so `$X.0` extracts
+        // "X.0" (not "X") and the translation below maps it to "X0".
         while (i < expression.len and (std.ascii.isAlphanumeric(expression[i]) or expression[i] == '_')) i += 1;
-        if (i > start) try writeIntermediateSignal(allocator, writer, def, names, expression[start..i]);
+        while (i < expression.len and expression[i] == '.') {
+            const dot_save = i;
+            i += 1;
+            if (i >= expression.len or !std.ascii.isDigit(expression[i])) {
+                i = dot_save;
+                break;
+            }
+            while (i < expression.len and std.ascii.isDigit(expression[i])) i += 1;
+        }
+        if (i > start) {
+            const raw = expression[start..i];
+            const translated = try sanitizer.translateMemberRef(allocator, raw);
+            defer allocator.free(translated);
+            try writeIntermediateSignal(allocator, writer, def, names, translated);
+        }
     }
 }
 
@@ -91,13 +107,29 @@ pub fn writeExpressionFill(
     fill: network.SourceFill,
 ) !bool {
     const expression = std.mem.trim(u8, fill.expr, " \t\r\n");
-    const dest_id = try sanitizeName(allocator, fill.dest_name);
+    // Translate member references before sanitizing: `X.0` → `X0` → `x0`.
+    const translated_dest = try sanitizer.translateMemberRef(allocator, fill.dest_name);
+    defer allocator.free(translated_dest);
+    const dest_id = try sanitizeName(allocator, translated_dest);
     defer allocator.free(dest_id);
 
     if (expression.len > 1 and expression[0] == '$') {
         var end = expression.len;
         if (std.mem.indexOfScalar(u8, expression, '(')) |open| end = open;
-        const source_id = try sanitizeName(allocator, expression[1..end]);
+        // Extend the source name past any `.digit` member access, so
+        // `$X.0` extracts "X.0" and translates to "X0".
+        var src_end = end;
+        if (std.mem.indexOfScalarPos(u8, expression, 1, '.')) |dot| {
+            if (dot + 1 < end and std.ascii.isDigit(expression[dot + 1])) {
+                var j = dot + 1;
+                while (j < end and std.ascii.isDigit(expression[j])) j += 1;
+                src_end = j;
+            }
+        }
+        const raw_source = expression[1..src_end];
+        const translated_source = try sanitizer.translateMemberRef(allocator, raw_source);
+        defer allocator.free(translated_source);
+        const source_id = try sanitizeName(allocator, translated_source);
         defer allocator.free(source_id);
         try writer.print("  {s} <= {s};\n", .{ dest_id, source_id });
         return true;
@@ -106,7 +138,10 @@ pub fn writeExpressionFill(
     if (std.mem.startsWith(u8, expression, "Equal(")) {
         const dollar = std.mem.indexOfScalar(u8, expression, '$') orelse return false;
         const comma = std.mem.indexOfScalarPos(u8, expression, dollar, ',') orelse return false;
-        const source_id = try sanitizeName(allocator, expression[dollar + 1 .. comma]);
+        const raw_source = expression[dollar + 1 .. comma];
+        const translated_source = try sanitizer.translateMemberRef(allocator, raw_source);
+        defer allocator.free(translated_source);
+        const source_id = try sanitizeName(allocator, translated_source);
         defer allocator.free(source_id);
         const value_end = std.mem.indexOfScalarPos(u8, expression, comma + 1, ')') orelse return false;
         const value_text = std.mem.trim(u8, expression[comma + 1 .. value_end], " \t\r\n");
@@ -131,7 +166,6 @@ pub fn writeDestinationFills(
     table: ?runtime_rules.SymbolTable,
 ) !void {
     try writer.print("\n  -- destination fills (outputs)\n", .{});
-   
 
     // Contained-row ROM shapes (anonymous pure_value rows, structured fill
     // rows, the multi-destination FULLADD shape). Reached only for
@@ -146,11 +180,19 @@ pub fn writeDestinationFills(
             .fill => |f| {
                 const literal = std.fmt.parseInt(u64, std.mem.trim(u8, f.expr, " \t\r\n"), 10) catch null;
                 if (literal) |value| {
-                    const dest_id = try sanitizeName(allocator, f.dest_name);
+                    const translated_dest = try sanitizer.translateMemberRef(allocator, f.dest_name);
+                    defer allocator.free(translated_dest);
+                    const dest_id = try sanitizeName(allocator, translated_dest);
                     defer allocator.free(dest_id);
+
                     try writer.print("  {s} <= data_value({d});\n", .{ dest_id, value });
                 } else if (!try writeExpressionFill(allocator, writer, f)) {
-                    const dest_id = try sanitizeName(allocator, f.dest_name);
+                    // Fallback: the fill wasn't a recognized expression;
+                    // still emit an empty assignment so the destination
+                    // is declared in the process. Translate the name.
+                    const translated_dest = try sanitizer.translateMemberRef(allocator, f.dest_name);
+                    defer allocator.free(translated_dest);
+                    const dest_id = try sanitizeName(allocator, translated_dest);
                     defer allocator.free(dest_id);
                     try writer.print("  {s} <= null_value;\n", .{dest_id});
                 }

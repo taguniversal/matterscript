@@ -32,6 +32,101 @@ pub fn writeNetworkEntity(
         try writeOneNetworkEntity(allocator, writer, net, entry, &used_names);
     }
 }
+
+/// Expand each entry-side flat handle (`$A`) into the DUT's group
+/// members at the same position, so that `flattenEntrySources` and the
+/// wrapper's `input_names` construction see the DUT's flattened shape
+/// on both sides.
+///
+/// For each top-level pair `(entry_arg, dut_arg)`:
+///   - both flat: keep entry_arg as-is
+///   - entry flat, DUT group: expand entry_arg into N flat args whose
+///     names are `<handle_name><i>` for i in the DUT's member list.
+///     (For a DUT `[A0<> A1<> A2<> A3<>]` and an entry `$bundleFoo`,
+///     this expands to `$bundleFoo0 $bundleFoo1 $bundleFoo2 $bundleFoo3`
+///     — the wrapper's ports will be named after the *entry* handle,
+///     not the DUT's members, because the caller's perspective is the
+///     entry's.)
+///   - both groups: verify same kind and member count; keep entry_arg
+///   - anything else: error
+///
+/// The expansion is positional. It never derives member names from the
+/// handle's text. If the entry already supplied a bundle (`[$A0 $A1]`)
+/// rather than a bare handle, this is a no-op for that pair.
+fn expandEntrySourcesAgainstDut(
+    allocator: std.mem.Allocator,
+    entry: network.EntryInvocation,
+    matched: network.Definition,
+) ![]const network.Arg {
+    if (entry.sources.len != matched.sources.len) {
+        return error.EntrySourceArityMismatch;
+    }
+    var expanded: std.ArrayListUnmanaged(network.Arg) = .empty;
+    errdefer expanded.deinit(allocator);
+    for (entry.sources, matched.sources) |entry_arg, dut_arg| {
+        switch (entry_arg.kind) {
+            .place, .literal => switch (dut_arg.kind) {
+                .place, .literal => try expanded.append(allocator, entry_arg),
+                .group => {
+                    // A flat handle against a DUT group: expand into N flat args.
+                    // Literal args against a group are a genuine mismatch
+                    // (there's nothing to expand a literal into).
+                    if (entry_arg.kind == .literal) return error.EntryShapeMismatch;
+                    const grp = dut_arg.group orelse return error.DutGroupMissingPlaces;
+                    for (grp.places, 0..) |_, i| {
+                        const member_name = try std.fmt.allocPrint(
+                            allocator,
+                            "{s}{d}",
+                            .{ entry_arg.name, i },
+                        );
+                        try expanded.append(allocator, .{
+                            .kind = .place,
+                            .name = member_name,
+                            .text = member_name,
+                        });
+                    }
+                },
+                else => try expanded.append(allocator, entry_arg),
+            },
+            .group => switch (dut_arg.kind) {
+                .group => {
+                    const entry_grp = entry_arg.group orelse return error.EntryGroupMissingPlaces;
+                    const dut_grp = dut_arg.group orelse return error.DutGroupMissingPlaces;
+                    if (entry_grp.kind != dut_grp.kind) {
+                        // Arbitration groups are one-slot at the wrapper level
+                        // (see flattenEntrySources). If the entry is an
+                        // arbitration group and the DUT is a flat place, the
+                        // arbitration group reduces to that single place.
+                        if (entry_grp.kind == .arbitration) {
+                            try expanded.append(allocator, entry_arg);
+                            break;
+                        }
+                        return error.GroupKindMismatch;
+                    }
+                    if (boundary.boundaryCount(entry_grp.places) !=
+                        boundary.boundaryCount(dut_grp.places))
+                    {
+                        return error.GroupMemberCountMismatch;
+                    }
+                    try expanded.append(allocator, entry_arg);
+                },
+                .place => {
+                    // Entry group against a DUT place. If the entry is an
+                    // arbitration group (competing access to one place), keep
+                    // it — flattenEntrySources reduces arbitration groups to
+                    // one slot, matching the DUT's single place.
+                    const entry_grp = entry_arg.group orelse return error.EntryGroupMissingPlaces;
+                    if (entry_grp.kind != .arbitration) return error.EntryShapeMismatch;
+                    try expanded.append(allocator, entry_arg);
+                },
+                else => try expanded.append(allocator, entry_arg),
+            },
+            else => try expanded.append(allocator, entry_arg),
+        }
+    }
+    return expanded.toOwnedSlice(allocator);
+}
+
 pub fn writeOneNetworkEntity(
     allocator: std.mem.Allocator,
     writer: anytype,
@@ -43,11 +138,15 @@ pub fn writeOneNetworkEntity(
         if (std.ascii.eqlIgnoreCase(d.name, entry.name)) break d;
     } else return;
 
-    var entry_slots: std.ArrayListUnmanaged(network.Arg) = .empty;
-    defer entry_slots.deinit(allocator);
-    try flattenEntrySources(allocator, entry.sources, &entry_slots);
+    var expand_arena = std.heap.ArenaAllocator.init(allocator);
+    defer expand_arena.deinit();
+    const expand_alloc = expand_arena.allocator();
 
-    // ... existing [entity] debug prints ...
+    const expanded_sources = try expandEntrySourcesAgainstDut(expand_alloc, entry, matched);
+
+    var entry_slots: std.ArrayListUnmanaged(network.Arg) = .empty;
+    try flattenEntrySources(expand_alloc, expanded_sources, &entry_slots);
+    // entry_slots and its contents live in expand_arena; freed by its deinit.
 
     if (entry.sources.len != matched.sources.len) {
         std.debug.print(
@@ -238,53 +337,6 @@ fn writeNetworkSourceMappingMixed(
             } else {
                 try writer.print(",\n    {s} => {s}", .{ dut_port_id, rhs });
             }
-        },
-        else => {},
-    }
-}
-
-/// Walk the DUT's source arg, emitting a `{dut_port} => {wrapper_port}`
-/// pair for each flattened place. `input_names` supplies the wrapper
-/// port names in the same order `entry_slots` was built (both flatten
-/// groups top-to-bottom).
-///
-/// Assumes `input_names.len == boundaryCount(matched.sources)` — the
-/// flattened arity check in `writeOneNetworkEntity` guarantees this
-/// before we reach here. Mixed-shape pairings (entry `$A` vs DUT
-/// `[{A0 A1}]`) are rejected earlier, not silently mismatched here.
-fn writeNetworkSourceMappingPort(
-    allocator: std.mem.Allocator,
-    writer: anytype,
-    arg: network.Arg,
-    source_slot: *usize,
-    input_names: []const []const u8,
-    first_port: *bool,
-) !void {
-    switch (arg.kind) {
-        .group => if (arg.group) |grp| {
-            for (grp.places) |child| {
-                try writeNetworkSourceMappingPort(allocator, writer, child, source_slot, input_names, first_port);
-            }
-        },
-        .place => {
-            const dut_port_id = try sanitizeName(allocator, arg.name);
-            defer allocator.free(dut_port_id);
-
-            if (source_slot.* >= input_names.len) {
-                // Defensive: the arity check should have caught this.
-                return error.FlattenedInputArityMismatch;
-            }
-            const wrapper_name = input_names[source_slot.*];
-            const wrapper_port_id = try sanitizeName(allocator, wrapper_name);
-            defer allocator.free(wrapper_port_id);
-
-            if (first_port.*) {
-                try writer.print("\n    {s} => {s}", .{ dut_port_id, wrapper_port_id });
-                first_port.* = false;
-            } else {
-                try writer.print(",\n    {s} => {s}", .{ dut_port_id, wrapper_port_id });
-            }
-            source_slot.* += 1;
         },
         else => {},
     }

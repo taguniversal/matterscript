@@ -73,12 +73,10 @@ fn isLookupEntry(contained: network.Definition) bool {
     return true;
 }
 
-
 fn checkNoNestedDefinitions(def: network.Definition, diag: *Diagnostic) ValidationError!void {
     for (def.contained) |contained| {
         if (!isLookupEntry(contained)) {
-            std.debug.print("[nest] rejecting '{s}' inside '{s}': sources={d} dests={d} res.len={d}\n",
-                .{ contained.name, def.name, contained.sources.len, contained.destinations.len, contained.resolution.len });
+            std.debug.print("[nest] rejecting '{s}' inside '{s}': sources={d} dests={d} res.len={d}\n", .{ contained.name, def.name, contained.sources.len, contained.destinations.len, contained.resolution.len });
             for (contained.resolution, 0..) |stmt, i| {
                 std.debug.print("  res[{d}]: {s}\n", .{ i, @tagName(stmt) });
             }
@@ -103,6 +101,7 @@ fn checkInvocations(
         }
     }
 }
+
 
 fn checkNames(net: network.Network, diag: *Diagnostic) ValidationError!void {
     for (net.definitions, 0..) |def, i| {
@@ -147,6 +146,7 @@ pub fn validate(allocator: std.mem.Allocator, net: network.Network) !void {
                 std.debug.print("validation error: entry invokes '{s}', which is not defined in this network\n", .{diag.name}),
             error.DuplicateDefinition => std.debug.print("validation error: definition '{s}' is defined more than once\n", .{diag.name}),
             error.NestedDefinitionNotAllowed => std.debug.print("validation error: '{s}' is nested inside '{s}'; MatterScript requires a flat definition space — move '{s}' to the top level and invoke it by name\n", .{ diag.name, diag.in, diag.name }),
+
             else => {},
         }
         return err;

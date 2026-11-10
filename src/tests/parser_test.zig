@@ -8,7 +8,9 @@ const rules = matterscript.runtime.rules;
 const export_value_transform = matterscript.vhdl.value_transform_export;
 // Import the module relative to this test file
 const parser = matterscript.ipl_parser;
+const core = parser.core;
 pub const network = matterscript.network;
+const expressions = matterscript.expressions;
 
 fn dumpAst(def: network.Definition) void {
     std.debug.print("\n=== AST DUMP FOR: {s} ===\n", .{def.name});
@@ -1983,4 +1985,42 @@ test "TAG-149: bare [N] on a group destination is rejected as ambiguous" {
     ;
 
     try std.testing.expectError(error.AmbiguousContainedDestination, parser.parse(a, src));
+}
+
+test "parseGroup: source bundle range" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    var p = core.Parser.init(arena.allocator(), "[X<> 0..3]");
+    const grp = try parser.groups.parseGroup(&p);
+    try std.testing.expectEqual(network.PlaceGroupKind.bundle, grp.kind);
+    try std.testing.expectEqual(@as(usize, 4), grp.places.len);
+    try std.testing.expectEqualStrings("X0", grp.places[0].name);
+    try std.testing.expectEqualStrings("X3", grp.places[3].name);
+}
+
+test "parseGroup: destination bundle range" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    var p = core.Parser.init(arena.allocator(), "[$X 0..3]");
+    const grp = try parser.groups.parseGroup(&p);
+    try std.testing.expectEqual(network.PlaceGroupKind.bundle, grp.kind);
+    try std.testing.expectEqual(@as(usize, 4), grp.places.len);
+    try std.testing.expectEqualStrings("X0", grp.places[0].name);
+}
+
+test "parseGroup: existing per-member form unchanged" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    var p = core.Parser.init(arena.allocator(), "[A0<> A1<>]");
+    const grp = try parser.groups.parseGroup(&p);
+    try std.testing.expectEqual(@as(usize, 2), grp.places.len);
+    try std.testing.expectEqualStrings("A0", grp.places[0].name);
+}
+
+test "parseILExpr: composed key with member access" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    var p = core.Parser.init(arena.allocator(), "$X.0$X.1()");
+    const expr = try expressions.parseILExpr(&p);
+    try std.testing.expectEqualStrings("$X.0$X.1()", expr);
 }

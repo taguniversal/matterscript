@@ -42,6 +42,9 @@ pub fn parseILExpr(p: *core.Parser) ![]const u8 {
     while (p.peek() == '$') {
         _ = p.advance();
         _ = try p.readName();
+        // Accept `.digit+` as part of the name token, so `$X.0` is
+        // one reference and `$X.0$X.1()` is two references plus `()`.
+        p.extendMemberAccess();
     }
     p.skipWhitespaceAndComments();
     if (p.peek() == '(') {

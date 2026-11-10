@@ -26,8 +26,6 @@ pub fn parseGroup(p: *core.Parser) anyerror!*const network.PlaceGroup {
         close_delim = ')';
         p.pos += 1;
     } else if (p.peek() == '[') {
-        // Bundle-brackets (§12.6) — same semantics as <>, matching
-        // the mapping already used by parseArgSequence.
         kind = .bundle;
         close_delim = ']';
         p.pos += 1;
@@ -44,7 +42,12 @@ pub fn parseGroup(p: *core.Parser) anyerror!*const network.PlaceGroup {
     } else {
         return error.InvalidGroupDelimiter;
     }
-
+    // Range form: [X<> 0..64] (source) or [$X 0..64] (destination),
+    // same for {...} and {{...}}. Opening bracket has been consumed
+    // by the branch above; parseRangeGroup peeks for `$` or a name.
+    if (try parseRangeGroup(p, kind, close_delim)) |range_group| {
+        return range_group;
+    }
     var places: std.ArrayListUnmanaged(network.Arg) = .empty;
     errdefer places.deinit(p.allocator); // <--- Add errdefer to cleanup on error
 
@@ -84,6 +87,141 @@ pub fn parseGroup(p: *core.Parser) anyerror!*const network.PlaceGroup {
         .places = try places.toOwnedSlice(p.allocator),
     };
 
+    return group_ptr;
+}
+
+/// Recognizes the bundle-range form inside a group: `NAME<> LO..HI`
+/// (source) or `$NAME LO..HI` (destination), for any group kind. On
+/// match, consumes through the closing bracket and returns a
+/// `PlaceGroup` with `HI - LO + 1` members named `NAME<lo>` through
+/// `NAME<hi>`, each carrying the source/destination decoration.
+///
+/// Returns null (restoring `p.pos`) if the pattern doesn't match, so
+/// `parseGroup` falls through to the ordinary member-parsing loop.
+/// The non-matching cases include the existing per-member form
+/// (`[A0<> A1<>]`), which has no `..` after a name.
+fn parseRangeGroup(
+    p: *core.Parser,
+    kind: network.PlaceGroupKind,
+    close_delim: u8,
+) !?*const network.PlaceGroup {
+    const save = p.pos;
+
+    // Optional destination decoration: `$` before the name.
+    var is_destination = false;
+    if (p.peek() == '$') {
+        is_destination = true;
+        p.pos += 1;
+    }
+    p.skipWhitespaceAndComments();
+
+    // Read the prefix name.
+    const name_start = p.pos;
+    const name = p.readName() catch {
+        p.pos = save;
+        return null;
+    };
+    if (name.len == 0) {
+        p.pos = save;
+        return null;
+    }
+    _ = name_start;
+
+    // Optional source decoration: `<>` immediately after the name.
+    // Only checked if we didn't see `$` (a place is either a source
+    // or a destination, not both).
+    var is_source = false;
+    if (!is_destination) {
+        const before_decoration = p.pos;
+        p.skipWhitespaceAndComments();
+        if (p.peek() == '<') {
+            p.pos += 1;
+            p.skipWhitespaceAndComments();
+            if (p.peek() == '>') {
+                p.pos += 1;
+                is_source = true;
+            } else {
+                p.pos = before_decoration;
+            }
+        }
+    }
+
+    p.skipWhitespaceAndComments();
+
+    // Range: LO .. HI
+    const lo_start = p.pos;
+    if (p.peek() == null or !std.ascii.isDigit(p.peek().?)) {
+        p.pos = save;
+        return null;
+    }
+    while (p.pos < p.src.len and std.ascii.isDigit(p.src[p.pos])) p.pos += 1;
+    const lo = std.fmt.parseInt(usize, p.src[lo_start..p.pos], 10) catch {
+        p.pos = save;
+        return null;
+    };
+
+    if (p.pos + 1 >= p.src.len or p.src[p.pos] != '.' or p.src[p.pos + 1] != '.') {
+        p.pos = save;
+        return null;
+    }
+    p.pos += 2;
+
+    p.skipWhitespaceAndComments();
+
+    const hi_start = p.pos;
+    if (p.peek() == null or !std.ascii.isDigit(p.peek().?)) {
+        p.pos = save;
+        return null;
+    }
+    while (p.pos < p.src.len and std.ascii.isDigit(p.src[p.pos])) p.pos += 1;
+    const hi = std.fmt.parseInt(usize, p.src[hi_start..p.pos], 10) catch {
+        p.pos = save;
+        return null;
+    };
+
+    if (lo > hi) return error.InvalidRangeBounds;
+
+    // Consume the closing bracket.
+    p.skipWhitespaceAndComments();
+    if (p.peek() != close_delim) {
+        p.pos = save;
+        return null;
+    }
+    p.pos += 1;
+    if (kind == .arbitration) {
+        p.skipWhitespaceAndComments();
+        if (p.peek() != '}') {
+            p.pos = save;
+            return null;
+        }
+        p.pos += 1;
+    }
+
+    // Generate members: NAME<lo> through NAME<hi>.
+    var places: std.ArrayListUnmanaged(network.Arg) = .empty;
+    errdefer places.deinit(p.allocator);
+    var i: usize = lo;
+    while (i <= hi) : (i += 1) {
+        const member_name = try std.fmt.allocPrint(p.allocator, "{s}{d}", .{ name, i });
+        const text = if (is_destination)
+            try std.fmt.allocPrint(p.allocator, "${s}", .{member_name})
+        else if (is_source)
+            try std.fmt.allocPrint(p.allocator, "{s}<>", .{member_name})
+        else
+            member_name;
+
+        try places.append(p.allocator, .{
+            .kind = .place,
+            .name = member_name,
+            .text = text,
+        });
+    }
+
+    const group_ptr = try p.allocator.create(network.PlaceGroup);
+    group_ptr.* = .{
+        .kind = kind,
+        .places = try places.toOwnedSlice(p.allocator),
+    };
     return group_ptr;
 }
 
@@ -133,6 +271,7 @@ fn parseInvOutputList() ![]const network.Place {
 pub fn readCommaSeparatedName(p: *core.Parser) ![]const u8 {
     const start = p.pos;
     _ = try p.readName();
+    p.extendMemberAccess();
 
     while (true) {
         const save = p.pos;
@@ -146,13 +285,11 @@ pub fn readCommaSeparatedName(p: *core.Parser) ![]const u8 {
         _ = p.advance(); // Consume ','
         p.skipWhitespaceAndComments();
 
-        // Attempt to read the next segment.
-        // If it fails (e.g. unexpected character, EOF, or invalid name),
-        // backtrack to BEFORE the comma so the comma isn't consumed.
         _ = p.readName() catch {
             p.pos = save;
             break;
         };
+        p.extendMemberAccess();
     }
 
     return p.src[start..p.pos];

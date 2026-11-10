@@ -186,7 +186,10 @@ fn writeFlatSourceCaseBlock(
             key_pos += piece.len;
         }
         const key_str = key_buf[0..key_pos];
-        const out_value = findSymbolInSlice(symbols, std.mem.trim(u8, vt, " \t\r\n")) orelse
+        const vt_trimmed = std.mem.trim(u8, vt, " \t\r\n");
+        const vt_translated = try sanitizer.translateMemberRef(allocator, vt_trimmed);
+        defer allocator.free(vt_translated);
+        const out_value = findSymbolInSlice(symbols, vt_translated) orelse
             return error.SymbolNotPreInterned;
         try writer.print("        when \"{s}\" => {s} <= data_value({d});\n", .{ key_str, dest_id, out_value });
     }
@@ -211,7 +214,9 @@ fn writeLookupCaseBlock(
     symbols: []const []const u8,
     anonymous: bool,
 ) !void {
-    const dest_id = try sanitizeName(allocator, dest_name);
+    const translated_dest = try sanitizer.translateMemberRef(allocator, dest_name);
+    defer allocator.free(translated_dest);
+    const dest_id = try sanitizeName(allocator, translated_dest);
     defer allocator.free(dest_id);
 
     const width = requiredWidth(symbols.len);
@@ -547,7 +552,9 @@ fn writeComposedKeyLookupBlock(
     places: []const []const u8,
     symbols: []const []const u8,
 ) !void {
-    const dest_id = try sanitizeName(allocator, dest_name);
+    const translated_dest = try sanitizer.translateMemberRef(allocator, dest_name);
+    defer allocator.free(translated_dest);
+    const dest_id = try sanitizeName(allocator, translated_dest);
     defer allocator.free(dest_id);
 
     const width = constants.DATA_WIDTH;

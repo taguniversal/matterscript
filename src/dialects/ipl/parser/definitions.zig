@@ -423,17 +423,14 @@ pub fn parseResolution(p: *core.Parser) ![]const network.Statement {
         }
 
         const tok_start = p.pos;
-
-        // 3. Composed Key Ambiguity Check (TAG-190)
-        // If the segment contains multi-source keys without clear boundary delimiters, reject early.
-        if (try isAmbiguousComposedKey(p)) {
-            return error.AmbiguousComposedKey;
-        }
-
-        // 4. Try parsing optional prefix label (e.g., "u1: AND(...)") or regular identifier
-        const potential_name = p.readName() catch |err| {
+        const name_start = p.pos;
+        _ = p.readName() catch |err| {
             return err;
         };
+        // Extend the destination name past any `.digit` member access,
+        // so `X.0< $src >` parses as a fill whose dest is `X.0`.
+        p.extendMemberAccess();
+        const potential_name = p.src[name_start..p.pos];
 
         p.skipWhitespaceAndComments();
 

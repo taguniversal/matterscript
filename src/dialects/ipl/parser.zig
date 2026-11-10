@@ -23,6 +23,7 @@ pub const expressions = @import("parser/expressions.zig");
 pub const directives = @import("parser/directives.zig");
 pub const statements = @import("parser/statements.zig");
 const validate = @import("validate.zig");
+pub const groups = @import("parser/groups.zig");
 
 // ----------------------------------------------------------------
 // Public API

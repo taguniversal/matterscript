@@ -111,6 +111,30 @@ pub const Parser = struct {
         return if (negative) -val else val;
     }
 
+    /// Extends the parser position past any `.digit+` suffixes following
+    /// a name, so that `X.0` reads as a single member-reference token.
+    /// Member access is `.` followed by one or more digits. If the `.` is
+    /// not followed by a digit (e.g. `X.` or `X.foo`), the parser position
+    /// is left at the `.` — malformed member references are the caller's
+    /// problem, and `X.foo` (named members) is not a supported form in
+    /// this version of the language.
+    ///
+    /// Callers use this after `readName` when reading a name that may be
+    /// a member reference (source reads in composed keys, destination
+    /// names in fills, rule LHSs, and bundle-member names in contained
+    /// rows). It is a no-op for ordinary names.
+    pub fn extendMemberAccess(p: *Parser) void {
+        while (p.pos < p.src.len and p.src[p.pos] == '.') {
+            const dot_pos = p.pos;
+            p.pos += 1;
+            if (p.pos >= p.src.len or !std.ascii.isDigit(p.src[p.pos])) {
+                p.pos = dot_pos;
+                return;
+            }
+            while (p.pos < p.src.len and std.ascii.isDigit(p.src[p.pos])) p.pos += 1;
+        }
+    }
+
     fn readRange(p: *Parser) !struct { min: i64, max: i64 } {
         const min = try p.readInteger();
         p.skipWhitespaceAndComments();
