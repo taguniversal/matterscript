@@ -12,98 +12,113 @@ Together, these constructs allow complex dataflows to be expressed without sacri
 
 ### Bundles
 
-A bundle is simply a collection of places that travel together as a single logical unit.
-
-Rather than exposing every constituent place at every level of composition, a bundle allows an expression to present a cleaner interface while preserving the detailed structure internally.
-
-For example, a dual-rail Boolean value consists of two mutually exclusive rails. At a higher level of composition it is often more convenient to treat those two rails as a single value.
+A bundle is a named collection of places that travel together as a single logical unit. Rather than enumerating every constituent place by hand, a bundle declares its **base name**, its **direction**, and its **range**, and the compiler expands the range into indexed members.
 
 ```matterscript
-OR($A $B)(Y<>)
+ADDER4($A $B $CIN)(SUM0<> SUM1<> SUM2<> SUM3<> COUT<>)
+ADDER4[([A<> 0..3] [B<> 0..3] CIN<>)
+  (SUM0<> SUM1<> SUM2<> SUM3<> COUT<>)
+  // Four full-adder instances, chained by carry.
+  FULLADD($A.0 $B.0 $CIN)(SUM0<> C1<>)
+  FULLADD($A.1 $B.1 $C1)(SUM1<> C2<>)
+  FULLADD($A.2 $B.2 $C2)(SUM2<> C3<>)
+  FULLADD($A.3 $B.3 $C3)(SUM3<> COUT<>)
+  :
+]
 ```
 
-Internally, however, the Boolean function still operates on the individual rails.
+The definition's source list contains two bundle declarations, `[A<> 0..3]` and `[B<> 0..3]`, plus a plain place `CIN<>`. Each bundle declaration is one top-level source entry. It expands internally into four members:
+
+```
+A.0  A.1  A.2  A.3
+B.0  B.1  B.2  B.3
+```
+
+The dot notation `A.0` is the **member reference**: base name `A`, member index `0`. Member references are ordinary place names in every other respect — they can appear anywhere a place name can, including in the source and destination arguments of an invocation.
+
+#### Bundle declarations
+
+A bundle declaration has three parts:
+
+```
+'[' name direction range ']'
+```
+
+- **name** — the base name of the bundle, e.g. `A`.
+- **direction** — `<>` for a source (content flows *in* to the definition), `$name` for a destination (content flows *out*). The direction must match the position: source-list bundles use `<>`, destination-list bundles use `$`.
+- **range** — `low..high`, inclusive on both ends, e.g. `0..3`.
+
+The declaration expands into members `name.low`, `name.low+1`, …, `name.high`. So `[A<> 0..3]` expands to `A.0`, `A.1`, `A.2`, `A.3` as source places.
+
+#### Direction
+
+The direction marker distinguishes source bundles from destination bundles:
 
 ```matterscript
-OR[( [{A0<> A1<>}] [{B0<> B1<>}] ) ( [{$0 $1}] )
-     1< 3of6($A1 $A1 $A0 $B0 $B1 $B1) >
-     0< 2of2($A0 $B0) > : ]
+// A bundle of four source places, expanded to A0 .. A3
+[A<> 0..3]
+
+// A bundle of four destination places, expanded to $SUM.0 .. $SUM.3
+[$SUM 0..3]
 ```
 
-The two bracketed groups in the definition source list unbundle the invocation places `$A` and `$B` into their individual rails.
+Source bundles use `<>`; destination bundles use `$` before the base name (matching the `$name` convention for single destination places elsewhere in the language).
 
-Likewise, the destination rails `$0` and `$1` are bundled back together and associated with the single invocation place `Y<>`.
+#### Arity
 
-This allows the implementation to operate on the explicit physical representation while the surrounding design works with a more convenient logical representation.
+The number of top-level entries in the invocation's source list must equal the number of top-level entries in the definition's source list. Bundle declarations count as **one** entry each, regardless of how many members they expand to.
 
-#### Arity of source lists
+In the `ADDER4` example above:
 
-The number of top-level entries in the invocation's source list must equal the number of top-level entries in the definition's source list. They correspond positionally: the first invocation place is bound to the first definition source, the second to the second, and so on.
+- Invocation: `($A $B $CIN)` — three top-level sources.
+- Definition: `([A<> 0..3] [B<> 0..3] CIN<>)` — three top-level sources.
 
-A single invocation place may bind to a bracketed group of definition members — that is the unbundling case. But it may not bind to multiple top-level sources. Conversely, a bracket pair in the invocation may not be flattened to multiple definition sources. Arity is measured at the top level, not after unbundling.
+The correspondence is 1-to-1: `$A` binds to `[A<> 0..3]`, `$B` binds to `[B<> 0..3]`, and `$CIN` binds to `CIN<>`. Inside the definition, the expanded members are available as `A.0 .. A.3` and `B.0 .. B.3`; the invocation does not need to know the range.
 
-For example, `OR($A $B)` has two top-level source entries. The definition `OR[([{A0<> A1<>}] [{B0<> B1<>}])...]` also has two top-level source entries: `[{A0<> A1<>}]` and `[{B0<> B1<>}]`. The correspondence is 1-to-1 even though each side expands to a different number of physical rails when flattened.
+#### Member references
 
-<!-- TODO: confirm whether the parser currently reports the entry-source count
-     correctly for `{{...}}` arbitration groups — see the note in the
-     Arbitration section below. -->
+A member reference is a place name written `base.index`, where `base` is the bundle's declared name and `index` is a member index in the bundle's range. Member references appear in three places:
+
+- In the bodies of nested invocations:
+  ```matterscript
+  FULLADD($A.0 $B.0 $CIN)(SUM0<> C1<>)
+  FULLADD($A.1 $B.1 $C1)(SUM1<> C2<>)
+  ```
+- In the definition's own resolution and contained rules.
+- In any expression where a place name is expected.
+
+Member references are **canonical**: `A.0` is the name of the place, and it is what the compiler emits as the port and signal name in hardware. There is no separate aliasing step.
 
 #### Where bundle member names live
 
-When a bundle is unbundled, the member names come from the definition's source list, not from the invocation. An invocation that writes `OR($A $B)` and a definition that writes `OR[([{A0<> A1<>}] [{B0<> B1<>}])...]` binds `$A` to the group `{A0, A1}` and `$B` to the group `{B0, B1}`. The names `A0`, `A1`, `B0`, `B1` are canonical; they are what the emitted hardware uses for ports and signals. The invocation's `$A` and `$B` are labels for the association, not names in the physical interface.
+When a bundle is declared `[A<> 0..3]`, the names `A.0`, `A.1`, `A.2`, `A.3` come from the declaration itself — they are the physical members the compiler emits for the definition's interface. The invocation's `$A` is a *label* for the association, not a name in the physical interface; the invocation-side name never appears as a port.
 
-When the compiler emits a top-level network entity for such an invocation, the entity's input ports are named after the definition's member names. The invocation's bundle labels do not appear in the port list.
+When the compiler emits a top-level network entity for the definition above, the entity's input ports are named after the bundle members: `A.0`, `A.1`, `A.2`, `A.3`, `B.0`, `B.1`, `B.2`, `B.3`, and `CIN`. The invocation's `$A` and `$B` do not appear in the port list.
 
-<!-- TODO: when the entry uses explicit bracket syntax
-     `STEP1B([$A0 $A1 $A2 $A3])`, the entry itself names the members and
-     those names become the ports. Confirm the exact precedence rule when
-     both sides provide names. -->
+#### A note on the older group syntax
+
+Earlier versions of the language wrote bundle members out explicitly as a bracketed group of individual places, e.g. `[{A0<> A1<>}]`. That form is **replaced** by the range form: `[A<> 0..3]` means the same thing as `[{A.0<> A.1<> A.2<> A.3<>}]`, but the range form states the pattern and lets the compiler expand it. Where both are accepted, prefer the range form — it scales to large buses without repeating the base name.
 
 #### Bundles as structure
 
-Conceptually, bundling is similar to a structure or record in conventional programming languages, except that the bundle represents **paths of association** rather than fields of memory.
+Conceptually, bundling is similar to a structure or record in conventional programming languages, except that the bundle represents **paths of association** rather than fields of memory. A bundle's members are accessed positionally via their index (`A.0`, `A.1`, …) rather than by a named field.
 
-<!-- TODO: soften or expand this analogy once the language's member-access
-     story is settled. Today there is no named-field access from the
-     invocation side; a bundle is purely a positional grouping. -->
+Bundles are not limited to dual-rail logic or buses. They can represent any collection of places that naturally travel together.
 
-Bundles are not limited to dual-rail logic. They can represent any collection of places that naturally travel together.
+#### Nested bundles
 
-A four-digit number, for example, might be represented internally as:
+A bundle member is itself a place, so bundles can be nested. This is expressed with member references into nested indices:
 
 ```matterscript
-A0<> A1<> A2<> A3<>
+[[A<> 0..1] [B<> 0..1]]
 ```
 
-while appearing externally as simply:
+Here the outer bundle has two members; each is itself a bundle of two members. In the definition body the individual places are `A.0.0`, `A.0.1`, `A.1.0`, `A.1.1`, and so on, following the member-reference rule recursively.
 
-```matterscript
-A<>
-```
-
-Each level of composition may bundle or unbundle information as appropriate for its level of abstraction.
-
-### Nested Bundles
-
-Bundles may themselves contain other bundles.
-
-Each additional level of bundling adds another outer pair of brackets.
-
-For example:
-
-```matterscript
-[A0 A1]
-```
-
-represents a single bundle.
-
-```matterscript
-[[A0 A1] [B0 B1]]
-```
-
-represents two bundles grouped into a larger bundle.
-
-When content flows into a definition, each level of unbundling removes one level of brackets until the expression reaches the individual places it operates upon.
+<!-- TODO: verify the exact notation for nested bundle declarations and
+     member references with more than one level of nesting. The expansion
+     rule (name.low .. name.high at each level) is clear; the surface
+     syntax for declaring the inner ranges may need adjustment. -->
 
 Because bundling follows the natural hierarchy of composition, large interfaces remain compact while definitions retain complete visibility of their internal structure.
 
@@ -111,41 +126,28 @@ Because bundling follows the natural hierarchy of composition, large interfaces 
 
 Many bundled representations describe values for which only one member may ever be active.
 
-Dual-rail logic is the simplest example.
-
-If a Boolean value is represented by two rails:
+Dual-rail logic is the simplest example. If a Boolean value is represented by two rails:
 
 ```matterscript
 A0<>
 A1<>
 ```
 
-then only one rail may contain content at any instant.
-
-The rails are therefore enclosed in braces:
+then only one rail may contain content at any instant. The rails are therefore enclosed in braces:
 
 ```matterscript
 {A0<> A1<>}
 ```
 
-The braces declare a **mutual exclusion relationship**.
+The braces declare a **mutual exclusion relationship**. Rather than describing computation, the mutex expresses a property of the representation itself: these places are alternative encodings of the same logical value, and content appearing in more than one of them would be a contradiction.
 
-Rather than describing computation, the mutex expresses a property of the representation itself.
+Mutexes appear naturally throughout Matterscript: dual-rail values, multi-rail encodings, one-hot state machines, alternative symbolic representations. They communicate intent while allowing the compiler to verify that mutually exclusive paths remain mutually exclusive throughout the design.
 
-It tells the reader—and the compiler—that these places are alternative representations of the same logical value.
-
-Mutexes appear naturally throughout Matterscript:
-
-- dual-rail values
-- multi-rail encodings
-- one-hot state machines
-- alternative symbolic representations
-
-They communicate intent while allowing the compiler to verify that mutually exclusive paths remain mutually exclusive throughout the design.
+Note that mutex brackets are **not** interchangeable with bundle brackets. A bundle says "all members together"; a mutex says "exactly one member." Using the wrong one describes a different representation, and the emitted hardware follows.
 
 #### Mutex and completeness
 
-A mutex group participates in **completeness** differently than a bundle does.
+A mutex group participates in completeness differently than a bundle does.
 
 A bundle's completeness is the conjunction of its members: the group is complete when *every* member has content.
 
@@ -182,11 +184,11 @@ The `0` and `1` in the rules are **tokens**, not destination names. Because the 
 
 #### Completeness by group kind
 
-The two kinds of group have different completeness conditions on sources and destinations:
+The kinds of group have different completeness conditions on sources and destinations:
 
 | Group kind | Source completeness | Destination completeness |
 |---|---|---|
-| Bundle `[...]` | all members present | all members asserted |
+| Bundle `[...]` (range form) | all members present | all members asserted |
 | Mutex `{...}` | exactly one member present | exactly one member asserted |
 | Arbitration `{{...}}` | at least one member present | (not a destination form) |
 
@@ -206,30 +208,21 @@ Each destination's assignment falls back to `null_value` when its condition does
 
 <!-- TODO: the current compiler emits the surrounding structure (signals,
      validity extraction, `complete`, port map) but does not yet lower
-     token rules into conditional assignments like the ones shown here.
-     Mark this as aspirational or update once the lowering is in place. -->
+     token rules into conditional assignments like the ones shown here. -->
 
 #### Design consequences
 
-The mutex is not a notation for exclusive-or logic, and it is not a shorthand for a decoder. It is a statement about the *representation*: these places are alternative encodings of a single logical value, and content appearing in more than one of them would be a contradiction.
+The mutex is not a notation for exclusive-or logic, and it is not a shorthand for a decoder. It is a statement about the *representation*.
 
-Because it's a property of the representation rather than a computation, the mutex propagates through composition. A definition that consumes a mutex group and produces another mutex group has preserved the property end-to-end. Composing two such definitions preserves it again. The compiler can therefore reason about mutexes at every level of a design without having to re-derive the property at each layer.
+Because it is a property of the representation rather than a computation, the mutex propagates through composition. A definition that consumes a mutex group and produces another mutex group has preserved the property end-to-end. Composing two such definitions preserves it again.
 
-This is also why mutexes and bundles are not interchangeable: a bundle asserts "all members together," a mutex asserts "exactly one member." Using the wrong one describes a different representation, and the emitted hardware follows.
+This is also why mutexes and bundles are not interchangeable: a bundle asserts "all members together," a mutex asserts "exactly one member." Using the wrong one describes a different representation.
 
 ### Arbitration
 
-Mutual exclusion describes values.
+Mutual exclusion describes values. Arbitration describes **behavior**.
 
-Arbitration describes **behavior**.
-
-Consider two independent producers attempting to send content to the same destination.
-
-If both produce content simultaneously, which one should proceed first?
-
-In conventional software this often becomes a lock, semaphore, message queue, or scheduler.
-
-In Matterscript, arbitration is expressed directly as part of the association graph.
+Consider two independent producers attempting to send content to the same destination. If both produce content simultaneously, which one should proceed first?
 
 ```matterscript
 Arbiter({{$place1 $place2}})(next<>)
@@ -239,21 +232,11 @@ Arbiter[(placeB<>)(pass<>)
 ]
 ```
 
-The double braces in the invocation indicate that `$place1` and `$place2` are competing for access to the same flow path.
+The double braces in the invocation indicate that `$place1` and `$place2` are competing for access to the same flow path. If both places contain content simultaneously, the arbiter performs a competition; the winner proceeds through the expression, and the remaining content waits until the next opportunity.
 
-If both places contain content simultaneously, the arbiter performs a competition.
+Importantly, the language does **not** define which competitor wins. The result is intentionally nondeterministic.
 
-The winner proceeds through the expression.
-
-The remaining content simply waits until the next opportunity.
-
-Importantly, the language does **not** define which competitor wins.
-
-The result is intentionally nondeterministic.
-
-If only one place contains content, no competition occurs and the content flows immediately.
-
-The effect is to transform multiple independent, uncoordinated flows into a single coordinated flow.
+If only one place contains content, no competition occurs and the content flows immediately. The effect is to transform multiple independent, uncoordinated flows into a single coordinated flow.
 
 ```text
 place1  ─┐
@@ -263,17 +246,11 @@ place2 ──┼──► Arbiter ───► next<>
 place3 ──┘
 ```
 
-Arbitration therefore provides the synchronization point between concurrent producers while preserving Matterscript's declarative association model.
-
 #### The `{{...}}` group is a single source
 
 The double braces `{{...}}` denote a single arbitration group. Unlike nested bundles, which use `[[...] [...]]` to mean "a bundle of bundles," the doubled braces are one grouping construct: an arbitration group.
 
-An arbitration group with two members counts as **one** source entry in the invocation's source list, not two. It participates in arity the same way a bracket group does: as a single top-level source that expands internally into its members.
-
-<!-- TODO: confirm the parser produces a single Arg for `{{...}}` rather
-     than two nested groups. If it produces two, that is a parser bug and
-     the doc is describing the intended shape. See TAG-189. -->
+An arbitration group with two members counts as **one** source entry in the invocation's source list, not two. It participates in arity the same way a range bundle does: as a single top-level source that expands internally into its members.
 
 #### Arbitration semantics
 
@@ -283,41 +260,13 @@ At the destination, the arbiter's output is a single stream of wavefronts, one p
 
 The arbitration property lives at the invocation level. The definition that receives the arbitration group sees a flat single source and processes one wavefront at a time; it does not need to know how many competitors there are.
 
-<!-- TODO: confirm whether the definition side must also declare the group
-     as `{{...}}`, or whether a plain `(...)` source is sufficient when
-     the invocation supplies an arbitration group. TAG-189 currently has
-     `{{...}}` on the invocation and `(...)` on the definition, and the
-     arity check is rejecting it. -->
-
-#### Grammar of grouping brackets
-
-Three bracketing forms exist, each a single syntactic construct:
-
-```text
-group  ::= "[" place* "]"     -- bundle
-         | "{" place* "}"     -- mutex
-         | "{{" place* "}}"   -- arbitration
-```
-
-Each counts as exactly one entry in the surrounding list. Nesting uses additional bracket pairs: `[[...] [...]]` is a bundle of bundles, `[{{...}} {{...}}]` is a bundle of arbiters, and so on.
-
 ### A Hierarchy of Flow
 
 Bundles, mutexes, and arbitration each solve a different problem.
 
-Bundles organize related paths.
+Bundles organize related paths. Mutexes describe alternative representations of the same logical value. Arbitration coordinates independent flows that converge upon a common destination.
 
-Mutexes describe alternative representations of the same logical value.
-
-Arbitration coordinates independent flows that converge upon a common destination.
-
-Although distinct, they frequently appear together.
-
-A bundled value may contain mutually exclusive rails.
-
-Multiple bundled values may compete through an arbiter.
-
-An arbiter may produce another bundled value for the next stage of computation.
+Although distinct, they frequently appear together. A bundled value may contain mutually exclusive rails. Multiple bundled values may compete through an arbiter. An arbiter may produce another bundled value for the next stage of computation.
 
 These constructs allow Matterscript to scale naturally from individual signal paths to complex computational fabrics while preserving the same fundamental principle introduced throughout this guide:
 
