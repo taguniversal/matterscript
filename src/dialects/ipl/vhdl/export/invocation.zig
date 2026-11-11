@@ -25,7 +25,9 @@ pub fn placeName(allocator: std.mem.Allocator, arg: network.Arg) ![]const u8 {
         .literal, .expression => arg.text,
         .group => arg.text,
     };
-    return try sanitizeName(allocator, raw_name);
+    const translated = try sanitizer.translateMemberRef(allocator, raw_name);
+    defer allocator.free(translated);
+    return try sanitizeName(allocator, translated);
 }
 
 pub fn scopedDefinitionName(
@@ -93,7 +95,9 @@ fn writeScalarArgument(
     const trimmed = std.mem.trim(u8, text, " \t\r\n");
 
     if (trimmed.len > 1 and trimmed[0] == '$' and std.mem.indexOfScalar(u8, trimmed[1..], '$') == null) {
-        const source_id = try sanitizeName(allocator, trimmed[1..]);
+        const translated = try sanitizer.translateMemberRef(allocator, trimmed[1..]);
+        defer allocator.free(translated);
+        const source_id = try sanitizeName(allocator, translated);
         defer allocator.free(source_id);
         try writer.print("  {s} <= {s};\n", .{ signal_name, source_id });
     } else if (std.fmt.parseInt(u64, trimmed, 10)) |value| {

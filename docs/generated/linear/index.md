@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 30  |  🟡 Partial: 5  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 138  |  Total: 174
+✅ Implemented: 31  |  🟡 Partial: 5  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 143  |  Total: 180
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-222: 2D/3D HP (Hydrophobic-Polar) Lattice Folding Model](TAG-222.md)
@@ -173,6 +173,12 @@
 - ⬜ Not started [TAG-228: TileScript domain sub-language](TAG-228.md)
 - ⬜ Not started [TAG-229: Consolidate the three rule-emission paths behind a single shape classifier](TAG-229.md)
 - ⬜ Not started [TAG-230: Emit selector-gated demultiplex shapes (`fanout`) via a new `.selector_demux` emission shape](TAG-230.md)
+- ⬜ Not started [TAG-231: Wrapper generator doesn't handle group entry args](TAG-231.md)
+- ⬜ Not started [TAG-232: Testbench symbol IDs are interning-order-dependent](TAG-232.md)
+- ⬜ Not started [TAG-233: validate — entry invocation source shapes must match DUT source shapes](TAG-233.md)
+- ⬜ Not started [TAG-234: Validate — entry invocation source shapes must match DUT source shapes](TAG-234.md)
+- ⬜ Not started [TAG-235: Bundle arity and range syntax (Model A — DUT-declares)](TAG-235.md)
+- ✅ Implemented [TAG-236: Bundle ranges and member access](TAG-236.md)
 - ⬜ Not started [TAG-46: Serial Bus: Fan-In/Fan-out Expression](TAG-46.md)
 - ⬛ Spec only [TAG-47: Parallel Bus: Fan-out/Fan-In Expression](TAG-47.md)
 - ⬜ Not started [TAG-80: The Completeness Dialogue](TAG-80.md)

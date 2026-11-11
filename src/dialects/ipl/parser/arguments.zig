@@ -73,17 +73,11 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
     // 2. Check for '$' prefix (destination places / expressions prefixed with $)
     if (ch == '$') {
         p.pos += 1; // consume '$'
-        const name = try p.readName();
+        const name_start = p.pos;
+        _ = try p.readName();
+        p.extendMemberAccess();
+        const name = p.src[name_start..p.pos];
         return network.Arg{
-            // A bare $name is a boundary place reference (Fant's
-            // destination syntax, "$SUM"), not a computed expression —
-            // writeBoundaryPorts/boundaryCount in export_vhdl.zig only
-            // treat .place (and .group) as real ports, so classifying
-            // this as .expression made it silently vanish from the
-            // emitted port list while still being counted toward the
-            // total, throwing off the "is this the last port" check
-            // and producing an illegal trailing ';' in every entity
-            // that uses a $name destination — i.e. nearly all of them.
             .kind = .place,
             .name = name,
             .text = p.src[start_pos..p.pos],
@@ -126,12 +120,15 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
     }
 
     // 4. Standard identifier (place, function expression, or place with postfix <>)
-    const name = try p.readName();
+    const name_start = p.pos;
+    _ = try p.readName();
+    p.extendMemberAccess();
+    const name = p.src[name_start..p.pos];
     p.skipWhitespaceAndComments();
 
     // A name immediately followed by '(' is a call/function expression
     if (p.peek() == '(') {
-        _ = try groups.consumeBalanced(p,'(', ')');
+        _ = try groups.consumeBalanced(p, '(', ')');
         return network.Arg{
             .kind = .expression,
             .name = name,

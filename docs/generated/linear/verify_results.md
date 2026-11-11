@@ -1,6 +1,6 @@
 # Example verification results
 
-29 expected outcomes, 4 unexpected outcomes.
+30 expected outcomes, 4 unexpected outcomes.
 
 | Issue | Example | Expected | Parse | Runtime | GHDL | Simulate | Result |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -37,3 +37,4 @@
 | TAG-212 | and3.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
 | TAG-217 | parity.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
 | TAG-218 | tag-218.ms.ipl | Implemented | ok | ok 2/2 | ok | - | ✅ PASS |
+| TAG-236 | bundle_expansion.ms.ipl | Implemented | ok | ok 8/8 | ok | ok | ✅ PASS |

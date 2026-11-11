@@ -13,6 +13,7 @@ const network = @import("../network.zig");
 const value_transform = @import("../value_transform.zig");
 const environment = @import("environment.zig");
 const lookup = @import("../vhdl/lookup.zig");
+const sanitizer = @import("../vhdl/sanitizer.zig");
 
 const max_invocation_depth = 32;
 
@@ -260,7 +261,6 @@ fn splitPattern(
 /// Returns whatever the input says. Classification of a token — place
 /// vs value, digit vs letter — is not attempted here and is not a
 /// property the language has.
-
 fn parseOutput(allocator: std.mem.Allocator, raw: []const u8) !Output {
     const trimmed = std.mem.trim(u8, raw, " \t\r\n");
 
@@ -342,8 +342,9 @@ fn scalarPlace(arg: network.Arg) ![]const u8 {
 }
 
 fn mapName(allocator: std.mem.Allocator, prefix: []const u8, bindings: []const Binding, name: []const u8) ![]const u8 {
-    for (bindings) |b| if (std.mem.eql(u8, b.callee, name)) return b.caller;
-    return std.fmt.allocPrint(allocator, "{s}{s}", .{ prefix, name });
+    const translated = try sanitizer.translateMemberRef(allocator, name);
+    for (bindings) |b| if (std.mem.eql(u8, b.callee, translated)) return b.caller;
+    return std.fmt.allocPrint(allocator, "{s}{s}", .{ prefix, translated });
 }
 
 fn isSourcePort(callee: network.Definition, name: []const u8) bool {
@@ -404,11 +405,17 @@ fn bindArgument(
         const actual_group = actual.group orelse return error.InvocationArityMismatch;
         if (formal_group.places.len != actual_group.places.len) return error.InvocationArityMismatch;
         for (formal_group.places, actual_group.places) |fp, ap| {
-            try bindings.append(allocator, .{ .callee = try scalarPlace(fp), .caller = try scalarPlace(ap) });
+            try bindings.append(allocator, .{
+                .callee = try scalarPlace(fp),
+                .caller = try sanitizer.translateMemberRef(allocator, try scalarPlace(ap)),
+            });
         }
         return;
     }
-    try bindings.append(allocator, .{ .callee = try scalarPlace(formal), .caller = try scalarPlace(actual) });
+    try bindings.append(allocator, .{
+        .callee = try scalarPlace(formal),
+        .caller = try sanitizer.translateMemberRef(allocator, try scalarPlace(actual)),
+    });
 }
 
 fn inlineInvocation(
@@ -427,9 +434,47 @@ fn inlineInvocation(
     for (inv.sources, callee.sources) |actual, formal| try bindArgument(allocator, &bindings, formal, actual);
     for (inv.destinations, callee.destinations) |actual, formal| try bindArgument(allocator, &bindings, formal, actual);
 
-    const callee_rules = try buildRulesAtDepth(allocator, callee, definitions, depth + 1);
+    const callee_rules_raw = try buildRulesAtDepth(allocator, callee, definitions, depth + 1);
+
+    // Canonicalize member refs (A.0 -> A0) once, up front, so that
+    // checkInvocable, bindings matching, and nested inlining all see the
+    // same names the callee's own ports use. Without this, a callee whose
+    // contained rows are spelled with member refs fails checkInvocable
+    // against its own formal ports.
+    var callee_rules_list: std.ArrayListUnmanaged(ExecutableRule) = .empty;
+    for (callee_rules_raw) |r| {
+        const inputs = try allocator.alloc([]const u8, r.inputs.len);
+        for (r.inputs, 0..) |input, k| {
+            inputs[k] = try sanitizer.translateMemberRef(allocator, input);
+        }
+        const action: RuleAction = switch (r.action) {
+            .literal => |v| .{ .literal = v },
+            .assert_symbol => |s| .{ .assert_symbol = s },
+            .copy_from => |src| .{ .copy_from = try sanitizer.translateMemberRef(allocator, src) },
+            .select => |entries| blk: {
+                const mapped = try allocator.alloc(SelectEntry, entries.len);
+                for (entries, 0..) |e, i| {
+                    mapped[i] = .{
+                        .key = e.key,
+                        .action = switch (e.action) {
+                            .symbol => |s| .{ .symbol = s },
+                            .copy_from => |src| .{ .copy_from = try sanitizer.translateMemberRef(allocator, src) },
+                        },
+                    };
+                }
+                break :blk .{ .select = mapped };
+            },
+        };
+        try callee_rules_list.append(allocator, .{
+            .inputs = inputs,
+            .dest = try sanitizer.translateMemberRef(allocator, r.dest),
+            .action = action,
+        });
+    }
+    const callee_rules = callee_rules_list.items;
+
     if (build_options.verbose_dumps) {
-        std.debug.print("\n--- rules for {s} ---\n", .{callee.name});
+        std.debug.print("\n--- rules for {s} (canonical) ---\n", .{callee.name});
         for (callee_rules, 0..) |r, i| {
             std.debug.print("rule[{d}] inputs=[", .{i});
             for (r.inputs, 0..) |inp, j| {
@@ -456,20 +501,26 @@ fn inlineInvocation(
 
     for (callee_rules) |r| {
         const inputs = try allocator.alloc([]const u8, r.inputs.len);
-        for (r.inputs, 0..) |input, k| inputs[k] = try mapName(allocator, prefix, bindings.items, input);
+        for (r.inputs, 0..) |input, k| {
+            inputs[k] = try mapName(allocator, prefix, bindings.items, input);
+        }
 
         const action: RuleAction = switch (r.action) {
             .literal => |v| .{ .literal = v },
-            .assert_symbol => |s| .{ .assert_symbol = s }, // a VALUE, not a place
-            .copy_from => |src| .{ .copy_from = try mapName(allocator, prefix, bindings.items, src) },
+            .assert_symbol => |s| .{ .assert_symbol = s },
+            .copy_from => |src| blk: {
+                break :blk .{ .copy_from = try mapName(allocator, prefix, bindings.items, src) };
+            },
             .select => |entries| blk: {
                 const mapped = try allocator.alloc(SelectEntry, entries.len);
                 for (entries, 0..) |e, i| {
                     mapped[i] = .{
-                        .key = e.key, // a VALUE — never renamed
+                        .key = e.key,
                         .action = switch (e.action) {
                             .symbol => |s| .{ .symbol = s },
-                            .copy_from => |src| .{ .copy_from = try mapName(allocator, prefix, bindings.items, src) },
+                            .copy_from => |src| blk2: {
+                                break :blk2 .{ .copy_from = try mapName(allocator, prefix, bindings.items, src) };
+                            },
                         },
                     };
                 }
@@ -587,8 +638,12 @@ fn buildRulesAtDepth(
         const expr = std.mem.trim(u8, f.expr, " \t\r\n");
 
         if (try parseInvocationArgs(allocator, expr)) |args| {
+            const translated = try allocator.alloc([]const u8, args.len);
+            for (args, 0..) |arg, i| {
+                translated[i] = try sanitizer.translateMemberRef(allocator, arg);
+            }
             try rules.append(allocator, .{
-                .inputs = args,
+                .inputs = translated,
                 .dest = f.dest_name,
                 .action = .{ .select = try buildSelectTable(allocator, def) },
             });
