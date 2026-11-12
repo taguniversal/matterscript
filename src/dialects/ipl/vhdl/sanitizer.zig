@@ -17,11 +17,16 @@ const IdentifierMap = struct {
     entries: std.ArrayListUnmanaged(IdentifierEntry) = .empty,
 
     fn resolve(map: *IdentifierMap, raw: []const u8) ![]const u8 {
+        // Member-ref spelling (`SUM.0`) and flat spelling (`SUM0`) name the
+        // same logical place. Translate first so they share one entry.
+        const translated = try translateMemberRef(map.allocator, raw);
+        defer map.allocator.free(translated);
+
         for (map.entries.items) |entry| {
-            if (std.mem.eql(u8, entry.raw, raw)) return entry.emitted;
+            if (std.mem.eql(u8, entry.raw, translated)) return entry.emitted;
         }
 
-        const base = try sanitizeName(map.allocator, raw);
+        const base = try sanitizeName(map.allocator, translated);
         defer map.allocator.free(base);
         var suffix: usize = 0;
         while (true) : (suffix += 1) {
@@ -171,7 +176,7 @@ pub fn normalizeDefinitionIdentifiers(allocator: std.mem.Allocator, raw_def: net
 
     def.resolution = try normalizeStatements(allocator, &names, &alias_map, raw_def.resolution);
     def.constants = try normalizeConstants(allocator, &names, raw_def.constants);
-    def.contained = try normalizeContained(allocator, &names, &alias_map, raw_def.contained);   // NEW
+    def.contained = try normalizeContained(allocator, &names, &alias_map, raw_def.contained); // NEW
     return def;
 }
 
@@ -379,7 +384,6 @@ fn rewriteDollarReferences(allocator: std.mem.Allocator, names: *IdentifierMap, 
     return out.toOwnedSlice(allocator);
 }
 
-
 // ----------------------------------------------------------------
 // Private-function tests. Kept colocated (rather than in
 // src/tests/export_vhdl_test.zig) so they can exercise non-pub
@@ -443,6 +447,24 @@ test "translateMemberRef: internalBundleFoo.0 → internalBundleFoo0" {
     try testing.expectEqualStrings("internalBundleFoo0", translated);
 }
 
+test "resolve: SUM.0 and SUM0 name the same place" {
+    const allocator = testing.allocator;
+    var names = IdentifierMap{ .allocator = allocator };
+    defer {
+        for (names.entries.items) |entry| {
+            allocator.free(entry.raw);
+            allocator.free(entry.emitted);
+        }
+        names.entries.deinit(allocator);
+    }
+
+    const flat = try names.resolve("SUM0");
+    const member = try names.resolve("SUM.0");
+
+    try testing.expectEqualStrings("sum0", flat);
+    try testing.expectEqualStrings("sum0", member);
+    try testing.expect(flat.ptr == member.ptr);  // literally the same slice
+}
 
 pub fn uniqueVhdlName(
     allocator: std.mem.Allocator,
@@ -466,4 +488,3 @@ pub fn uniqueVhdlName(
         allocator.free(candidate);
     }
 }
-

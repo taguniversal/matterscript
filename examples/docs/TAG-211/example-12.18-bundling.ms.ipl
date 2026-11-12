@@ -1,6 +1,6 @@
 // Linear TAG-211 Example 12.18 Bundling digits into numbers
 4BITADD($A $B $CARRYIN)(SUM<> CARRYOUT<>)
-4BITADD[([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)
+4BITADD[([A<> 0..3] [B<> 0..3] CI<>)
   ([$SUM0 $SUM1 $SUM2 $SUM3] $CO)
 
   FULLADD4BIT(A0<> B0<> CI<>)(SUM0<> C1<>)

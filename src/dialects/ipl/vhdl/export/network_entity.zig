@@ -164,7 +164,32 @@ pub fn writeOneNetworkEntity(
     try used_names.append(allocator, try allocator.dupe(u8, entity_id));
 
     var output_names: std.ArrayListUnmanaged([]const u8) = .empty;
-    for (entry.destinations) |output| {
+    const n = @min(entry.destinations.len, matched.destinations.len);
+    for (0..n) |i| {
+        const dut_dst = matched.destinations[i];
+        switch (dut_dst.kind) {
+            .group => if (dut_dst.group) |grp| {
+                for (grp.places) |p| {
+                    const candidate = if (p.name.len == 0) "ms_result" else p.name;
+                    const id = try sanitizeName(allocator, candidate);
+                    defer allocator.free(id);
+                    const unique = try sanitizer.uniqueVhdlName(allocator, output_names.items, id);
+                    try output_names.append(allocator, unique);
+                }
+            },
+            .place => {
+                const candidate = if (dut_dst.name.len == 0) "ms_result" else dut_dst.name;
+                const id = try sanitizeName(allocator, candidate);
+                defer allocator.free(id);
+                const unique = try sanitizer.uniqueVhdlName(allocator, output_names.items, id);
+                try output_names.append(allocator, unique);
+            },
+            else => {},
+        }
+    }
+    // Fallback: entry destinations beyond matched count (shouldn't
+    // happen for well-formed inputs).
+    for (entry.destinations[n..]) |output| {
         var member_names: std.ArrayListUnmanaged([]const u8) = .empty;
         try boundary.collectBoundaryPortNamesInto(allocator, output, &member_names);
         for (member_names.items) |name| {
@@ -174,6 +199,27 @@ pub fn writeOneNetworkEntity(
         }
     }
     const dut_output_count = boundary.boundaryCount(matched.destinations);
+    if (output_names.items.len != dut_output_count) {
+        std.debug.print(
+            "[entity] {s}: output arity mismatch — collected {d} names, DUT has {d} outputs\n",
+            .{ entry.name, output_names.items.len, dut_output_count },
+        );
+    }
+    // TEMP debug
+    {
+        std.debug.print("[entity] {s}: entry.destinations.len={d}, matched.destinations.len={d}, dut_output_count={d}\n", .{ entry.name, entry.destinations.len, matched.destinations.len, dut_output_count });
+        for (matched.destinations, 0..) |d, i| {
+            std.debug.print("  matched.destinations[{d}]: kind={s} name='{s}' text='{s}'\n", .{ i, @tagName(d.kind), d.name, d.text });
+            if (d.kind == .group) {
+                if (d.group) |g| {
+                    std.debug.print("    group.kind={s}, places.len={d}\n", .{ @tagName(g.kind), g.places.len });
+                    for (g.places, 0..) |p, j| {
+                        std.debug.print("      places[{d}]: kind={s} name='{s}' text='{s}'\n", .{ j, @tagName(p.kind), p.name, p.text });
+                    }
+                }
+            }
+        }
+    }
     while (output_names.items.len < dut_output_count) {
         const unique = try sanitizer.uniqueVhdlName(allocator, output_names.items, "ms_result");
         try output_names.append(allocator, unique);
@@ -184,7 +230,7 @@ pub fn writeOneNetworkEntity(
 
     var input_names: std.ArrayListUnmanaged([]const u8) = .empty;
     defer {
-        for (input_names.items) |n| if (n.len > 0) allocator.free(n);
+        for (input_names.items) |n2| if (n2.len > 0) allocator.free(n2);
         input_names.deinit(allocator);
     }
     for (entry_slots.items) |slot| {
@@ -221,7 +267,7 @@ pub fn writeOneNetworkEntity(
     , .{entry.name});
 
     var port_count: usize = 0;
-    for (input_names.items) |n| if (n.len > 0) {
+    for (input_names.items) |n3| if (n3.len > 0) {
         port_count += 1;
     };
     port_count += output_names.items.len;

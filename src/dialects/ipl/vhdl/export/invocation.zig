@@ -280,6 +280,21 @@ pub fn writeInvocationInstance(
 
     var first = true;
 
+    {
+        std.debug.print("[invoke] definition='{s}' invocation_{d}: destinations.len={d}\n", .{ def.name, invocation_index, inv.destinations.len });
+        for (inv.destinations, 0..) |d, i| {
+            std.debug.print("  invocation.destinations[{d}]: kind={s} name='{s}' text='{s}'\n", .{ i, @tagName(d.kind), d.name, d.text });
+            if (d.kind == .group) {
+                if (d.group) |g| {
+                    std.debug.print("    group.kind={s}, places.len={d}\n", .{ @tagName(g.kind), g.places.len });
+                    for (g.places, 0..) |p, j| {
+                        std.debug.print("      places[{d}]: kind={s} name='{s}' text='{s}'\n", .{ j, @tagName(p.kind), p.name, p.text });
+                    }
+                }
+            }
+        }
+    }
+
     // formal_index tracks the callee's own flat port list position,
     // which is NOT the same as argument_index once a group argument
     // expands into several formal ports at once.
