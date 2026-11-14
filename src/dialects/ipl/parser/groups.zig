@@ -214,6 +214,9 @@ fn parseRangeGroup(
             .kind = .place,
             .name = member_name,
             .text = text,
+            .direction = if (is_destination) .destination
+                 else if (is_source) .source
+                 else null,
         });
     }
 
@@ -245,20 +248,6 @@ pub fn consumeBalanced(p: *core.Parser, open: u8, close: u8) ![]const u8 {
     return p.src[start..p.pos];
 }
 
-/// Definition first list: (name<> ...) — source places, tokens flow IN
-fn parseDefSourceList() ![]const network.Arg {
-    return arguments.parseArgList(')');
-}
-
-/// Definition second list: ($name ...) — destination places, tokens flow OUT
-fn parseDefDestinationList() ![]const network.Arg {
-    return arguments.parseArgList(')');
-}
-
-/// Invocation second list: (name<> ...) — outputs returned to caller
-fn parseInvOutputList() ![]const network.Place {
-    return arguments.parsePlaceList(')');
-}
 
 /// Reads a name that may be split into comma-separated segments
 /// (§12.4 — the comma is a general, freely-insertable separator).

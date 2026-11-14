@@ -69,7 +69,7 @@ test "parseInvocation - labeled without destinations stays invoke" {
 
 test "parseInvocation - full invocation with sources and destinations" {
     const allocator = testing.allocator;
-    const src = "ADD($a, $b)($sum, $carry)";
+    const src = "ADD($a, $b)(sum<>, carry<>)";
     var p = initParser(allocator, src);
 
     const name = try p.readName();
@@ -84,20 +84,6 @@ test "parseInvocation - full invocation with sources and destinations" {
     try testing.expectEqual(@as(usize, 2), stmt.invoke.destinations.len);
 }
 
-test "parseInvocation - invocation with no source list" {
-    const allocator = testing.allocator;
-    const src = "()($out)"; // Explicit empty source list, followed by destination list
-    var p = initParser(allocator, src);
-
-    const stmt = try statements.parseInvocation(&p, "U3", "GEN", null);
-    defer allocator.free(stmt.invoke.sources);
-    defer allocator.free(stmt.invoke.destinations);
-
-    try testing.expectEqual(std.meta.Tag(network.Statement).invoke, std.meta.activeTag(stmt));
-    try testing.expectEqualStrings("GEN", stmt.invoke.name);
-    try testing.expectEqual(@as(usize, 0), stmt.invoke.sources.len);
-    try testing.expectEqual(@as(usize, 1), stmt.invoke.destinations.len);
-}
 
 test "parseEntryInvocation - explicit sources and destinations" {
     const allocator = testing.allocator;

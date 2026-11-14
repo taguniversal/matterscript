@@ -526,7 +526,7 @@ test "TAG-192 Support Explicit Instance Labelling (prefixlabel: invocation) for 
         \\     u2: AND($C $D)
         \\:
         \\ ]
-        \\  AND[($A $B)(res<>)
+        \\  AND[(A<> B<>)($res)
         \\   $A$B()
         \\   : 0,0[res<0>]
         \\     0,1[res<0>]
@@ -768,13 +768,13 @@ test "flatten entry sources: arbitration is atomic, bundle and mutex expand" {
     // source list is unremarkable; the interesting structure lives
     // in the invocation.
     const src =
-        \\INNER([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
-        \\INNER[([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
+        \\INNER([$A0 $A1] {$B0 $B1} {{$C0 $C1}} $D)(OUT<>)
+        \\INNER[([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)($OUT)
         \\  $A0$A1$B0$B1$C0$C1$D : K[0]
         \\]
-        \\WRAP([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
-        \\WRAP[([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
-        \\  INNER([$A0 $A1] {$B0 $B1} {{$C0 $C1}} $D)($OUT)
+        \\WRAP([$A0 $A1] {$B0 $B1} {{$C0 $C1}} $D)(OUT<>)
+        \\WRAP[([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)($OUT)
+        \\  INNER([$A0 $A1] {$B0 $B1} {{$C0 $C1}} $D)(OUT<>)
         \\]
     ;
     const net = parser.parse(a, src) catch |err| {
@@ -897,13 +897,13 @@ test "arity invariant: top-level arg counts match across entry and DUT" {
     const a = arena.allocator();
 
     const src =
-        \\INNER([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
-        \\INNER[([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
+        \\INNER([$A0 $A1] {$B0 $B1} {{$C0 $C1}} $D)(OUT<>)
+        \\INNER[([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)($OUT)
         \\  $A0$A1$B0$B1$C0$C1$D : K[0]
         \\]
-        \\WRAP([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
-        \\WRAP[([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)(OUT<>)
-        \\  INNER([$A0 $A1] {$B0 $B1} {{$C0 $C1}} $D)($OUT)
+        \\WRAP([$A0 $A1] {$B0 $B1} {{$C0 $C1}} $D)(OUT<>)
+        \\WRAP[([A0<> A1<>] {B0<> B1<>} {{C0<> C1<>}} D<>)($OUT)
+        \\  INNER([$A0 $A1] {$B0 $B1} {{$C0 $C1}} $D)(OUT<>)
         \\]
     ;
     const net = parser.parse(a, src) catch |err| {
@@ -1682,18 +1682,18 @@ test "TAG-151: bundling mutually exclusive paths into a single path" {
     const a = arena_state.allocator();
 
     const src =
-        \\OR151($A $B)(Y< >)
+        \\OR151($A $B)(Y<>)
         \\OR151[( [{A0< > A1< >}] [{B0< > B1< >}] ) ( [{$0 $1}] )
         \\     1< 3of6($A1 $A1 $A0 $B0 $B1 $B1) >  // output = 1
         \\     0< 2of2($A0 $B0) >                  // output = 0
         \\     : 
         \\]
         \\
-        \\2of2[(A<> B<>)(Y<>)
+        \\2of2[(A<> B<>)($Y)
         \\  $A$B : K[Y<0>]
         \\]
         \\
-        \\3of6[(I0<> I1<> I2<> I3<> I4<> I5<>)(Y<>)
+        \\3of6[(I0<> I1<> I2<> I3<> I4<> I5<>)($Y)
         \\  $I0$I1$I2$I3$I4$I5() : K[Y<0>]
         \\]
     ;

@@ -22,7 +22,7 @@ test "hierarchy: single standalone definition gets its own table" {
     const a = arena.allocator();
 
     const src =
-        \\AND2[(A<> B<>)(Y<>)
+        \\AND2[(A<> B<>)($Y)
         \\  $A$B() : 0,0[Y<0>] 0,1[Y<0>] 1,0[Y<0>] 1,1[Y<1>]
         \\]
     ;
@@ -48,10 +48,10 @@ test "hierarchy: two independent definitions get separate tables" {
     const a = arena.allocator();
 
     const src =
-        \\AND2[(A<> B<>)(Y<>)
+        \\AND2[(A<> B<>)($Y)
         \\  $A$B() : 0,0[Y<0>] 0,1[Y<0>] 1,0[Y<0>] 1,1[Y<1>]
         \\]
-        \\OR2[(A<> B<>)(Y<>)
+        \\OR2[(A<> B<>)($Y)
         \\  $A$B() : 0,0[Y<0>] 0,1[Y<1>] 1,0[Y<1>] 1,1[Y<1>]
         \\]
     ;
@@ -83,11 +83,11 @@ test "hierarchy: caller and callee share one table" {
     const a = arena.allocator();
 
     const src =
-        \\TOP[(A<> B<>)(Y<>)
+        \\TOP[(A<> B<>)($Y)
         \\  INV($A $B)(T<>)
         \\  $T() : 0[T<1>] 1[T<0>]
         \\]
-        \\INV[(X<>)(Z<>)
+        \\INV[(X<>)($Z)
         \\  $X() : 0[Z<1>] 1[Z<0>]
         \\]
     ;
@@ -117,9 +117,9 @@ test "hierarchy: transitive invocation chain shares one table" {
     const a = arena.allocator();
 
     const src =
-        \\A[(X<>)(Y<>) B($X)(T<>) $T() : 0[T<1>] 1[T<0>] ]
-        \\B[(X<>)(Y<>) C($X)(T<>) $T() : 0[T<1>] 1[T<0>] ]
-        \\C[(X<>)(Y<>) $X() : 0[Y<1>] 1[Y<0>] ]
+        \\A[(X<>)($Y) B($X)(T<>) $T() : 0[T<1>] 1[T<0>] ]
+        \\B[(X<>)($Y) C($X)(T<>) $T() : 0[T<1>] 1[T<0>] ]
+        \\C[(X<>)($Y) $X() : 0[Y<1>] 1[Y<0>] ]
     ;
 
     const net = try parser.parse(a, src);
@@ -143,10 +143,10 @@ test "hierarchy: two separate invocation chains get separate tables" {
     const a = arena.allocator();
 
     const src =
-        \\TOP1[(A<>)(Y<>) INV1($A)(T<>) $T() : 0[T<1>] 1[T<0>] ]
-        \\INV1[(X<>)(Z<>) $X() : 0[Z<1>] 1[Z<0>] ]
-        \\TOP2[(A<>)(Y<>) INV2($A)(T<>) $T() : 0[T<1>] 1[T<0>] ]
-        \\INV2[(X<>)(Z<>) $X() : 0[Z<1>] 1[Z<0>] ]
+        \\TOP1[(A<>)($Y) INV1($A)(T<>) $T() : 0[T<1>] 1[T<0>] ]
+        \\INV1[(X<>)($Z) $X() : 0[Z<1>] 1[Z<0>] ]
+        \\TOP2[(A<>)($Y) INV2($A)(T<>) $T() : 0[T<1>] 1[T<0>] ]
+        \\INV2[(X<>)($Z) $X() : 0[Z<1>] 1[Z<0>] ]
     ;
 
     const net = try parser.parse(a, src);
@@ -175,11 +175,11 @@ test "hierarchy: build is deterministic" {
     const a = arena.allocator();
 
     const src =
-        \\TOP[(A<> B<>)(Y<>)
+        \\TOP[(A<> B<>)($Y)
         \\  INV($A $B)(T<>)
         \\  $T() : 0[T<1>] 1[T<0>]
         \\]
-        \\INV[(X<>)(Z<>)
+        \\INV[(X<>)($Z)
         \\  $X() : 0[Z<1>] 1[Z<0>]
         \\]
     ;
@@ -212,11 +212,11 @@ test "hierarchy: a symbol interned in the callee is visible to the caller" {
     // mention them first). TOP's rows also mention them. With a
     // shared table, both definitions see the same id for "TRUE".
     const src =
-        \\TOP[(A<>)(Y<>)
+        \\TOP[(A<>)($Y)
         \\  INV($A)(T<>)
         \\  $T() : TRUE[T<TRUE>] FALSE[T<FALSE>]
         \\]
-        \\INV[(X<>)(Z<>)
+        \\INV[(X<>)($Z)
         \\  $X() : 0[Z<TRUE>] 1[Z<FALSE>]
         \\]
     ;

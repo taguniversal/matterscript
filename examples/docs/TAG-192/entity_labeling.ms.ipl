@@ -1,8 +1,8 @@
-// Lineaer: TAG-192 Support Explicit Instance Labelling (prefixlabel: invocation) for Invocations
+// Linear: TAG-192 Support Explicit Instance Labelling (prefixlabel: invocation) for Invocations
 U1: AND($A $B)
 U2: AND($C $D)
 
-AND[($A, $B)(result<>)
+AND[(A<>, B<>)($result)
    $A$B()
    :
    0,0[result<0>]

@@ -133,8 +133,8 @@ test "TAG-211 step 2: bundle group of $-refs in destination list" {
     const a = arena.allocator();
 
     const src =
-        \\STEP2($SEL)([$SUM0 $SUM1 $SUM2 $SUM3] $CO)
-        \\STEP2[(SEL<>)([SUM0<> SUM1<> SUM2<> SUM3<>] CO<>)
+        \\STEP2($SEL)([SUM0<> SUM1<> SUM2<> SUM3<>] CO<>)
+        \\STEP2[(SEL<>)([$SUM0 $SUM1 $SUM2 $SUM3] $CO)
         \\  $SEL( ) : X[CO<1>]
         \\            Y[CO<0>]
         \\]
@@ -158,12 +158,12 @@ test "TAG-211 step 2: bare place in nested invocation gets bundle structure from
     // Its body invokes 4BITADD with the bare names $A $B $CI — no brackets
     // on the invocation side, because the bundle was declared above.
      const src =
-        \\WRAPPER([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)(RESULT<>)
+        \\WRAPPER([$A0 $A1 $A2 $A3] [$B0 $B1 $B2 $B3] $CI)(RESULT<>)
         \\WRAPPER[([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)($RESULT)
-        \\  4BITADD($A $B $CI)($RESULT)
+        \\  4BITADD($A $B $CI)(RESULT<>)
         \\]
-        \\4BITADD([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)([S0<> S1<> S2<> S3<>] CO<>)
-        \\4BITADD[([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)([SUM0<> SUM1<> SUM2<> SUM3<>] CO<>)
+        \\4BITADD([$A0 $A1 $A2 $A3] [$B0 $B1 $B2 $B3] $CI)([S0<> S1<> S2<> S3<>] CO<>)
+        \\4BITADD[([A0<> A1<> A2<> A3<>] [B0<> B1<> B2<> B3<>] CI<>)([$SUM0 $SUM1 $SUM2 $SUM3] $CO)
         \\  $A $B $CI : X[CO<K>]  //nonsense since we're not testing the functionality, just the parse shape
         \\]
     ;

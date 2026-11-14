@@ -19,10 +19,10 @@ OR151[({A0<> A1<>} {B0<> B1<>})({$0 $1})
 ]
 
 // Stubs just to maker parser happy, this construct would be fairly large wtih 64 rules
-2of2[(A<> B<>)(Y<>)
+2of2[(A<> B<>)($Y)
   $A$B : K[Y<0>]
 ]
 
-3of6[(I0<> I1<> I2<> I3<> I4<> I5<>)(Y<>)
+3of6[(I0<> I1<> I2<> I3<> I4<> I5<>)($Y)
   $I0$I1$I2$I3$I4$I5() : K[Y<0>]
 ]

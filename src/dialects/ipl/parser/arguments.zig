@@ -3,58 +3,6 @@ const core = @import("core.zig");
 const network: type = @import("../network.zig");
 const groups = @import("groups.zig");
 
-/// Parses a sequence of arguments/places until `close_char` is encountered.
-fn parseArgSequence(p: *core.Parser, close_char: u8) ![]const network.Arg {
-    var args: std.ArrayListUnmanaged(network.Arg) = .empty;
-    p.skipWhitespaceAndComments();
-
-    while (p.peek() != close_char and p.peek() != null) {
-        p.skipWhitespaceAndComments();
-        const c = p.peek().?;
-
-        if (c == '{' or c == '[') {
-            const is_arb = (c == '{' and p.pos + 1 < p.src.len and p.src[p.pos + 1] == '{');
-
-            if (is_arb) {
-                _ = p.advance();
-                _ = p.advance();
-                const nested = try p.parseArgSequence('}');
-                try p.expect('}');
-                try p.expect('}');
-
-                const group = try p.allocator.create(network.PlaceGroup);
-                group.* = .{ .kind = .arbitration, .places = nested };
-                try args.append(p.allocator, .{ .kind = .group, .group = group });
-            } else {
-                const closing: u8 = if (c == '{') '}' else ']';
-                const group_kind: network.PlaceGroupKind = if (c == '{') .mutex else .bundle;
-                _ = p.advance();
-
-                const nested = try p.parseArgSequence(closing);
-                try p.expect(closing);
-
-                const group = try p.allocator.create(network.PlaceGroup);
-                group.* = .{ .kind = group_kind, .places = nested };
-                try args.append(p.allocator, .{ .kind = .group, .group = group });
-            }
-        } else if (c == '$') {
-            const expr = try p.parseILExpr();
-            try args.append(p.allocator, .{ .kind = .expression, .text = expr });
-        } else if (std.ascii.isDigit(c) or c == '-') {
-            const lit = try p.readNumericLiteral();
-            try args.append(p.allocator, .{ .kind = .literal, .text = lit });
-        } else {
-            const name = try p.readName();
-            try args.append(p.allocator, .{ .kind = .place, .name = name });
-        }
-
-        p.skipWhitespaceAndComments();
-        _ = p.tryConsume(',');
-        p.skipWhitespaceAndComments();
-    }
-
-    return args.toOwnedSlice(p.allocator);
-}
 pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
     p.skipWhitespaceAndComments();
     const start_pos = p.pos;
@@ -81,6 +29,7 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
             .kind = .place,
             .name = name,
             .text = p.src[start_pos..p.pos],
+            .direction = .destination,
         };
     }
 
@@ -95,6 +44,7 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
                 .kind = .place,
                 .name = "", // Unnamed source
                 .text = p.src[start_pos..p.pos],
+                .direction = .source,
             };
         }
         // Non-empty bare <...>: restore to the '<' itself and let
@@ -136,30 +86,42 @@ pub fn parseArg(p: *core.Parser) anyerror!network.Arg {
         };
     }
 
-    // 5. Check for postfix '<>' or '< >' indicating source places / group modifiers
-    if (p.peek() == '<') {
-        const lt_pos = p.pos;
-        p.pos += 1; // consume '<'
-        p.skipWhitespaceAndComments();
-        if (p.peek() == '>') {
-            p.pos += 1;
-            return network.Arg{
-                .kind = .place, // or source place classification
-                .name = name,
-                .text = p.src[start_pos..p.pos],
-            };
-        } else {
-            // If it's a generic group modifier like <sub1, sub2>
-            p.pos = lt_pos; // restore to '<' for generic group parsing
-            const grp = try groups.parseGroup(p);
-            return network.Arg{
-                .kind = .group,
-                .name = name,
-                .text = p.src[start_pos..p.pos],
-                .group = grp,
-            };
-        }
+    // 5. Postfix '<' — source-place decorator. Two forms:
+//    name<>        source place with no initial content
+//    name<token>   source place with initial content (token is any
+//                  single readName-able sequence, same grammar as
+//                  insert-content elsewhere)
+// There is no group interpretation of name<...> — groups have their
+// own delimiters and never appear immediately after a bare name.
+if (p.peek() == '<') {
+    p.pos += 1; // consume '<'
+    p.skipWhitespaceAndComments();
+
+    if (p.peek() == '>') {
+        // Empty <>: source place, no content.
+        p.pos += 1;
+        return network.Arg{
+            .kind = .place,
+            .name = name,
+            .text = p.src[start_pos..p.pos],
+            .direction = .source,
+        };
     }
+
+    // Non-empty <token>: source place with initial content.
+    const content = p.readName() catch {
+        return core.ParseError.ExpectedName;
+    };
+    p.skipWhitespaceAndComments();
+    try p.expect('>');
+    return network.Arg{
+        .kind = .place,
+        .name = name,
+        .text = p.src[start_pos..p.pos],
+        .direction = .source,
+        .content = content,
+    };
+}
 
     // 6. Default standard literal
     return network.Arg{

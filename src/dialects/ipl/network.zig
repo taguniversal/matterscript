@@ -269,6 +269,17 @@ pub const Arg = struct {
     name: []const u8 = "",
     text: []const u8 = "",
     group: ?*const PlaceGroup = null,
+    /// Direction marker for .place args: .source for `name<>`,
+    /// .destination for `$name`, null for literals/groups/expressions
+    /// and for the bare-identifier fallback (which the validator
+    /// treats as an error).
+    direction: ?PlaceKind = null,
+    /// Initial content for a source place, written `name<content>`.
+    /// Only meaningful when .kind = .place and .direction = .source.
+    /// The content is a single token (numeric or symbolic — IPL
+    /// makes no distinction), matching the insert-content grammar
+    /// used elsewhere.
+    content: ?[]const u8 = null,
 };
 
 pub const Invocation = struct {

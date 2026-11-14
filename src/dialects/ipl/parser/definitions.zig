@@ -8,6 +8,7 @@ const statements = @import("statements.zig");
 const groups = @import("groups.zig");
 const syntax = @import("syntax.zig");
 const boundary = @import("../vhdl/export/boundary.zig");
+const validate_args = @import("validate_args.zig");
 
 const testing = std.testing;
 
@@ -47,6 +48,29 @@ fn parseDefinitionInMode(p: *core.Parser, mode: ParseMode) anyerror!network.Defi
         try arguments.parseArgList(p, ')')
     else
         &.{};
+
+    // NEW: validate the four direction rules for definition header lists.
+    {
+        var buf: [256]u8 = undefined;
+        const desc_src = std.fmt.bufPrint(
+            &buf,
+            "definition '{s}' source list",
+            .{name},
+        ) catch "definition source list";
+        try validate_args.validateArgList(sources, .{
+            .description = desc_src,
+            .direction = .definition_source,
+        });
+        const desc_dst = std.fmt.bufPrint(
+            &buf,
+            "definition '{s}' destination list",
+            .{name},
+        ) catch "definition destination list";
+        try validate_args.validateArgList(raw_destinations, .{
+            .description = desc_dst,
+            .direction = .definition_destination,
+        });
+    }
 
     p.skipWhitespaceAndComments();
 

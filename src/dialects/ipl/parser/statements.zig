@@ -3,6 +3,7 @@ const network = @import("../network.zig");
 const core = @import("core.zig");
 const arguments = @import("arguments.zig");
 const expressions = @import("expressions.zig");
+const validate_args = @import("validate_args.zig");
 
 // ----------------------------------------------------------------
 // Statement Handlers
@@ -69,10 +70,7 @@ fn looksLikeInvocationFill(p: *core.Parser) bool {
 }
 
 fn isGeometryPrimitive(name: []const u8) bool {
-    return std.mem.eql(u8, name, "point")
-        or std.mem.eql(u8, name, "edge")
-        or std.mem.eql(u8, name, "loop")
-        or std.mem.eql(u8, name, "face");
+    return std.mem.eql(u8, name, "point") or std.mem.eql(u8, name, "edge") or std.mem.eql(u8, name, "loop") or std.mem.eql(u8, name, "face");
 }
 
 pub fn parseInvocation(
@@ -95,16 +93,26 @@ pub fn parseInvocation(
         p.skipWhitespaceAndComments();
 
         if (dest_override) |dest_name| {
-            // Invocation-fill form: `dest< InstName(args) >`. The
-            // args in the paren list are the sources; the destination
-            // is named externally by the enclosing fill. Any second
-            // paren group here would be a syntax the fill form
-            // doesn't support — reject it so we don't silently
-            // ignore a destination list.
             if (p.peek() == '(') {
                 return error.UnexpectedDestinationListInFillInvocation;
             }
             sources = first_list;
+
+            // NEW: validate sources. The synthesized destination has
+            // empty .text, so it is skipped by the validator.
+            {
+                var buf: [256]u8 = undefined;
+                const desc_src = std.fmt.bufPrint(
+                    &buf,
+                    "invocation-fill '{s}' source list",
+                    .{name},
+                ) catch "invocation-fill source list";
+                try validate_args.validateArgList(sources, .{
+                    .description = desc_src,
+                    .direction = .invocation_source,
+                });
+            }
+
             const dest_list = try p.allocator.alloc(network.Arg, 1);
             dest_list[0] = .{ .kind = .place, .name = dest_name };
             destinations = dest_list;
@@ -113,6 +121,27 @@ pub fn parseInvocation(
             sources = first_list;
             destinations = try arguments.parseArgList(p, ')');
             p.skipWhitespaceAndComments();
+
+            // NEW: validate direction
+            var buf: [256]u8 = undefined;
+            const desc_src = std.fmt.bufPrint(
+                &buf,
+                "invocation '{s}' source list",
+                .{name},
+            ) catch "invocation source list";
+            try validate_args.validateArgList(sources, .{
+                .description = desc_src,
+                .direction = .invocation_source,
+            });
+            const desc_dst = std.fmt.bufPrint(
+                &buf,
+                "invocation '{s}' destination list",
+                .{name},
+            ) catch "invocation destination list";
+            try validate_args.validateArgList(destinations, .{
+                .description = desc_dst,
+                .direction = .invocation_destination,
+            });
         } else {
             // One list present.
             if (label == null) {
@@ -124,10 +153,22 @@ pub fn parseInvocation(
             } else {
                 // Labeled with one list: single list is sources.
                 sources = first_list;
+
+                // NEW: validate direction (sources only; destinations are empty)
+                var buf: [256]u8 = undefined;
+                const desc_src = std.fmt.bufPrint(
+                    &buf,
+                    "invocation '{s}' source list",
+                    .{name},
+                ) catch "invocation source list";
+                try validate_args.validateArgList(sources, .{
+                    .description = desc_src,
+                    .direction = .invocation_source,
+                });
             }
         }
     } else if (dest_override != null) {
-        // `dest< InstName >` with no arg list. Allowed by the grammar
+        // `$dest` with no arg list. Allowed by the grammar
         // (the callee might have zero sources), but only if the
         // callee exists.
     }
@@ -141,7 +182,16 @@ pub fn parseInvocation(
 }
 
 pub fn parseEntryInvocation(p: *core.Parser, label: ?[]const u8, name: []const u8) !network.EntryInvocation {
-    // Fant invocation order: sources first ($name/literal/groups), destinations second (name<>)
+    // Invocation order: (destination-list)(source-list), as seen from the
+    // caller's enclosing scope. The first list contains $name place
+    // references or literals — these are the wires the callee consumes
+    // as its sources. The second list contains name<> source declarations
+    // — these are the wires the callee produces as its destinations.
+    // The resulting Statement.invoke.sources holds the first (caller-
+    // destination / callee-source) list; .destinations holds the second
+    // (caller-source / callee-destination) list. Both fields are named
+    // from the callee's perspective; do not confuse them with the
+    // caller-scope direction of token flow.
     const sources = try arguments.parseArgList(p, ')');
     p.skipWhitespaceAndComments();
 
@@ -149,6 +199,31 @@ pub fn parseEntryInvocation(p: *core.Parser, label: ?[]const u8, name: []const u
         try arguments.parseArgList(p, ')')
     else
         &.{};
+
+    // NEW: validate both entry-invocation lists against invocation
+    // direction rules. Run before ms_result synthesis so the
+    // synthesized entry (empty .text) is never validated.
+    {
+        var buf: [256]u8 = undefined;
+        const desc_src = std.fmt.bufPrint(
+            &buf,
+            "entry invocation '{s}' source list",
+            .{name},
+        ) catch "entry invocation source list";
+        try validate_args.validateArgList(sources, .{
+            .description = desc_src,
+            .direction = .invocation_source,
+        });
+        const desc_dst = std.fmt.bufPrint(
+            &buf,
+            "entry invocation '{s}' destination list",
+            .{name},
+        ) catch "entry invocation destination list";
+        try validate_args.validateArgList(raw_destinations, .{
+            .description = desc_dst,
+            .direction = .invocation_destination,
+        });
+    }
 
     // §12.3.4 — an omitted or empty destination list means a single
     // implicit return. Synthesize a place named "ms_result" here so that

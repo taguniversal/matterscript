@@ -50,7 +50,7 @@ test "TAG-181 step 4: resolution head accepts space+empty-parens" {
     const a = arena.allocator();
 
     const src =
-        \\pick($select)($out)
+        \\pick($select)(out<>)
         \\pick[(select<>)($out)
         \\  $select( ) : A[out<1>]
         \\               B[out<0>]

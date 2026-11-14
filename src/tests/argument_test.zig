@@ -4,6 +4,7 @@ const matterscript = @import("matterscript");
 
 const parser = matterscript.ipl_parser;
 const network = matterscript.network;
+const arguments = matterscript.arguments;
 
 test "readNumericLiteral parsing and errors" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
@@ -68,7 +69,6 @@ test "parseArgList parses mixed argument lists" {
     // Fifth argument: place "d< >"
     try testing.expectEqual(.place, args[4].kind);
     try testing.expectEqualStrings("d< >", args[4].text);
-
 }
 
 test "parseArg handles places, expressions, and group modifiers" {
@@ -109,7 +109,7 @@ test "parseArg handles places, expressions, and group modifiers" {
         try testing.expectEqual(.group, arg2.kind);
         try testing.expectEqual(network.PlaceGroupKind.bundle, arg2.group.?.kind);
     }
-// 5. Test place with an attached arbitration group modifier (e.g., 'signal_c{{$sub1, $sub2}}')
+    // 5. Test place with an attached arbitration group modifier (e.g., 'signal_c{{$sub1, $sub2}}')
     {
         var p = parser.core.Parser.init(allocator, "signal_c {{$sub1, $sub2}}");
         const arg = try parser.arguments.parseArg(&p);
@@ -120,7 +120,7 @@ test "parseArg handles places, expressions, and group modifiers" {
         // Second argument is the group
         const arg2 = try parser.arguments.parseArg(&p);
         try testing.expectEqual(.group, arg2.kind);
-        
+
         const group = arg2.group.?;
         try testing.expectEqual(network.PlaceGroupKind.arbitration, group.kind);
 
@@ -135,4 +135,20 @@ test "parseArg handles places, expressions, and group modifiers" {
         try testing.expectEqual(.place, group.places[1].kind);
         try testing.expectEqualStrings("sub2", group.places[1].name);
     }
+}
+
+test "parseArg: value<0> is a source place with content" {
+    var p = parser.core.Parser.init(testing.allocator, "value<0>");
+    const arg = try arguments.parseArg(&p);
+    try testing.expectEqual(network.ArgKind.place, arg.kind);
+    try testing.expectEqual(@as(?network.PlaceKind, .source), arg.direction);
+    try testing.expectEqualStrings("value", arg.name);
+    try testing.expectEqualStrings("0", arg.content.?);
+    try testing.expectEqualStrings("value<0>", arg.text);
+}
+
+test "parseArg: value<K> is a source place with symbolic content" {
+    var p = parser.core.Parser.init(testing.allocator, "value<K>");
+    const arg = try arguments.parseArg(&p);
+    try testing.expectEqualStrings("K", arg.content.?);
 }
