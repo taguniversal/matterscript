@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e27607b2.js";
+            window.path_to_searchindex_js = "searchindex-c036d9f8.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-21db14a5.js"></script>
@@ -4131,10 +4131,9 @@ Hydrated Protein
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="pure-value-expressions"><a class="header" href="#pure-value-expressions">Pure Value Expressions</a></h1>
-<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-04-learning-matterscript/images/pure_value_expressions.png" alt="Pure Value Expressions"><span class="img-wrapper"><img src="part-04-learning-matterscript/images/pure_value_expressions.png" alt="Pure Value Expressions"></span></label></p>
-<p>A <strong>pure value expression</strong> is a MatterScript expression in which computation is expressed entirely through <strong>unique symbols, places, associations, and value transform rules</strong>. There is no conventional sequence of operations and no requirement that an intermediate value be explicitly stored or passed from one operation to another.</p>
-<p>The Boolean full-adder provides a useful example because the same logic can be represented in two fundamentally different ways.</p>
-<p>In an ordinary value-oriented representation, an <code>AND</code>, <code>OR</code>, or <code>NOT</code> operation can terminate in a <strong>value transform rule</strong>: a formed name selects a rule, and that rule produces a value. A pure value expression goes one step further. The expression itself becomes a population of symbols whose relationships progressively form the names of applicable rules.</p>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-04-learning-matterscript/images/pure_value_expressions.png" alt="Pure Value"><span class="img-wrapper"><img src="part-04-learning-matterscript/images/pure_value_expressions.png" alt="Pure Value"></span></label></p>
+<p>A <strong>pure value expression</strong> is a MatterScript definition in which computation is expressed entirely through <strong>unique symbols, places, associations, and value transform rules</strong>. There is no conventional sequence of operations and no requirement that an intermediate value be explicitly stored or passed from one operation to another.</p>
+<p>The Boolean full-adder is a useful example because the same logic can be represented several ways, including as a <code>@runtime(consumable)</code> definition whose place of resolution behaves as a <strong>shaking bag</strong>.</p>
 <blockquote>
 <p><strong>Same logic. Different resolution.</strong>
 A pure value expression does not execute a sequence of Boolean operations. It establishes a space of possible associations and allows the arriving symbols to resolve the expression.</p>
@@ -4152,8 +4151,7 @@ A pure value expression does not execute a sequence of Boolean operations. It es
 <li><code>SUM</code></li>
 <li><code>CARRY</code></li>
 </ul>
-<p>A conventional circuit describes this in terms of gates and wires. MatterScript can instead map every association path in that circuit to a collection of unique symbols.</p>
-<p>For example:</p>
+<p>A conventional circuit describes this in terms of gates and wires. MatterScript can instead map every association path in that circuit to a collection of unique symbols:</p>
 <pre><code class="language-text">C means X = 0
 D means X = 1
 
@@ -4163,70 +4161,21 @@ F means Y = 1
 G means CI = 0
 H means CI = 1
 </code></pre>
-<p>The important point is that the symbols are <strong>unique to their places</strong>.</p>
-<p>The <code>0</code> associated with one path is not simply the same global <code>0</code> as every other occurrence of zero. It represents the particular condition associated with that particular place in the expression.</p>
-<p>Thus:</p>
+<p>The important point is that the symbols are <strong>unique to their places</strong>. The <code>0</code> associated with one path is not the same global <code>0</code> as every other occurrence of zero; it represents the particular condition associated with that particular place in the expression. Thus:</p>
 <pre><code class="language-text">C ≠ E
+D ≠ F
 </code></pre>
-<p>even though both may represent the logical value <code>0</code>.</p>
-<p>Likewise:</p>
-<pre><code class="language-text">D ≠ F
-</code></pre>
-<p>even though both represent the logical value <code>1</code>.</p>
-<p>This distinction allows the topology of the computation to remain encoded in the names themselves.</p>
-<hr>
-<h2 id="one-wire-two-symbols"><a class="header" href="#one-wire-two-symbols">One Wire, Two Symbols</a></h2>
-<p>Each association path can therefore be represented by two unique symbols:</p>
-<pre><code class="language-text">             wire
-              │
-          ┌───┴───┐
-          │       │
-          A       B
-          │       │
-        unique   unique
-        symbol   symbol
-</code></pre>
-<p>For the full-adder, this produces the initial fan-out relationships:</p>
-<pre><code class="language-text">A[g,k,o]
-B[h,l,p]
-C[G,K,O]
-D[H,L,P]
-E[I,M,Q]
-F[J,N,R]
-</code></pre>
-<p>These statements do not perform Boolean arithmetic.</p>
-<p>They establish <strong>name correspondence</strong>.</p>
-<p>For example:</p>
-<pre><code class="language-text">A[g,k,o]
-</code></pre>
-<p>means that content arriving at <code>A</code> is simultaneously associated with <code>g</code>, <code>k</code>, and <code>o</code>.</p>
-<p>The bracket list is therefore a compact representation of fan-out. It is equivalent in principle to expressing the same correspondence three times:</p>
-<pre><code class="language-text">A[g]
-A[k]
-A[o]
-</code></pre>
-<p>The comma-separated form simply makes the relationship explicit and compact.</p>
+<p>even though both pairs may represent the same logical values. This distinction allows the topology of the computation to remain encoded in the names themselves.</p>
 <hr>
 <h2 id="value-transform-rules-as-resolution-points"><a class="header" href="#value-transform-rules-as-resolution-points">Value Transform Rules as Resolution Points</a></h2>
-<p>Once the symbols have been distributed through the expression, combinations of symbols begin to form names.</p>
-<p>For example:</p>
+<p>Once symbols have been distributed through the expression, combinations of symbols begin to form names. For example:</p>
 <pre><code class="language-text">G,I[S]
 G,J[T]
 H,I[S]
 H,J[S]
 </code></pre>
-<p>These relationships define the next stage of resolution.</p>
-<p>A pair of symbols such as:</p>
-<pre><code class="language-text">G + I
-</code></pre>
-<p>can form the name:</p>
-<pre><code class="language-text">GI
-</code></pre>
-<p>and the association:</p>
-<pre><code class="language-text">GI[S]
-</code></pre>
-<p>states that the resulting relationship resolves toward <code>S</code>.</p>
-<p>The same process continues through the network:</p>
+<p>A pair of symbols <code>G + I</code> forms the name <code>GI</code>, and the association <code>GI[S]</code> states that the resulting relationship resolves toward <code>S</code>.</p>
+<p>The process continues through the network. A few stages from the full-adder:</p>
 <pre><code class="language-text">K,M[U]
 K,N[U]
 L,M[V]
@@ -4237,108 +4186,79 @@ O,R[W]
 P,Q[W]
 P,R[X]
 </code></pre>
-<p>The resulting expression is not a list of instructions such as:</p>
-<pre><code class="language-text">calculate this
-then calculate that
-then send the result here
-</code></pre>
-<p>Instead, it establishes a set of <strong>possible relationships</strong>. When the appropriate symbols coexist at a resolution place, the corresponding name becomes complete and its association becomes available.</p>
+<p>The resulting expression is not a list of instructions. It establishes a set of <strong>possible relationships</strong>. When the appropriate symbols coexist at a resolution place, the corresponding name becomes complete and its association becomes available.</p>
 <hr>
 <h2 id="the-shaking-bag-model"><a class="header" href="#the-shaking-bag-model">The Shaking-Bag Model</a></h2>
-<p>This is easiest to understand using the <strong>shaking bag</strong> model.</p>
-<p>Imagine that the place of resolution is a bag containing symbols. The bag is repeatedly populated as associations propagate through the expression.</p>
-<p>The initial input symbols might produce a population such as:</p>
-<pre><code class="language-text">B  F  C
+<p>A definition annotated with <code>@runtime(consumable)</code> is executed as a <strong>shaking bag</strong>: the place of resolution is a multiset of token names, and rules consume input tokens and produce output tokens until the bag reaches a fixed point.</p>
+<p>For a <code>@runtime(consumable)</code> definition, each contained row is a rule. A row’s left-hand side names the tokens it requires; its right-hand side names what it produces.</p>
+<pre><code class="language-text">S,U,W[K,M]
 </code></pre>
-<p>After applying the first set of associations, the next population contains additional symbols:</p>
-<pre><code class="language-text">R  C  P  G  J  K  N
+<p>means: <em>when <code>S</code>, <code>U</code>, and <code>W</code> are present in the bag, consume one of each and add <code>K</code> and <code>M</code> to the bag.</em></p>
+<p>A row shaped as a destination fill</p>
+<pre><code class="language-text">K[SUM&lt;K&gt;]
 </code></pre>
-<p>Further resolution produces another population:</p>
-<pre><code class="language-text">G  J  R  W  P  T  U
-</code></pre>
-<p>The important observation is that <strong>not every possible combination is meaningful</strong>.</p>
-<p>Only certain combinations form the names of value transform rules.</p>
-<p>For example:</p>
-<pre><code class="language-text">G,J[T]
-OR[W]
-KN[U]
-</code></pre>
-<p>identify particular combinations that become complete within that population.</p>
-<p>The resolution process therefore resembles a search through populations of symbols rather than a conventional instruction stream.</p>
+<p>means: <em>when <code>K</code> is present, consume it and record that the destination <code>SUM</code> resolves to <code>K</code>.</em> The destination symbol is <em>not</em> added back to the bag; it leaves the place of resolution and becomes a boundary assignment visible to the caller.</p>
+<p>This distinction — <strong>free-value reactions</strong> versus <strong>boundary assignments</strong> — is the load-bearing one. Conflating them (treating <code>K[SUM&lt;K&gt;]</code> as “produce <code>K</code>”) makes a bag that already contains <code>K</code> loop forever, because the rule that consumes <code>K</code> produces <code>K</code> again. The MatterScript runtime keeps the two apart:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Row form</th><th>Runtime action</th><th>Effect</th></tr>
+</thead>
+<tbody>
+<tr><td><code>S,U,W[K,M]</code></td><td><code>react</code></td><td>consume <code>S,U,W</code>; add <code>K,M</code> to the bag</td></tr>
+<tr><td><code>K[SUM&lt;K&gt;]</code></td><td><code>assign</code></td><td>consume <code>K</code>; record <code>SUM → K</code>; do not add to the bag</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="rule-ordering-matters"><a class="header" href="#rule-ordering-matters">Rule ordering matters</a></h3>
+<p>Rules are tried in the order they appear. A react rule that consumes a token must be listed <strong>before</strong> an assign rule that would otherwise consume the same token as a boundary value. In the full-adder, the carry-chain react rules (<code>S,U,M</code>, <code>S,U,N</code>, etc.) must precede the boundary fills (<code>M[CO&lt;M&gt;]</code>, <code>N[CO&lt;N&gt;]</code>) — otherwise the fill rule consumes the incoming carry token before the react rule can use it, and the sum for that bit never resolves.</p>
 <h3 id="resolution-progression"><a class="header" href="#resolution-progression">Resolution progression</a></h3>
 <pre><code class="language-text">Input population
       │
-      │  associations
+      │  react rules fire
       ▼
 New population
       │
-      │  associations
+      │  more rules fire
       ▼
 New population
       │
-      │  associations
+      │  no rule can fire
       ▼
-...
-      │
-      ▼
-Output symbols
+Fixed point: boundary assignments are visible to the caller
 </code></pre>
-<p>The symbols that survive and propagate are determined by the structure of the expression itself.</p>
+<p>The bag stops when a full pass produces no change. Any destination with a recorded boundary assignment is extracted to the caller; any destination without one is left unresolved, and the caller’s completeness check reports it as stuck. Missing outputs are a normal outcome of the model, not an error.</p>
 <hr>
 <h2 id="from-the-first-half-adder-to-the-second"><a class="header" href="#from-the-first-half-adder-to-the-second">From the First Half-Adder to the Second</a></h2>
 <p>The first portion of the full-adder resolves into the intermediate symbols:</p>
-<pre><code class="language-text">S
-T
-U
-V
-W
-X
+<pre><code class="language-text">S  T  U  V  W  X
 </code></pre>
-<p>These symbols then become the input population for the next stage:</p>
+<p>These symbols become the input population for the next stage:</p>
 <pre><code class="language-text">S,U[a,c,e]
 S,V[b,d,f]
 T,U[b,d,f]
 T,V[b,d,f]
 </code></pre>
-<p>Again, these are associations rather than conventional assignments.</p>
-<p>The result of one resolution stage becomes the population from which the next set of names can form.</p>
-<p>The subsequent stages continue this process:</p>
-<pre><code class="language-text">g,a[i]
-g,b[j]
-h,a[i]
-h,b[i]
-
-k,c[m]
-k,d[m]
-l,c[n]
-l,d[m]
-
-o,e[q]
-o,f[q]
-p,e[q]
-p,f[r]
+<p>Again, these are associations rather than assignments. The result of one resolution stage becomes the population from which the next set of names can form. The subsequent stages continue the process:</p>
+<pre><code class="language-text">g,a[i]  g,b[j]  h,a[i]  h,b[i]
+k,c[m]  k,d[m]  l,c[n]  l,d[m]
+o,e[q]  o,f[q]  p,e[q]  p,f[r]
 </code></pre>
 <p>and finally:</p>
-<pre><code class="language-text">i,m[s]
-i,n[t]
-j,m[t]
-j,n[t]
-
-q,W[u]
-q,X[v]
-r,W[v]
-r,X[v]
+<pre><code class="language-text">i,m[s]  i,n[t]  j,m[t]  j,n[t]
+q,W[u]  q,X[v]  r,W[v]  r,X[v]
 </code></pre>
 <p>The entire Boolean full-adder has therefore been transformed into a network of symbolic associations.</p>
 <hr>
 <h2 id="the-pure-value-expression"><a class="header" href="#the-pure-value-expression">The Pure Value Expression</a></h2>
-<p>The complete MatterScript expression is:</p>
-<pre><code class="language-matterscript">FULLADD($A,$B,$C)(&lt;&gt; CARRYOUT&lt;&gt;)
+<p>The complete MatterScript expression, with <code>@runtime(consumable)</code> to select the shaking-bag execution model:</p>
+<pre><code class="language-matterscript">FULLADD($A,$B,$C)(SUM&lt;&gt; CARRYOUT&lt;&gt;)
 
 FULLADD[(X&lt;&gt;Y&lt;&gt;CI&lt;&gt;)( $SUM $CARRY)
-  $X $Y $CI:
+  @runtime(consumable)
+  $X $Y $CI :
 
-  //"fan-out input symbols"
+  // "fan-out input symbols"
   A[g,k,o]
   B[h,l,p]
   C[G,K,O]
@@ -4346,7 +4266,7 @@ FULLADD[(X&lt;&gt;Y&lt;&gt;CI&lt;&gt;)( $SUM $CARRY)
   E[I,M,Q]
   F[J,N,R]
 
-  //"define combinational resolution stages"
+  // "define combinational resolution stages"
   G,I[S]
   G,J[T]
   H,I[S]
@@ -4362,7 +4282,7 @@ FULLADD[(X&lt;&gt;Y&lt;&gt;CI&lt;&gt;)( $SUM $CARRY)
   P,Q[W]
   P,R[X]
 
-  //"fan out input to second half-adder"
+  // "fan out input to second half-adder"
   S,U[a,c,e]
   S,V[b,d,f]
   T,U[b,d,f]
@@ -4383,65 +4303,42 @@ FULLADD[(X&lt;&gt;Y&lt;&gt;CI&lt;&gt;)( $SUM $CARRY)
   p,e[q]
   p,f[r]
 
-  //"sum"
+  // "sum"
   i,m[s]
   i,n[t]
   j,m[t]
   j,n[t]
 
-  //"carry"
+  // "carry"
   q,W[u]
   q,X[v]
   r,W[v]
   r,X[v]
 
-  //"output"
+  // "output"
   s[SUM&lt;s&gt;]
   t[SUM&lt;t&gt;]
   u[CARRY&lt;u&gt;]
   v[CARRY&lt;v&gt;]
 ]
 </code></pre>
-<p>Notice what is absent.</p>
-<p>There is no expression such as:</p>
-<pre><code class="language-text">SUM = X XOR Y XOR CI
-</code></pre>
-<p>There is no procedural sequence:</p>
-<pre><code class="language-text">a = ...
-b = ...
-c = ...
-</code></pre>
-<p>There are no explicit intermediate Boolean values.</p>
-<p>Instead, the program describes <strong>which symbols can associate with which other symbols</strong>.</p>
+<p>Notice what is absent. There is no expression such as <code>SUM = X XOR Y XOR CI</code>. There is no procedural sequence <code>a = ...; b = ...</code>. There are no explicit intermediate Boolean values. The program describes <strong>which symbols can associate with which other symbols</strong>.</p>
 <hr>
 <h2 id="no-invocation-is-required"><a class="header" href="#no-invocation-is-required">No Invocation Is Required</a></h2>
-<p>This distinction is particularly important in MatterScript.</p>
 <p>A conventional invocation might explicitly name a computational operation:</p>
 <pre><code class="language-text">some_gate(input1, input2)
 </code></pre>
-<p>A pure value expression does not require that form.</p>
-<p>The input content is simply introduced into the place of resolution:</p>
+<p>A pure value expression does not require that form. The input content is simply introduced into the place of resolution:</p>
 <pre><code class="language-text">$X $Y $CI:
 </code></pre>
-<p>From there, the content begins forming names through the associations defined in the expression.</p>
-<p>The expression is therefore closer to a <strong>declarative topology of possible resolution</strong> than to an imperative program.</p>
-<p>The computational behavior emerges from the relationships.</p>
+<p>From there, the content begins forming names through the associations defined in the expression. The expression is closer to a <strong>declarative topology of possible resolution</strong> than to an imperative program. The computational behavior emerges from the relationships.</p>
 <hr>
 <h2 id="final-symbols-become-output-associations"><a class="header" href="#final-symbols-become-output-associations">Final Symbols Become Output Associations</a></h2>
-<p>At the end of the resolution process, the surviving symbols are:</p>
-<pre><code class="language-text">s
-t
-u
-v
+<p>At the end of the resolution process, the surviving symbols are <code>s</code>, <code>t</code>, <code>u</code>, <code>v</code>. These are associated with the external result places:</p>
+<pre><code class="language-text">s[SUM&lt;s&gt;]    t[SUM&lt;t&gt;]
+u[CARRY&lt;u&gt;]  v[CARRY&lt;v&gt;]
 </code></pre>
-<p>These are associated with the external result places:</p>
-<pre><code class="language-text">s[SUM&lt;s&gt;]
-t[SUM&lt;t&gt;]
-
-u[CARRY&lt;u&gt;]
-v[CARRY&lt;v&gt;]
-</code></pre>
-<p>The <code>&lt;...&gt;</code> notation identifies the destination place and the corresponding content.</p>
+<p>The <code>&lt;...&gt;</code> notation identifies the destination place and the corresponding content. In the shaking-bag model, these are the <strong>boundary assignments</strong> the runtime extracts after the bag settles: the appropriate destination association has become complete, and the resulting content propagates outward.</p>
 <p>Conceptually:</p>
 <pre><code class="language-text">             ┌── SUM
 s ───────────┤
@@ -4451,55 +4348,52 @@ t ───────────┘
 u ───────────┤
 v ───────────┘
 </code></pre>
-<p>In the shaking-bag model, these final symbols can be thought of as causing the destination definition to open: the appropriate destination association becomes complete and the resulting content can propagate outward.</p>
+<hr>
+<h2 id="consumable-definitions-are-leaves"><a class="header" href="#consumable-definitions-are-leaves">Consumable Definitions Are Leaves</a></h2>
+<p>A <code>@runtime(consumable)</code> definition executes in its own bag. That bag <strong>does not leak</strong> to the caller, and a consumable definition cannot itself invoke another definition:</p>
+<ul>
+<li>The bag’s token namespace is entirely internal to the definition.</li>
+<li>Invoking a consumable definition from a non-consumable caller crosses a boundary: the caller seeds the bag from its input wire values, shakes to a fixed point, and extracts the resulting boundary assignments back onto its output wires.</li>
+<li>Composing a consumable definition with other logic is done <strong>at the caller</strong>: invoke the consumable leaf and the other definitions side by side, and feed the leaf what it needs.</li>
+</ul>
+<p>This is enforced by validation: a <code>@runtime(consumable)</code> definition that contains an <code>.invoke</code> statement is rejected at parse time (<code>ConsumableDefinitionContainsInvocation</code>). The constraint keeps the runtime model simple: bags are bounded, bags don’t nest, and the boundary between bag semantics and persistent-signal semantics is crossed in exactly one place.</p>
+<hr>
+<h2 id="symbol-namespaces-and-the-input--output-problem"><a class="header" href="#symbol-namespaces-and-the-input--output-problem">Symbol Namespaces and the “Input == Output” Problem</a></h2>
+<p>A consequence of the bag model is that <strong>input symbols and output symbols must be distinguishable</strong>, even when they encode the same logical condition. In the full-adder above:</p>
+<ul>
+<li><code>X = 0</code> is <code>C</code>; <code>X = 1</code> is <code>D</code>.</li>
+<li><code>SUM = 0</code> is <code>s</code>; <code>SUM = 1</code> is <code>t</code>.</li>
+</ul>
+<p>These are distinct symbols even though <code>C</code> and <code>s</code> both “mean 0” in the abstract. If the input and output vocabularies shared names, an input <code>K</code> and an output <code>K</code> could collide inside the bag — a <code>K[SUM&lt;K&gt;]</code> rule intended to fire on a <em>produced</em> <code>K</code> would also fire on a <em>seeded</em> <code>K</code>, and the destination would resolve ambiguously.</p>
+<p>The book’s phrasing captures this: <em>“the result values must be isolated within a source place when they are delivered to the place of resolution.”</em> In MatterScript practice:</p>
+<ul>
+<li>Use a dedicated vocabulary for each definition’s inputs.</li>
+<li>Use a dedicated vocabulary for its outputs.</li>
+<li>When chaining consumable definitions (e.g. a carry from one bit-slice to the next), the receiving definition must include rules for <strong>the previous definition’s output symbols</strong>, not just its own fresh-input symbols.</li>
+</ul>
+<p>A 4-bit adder built from four full-adder slices demonstrates this: the rule table for a full-adder slice must include both <code>S,U,W[K,M]</code> (fresh carry-in of 0) and <code>S,U,M[K,M]</code> (carry-in from the previous slice). The two rules produce the same output, but they match on different carry-in symbols. Without the second, multi-bit chaining stalls after the first bit.</p>
 <hr>
 <h2 id="pure-values-versus-value-transforms"><a class="header" href="#pure-values-versus-value-transforms">Pure Values Versus Value Transforms</a></h2>
 <p>It is useful to distinguish two ways an expression can terminate.</p>
 <h3 id="value-transform-resolution"><a class="header" href="#value-transform-resolution">Value-transform resolution</a></h3>
 <p>A formed name identifies a value transform rule:</p>
-<pre><code class="language-text">symbols
-   ↓
-formed name
-   ↓
-value transform
-   ↓
-value
+<pre><code class="language-text">symbols  →  formed name  →  value transform  →  value
 </code></pre>
-<p>This is the model used by the earlier full-adder example.</p>
+<p>This is the model used by the earlier full-adder example (TAG-129) and by most of the non-consumable corpus.</p>
 <h3 id="pure-association-resolution"><a class="header" href="#pure-association-resolution">Pure association resolution</a></h3>
 <p>A formed name identifies an association:</p>
-<pre><code class="language-text">symbols
-   ↓
-formed name
-   ↓
-association
-   ↓
-new symbol/place
+<pre><code class="language-text">symbols  →  formed name  →  association  →  new symbol/place
 </code></pre>
-<p>The second form does not require the computation to terminate in a conventional stored value.</p>
-<p>This distinction is fundamental to MatterScript because <strong>the same logical function can be represented by different kinds of resolution</strong>.</p>
-<p>A Boolean full-adder can therefore be expressed using explicit value transforms, or it can be expressed as a network of primitive symbolic relationships.</p>
+<p>The second form does not require the computation to terminate in a conventional stored value. A <code>@runtime(consumable)</code> definition is executed as the second form: the bag holds symbols, rules consume and produce symbols, and the boundary assignments at the end are the surviving relations that reach a destination place.</p>
+<p><strong>The same logical function can be represented either way.</strong> A Boolean full-adder can be expressed using explicit value transforms (TAG-129’s <code>FULLADD129</code>), or as a network of primitive symbolic relationships (TAG-211’s <code>FULLADD4BIT</code>). Both are valid; they differ in which execution model applies and how the caller composes them.</p>
 <hr>
 <h2 id="why-this-matters-for-matterscript"><a class="header" href="#why-this-matters-for-matterscript">Why This Matters for MatterScript</a></h2>
 <p>Pure value expressions demonstrate an important property of the MatterScript model:</p>
 <blockquote>
 <p><strong>Computation does not have to be represented as the transformation of values. It can be represented as the formation and propagation of relationships.</strong></p>
 </blockquote>
-<p>Once computation is expressed in this form, several familiar distinctions begin to collapse.</p>
-<p>The boundary between:</p>
-<ul>
-<li>data and connectivity,</li>
-<li>value and identity,</li>
-<li>computation and wiring,</li>
-<li>expression and topology,</li>
-<li>software and hardware,</li>
-</ul>
-<p>becomes much less rigid.</p>
-<p>The expression already contains the connectivity information that a hardware implementation requires.</p>
-<p>For example:</p>
-<pre><code class="language-text">A[g,k,o]
-</code></pre>
-<p>is simultaneously:</p>
+<p>Once computation is expressed in this form, several familiar distinctions begin to collapse. The boundary between data and connectivity, value and identity, computation and wiring, expression and topology, software and hardware becomes much less rigid. The expression already contains the connectivity information that a hardware implementation requires.</p>
+<p>For example, <code>A[g,k,o]</code> is simultaneously:</p>
 <ol>
 <li>a symbolic relationship,</li>
 <li>a fan-out description,</li>
@@ -4509,31 +4403,17 @@ new symbol/place
 <p>The MatterScript compiler can therefore lower the same semantic structure into different physical representations without requiring the programmer to rewrite the computation as a conventional hardware description.</p>
 <hr>
 <h2 id="pure-value-expressions-and-physical-computation"><a class="header" href="#pure-value-expressions-and-physical-computation">Pure Value Expressions and Physical Computation</a></h2>
-<p>This is particularly significant for asynchronous and spatial computation.</p>
-<p>A conventional program generally describes <strong>what operation happens next</strong>.</p>
-<p>A pure value expression describes <strong>what relationships are possible where</strong>.</p>
-<p>That distinction becomes increasingly useful as computation moves toward:</p>
-<ul>
-<li>asynchronous logic,</li>
-<li>NULL Convention Logic,</li>
-<li>spatially distributed computation,</li>
-<li>FPGA fabrics,</li>
-<li>hardware synthesis,</li>
-<li>sensor networks,</li>
-<li>edge computation, and</li>
-<li>physically embedded computation.</li>
-</ul>
-<p>In these systems, locality and connectivity are not merely implementation details. They are part of the computational structure.</p>
-<p>Pure value expressions provide a language-level mechanism for expressing that structure directly.</p>
+<p>This is particularly significant for asynchronous and spatial computation. A conventional program generally describes <strong>what operation happens next</strong>; a pure value expression describes <strong>what relationships are possible where</strong>. That distinction becomes increasingly useful as computation moves toward asynchronous logic, NULL Convention Logic, spatially distributed computation, FPGA fabrics, hardware synthesis, sensor networks, edge computation, and physically embedded computation.</p>
+<p>In these systems, locality and connectivity are not merely implementation details. They are part of the computational structure. Pure value expressions provide a language-level mechanism for expressing that structure directly.</p>
 <hr>
-<h2 id="a-useful-mental-model"><a class="header" href="#a-useful-mental-model">A Useful Mental Model</a></h2>
-<p>When reading a pure value expression, resist the temptation to read it as a sequence of assignments.</p>
-<p>Instead, read it as a <strong>field of possible associations</strong>.</p>
+<h2 id="reading-a-pure-value-expression"><a class="header" href="#reading-a-pure-value-expression">Reading a Pure Value Expression</a></h2>
+<p>When reading a pure value expression, resist the temptation to read it as a sequence of assignments. Instead, read it as a <strong>field of possible associations</strong>:</p>
 <pre><code class="language-text">             symbols arrive
                     │
                     ▼
           ┌──────────────────┐
-          │ resolution place │
+          │ place of         │
+          │ resolution (bag) │
           │                  │
           │   B  F  C        │
           │      G  J        │
@@ -4547,10 +4427,15 @@ new symbol/place
              new associations
                     │
                     ▼
-          next resolution place
+          next population
+                    │
+             no rule fires
+                    │
+                    ▼
+          boundary assignments
+             (the outputs)
 </code></pre>
-<p>The expression is not telling the runtime to <em>execute</em> each line.</p>
-<p>It is defining the relationships that allow symbols to propagate and form complete names.</p>
+<p>The expression is not telling the runtime to <em>execute</em> each line. It is defining the relationships that allow symbols to propagate and form complete names.</p>
 <p>That is why the full-adder can be described without an explicit chain of Boolean operations.</p>
 <hr>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
@@ -4560,11 +4445,13 @@ new symbol/place
 <li>assigns distinct symbols to the distinct paths of a computation;</li>
 <li>allows symbols to propagate through <strong>name correspondence</strong>;</li>
 <li>forms names when the required symbols coexist;</li>
-<li>uses value transform rules or associations as resolution points;</li>
+<li>can be executed either as a <strong>value-transform network</strong> (persistent-signal semantics) or as a <strong>shaking bag</strong> (<code>@runtime(consumable)</code>);</li>
+<li>in the bag model, distinguishes <strong>free-value reactions</strong> (add tokens to the bag) from <strong>boundary assignments</strong> (record a destination’s resolved symbol without adding it to the bag), and <strong>orders rules</strong> so react rules precede fill rules when the same token could be consumed by either;</li>
 <li>progresses through populations of symbols rather than a procedural instruction sequence;</li>
 <li>can express fan-out directly through constructs such as <code>A[g,k,o]</code>;</li>
-<li>can terminate in destination associations such as <code>s[SUM&lt;s&gt;]</code>; and</li>
-<li>preserves the topology of the computation as part of the expression itself.</li>
+<li>can terminate in destination associations such as <code>s[SUM&lt;s&gt;]</code>;</li>
+<li>preserves the topology of the computation as part of the expression itself; and</li>
+<li>in the consumable model, <strong>does not leak its bag to the caller</strong> — composition happens at the caller, which seeds the bag from its input wires and extracts the resulting boundary assignments back onto its output wires.</li>
 </ul>
 <p>The Boolean full-adder demonstrates the central idea:</p>
 <blockquote>
