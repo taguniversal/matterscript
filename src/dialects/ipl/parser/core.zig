@@ -26,6 +26,7 @@ pub const ParseError = error{
     AmbiguousComposedKey,
     UnexpectedDestinationListInFillInvocation,
     AmbiguousContainedDestination,
+    ConsumableCallInShakeUnreachable,
 };
 
 pub const Parser = struct {

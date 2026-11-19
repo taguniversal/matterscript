@@ -14,6 +14,7 @@ const value_transform = @import("../value_transform.zig");
 const environment = @import("environment.zig");
 const lookup = @import("../vhdl/lookup.zig");
 const sanitizer = @import("../vhdl/sanitizer.zig");
+const bag_mod = @import("bag.zig");
 
 const max_invocation_depth = 32;
 
@@ -31,12 +32,28 @@ pub const RuleAction = union(enum) {
     literal: u64,
     copy_from: []const u8,
     assert_symbol: []const u8,
+
     /// Conditional invocation `$a$b()`. The current VALUES of rule.inputs
     /// (in order) are joined with "," to form a name; the contained
     /// pure-value definition with that name supplies the symbol asserted
     /// into dest. No matching entry leaves dest null (missing entries
     /// stay NULL, per network.zig's completeness note).
     select: []const SelectEntry,
+
+    /// Boundary crossing into a `@runtime(consumable)` callee. The
+    /// caller seeds a bag from its bound source values, shakes it
+    /// against `rules`, and reads back `boundary` assignments into
+    /// the caller's bound destination wires.
+    consumable_call: ConsumableCall,
+
+    pub const ConsumableCall = struct {
+        callee: network.Definition,
+        rules: []const bag_mod.ConsumableRule,
+        /// callee source name -> caller wire name
+        source_bindings: []const Binding,
+        /// callee dest name -> caller wire name
+        dest_bindings: []const Binding,
+    };
 };
 
 pub const ExecutableRule = struct {
@@ -271,12 +288,108 @@ fn parseOutput(allocator: std.mem.Allocator, raw: []const u8) !Output {
     return .{ .token = trimmed };
 }
 
+/// Runs `ConsumableRule`s against `bag` until a full pass produces no
+/// change. Same fixed-point semantics as `shake`, but distinguishes
+/// free-value reactions (add outputs to the bag) from boundary
+/// assignments (record `dest -> symbol` without adding to the bag).
+pub fn shakeConsumable(bag: *bag_mod.Bag, rules: []const bag_mod.ConsumableRule) !void {
+    var changed = true;
+    while (changed) {
+        changed = false;
+        for (rules) |rule| {
+            const inputs = switch (rule) {
+                .react => |r| r.inputs,
+                .assign => |a| a.inputs,
+            };
+            if (!bag_mod.allPresent(bag, inputs)) continue;
+
+            switch (rule) {
+                .react => |r| {
+                    for (r.inputs) |input| bag.consume(input);
+                    for (r.outputs) |out| {
+                        try bag.add(out);
+                        try bag.recordEmission(out);
+                    }
+                    changed = true;
+                },
+                .assign => |a| {
+                    // If the destination is already assigned to a
+                    // different symbol, that's a conflicting boundary
+                    // resolution — error rather than silently
+                    // overwrite.
+                    if (bag.boundary.get(a.dest)) |existing| {
+                        if (!std.mem.eql(u8, existing, a.symbol)) {
+                            return error.ConflictingBoundaryAssignment;
+                        }
+                        // Same symbol: idempotent, consume inputs and
+                        // don't loop.
+                        for (a.inputs) |input| bag.consume(input);
+                        continue;
+                    }
+                    for (a.inputs) |input| bag.consume(input);
+                    try bag.boundary.put(bag.allocator, a.dest, a.symbol);
+                    try bag.recordEmission(a.dest);
+                    changed = true;
+                },
+            }
+        }
+    }
+}
+
 fn findComposedDispatchHeader(allocator: std.mem.Allocator, def: network.Definition) !?[]const []const u8 {
     for (def.resolution) |stmt| {
         if (stmt != .pure_value) continue;
         if (try parseInvocationArgs(allocator, stmt.pure_value)) |args| return args;
     }
     return null;
+}
+
+/// Builds a ConsumableRule list for a `@runtime(consumable)` definition.
+/// Diverges from `buildRulesAtDepth` in how contained rows are
+/// classified:
+///
+///   - A row whose resolution is `.pure_value` (e.g. S,U,W[K,M])
+///     becomes `.react { inputs: [S,U,W], outputs: [K,M] }`.
+///   - A row whose resolution is `.fill` (e.g. K[SUM<K>]) becomes
+///     `.assign { inputs: [K], dest: "SUM", symbol: "K" }`.
+///
+/// The composed-key header (`$A $B $CI :`) is not turned into a select
+/// rule — it just declares source names for the bag, which arrive via
+/// invocation bindings. Non-contained resolution fills are also
+/// ignored: they're the pattern of a non-consumable definition, not a
+/// reaction.
+fn buildConsumableRules(
+    allocator: std.mem.Allocator,
+    def: network.Definition,
+) ![]const bag_mod.ConsumableRule {
+    var rules: std.ArrayListUnmanaged(bag_mod.ConsumableRule) = .empty;
+    errdefer rules.deinit(allocator);
+
+    for (def.contained) |row| {
+        if (row.sources.len != 0 or row.destinations.len != 0) continue;
+        const inputs = try splitPattern(allocator, row.name);
+        for (row.resolution) |stmt| {
+            switch (stmt) {
+                .pure_value => |text| {
+                    const outputs = try splitPattern(allocator, text);
+                    try rules.append(allocator, .{ .react = .{
+                        .inputs = inputs,
+                        .outputs = outputs,
+                    } });
+                },
+                .fill => |f| {
+                    const symbol = std.mem.trim(u8, f.expr, " \t\r\n");
+                    try rules.append(allocator, .{ .assign = .{
+                        .inputs = inputs,
+                        .dest = f.dest_name,
+                        .symbol = symbol,
+                    } });
+                },
+                else => continue,
+            }
+        }
+    }
+    return rules.toOwnedSlice(allocator);
 }
 
 /// "$a$b$c()", "$select( )" -> ["a","b","c"]; null for anything that
@@ -371,7 +484,9 @@ fn producedBy(rules: []const ExecutableRule, name: []const u8) bool {
 /// made valid by the environment seeding a token of that name. Inside an
 /// inlined callee nothing seeds it, so it would silently stall. Fail
 /// loudly instead. (This is the FULLADD case: S,U,W[K,M] and friends.)
+/// "is this input token name reachable, either as a source port or as another rule's output?"
 fn checkInvocable(callee: network.Definition, rules: []const ExecutableRule, name: []const u8) !void {
+    if (callee.runtime_kind != null and callee.runtime_kind.? == .consumable) return;
     if (isSourcePort(callee, name) or producedBy(rules, name)) return;
 
     if (build_options.verbose_dumps) {
@@ -426,14 +541,75 @@ fn inlineInvocation(
     definitions: []const network.Definition,
     depth: usize,
 ) anyerror!void {
+    if (build_options.verbose_dumps) {
+        std.debug.print("\n[inline] === inlining '{s}' (index {d}, depth {d}) into caller ===\n", .{ inv.name, index, depth });
+        std.debug.print("[inline] inv.sources ({d}):\n", .{inv.sources.len});
+        for (inv.sources, 0..) |a, i| {
+            std.debug.print("  src[{d}]: kind={s} name='{s}' text='{s}'\n", .{ i, @tagName(a.kind), a.name, a.text });
+        }
+        std.debug.print("[inline] inv.destinations ({d}):\n", .{inv.destinations.len});
+        for (inv.destinations, 0..) |a, i| {
+            std.debug.print("  dst[{d}]: kind={s} name='{s}' text='{s}'\n", .{ i, @tagName(a.kind), a.name, a.text });
+        }
+    }
     const callee = findDefinition(definitions, inv.name) orelse return error.UnknownCallee;
+    if (build_options.verbose_dumps) {
+        std.debug.print("[inline] callee '{s}': runtime_kind={s}\n", .{ callee.name, if (callee.runtime_kind) |rk| @tagName(rk) else "default" });
+        std.debug.print("[inline] callee sources ({d}):\n", .{callee.sources.len});
+        for (callee.sources, 0..) |a, i| {
+            std.debug.print("  callee.src[{d}]: kind={s} name='{s}' direction={s}\n", .{ i, @tagName(a.kind), a.name, if (a.direction) |d| @tagName(d) else "null" });
+        }
+        std.debug.print("[inline] callee destinations ({d}):\n", .{callee.destinations.len});
+        for (callee.destinations, 0..) |a, i| {
+            std.debug.print("  callee.dst[{d}]: kind={s} name='{s}' direction={s}\n", .{ i, @tagName(a.kind), a.name, if (a.direction) |d| @tagName(d) else "null" });
+        }
+    }
     if (inv.sources.len != callee.sources.len or inv.destinations.len != callee.destinations.len)
         return error.InvocationArityMismatch;
+
+    if (callee.runtime_kind != null and callee.runtime_kind.? == .consumable) {
+        var source_bindings: std.ArrayListUnmanaged(Binding) = .empty;
+        for (inv.sources, callee.sources) |actual, formal| {
+            try bindArgument(allocator, &source_bindings, formal, actual);
+        }
+        var dest_bindings: std.ArrayListUnmanaged(Binding) = .empty;
+        for (inv.destinations, callee.destinations) |actual, formal| {
+            try bindArgument(allocator, &dest_bindings, formal, actual);
+        }
+
+        // Boundary rule fires when all the caller-side source wires it
+        // reads from are valid. Empty inputs would fire immediately on
+        // a still-null environment and seed an empty bag, stalling the
+        // callee without any signal to the caller's fixed-point loop.
+        var caller_source_names: std.ArrayListUnmanaged([]const u8) = .empty;
+        for (source_bindings.items) |b| {
+            try caller_source_names.append(allocator, b.caller);
+        }
+
+        const callee_rules = try buildConsumableRules(allocator, callee);
+        try out.append(allocator, .{
+            .inputs = try caller_source_names.toOwnedSlice(allocator),
+            .dest = "",
+            .action = .{ .consumable_call = .{
+                .callee = callee,
+                .rules = callee_rules,
+                .source_bindings = try source_bindings.toOwnedSlice(allocator),
+                .dest_bindings = try dest_bindings.toOwnedSlice(allocator),
+            } },
+        });
+        return;
+    }
 
     var bindings: std.ArrayListUnmanaged(Binding) = .empty;
     for (inv.sources, callee.sources) |actual, formal| try bindArgument(allocator, &bindings, formal, actual);
     for (inv.destinations, callee.destinations) |actual, formal| try bindArgument(allocator, &bindings, formal, actual);
 
+    if (build_options.verbose_dumps) {
+        std.debug.print("[inline] bindings ({d}):\n", .{bindings.items.len});
+        for (bindings.items) |b| {
+            std.debug.print("  '{s}' -> '{s}'\n", .{ b.callee, b.caller });
+        }
+    }
     const callee_rules_raw = try buildRulesAtDepth(allocator, callee, definitions, depth + 1);
 
     // Canonicalize member refs (A.0 -> A0) once, up front, so that
@@ -464,6 +640,7 @@ fn inlineInvocation(
                 }
                 break :blk .{ .select = mapped };
             },
+            .consumable_call => unreachable,
         };
         try callee_rules_list.append(allocator, .{
             .inputs = inputs,
@@ -526,6 +703,7 @@ fn inlineInvocation(
                 }
                 break :blk .{ .select = mapped };
             },
+            .consumable_call => unreachable,
         };
 
         try out.append(allocator, .{
@@ -753,7 +931,7 @@ pub fn run(
     while (changed) {
         changed = false;
         for (rules) |rule| {
-            if (env.isValid(rule.dest)) continue;
+            if (rule.action != .consumable_call and env.isValid(rule.dest)) continue;
             if (!env.allValid(rule.inputs)) continue;
             std.debug.print("[rules.run] firing rule dest='{s}' inputs.len={d} action={s}\n", .{ rule.dest, rule.inputs.len, @tagName(rule.action) });
             switch (rule.action) {
@@ -780,6 +958,37 @@ pub fn run(
                             break;
                         }
                     }
+                },
+                .consumable_call => |cc| {
+                    var bag = bag_mod.Bag{ .allocator = allocator };
+                    defer bag.deinit();
+                    std.debug.print("[rules.run] consumable_call: {s}\n", .{cc.callee.name});
+                    for (cc.source_bindings) |b| {
+                        switch (env.get(b.caller)) {
+                            .valid => |v| {
+                                const sym = env.symbols.items[v];
+                                std.debug.print("[consumable] seeding '{s}' (from {s}) with symbol '{s}'\n", .{ b.callee, b.caller, sym });
+                                try bag.add(sym);
+                            },
+                            .null_value => {
+                                std.debug.print("[consumable] skipping '{s}' (from {s}): null\n", .{ b.callee, b.caller });
+                            },
+                        }
+                    }
+
+                    try shakeConsumable(&bag, cc.rules);
+
+                    for (cc.dest_bindings) |b| {
+                        if (bag.boundary.get(b.callee)) |symbol| {
+                            if (!env.isValid(b.caller)) {
+                                try env.assertSymbol(b.caller, symbol);
+                                changed = true;
+                            }
+                        }
+                    }
+                    // `changed` was set inside the loop if any wire was
+                    // actually transitioned from null to valid.
+                    std.debug.print("[rules.run] consumable_call done: boundary={d}\n", .{bag.boundary.count()});
                 },
             }
             // Only a real state transition counts as progress. A

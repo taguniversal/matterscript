@@ -32,9 +32,15 @@ pub const Bag = struct {
     /// by something else since.
     emitted: std.StringHashMapUnmanaged(usize) = .empty,
 
+    /// Resolved boundary assignments: dest name -> token symbol.
+    /// Populated by `assign` rules during shake; read by the caller
+    /// after shake to extract outputs.
+    boundary: std.StringHashMapUnmanaged([]const u8) = .empty,
+
     pub fn deinit(self: *Bag) void {
         self.tokens.deinit(self.allocator);
         self.emitted.deinit(self.allocator);
+        self.boundary.deinit(self.allocator);
     }
 
     pub fn add(self: *Bag, name: []const u8) !void {
@@ -51,13 +57,13 @@ pub const Bag = struct {
         return self.count(name) > 0;
     }
 
-    fn consume(self: *Bag, name: []const u8) void {
+    pub fn consume(self: *Bag, name: []const u8) void {
         if (self.tokens.getPtr(name)) |c| {
             if (c.* > 0) c.* -= 1;
         }
     }
 
-    fn recordEmission(self: *Bag, label: []const u8) !void {
+    pub fn recordEmission(self: *Bag, label: []const u8) !void {
         const gop = try self.emitted.getOrPut(self.allocator, label);
         if (!gop.found_existing) gop.value_ptr.* = 0;
         gop.value_ptr.* += 1;
@@ -68,7 +74,26 @@ pub const Bag = struct {
     }
 };
 
-fn allPresent(bag: *const Bag, names: []const []const u8) bool {
+pub const ConsumableRule = union(enum) {
+    /// Free-value reaction: when all `inputs` are present, consume one
+    /// of each and add each of `outputs` to the bag as free tokens.
+    /// Produced by pure-value rows like S,U,W[K,M].
+    react: struct {
+        inputs: []const []const u8,
+        outputs: []const []const u8,
+    },
+    /// Boundary assignment: when all `inputs` are present, consume one
+    /// of each and record that destination `dest` is resolved to
+    /// `symbol` (without adding `symbol` to the bag). Produced by
+    /// fill-shaped rows like K[SUM<K>].
+    assign: struct {
+        inputs: []const []const u8,
+        dest: []const u8,
+        symbol: []const u8,
+    },
+};
+
+pub fn allPresent(bag: *const Bag, names: []const []const u8) bool {
     for (names) |name| if (!bag.present(name)) return false;
     return true;
 }
@@ -146,6 +171,7 @@ pub fn shake(bag: *Bag, rules: []const ExecutableRule) !void {
                         // any test today.
                         return error.SelectNotSupportedInConsumableRuntime;
                     },
+                    .consumable_call => return error.ConsumableCallInShakeUnreachable,
                 }
             }
             changed = true;

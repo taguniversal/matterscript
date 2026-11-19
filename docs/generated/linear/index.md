@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 31  |  🟡 Partial: 5  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 143  |  Total: 180
+✅ Implemented: 32  |  🟡 Partial: 4  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 143  |  Total: 180
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-222: 2D/3D HP (Hydrophobic-Polar) Lattice Folding Model](TAG-222.md)
@@ -154,7 +154,7 @@
 - ⬜ Not started [TAG-208: Token naming conventions across runtime paths](TAG-208.md)
 - ⬜ Not started [TAG-209: Runtime testbench](TAG-209.md)
 - 🟡 Partial [TAG-210: Rule 30 Cellular Automaton](TAG-210.md)
-- 🟡 Partial [TAG-211: Example 12.18 Bundling digits into numbers](TAG-211.md)
+- ✅ Implemented [TAG-211: Example 12.18 Bundling digits into numbers](TAG-211.md)
 - ✅ Implemented [TAG-212: Runtime: execute `Statement.invoke` (cross-definition invocation), scalar only](TAG-212.md)
 - ⬜ Not started [TAG-213: Runtime/parser: bare-name bundle aliasing at invocation boundaries](TAG-213.md)
 - ⬜ Not started [TAG-214: Isolate GHDL analysis libraries per example in `verify-examples`](TAG-214.md)

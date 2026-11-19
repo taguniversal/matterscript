@@ -29,6 +29,15 @@ pub const ValidationError = error{
     /// definition's own resolution, never by nesting one definition's
     /// body inside another's.
     NestedDefinitionNotAllowed,
+
+    /// A `@runtime(consumable)` definition contains an `.invoke`
+    /// statement in its resolution. Consumable definitions are leaves
+    /// in the invocation graph: their shaking-bag model is contained
+    /// within the definition's own scope, and cross-model invocation
+    /// (bag <-> environment) is not supported. Compose at the caller:
+    /// invoke the consumable leaf and the other definitions side by
+    /// side, and feed the leaf what it needs.
+    ConsumableDefinitionContainsInvocation,
 };
 
 /// Detail for the errors above, since a Zig error can't carry a payload.
@@ -40,6 +49,18 @@ pub const Diagnostic = struct {
     /// The definition containing the problem; empty for entry lines.
     in: []const u8 = "",
 };
+
+fn checkConsumableIsLeaf(def: network.Definition, diag: *Diagnostic) ValidationError!void {
+    if (def.runtime_kind != null and def.runtime_kind.? == .consumable) {
+        for (def.resolution) |stmt| {
+            if (stmt == .invoke) {
+                diag.* = .{ .name = def.name, .in = stmt.invoke.name };
+                return error.ConsumableDefinitionContainsInvocation;
+            }
+        }
+    }
+    for (def.contained) |c| try checkConsumableIsLeaf(c, diag);
+}
 
 fn validateDefinition(allocator: std.mem.Allocator, def: network.Definition) !void {
     const rules = try value_transform.collectValueTransformRules(allocator, def);
@@ -102,7 +123,6 @@ fn checkInvocations(
     }
 }
 
-
 fn checkNames(net: network.Network, diag: *Diagnostic) ValidationError!void {
     for (net.definitions, 0..) |def, i| {
         if (def.name.len == 0) continue;
@@ -124,6 +144,7 @@ fn checkNames(net: network.Network, diag: *Diagnostic) ValidationError!void {
     for (net.definitions) |def| {
         try checkNoNestedDefinitions(def, diag);
         try checkInvocations(net.definitions, def, diag);
+        try checkConsumableIsLeaf(def, diag);
     }
 }
 
@@ -146,7 +167,10 @@ pub fn validate(allocator: std.mem.Allocator, net: network.Network) !void {
                 std.debug.print("validation error: entry invokes '{s}', which is not defined in this network\n", .{diag.name}),
             error.DuplicateDefinition => std.debug.print("validation error: definition '{s}' is defined more than once\n", .{diag.name}),
             error.NestedDefinitionNotAllowed => std.debug.print("validation error: '{s}' is nested inside '{s}'; MatterScript requires a flat definition space — move '{s}' to the top level and invoke it by name\n", .{ diag.name, diag.in, diag.name }),
-
+            error.ConsumableDefinitionContainsInvocation => std.debug.print(
+                "validation error: definition '{s}' is @runtime(consumable) but invokes '{s}'; consumable definitions are leaves — move the invocation to the caller and feed the bag's inputs from there\n",
+                .{ diag.name, diag.in },
+            ),
             else => {},
         }
         return err;
