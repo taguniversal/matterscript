@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c036d9f8.js";
+            window.path_to_searchindex_js = "../searchindex-cfb378df.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-21db14a5.js"></script>
@@ -177,6 +177,7 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="abstract-syntax-trees"><a class="header" href="#abstract-syntax-trees">Abstract Syntax Trees</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="images/ast.png" alt="AST"><span class="img-wrapper"><img src="images/ast.png" alt="AST"></span></label></p>
 <p>Every MatterScript program begins life as text.</p>
 <pre><code class="language-matterscript">FULLADD($A $B $C)(SUM&lt;&gt; CARRY&lt;&gt;)
 </code></pre>
@@ -193,10 +194,10 @@
 <p>might be represented internally as something conceptually similar to</p>
 <pre><code class="language-text">Invocation
  ├── Name: AND
- ├── Destination List
+ ├── Source List        (caller-relative: what feeds the callee)
  │     ├── $A
  │     └── $B
- └── Source List
+ └── Destination List   (caller-relative: what the callee produces)
        └── RESULT&lt;&gt;
 </code></pre>
 <p>This tree captures the meaning of the program without preserving its exact textual representation.</p>
@@ -240,7 +241,6 @@ Backend Realization
       1,0[FALSE]
       1,1[TRUE]  
 ]
-
 </code></pre>
 <hr>
 <h3 id="internal-ast-mapping"><a class="header" href="#internal-ast-mapping">Internal AST Mapping</a></h3>
@@ -298,7 +298,6 @@ Backend Realization
         },
     },
 }
-
 <span class="boring">}</span></code></pre>
 <h2 id="parsing-matterscript-expressions-ast-generation-guide"><a class="header" href="#parsing-matterscript-expressions-ast-generation-guide">Parsing MatterScript Expressions: AST Generation Guide</a></h2>
 <p>This section details how MatterScript parses complex component definitions—such as gate-level logic or truth-table lookups—into the Abstract Syntax Tree (AST).</p>
@@ -327,7 +326,7 @@ Backend Realization
 <hr>
 <h3 id="step-by-step-ast-translation"><a class="header" href="#step-by-step-ast-translation">Step-by-Step AST Translation</a></h3>
 <ul>
-<li><strong>Line Comment &amp; Metadata:</strong> The leading <code>\\//</code> acts as a metadata comment, attaching tags (e.g., <code>TAG-184</code>) to the enclosing expression node for diagnostic and resolution tracking.</li>
+<li><strong>Line Comment &amp; Metadata:</strong> The leading <code>//</code> acts as a metadata comment, attaching tags (e.g., <code>TAG-184</code>) to the enclosing expression node for diagnostic and resolution tracking.</li>
 <li><strong>Gate / Component Invocation:</strong> <code>FULLADD($A,$B,$C)(&lt;&gt; CARRYOUT&lt;&gt;)</code> is parsed into an invocation node containing positional input arguments ($A, $B,$C) and output resolution placeholders (<code>CARRYOUT&lt;&gt;</code>).</li>
 <li><strong>Truth Table Mapping (<code>[...]</code>):</strong> The bracketed block defines a truth-table or state-transition matrix. The parser maps input tuples ($A, $B,$CI) to output bindings ($SUM,$CO).</li>
 <li><strong>Resolution Rules:</strong> Each line (e.g., <code>S,U,W[SUM&lt;S&gt; CO&lt;W&gt;]</code>) is parsed into individual evaluation clauses that feed directly into the <code>SourceFill</code> struct’s <code>parsed_expr</code> field.</li>
@@ -345,13 +344,98 @@ Backend Realization
     /// Parsed expression when the fill contains an unresolved invocation.
     parsed_expr: ?*const Expr = null,
 };
-
 <span class="boring">}</span></code></pre>
 <blockquote>
 <p><strong>Note:</strong> Ensure that any custom parser extensions handling transformation rules preserve the table row ordering, as downstream code generators rely on sequential pattern matching for hardware layout synthesis.</p>
 </blockquote>
 <hr>
 <p>This unified AST representation allows evaluators to process truth-table rows uniformly alongside standard nested hardware blocks while eliminating boilerplate component naming in dense logic tables.</p>
+<hr>
+<h2 id="arbitration-groups"><a class="header" href="#arbitration-groups">Arbitration Groups</a></h2>
+<p>A <strong>group</strong> is an argument position holding several places rather than one. MatterScript has three group kinds, distinguished by their delimiter:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Delimiter</th><th>Kind</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>[ ... ]</code></td><td><code>bundle</code></td><td>All members are simultaneously present; the group as a whole carries a coherent multi-part value.</td></tr>
+<tr><td><code>{ ... }</code></td><td><code>mutex</code></td><td>Exactly one member is present at a time; the group carries whichever member is active.</td></tr>
+<tr><td><code>{{...}}</code></td><td><code>arbitration</code></td><td>Zero, one, or several members may be present; the runtime picks one to act as the group’s single value.</td></tr>
+</tbody>
+</table>
+</div>
+<p>An arbitration group in a <strong>source</strong> (invocation-input) position expresses the book’s arbitration semantics: <em>“If all the arbitrated places have content simultaneously, the places will compete for the privilege of flowing through the arbiter. It cannot be predetermined which content will flow.”</em></p>
+<p>The syntax is:</p>
+<pre><code class="language-matterscript">Arbiter({{$place1 $place2}})(next&lt;&gt;)
+</code></pre>
+<p>Under the AST’s source/destination convention (which is <strong>callee-relative</strong>: <code>Invocation.sources</code> holds what the callee receives, <code>Invocation.destinations</code> holds what the callee produces), the arbitration group is in the invocation’s source list — that is, the caller is offering two candidate places to feed the callee’s single input port.</p>
+<h3 id="ast-shape"><a class="header" href="#ast-shape">AST Shape</a></h3>
+<p>The parser produces:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>Statement{ .invoke = Invocation{
+    .name = "Arbiter",
+    .sources = &amp;.{
+        Arg{
+            .kind = .group,
+            .group = &amp;.PlaceGroup{
+                .kind = .arbitration,
+                .places = &amp;.{
+                    Arg{ .kind = .place, .name = "place1", .direction = .destination },
+                    Arg{ .kind = .place, .name = "place2", .direction = .destination },
+                },
+            },
+        },
+    },
+    .destinations = &amp;.{
+        Arg{ .kind = .place, .name = "next", .direction = .source },
+    },
+} }
+<span class="boring">}</span></code></pre>
+<p>Two things about this shape are load-bearing downstream:</p>
+<ul>
+<li><strong><code>.group.kind == .arbitration</code></strong> distinguishes the group from a bundle or mutex. Only arbitration groups are collapsed to a single input value at the callee boundary; bundle and mutex groups bind member-wise.</li>
+<li><strong>Each member carries <code>.direction = .destination</code></strong> because <code>$placeN</code> is a reference form (the caller names wires that already exist in its scope). This is the same direction marker that <code>bindArgument</code> reads when partitioning source-side and destination-side bindings.</li>
+</ul>
+<p>A parser test asserts exactly this shape, so a change to <code>parseGroup</code> or the direction-marker work that altered arbitration group parsing would fail loudly rather than silently breaking the runtime boundary.</p>
+<hr>
+<h3 id="formals-and-actuals"><a class="header" href="#formals-and-actuals">Formals and Actuals</a></h3>
+<p>Every invocation is a correspondence between two lists:</p>
+<ul>
+<li>
+<p>The <strong>formal</strong> side is the callee’s declared ports — the parameter names in the callee’s definition header. For</p>
+<pre><code class="language-matterscript">Arbiter[(placeB&lt;&gt;)($pass) ... ]
+</code></pre>
+<p>the formals are <code>placeB</code> (source port) and <code>pass</code> (destination port).</p>
+</li>
+<li>
+<p>The <strong>actual</strong> side is what the caller wrote at the invocation site. For</p>
+<pre><code class="language-matterscript">Arbiter({{$place1 $place2}})(next&lt;&gt;)
+</code></pre>
+<p>the actuals are <code>{{$place1 $place2}}</code> (the arbitration group) and <code>next&lt;&gt;</code> (the destination wire).</p>
+</li>
+</ul>
+<p>Binding pairs formals with actuals <strong>positionally</strong>. Formal 0 (<code>placeB</code>) ↔ actual 0 (<code>{{$place1 $place2}}</code>); formal 1 (<code>pass</code>) ↔ actual 1 (<code>next&lt;&gt;</code>). Names on the two sides do not need to match. Position is what carries the correspondence across the boundary.</p>
+<p>For an ordinary scalar actual, the binding is one formal to one caller wire, and the AST survives unchanged into the association graph — the callee’s rules reference the formal, the binding’s <code>caller</code> field names the actual wire, and the rule-rewriting pass (<code>mapName</code>) substitutes the actual name for the formal wherever the callee’s body mentions the formal.</p>
+<p>For an <strong>arbitration actual</strong>, the correspondence is one formal to N caller wires, and something has to reconcile that. The binding layer does this by synthesizing a <strong>virtual wire</strong> whose name is <code>arbiter{N}_{formal_name}</code> (where N is the invocation index). The binding records the arbitration members alongside the virtual wire:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>Binding{
+    .callee = "placeB",
+    .caller = "arbiter0_placeB",  // synthesized virtual wire
+    .members = &amp;.{ "place1", "place2" },
+}
+<span class="boring">}</span></code></pre>
+<p>Downstream, the rule-rewriting pass substitutes <code>arbiter0_placeB</code> wherever the callee’s body references <code>placeB</code> — so the callee’s rules, once inlined into the caller, are expressed in terms of the virtual wire. The virtual wire is not a caller-scope name; it exists only between the arbitration mechanism and the callee’s rules. Before any rule that touches the virtual wire can fire, the runtime resolves the arbitration by copying the value of the first valid member onto the virtual wire. From that point on, the callee’s rules proceed exactly as if the formal port carried that value.</p>
+<p>This is why arbitration is a <strong>boundary</strong> mechanism, not an execution-model mechanism: the callee never learns that arbitration happened. It sees a value on its formal port, exactly as it would for an ordinary scalar actual. The arbitration resolution, the virtual wire, and the member set are all artifacts of the caller’s invocation site, local to the boundary.</p>
+<hr>
+<h3 id="what-arbitration-does-not-do"><a class="header" href="#what-arbitration-does-not-do">What Arbitration Does <em>Not</em> Do</a></h3>
+<ul>
+<li>It does not interact with the callee’s runtime model. A <code>@runtime(consumable)</code> callee and a default (persistent-signal) callee both receive the arbitration result on their formal port identically.</li>
+<li>It does not appear on the destination side. An arbitration group in <code>Invocation.destinations</code> is rejected with <code>ArbitrationOnDestinationSide</code> — destinations are outputs, not a competition, and multiple destination members would need a fan-out mechanism, not arbitration.</li>
+<li>It does not bind against group formals. A callee whose port is itself declared as a group cannot receive an arbitration group as its actual; the two shapes don’t compose (<code>ArbitrationAgainstGroupFormal</code>).</li>
+</ul>
 <hr>
 <h2 id="a-stable-foundation"><a class="header" href="#a-stable-foundation">A Stable Foundation</a></h2>
 <p>Almost every later stage of the compiler builds upon the AST.</p>
