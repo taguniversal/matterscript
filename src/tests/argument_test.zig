@@ -5,6 +5,7 @@ const matterscript = @import("matterscript");
 const parser = matterscript.ipl_parser;
 const network = matterscript.network;
 const arguments = matterscript.arguments;
+const statements = matterscript.statements;
 
 test "readNumericLiteral parsing and errors" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
@@ -151,4 +152,42 @@ test "parseArg: value<K> is a source place with symbolic content" {
     var p = parser.core.Parser.init(testing.allocator, "value<K>");
     const arg = try arguments.parseArg(&p);
     try testing.expectEqualStrings("K", arg.content.?);
+}
+
+test "parseArg: arbitration group" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    var p = parser.core.Parser.init(a, "{{$place1 $place2}}");
+    const arg = try arguments.parseArg(&p);
+
+    try testing.expectEqual(network.ArgKind.group, arg.kind);
+    try testing.expect(arg.group != null);
+    const grp = arg.group.?;
+    try testing.expectEqual(network.PlaceGroupKind.arbitration, grp.kind);
+    try testing.expectEqual(@as(usize, 2), grp.places.len);
+    try testing.expectEqualStrings("place1", grp.places[0].name);
+    try testing.expectEqual(@as(?network.PlaceKind, .destination), grp.places[0].direction);
+    try testing.expectEqualStrings("place2", grp.places[1].name);
+    try testing.expectEqual(@as(?network.PlaceKind, .destination), grp.places[1].direction);
+}
+
+test "parseInvocation: arbitration group in source list" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    var p = parser.core.Parser.init(a, "({{$place1 $place2}})(next<>)");
+    const stmt = try statements.parseInvocation(&p, null, "Arbiter", null);
+
+    const inv = stmt.invoke;
+    try testing.expectEqual(@as(usize, 1), inv.sources.len);
+    const src = inv.sources[0];
+    try testing.expectEqual(network.ArgKind.group, src.kind);
+    try testing.expectEqual(network.PlaceGroupKind.arbitration, src.group.?.kind);
+    try testing.expectEqual(@as(usize, 2), src.group.?.places.len);
+
+    try testing.expectEqual(@as(usize, 1), inv.destinations.len);
+    try testing.expectEqualStrings("next", inv.destinations[0].name);
 }

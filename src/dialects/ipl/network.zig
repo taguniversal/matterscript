@@ -182,6 +182,23 @@ pub const PlaceGroup = struct {
     places: []const Arg, // Recursive / composite support
 };
 
+/// A formal-to-actual correspondence for one invocation argument.
+/// For an ordinary scalar binding, `caller` is the caller-scope
+/// wire name and `members` is empty. For an arbitration binding,
+/// `caller` is a synthesized virtual wire name (arbiter_N_formal)
+/// and `members` holds the caller-scope wires that compete to feed
+/// it; at fire time, whichever member is valid is copied to the
+/// virtual wire.
+pub const Binding = struct {
+    callee: []const u8,
+    caller: []const u8,
+    /// Caller-scope places competing for this formal. Empty for
+    /// ordinary bindings. When non-empty, `caller` is the synthesized
+    /// virtual wire's name, and the runtime must resolve one member
+    /// onto it before the rule fires.
+    members: []const []const u8 = &.{},
+};
+
 pub const Directive = struct {
     name: []const u8,
     args: []const u8, // raw text; empty if this directive used {} instead of ()

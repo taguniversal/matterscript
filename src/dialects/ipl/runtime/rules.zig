@@ -15,6 +15,7 @@ const environment = @import("environment.zig");
 const lookup = @import("../vhdl/lookup.zig");
 const sanitizer = @import("../vhdl/sanitizer.zig");
 const bag_mod = @import("bag.zig");
+pub const Binding = network.Binding;
 
 const max_invocation_depth = 32;
 
@@ -60,6 +61,10 @@ pub const ExecutableRule = struct {
     inputs: []const []const u8, // all must be valid for this rule to fire
     dest: []const u8,
     action: RuleAction,
+    /// Arbitration bindings for this rule, if any. When present,
+    /// each entry's `caller` is a virtual wire that must be populated
+    /// from the first valid member of `members` before the rule fires.
+    arbitrations: []const Binding = &.{},
 };
 
 /// A single symbol in a rule's pattern. In "S,U,W", each of the three
@@ -439,9 +444,6 @@ fn buildSelectTable(allocator: std.mem.Allocator, def: network.Definition) ![]co
     return entries.toOwnedSlice(allocator);
 }
 
-// Build Rules Helpers
-const Binding = struct { callee: []const u8, caller: []const u8 };
-
 fn findDefinition(defs: []const network.Definition, name: []const u8) ?network.Definition {
     for (defs) |d| if (std.mem.eql(u8, d.name, name)) return d;
     return null;
@@ -500,21 +502,53 @@ fn checkInvocable(callee: network.Definition, rules: []const ExecutableRule, nam
     return error.ValueKeyedInvocationNotSupported;
 }
 
-/// Binds one caller argument to one callee port. A plain place binds
-/// 1:1. A group argument — explicit bracket syntax at the call site,
-/// e.g. {$Q1 $Q2 $Q3 $Q4} — requires the callee's own declared port in
-/// that position to ALSO be a group with the same member count, and
-/// binds each member positionally. This is TAG-213 slice 2a: explicit,
-/// fully-spelled-out groups only. A bare name aliasing a callee's group
-/// port with no brackets at the call site (4BITADD($A $B $CARRYIN)) is
-/// the harder, separate mechanism — still falls through to scalarPlace
-/// below and fails loudly rather than silently binding wrong.
 fn bindArgument(
     allocator: std.mem.Allocator,
     bindings: *std.ArrayListUnmanaged(Binding),
     formal: network.Arg,
     actual: network.Arg,
+    /// Index of the invocation being bound, for synthesizing unique
+    /// virtual wire names. Currently unused for non-arbitration
+    /// bindings; used only when `actual` is an arbitration group.
+    invocation_index: usize,
+    /// Formal position (source vs. destination) — an arbitration
+    /// group is only meaningful on the source side. If an
+    /// arbitration appears in `inv.destinations`, error.
+    is_source_side: bool,
 ) !void {
+    // Arbitration group bound to a scalar formal: synthesize a
+    // virtual wire and record the members.
+    if (actual.kind == .group and actual.group != null and
+        actual.group.?.kind == .arbitration)
+    {
+        if (!is_source_side) return error.ArbitrationOnDestinationSide;
+        if (formal.kind == .group) return error.ArbitrationAgainstGroupFormal;
+
+        const formal_name = try scalarPlace(formal);
+        const virtual = try std.fmt.allocPrint(
+            allocator,
+            "arbiter{d}_{s}",
+            .{ invocation_index, formal_name },
+        );
+        defer allocator.free(virtual);
+
+        var members: std.ArrayListUnmanaged([]const u8) = .empty;
+        for (actual.group.?.places) |m| {
+            try members.append(allocator, try sanitizer.translateMemberRef(
+                allocator,
+                try scalarPlace(m),
+            ));
+        }
+
+        try bindings.append(allocator, .{
+            .callee = formal_name,
+            .caller = try allocator.dupe(u8, virtual),
+            .members = try members.toOwnedSlice(allocator),
+        });
+        return;
+    }
+
+    // Existing group-vs-group and scalar-vs-scalar cases unchanged.
     if (formal.kind == .group and actual.kind == .group) {
         const formal_group = formal.group orelse return error.InvocationArityMismatch;
         const actual_group = actual.group orelse return error.InvocationArityMismatch;
@@ -539,6 +573,7 @@ fn inlineInvocation(
     inv: network.Invocation,
     index: usize,
     definitions: []const network.Definition,
+    bindings: *std.ArrayListUnmanaged(Binding), // ← pointer, mutable
     depth: usize,
 ) anyerror!void {
     if (build_options.verbose_dumps) {
@@ -567,23 +602,49 @@ fn inlineInvocation(
     if (inv.sources.len != callee.sources.len or inv.destinations.len != callee.destinations.len)
         return error.InvocationArityMismatch;
 
+    // Bind once, shared by both branches below. Every formal-to-actual
+    // correspondence for this invocation is here; the consumable
+    // branch partitions it, the non-consumable branch rewrites rules
+    // through it.
+    for (inv.sources, callee.sources) |actual, formal| {
+        try bindArgument(allocator, bindings, formal, actual, index, true);
+    }
+    for (inv.destinations, callee.destinations) |actual, formal| {
+        try bindArgument(allocator, bindings, formal, actual, index, false);
+    }
+
     if (callee.runtime_kind != null and callee.runtime_kind.? == .consumable) {
-        var source_bindings: std.ArrayListUnmanaged(Binding) = .empty;
-        for (inv.sources, callee.sources) |actual, formal| {
-            try bindArgument(allocator, &source_bindings, formal, actual);
-        }
-        var dest_bindings: std.ArrayListUnmanaged(Binding) = .empty;
-        for (inv.destinations, callee.destinations) |actual, formal| {
-            try bindArgument(allocator, &dest_bindings, formal, actual);
-        }
+        // Boundary rule fires when all the caller-side source wires
+        // it reads from are valid. Source-side bindings are the
+        // entries whose `caller` is a caller-scope wire the boundary
+        // must wait on; destination-side bindings are outputs, not
+        // inputs to wait for.
+        //
+        // We track which bindings came from sources vs destinations by
+        // position: `inv.sources.len` source bindings are appended
+        // first, then `inv.destinations.len` dest bindings. (This
+        // works because neither arbitration nor group-vs-group splits
+        // entries unevenly — arity is enforced above, and group-vs-
+        // group binds pairwise.)
+        const n_sources = inv.sources.len;
+        const source_bindings = bindings.items[0..n_sources];
+        const dest_bindings = bindings.items[n_sources..];
 
         // Boundary rule fires when all the caller-side source wires it
         // reads from are valid. Empty inputs would fire immediately on
         // a still-null environment and seed an empty bag, stalling the
         // callee without any signal to the caller's fixed-point loop.
         var caller_source_names: std.ArrayListUnmanaged([]const u8) = .empty;
-        for (source_bindings.items) |b| {
-            try caller_source_names.append(allocator, b.caller);
+        for (source_bindings) |b| {
+            // Arbitration entries put the virtual wire in `caller`; the
+            // boundary rule waits on the virtual wire's members, not
+            // on the virtual wire itself (which is populated by
+            // resolveArbitrations at fire time).
+            if (b.members.len > 0) {
+                for (b.members) |m| try caller_source_names.append(allocator, m);
+            } else {
+                try caller_source_names.append(allocator, b.caller);
+            }
         }
 
         const callee_rules = try buildConsumableRules(allocator, callee);
@@ -593,16 +654,12 @@ fn inlineInvocation(
             .action = .{ .consumable_call = .{
                 .callee = callee,
                 .rules = callee_rules,
-                .source_bindings = try source_bindings.toOwnedSlice(allocator),
-                .dest_bindings = try dest_bindings.toOwnedSlice(allocator),
+                .source_bindings = try allocator.dupe(Binding, source_bindings),
+                .dest_bindings = try allocator.dupe(Binding, dest_bindings),
             } },
         });
         return;
     }
-
-    var bindings: std.ArrayListUnmanaged(Binding) = .empty;
-    for (inv.sources, callee.sources) |actual, formal| try bindArgument(allocator, &bindings, formal, actual);
-    for (inv.destinations, callee.destinations) |actual, formal| try bindArgument(allocator, &bindings, formal, actual);
 
     if (build_options.verbose_dumps) {
         std.debug.print("[inline] bindings ({d}):\n", .{bindings.items.len});
@@ -842,7 +899,13 @@ fn buildRulesAtDepth(
     var invoke_index: usize = 0;
     for (def.resolution) |stmt| {
         if (stmt != .invoke) continue;
-        try inlineInvocation(allocator, &rules, stmt.invoke, invoke_index, definitions, depth);
+        var bindings: std.ArrayListUnmanaged(Binding) = .empty;
+        errdefer bindings.deinit(allocator);
+        try inlineInvocation(allocator, &rules, stmt.invoke, invoke_index, definitions, &bindings, depth);
+        // After inlineInvocation returns, `bindings` is no longer needed;
+        // its contents were either copied into `ConsumableCall` or used
+        // transiently by the non-consumable path. Free the list.
+        bindings.deinit(allocator);
         invoke_index += 1;
     }
 
@@ -921,6 +984,32 @@ pub const CompletionReport = struct {
     stuck: []const StuckPlace, // empty when complete
 };
 
+/// Resolves each arbitration binding on a rule by copying the value
+/// of the first valid caller-scope member onto the binding's
+/// synthesized virtual wire. Returns true if at least one
+/// arbitration was resolved (i.e., at least one virtual wire was
+/// newly populated); false if all arbitrations found no valid
+/// member, meaning the rule cannot fire yet.
+fn resolveArbitrations(
+    env: *Environment,
+    bindings: []const Binding,
+) !bool {
+    var resolved_any = false;
+    for (bindings) |b| {
+        if (b.members.len == 0) continue; // not an arbitration binding
+        if (env.isValid(b.caller)) continue; // virtual wire already populated this pass
+
+        for (b.members) |member| {
+            if (env.isValid(member)) {
+                try env.copyFrom(b.caller, member);
+                resolved_any = true;
+                break;
+            }
+        }
+    }
+    return resolved_any;
+}
+
 pub fn run(
     allocator: std.mem.Allocator,
     env: *Environment,
@@ -932,8 +1021,14 @@ pub fn run(
         changed = false;
         for (rules) |rule| {
             if (rule.action != .consumable_call and env.isValid(rule.dest)) continue;
+            if (rule.arbitrations.len > 0) {
+                if (try resolveArbitrations(env, rule.arbitrations)) {
+                    changed = true;
+                }
+            }
             if (!env.allValid(rule.inputs)) continue;
             std.debug.print("[rules.run] firing rule dest='{s}' inputs.len={d} action={s}\n", .{ rule.dest, rule.inputs.len, @tagName(rule.action) });
+
             switch (rule.action) {
                 .literal => |v| try env.assertLiteral(rule.dest, v),
                 .copy_from => |src| try env.copyFrom(rule.dest, src),

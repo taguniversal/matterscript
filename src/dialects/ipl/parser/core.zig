@@ -27,6 +27,9 @@ pub const ParseError = error{
     UnexpectedDestinationListInFillInvocation,
     AmbiguousContainedDestination,
     ConsumableCallInShakeUnreachable,
+    ArbitrationOnDestinationSide,
+    ArbitrationAgainstGroupFormal,
+    NoValidArbitrationMember,
 };
 
 pub const Parser = struct {
