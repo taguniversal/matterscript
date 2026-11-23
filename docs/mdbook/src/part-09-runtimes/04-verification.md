@@ -1,3 +1,0 @@
-# Verification
-
-*Drafting in progress...*

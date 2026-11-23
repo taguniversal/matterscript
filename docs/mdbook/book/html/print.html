@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-cfb378df.js";
+            window.path_to_searchindex_js = "searchindex-9e81c954.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-21db14a5.js"></script>
+        <script src="toc-4ad1adba.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -11972,6 +11972,211 @@ end entity OR180;
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="verification"><a class="header" href="#verification">Verification</a></h1>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="verification-runtime"><a class="header" href="#verification-runtime">Verification Runtime</a></h1>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="part-09-runtimes/images/verification.png" alt="Verification"><span class="img-wrapper"><img src="part-09-runtimes/images/verification.png" alt="Verification"></span></label></p>
+<p>The verification runtime executes a MatterScript network against a testbench file and reports pass/fail. It is the harness you use to check that a definition or entry produces the expected symbols for a given sequence of input wavefronts, before any VHDL is generated or simulated.</p>
+<p>The runtime is <strong>not</strong> the emitter. It executes the parsed network directly in a Zig program. GHDL simulation and the VHDL it produces are a separate verification step; the runtime answers “does this network compute the right values?” without requiring a VHDL toolchain.</p>
+<hr>
+<h2 id="testbench-file-format"><a class="header" href="#testbench-file-format">Testbench File Format</a></h2>
+<p>A testbench file (<code>.tb.vec</code>) describes the inputs to feed and the outputs to expect. It pairs with an <code>.ms.ipl</code> file that defines the network.</p>
+<pre><code class="language-text">@dut(NAME)
+@vectors(A0,A1,A2,A3,B0,B1,B2,B3,CIN : SUM0,SUM1,SUM2,SUM3,COUT)
+@mode(wavefront)
+
+0,0,0,0, 0,0,0,0, 0 : 0,0,0,0,0
+1,0,0,0, 0,0,0,0, 0 : 1,0,0,0,0
+</code></pre>
+<h3 id="directives"><a class="header" href="#directives">Directives</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Directive</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>@dut(NAME)</code></td><td>The entry invocation to exercise. Must name an entry, not a definition alone (see <a href="#entry-wrappers">Entry Wrappers</a>).</td></tr>
+<tr><td><code>@vectors(in : out)</code></td><td>Column names for input and output wires, comma-separated. Names must match the entry invocation’s ports.</td></tr>
+<tr><td><code>@mode(wavefront)</code></td><td>One presentation per input row; the testbench feeds the row’s inputs, waits for the DUT to settle, and observes the outputs.</td></tr>
+<tr><td><code>@mode(stall)</code></td><td>The presentation is expected to stall (not complete); used to verify that a given input does <strong>not</strong> trigger the DUT.</td></tr>
+<tr><td><code>@stream()</code></td><td>The vector is a stream across rows: a <code>_</code> in an input column means “this wire has no new token this wavefront; hold the previous value.”</td></tr>
+<tr><td><code>@carry(in=out)</code></td><td>When the input column <code>in</code> receives <code>_</code>, read the last observed value of output column <code>out</code>. Enables state-machine and feedback patterns. Requires <code>@stream()</code>.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="row-notation"><a class="header" href="#row-notation">Row notation</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Cell</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>A token name (e.g. <code>K</code>, <code>S1</code>, <code>0</code>)</td><td>The wire carries this symbol on this row.</td></tr>
+<tr><td><code>null</code></td><td>The wire carries no value on this row.</td></tr>
+<tr><td><code>_</code></td><td><strong>Input only.</strong> “No new token on this wire this row.” Under <code>@stream()</code>, the wire holds its previous value.</td></tr>
+<tr><td><code>-</code></td><td><strong>Output only.</strong> Do not assert this column for this row.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="output-comparison"><a class="header" href="#output-comparison">Output comparison</a></h3>
+<p>Each row is compared against the expected outputs. A row passes if every non-<code>-</code> output column matches the value the DUT produced. A row fails if:</p>
+<ul>
+<li>The DUT stalled when a completion was expected.</li>
+<li>The DUT completed when a stall was expected (i.e. <code>!stall</code> row).</li>
+<li>A column produced the wrong symbol.</li>
+<li>A column never became valid.</li>
+</ul>
+<hr>
+<h2 id="execution-model"><a class="header" href="#execution-model">Execution Model</a></h2>
+<p>MatterScript supports two execution models for a definition:</p>
+<ul>
+<li><strong>Environment</strong> (persistent-signal): the default. A wire becomes valid when a resolving rule fires and stays valid. Used for hardware-style signals.</li>
+<li><strong>Shaking bag</strong> (<code>@runtime(consumable)</code>): a multiset of free tokens. Rules consume some tokens and produce others. The bag settles when no rule can fire.</li>
+</ul>
+<p>The runtime dispatches on the definition’s <code>@runtime</code> tag. There is no way to combine both models within a single definition; a definition is one or the other.</p>
+<h3 id="boundary-crossings"><a class="header" href="#boundary-crossings">Boundary crossings</a></h3>
+<p>When a non-consumable definition invokes a <code>@runtime(consumable)</code> callee, the runtime crosses the boundary:</p>
+<ol>
+<li><strong>Seed</strong>: the caller’s values for the callee’s source formals are copied into a fresh bag as free tokens.</li>
+<li><strong>Shake</strong>: the bag is run to a fixed point against the callee’s consumable rules.</li>
+<li><strong>Extract</strong>: each destination the bag resolved (its “boundary assignment”) is asserted on the caller’s corresponding destination wire.</li>
+</ol>
+<p>The bag is internal to the invocation. It does not persist across invocations, and its token set is not visible to the caller.</p>
+<h3 id="consumable-callees-are-leaves"><a class="header" href="#consumable-callees-are-leaves">Consumable callees are leaves</a></h3>
+<p>A <code>@runtime(consumable)</code> definition may not itself invoke other definitions. The runtime rejects a consumable definition containing an <code>.invoke</code> statement at parse time. To compose a bag-based definition with other logic, use the caller: invoke the consumable leaf and the other definitions side by side, and feed the leaf its inputs.</p>
+<p>This is a deliberate limit. It keeps the bag model simple (bags don’t nest) and the boundary in one place. If your design needs a bag to call something, the design is telling you to move that call to the caller.</p>
+<hr>
+<h2 id="entry-wrappers"><a class="header" href="#entry-wrappers">Entry Wrappers</a></h2>
+<p>A testbench’s <code>@dut</code> names an <strong>entry invocation</strong>, not a definition. The entry invocation is the top-level statement that wires a definition to concrete ports:</p>
+<pre><code class="language-matterscript">MY_ENTRY($a $b)(result&lt;&gt;)
+</code></pre>
+<p>That’s the thing <code>@dut</code> should refer to. An entry invocation for a definition called <code>MY_DEF</code> typically uses the same name or a <code>_TEST</code> suffix, depending on what the file looks like.</p>
+<h3 id="why-entries-not-definitions"><a class="header" href="#why-entries-not-definitions">Why entries, not definitions</a></h3>
+<p>A definition declares its interface: ports with names, group kinds, and directions. An invocation supplies the corresponding actuals: caller-scope wires, bundle expansions, arbitration groups. The invocation is where those bindings live. A testbench that names a definition directly has no bindings — it works only when the definition’s ports happen to coincide 1:1 with the vector’s columns, which is not the general case.</p>
+<p>Concretely:</p>
+<ul>
+<li>Definitions with <strong>bundle formals</strong> (<code>[A&lt;&gt; 0..3]</code>) need an invocation that supplies a bundle actual (<code>[$A0 $A1 $A2 $A3]</code>). A bare definition <code>@dut</code> has no way to express that binding.</li>
+<li>Definitions with <strong>arbitration groups</strong> in an invocation source need an invocation to hold the group. A definition alone can’t.</li>
+<li>Every <strong>emitted <code>_network</code> entity</strong> corresponds to an entry invocation, not a definition. Testing the entry is testing what will actually be simulated.</li>
+</ul>
+<h3 id="the-wrapper-pattern"><a class="header" href="#the-wrapper-pattern">The wrapper pattern</a></h3>
+<p>For a definition that takes <code>(a&lt;&gt; b&lt;&gt;)(result&lt;&gt;)</code>, the wrapper is:</p>
+<pre><code class="language-matterscript">MY_DEF_TEST($a $b)(result&lt;&gt;)
+MY_DEF_TEST[($a $b)(result&lt;&gt;)
+  MY_DEF($a $b)(result&lt;&gt;)
+  :
+]
+</code></pre>
+<p>The wrapper’s ports mirror the vector’s columns. The wrapper’s body invokes the real definition with the corresponding actuals. The vector’s <code>@dut(MY_DEF_TEST)</code> refers to the wrapper, not the underlying definition.</p>
+<h3 id="entry-wrappers-for-bundle-shaped-definitions"><a class="header" href="#entry-wrappers-for-bundle-shaped-definitions">Entry wrappers for bundle-shaped definitions</a></h3>
+<p>When the definition’s formals are bundles, the wrapper’s formals are the scalar members, and the wrapper’s body bundles them back:</p>
+<pre><code class="language-matterscript">ADDER4_TEST($A0 $A1 $A2 $A3 $B0 $B1 $B2 $B3 $CIN)(SUM0&lt;&gt; SUM1&lt;&gt; SUM2&lt;&gt; SUM3&lt;&gt; COUT&lt;&gt;)
+ADDER4_TEST[($A0 $A1 $A2 $A3 $B0 $B1 $B2 $B3 $CIN)(SUM0&lt;&gt; SUM1&lt;&gt; SUM2&lt;&gt; SUM3&lt;&gt; COUT&lt;&gt;)
+  ADDER4([$A0 $A1 $A2 $A3] [$B0 $B1 $B2 $B3] $CIN)([SUM0&lt;&gt; SUM1&lt;&gt; SUM2&lt;&gt; SUM3&lt;&gt;] COUT&lt;&gt;)
+  :
+]
+</code></pre>
+<p>The vector’s columns are <code>A0,A1,A2,A3,B0,B1,B2,B3,CIN : SUM0,SUM1,SUM2,SUM3,COUT</code>, matching the wrapper’s ports 1:1. The bundle expansion happens in the wrapper’s body, where the language’s bundle syntax expresses it directly.</p>
+<p>This is why the wrapper requirement exists: bundles and arbitration are invocation-level concepts, and a definition alone has no invocation to hold them.</p>
+<h3 id="entry-wrappers-for-arbitration-group-definitions"><a class="header" href="#entry-wrappers-for-arbitration-group-definitions">Entry wrappers for arbitration-group definitions</a></h3>
+<p>If a definition is invoked with an arbitration group (<code>{{$p1 $p2}}</code>), the wrapper exposes the group members as its own ports:</p>
+<pre><code class="language-matterscript">ARBITER_TEST($place1 $place2)(next&lt;&gt;)
+ARBITER_TEST[($place1 $place2)(next&lt;&gt;)
+  Arbiter({{$place1 $place2}})(next&lt;&gt;)
+  :
+]
+</code></pre>
+<p>The vector’s columns are <code>place1,place2 : next</code>. The arbitration is expressed at the invocation inside the wrapper, where the language syntax is available.</p>
+<hr>
+<h2 id="arbitration-1"><a class="header" href="#arbitration-1">Arbitration</a></h2>
+<p><code>{{$a $b}}</code> in an invocation’s source list declares an <strong>arbitration group</strong>: N caller-scope places competing to feed a single callee port.</p>
+<ul>
+<li><strong>Zero members valid</strong>: the group carries no value; the callee’s port stays unresolved.</li>
+<li><strong>One member valid</strong>: that member’s value is the group’s value.</li>
+<li><strong>Multiple members valid</strong>: the group’s value is the first valid member in source order.</li>
+</ul>
+<p>The runtime picks one winner per wavefront, consumes the winner’s value into the callee’s port, and advances every member’s position in lockstep. If multiple members carry tokens on the same wavefront, only the first one’s token reaches the callee; the others are consumed and not retried.</p>
+<h3 id="current-limits"><a class="header" href="#current-limits">Current limits</a></h3>
+<ul>
+<li><strong>Nondeterministic selection</strong> is not implemented. The winner is always the first valid member in source order.</li>
+<li><strong>Persistence across wavefronts</strong> (“losers wait their turn”) is not implemented in the vector model. Each vector row is one independent wavefront; a member that lost on row <em>N</em> does not get another chance on row <em>N+1</em> unless the vector explicitly feeds it again.</li>
+</ul>
+<p>These limits are documented so users don’t build on behavior that isn’t guaranteed. When the persistence semantics are implemented, the vector format will gain a way to express “this member remains valid for the next wavefront,” and the doc will grow a section on it.</p>
+<hr>
+<h2 id="diagnostics"><a class="header" href="#diagnostics">Diagnostics</a></h2>
+<p>Runtime errors are reported per row. Common messages and their causes:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Message</th><th>Cause</th></tr>
+</thead>
+<tbody>
+<tr><td><code>BAD TB: input column 'X' is not a source place of Y</code></td><td>The vector declares an input column that the entry invocation doesn’t provide. Add a port to the entry wrapper, or rename the column.</td></tr>
+<tr><td><code>BAD TB: output column 'X' is not a destination place of Y</code></td><td>Same, for outputs.</td></tr>
+<tr><td><code>BAD TB: no matching entry invocation for @dut</code></td><td>The named <code>@dut</code> has no entry invocation. Add an entry wrapper (see above).</td></tr>
+<tr><td><code>BAD TB: no matching definition for @dut</code></td><td>The named <code>@dut</code> has no definition at all — likely a typo in the network.</td></tr>
+<tr><td><code>line N (label): stalled, the wavefront never completed</code></td><td>The DUT never resolved all its destinations. Either the inputs are insufficient (a wire that should feed something is null), or the DUT’s rules don’t produce the expected values for this combination.</td></tr>
+<tr><td><code>line N (label): expected stall, but the wavefront completed</code></td><td>A <code>!stall</code> row (<code>@mode(stall)</code> or equivalent) expected the DUT to leave destinations unresolved, but it resolved them.</td></tr>
+<tr><td><code>line N (label): COL got WANT, want GOT</code></td><td>A destination produced the wrong symbol.</td></tr>
+<tr><td><code>line N (label): COL never valid</code></td><td>A destination never became valid; the DUT stalled on it.</td></tr>
+<tr><td><code>line N (label): runtime error ValueKeyedInvocationNotSupported</code></td><td>A rule references a wire that is neither a source port nor produced by any rule. Usually a binding error in the DUT or the entry wrapper.</td></tr>
+<tr><td><code>line N (label): runtime error ConflictingBoundaryAssignment</code></td><td>Two rules in a consumable callee resolved the same destination to different symbols. The callee’s rule table is contradictory for this input combination.</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="limitations-and-open-work"><a class="header" href="#limitations-and-open-work">Limitations and Open Work</a></h2>
+<p>The runtime does <strong>not</strong> currently:</p>
+<ul>
+<li><strong>Execute <code>@generate</code> domains.</strong> Geometry generation and neighborhood rules are parsed but not executed.</li>
+<li><strong>Execute geometry primitives</strong> (<code>point</code>, <code>edge</code>, <code>loop</code>, <code>face</code>). They are preserved in the AST but not evaluated.</li>
+<li><strong>Emit VHDL for arbitration groups.</strong> The VHDL emitter currently stubs arbitration inputs to <code>null_value</code> and does not instantiate an arbiter primitive. Testing an arbitration shape via the runtime does not imply the emitted VHDL works; that’s a separate piece of work.</li>
+<li><strong>Emit VHDL for bundle wrappers.</strong> The entry wrapper pattern runs in the runtime, but the emitted <code>_network</code> entity for a wrapper definition may not yet reflect the wrapper’s port list. Same caveat.</li>
+<li><strong>Model persistent arbitration.</strong> See <a href="#arbitration-1">Arbitration</a> above.</li>
+</ul>
+<hr>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<p>A complete testbench for a 4-bit ripple-carry adder:</p>
+<pre><code class="language-matterscript">// The definition
+ADDER4[([A&lt;&gt; 0..3] [B&lt;&gt; 0..3] CIN&lt;&gt;)([$SUM 0..3] $COUT)
+  FULLADD($A.0 $B.0 $CIN)(SUM.0&lt;&gt; C1&lt;&gt;)
+  FULLADD($A.1 $B.1 $C1)(SUM.1&lt;&gt; C2&lt;&gt;)
+  FULLADD($A.2 $B.2 $C2)(SUM.2&lt;&gt; C3&lt;&gt;)
+  FULLADD($A.3 $B.3 $C3)(SUM.3&lt;&gt; COUT&lt;&gt;)
+  :
+]
+
+// The entry wrapper (bundles the scalar ports for the invocation)
+ADDER4_TEST($A0 $A1 $A2 $A3 $B0 $B1 $B2 $B3 $CIN)(SUM0&lt;&gt; SUM1&lt;&gt; SUM2&lt;&gt; SUM3&lt;&gt; COUT&lt;&gt;)
+ADDER4_TEST[($A0 $A1 $A2 $A3 $B0 $B1 $B2 $B3 $CIN)(SUM0&lt;&gt; SUM1&lt;&gt; SUM2&lt;&gt; SUM3&lt;&gt; COUT&lt;&gt;)
+  ADDER4([$A0 $A1 $A2 $A3] [$B0 $B1 $B2 $B3] $CIN)([SUM0&lt;&gt; SUM1&lt;&gt; SUM2&lt;&gt; SUM3&lt;&gt;] COUT&lt;&gt;)
+  :
+]
+
+// The entry invocation for the testbench
+ADDER4_TEST($A0 $A1 $A2 $A3 $B0 $B1 $B2 $B3 $CIN)(SUM0&lt;&gt; SUM1&lt;&gt; SUM2&lt;&gt; SUM3&lt;&gt; COUT&lt;&gt;)
+</code></pre>
+<pre><code class="language-text">@dut(ADDER4_TEST)
+@vectors(A0,A1,A2,A3,B0,B1,B2,B3,CIN : SUM0,SUM1,SUM2,SUM3,COUT)
+@mode(wavefront)
+
+0,0,0,0, 0,0,0,0, 0 : 0,0,0,0,0
+1,0,0,0, 0,0,0,0, 0 : 1,0,0,0,0
+1,1,1,1, 1,1,1,1, 0 : 0,1,1,1,1
+</code></pre>
+<p>Row 1: 0 + 0 + 0 = 0, no carry.
+Row 2: 1 + 0 + 0 = 1, no carry.
+Row 3: 15 + 15 + 0 = 30, sum bits <code>1110</code>, carry 1.</p>
+<p>Each row’s input columns feed the wrapper’s scalar ports; the wrapper bundles them for <code>ADDER4</code>; the four <code>FULLADD</code> instances resolve; the results are extracted to the wrapper’s destination ports; the comparison checks each output column against the expected values.</p>
+<hr>
+<h2 id="where-to-look-in-the-code"><a class="header" href="#where-to-look-in-the-code">Where to Look in the Code</a></h2>
+<ul>
+<li><code>src/dialects/ipl/runtime/rules.zig</code> — rule extraction and environment execution (<code>buildRules</code>, <code>run</code>).</li>
+<li><code>src/dialects/ipl/runtime/bag.zig</code> — the shaking bag.</li>
+<li><code>src/dialects/ipl/runtime/environment.zig</code> — the persistent-signal environment.</li>
+<li><code>src/dialects/ipl/runtime/testbench.zig</code> — the wavefront driver.</li>
+<li><code>src/dialects/ipl/runtime/tb_vectors.zig</code> — the <code>.tb.vec</code> parser and row runner.</li>
+</ul>
+<p>This is not a stable API; the internal modules are documented for contributors, not as user-facing interfaces.</p>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="fpga-synthesis-1"><a class="header" href="#fpga-synthesis-1">FPGA Synthesis</a></h1>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -11983,9 +12188,6 @@ end entity OR180;
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="nuttx-rtos-and-embedded-posix"><a class="header" href="#nuttx-rtos-and-embedded-posix">NuttX RTOS and Embedded POSIX</a></h1>
-<p><em>Drafting in progress…</em></p>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="verification-1"><a class="header" href="#verification-1">Verification</a></h1>
 <p><em>Drafting in progress…</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="part-ix-world-modeling"><a class="header" href="#part-ix-world-modeling">Part IX: World Modeling</a></h1>

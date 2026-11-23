@@ -99,10 +99,11 @@
 - [Verification](part-08-compilers-and-code-generation/10-verification.md)
 
 # Part IX: Runtimes & Hardware Targets
+- [Verification & Co-Simulation](part-09-runtimes/00-verification.md)
 - [FPGA Synthesis & Bitstreams](part-09-runtimes/01-fpga-synthesis.md)
 - [WebGPU Compute Engine](part-09-runtimes/02-webgpu-compute-engine.md) 
 - [NuttX & Embedded POSIX](part-09-runtimes/03-nuttx-rtos-embedded.md)
-- [Verification & Co-Simulation](part-09-runtimes/04-verification.md)
+
 
 # Part X: World Modeling
 - [Introduction](part-10-world-modeling/index.md)
