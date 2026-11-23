@@ -27,22 +27,63 @@ pub const ExecutableRule = rules_mod.ExecutableRule;
 /// One NULL-delimited stream of tokens for a single source port. A
 /// stream is exhausted when `index` reaches `tokens.len` — an exhausted
 /// port simply never becomes valid again for the rest of the run.
+///
+/// When `arbitration_members` is non-null, the stream represents the
+/// winner of an arbitration group. `current()` scans members in order
+/// for the first non-empty token; `advance()` advances every member
+/// in lockstep. `tokens` and `index` are unused in that mode.
+///
+/// Deterministic arbitration only: the first member with a live token
+/// wins. Nondeterministic selection and cross-wavefront persistence
+/// ("loser waits its turn") are deferred; advancing every member in
+/// lockstep means a loser that didn't win this wavefront isn't a
+/// candidate again — which is correct for one-row-per-wavefront test
+/// vectors where each row re-feeds the group from scratch.
+
 pub const PortStream = struct {
     port: []const u8,
     tokens: []const []const u8,
     nulls: ?[]const bool = null,
     index: usize = 0,
+    /// When non-null, this stream represents the winner of an
+    /// arbitration group. `current()` scans members in order for
+    /// the first non-empty token; `advance()` advances every member
+    /// in lockstep. `tokens` and `index` are unused in this mode.
+    ///
+    /// The slice is mutable because `advance` mutates each member's
+    /// internal `index`; the members are copies made at construction
+    /// time (in `runVectors`'s per-row stream-building loop), so
+    /// advancing them does not affect the caller's original column
+    /// streams.
+    arbitration_members: ?[]PortStream = null,
 
     fn exhausted(self: *const PortStream) bool {
+        if (self.arbitration_members) |members| {
+            for (members) |m| if (!m.exhausted()) return false;
+            return true;
+        }
         return self.index >= self.tokens.len;
     }
 
     fn current(self: *const PortStream) ?[]const u8 {
+        if (self.arbitration_members) |members| {
+            for (members) |*m| {
+                const tok = m.current() orelse continue;
+                if (tok.len == 0) continue;
+                return tok;
+            }
+            if (self.exhausted()) return null;
+            return "";
+        }
         if (self.exhausted()) return null;
-        return self.tokens[self.index]; // "" = null token (present no value this wavefront)
+        return self.tokens[self.index];
     }
 
     fn advance(self: *PortStream) void {
+        if (self.arbitration_members) |members| {
+            for (members) |*m| m.advance();
+            return;
+        }
         if (!self.exhausted()) self.index += 1;
     }
 };
@@ -57,6 +98,11 @@ pub const Presentation = struct {
     /// up against a different wavefront's table.
     outputs: std.StringHashMapUnmanaged([]const u8),
 };
+
+fn findEntrySourceForFormal(entry: network.EntryInvocation, def: network.Definition, formal_index: usize) ?network.Arg {
+    if (formal_index >= entry.sources.len or formal_index >= def.sources.len) return null;
+    return entry.sources[formal_index];
+}
 
 fn allStreamsExhausted(streams: []const PortStream) bool {
     for (streams) |s| {

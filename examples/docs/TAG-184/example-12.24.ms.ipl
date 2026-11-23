@@ -1,6 +1,6 @@
 // Linear: TAG-184 Pure Value Place of Resolution
 
-FULLADD184($A,$B,$C)(<> CARRYOUT<>)
+FULLADD184($A,$B,$CI)(sUM<> CO<>)
 
 FULLADD184[(A<> B<> CI<> )($SUM $CO)
 

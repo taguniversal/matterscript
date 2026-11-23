@@ -1,5 +1,5 @@
 // linear: TAG-180 Example 12.10 Conditional Input Expression
-
+bus($selector_in $selector_out $Q1 $Q2 $Q3 $Q4)(out1<> out2<> out3<> out4<>)
 bus[(selector_in<> selector_out<> Q1<> Q2<> Q3<> Q4<>)({$out1 $out2 $out3 $out4})
   fanin($selector_in {$Q1 $Q2 $Q3 $Q4})(serialmid<>)
   fanout($selector_out $serialmid)({out1<> out2<> out3<> out4<>})

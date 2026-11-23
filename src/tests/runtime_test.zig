@@ -128,6 +128,11 @@ test "TAG-218" {
     const a = arena.allocator();
 
     const src =
+        \\ WRAP_TEST($A)(Y<>)
+        \\ WRAP_TEST[(A<>)($Y)
+        \\  WRAP($A)(Y<>)
+        \\  :
+        \\ ]
         \\ INNER[(A<>)($Y)
         \\ $A
         \\ :
@@ -141,7 +146,7 @@ test "TAG-218" {
     ;
 
     const vec =
-        \\ @dut(WRAP)
+        \\ @dut(WRAP_TEST)
         \\ @vectors(A : Y)
         \\
         \\ K : K

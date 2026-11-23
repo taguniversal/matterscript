@@ -7,7 +7,7 @@
 //         CIN (carry-in).
 // Outputs: SUM0..SUM3 (the 4-bit sum, LSB first), COUT (carry-out).
 
-@dut(ADDER4)
+@dut(ADDER4_TEST)
 @vectors(A0,A1,A2,A3,B0,B1,B2,B3,CIN : SUM0,SUM1,SUM2,SUM3,COUT)
 @mode(wavefront)
 

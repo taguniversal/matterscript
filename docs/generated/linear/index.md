@@ -4,7 +4,7 @@
 
 ## Progress
 
-✅ Implemented: 32  |  🟡 Partial: 4  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 143  |  Total: 180
+✅ Implemented: 32  |  🟡 Partial: 4  |  🔴 Blocked: 0  |  ⬛ Spec only: 1  |  ⬜ Not started: 144  |  Total: 181
 
 - ⬜ Not started [TAG-173: 1. A Critical Review of the Notion of the Algorithm in Computer Science](TAG-173.md)
 - ⬜ Not started [TAG-222: 2D/3D HP (Hydrophobic-Polar) Lattice Folding Model](TAG-222.md)
@@ -59,6 +59,7 @@
 - ⬜ Not started [TAG-78: 12.11.1 Invocation Boundaries](TAG-78.md)
 - ⬜ Not started [TAG-79: 12.11.2 Coordination Behavior](TAG-79.md)
 - ⬜ Not started [TAG-83: 12.11.3 Coordinating Boundaries](TAG-83.md)
+- ⬜ Not started [TAG-237: 12.12 Large Domains of Differentness](TAG-237.md)
 - ⬜ Not started [TAG-85: 12.12 Large Domains of Differentness](TAG-85.md)
 - ⬜ Not started [TAG-86: 12.13 Experience Memory](TAG-86.md)
 - 🟡 Partial [TAG-87: 12.14 Conditional Iteration](TAG-87.md)

@@ -1,5 +1,6 @@
 // linear: TAG-136 Code detector state machine
 // Detects sequence 001011 in a continuous stream of bits.
+code($currentstate $newbit)(state<> detect<>)
 code[(currentstate< > newbit< >)($state $detect) 
 
 $newbit$currentstate() :

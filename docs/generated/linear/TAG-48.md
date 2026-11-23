@@ -6,7 +6,16 @@
 
 ## Software Notes
 
-[TAG-189](https://linear.app/taguniversal/issue/TAG-189/example-1214-arbitrated-places)
+[TAG-189](https://linear.app/taguniversal/issue/TAG-189/example-1214-arbitrated-places) 
+
+```
+// Linear: TAG-189 Example 12.14 Arbitrated Places
+Arbiter({{$place1 $place2}})(next<>)
+Arbiter[(placeB<>)($pass) 
+  pass<$placeB> 
+  : 
+]
+```
 
 ## Reference
 

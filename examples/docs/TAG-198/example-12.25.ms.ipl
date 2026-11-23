@@ -1,5 +1,5 @@
 // Linear: TAG-198 Pure Value Expression
-FULLADD198($A,$B,$C)(< > CARRYOUT< >)
+FULLADD198($A,$B,$CI)(SUM<> CO<>)
 FULLADD198[(A< > B< > CI< >)($SUM $CO)
 @runtime(consumable)
 $A $B $CI :

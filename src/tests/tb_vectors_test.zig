@@ -18,6 +18,7 @@ const and2_ipl =
 
 const parity_ipl = 
   \\ // Linear : TAG-217 @stream testbench directive
+  \\ PARITY($state $bit)(next<>)
   \\ PARITY[(state<> bit<>)($next)
   \\  $state$bit() :
   \\  E,0[next<E>]
@@ -219,6 +220,7 @@ test "TAG-136: code detector stream carries state and fires yes" {
     const code_ipl = 
       \\// linear: TAG-136 Code detector state machine
       \\// Detects sequence 001011 in a continuous stream of bits.
+      \\code($currentstate $newbit)(state<> detect<>)
       \\code[(currentstate< > newbit< >)($state $detect) 
       \\$newbit$currentstate() :
       \\0,S0[detect< no > state<S1>]

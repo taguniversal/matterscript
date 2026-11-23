@@ -1,5 +1,5 @@
 // Linear: TAG-177 Pure Value Expression
-FULLADD177($A,$B,$C)(<> CARRYOUT<>)
+FULLADD177($X,$Y,$CI)(SUM<> CARRYOUT<>)
 FULLADD177[(X<>Y<>CI<>)( $SUM $CARRY)
   @runtime(consumable)
   $X $Y $CI:

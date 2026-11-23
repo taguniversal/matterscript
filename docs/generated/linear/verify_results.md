@@ -1,20 +1,20 @@
 # Example verification results
 
-31 expected outcomes, 3 unexpected outcomes.
+25 expected outcomes, 9 unexpected outcomes.
 
 | Issue | Example | Expected | Parse | Runtime | GHDL | Simulate | Result |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TAG-112 | mobius_ring.ms.ipl | Partial | ok | - | ok | - | 🟡 unexpected pass |
-| TAG-129 | example-12.19.ms.ipl | Implemented | ok | ok 8/8 | ok | ok | ✅ PASS |
-| TAG-130 | example-12.1.ms.ipl | Partial | ok | ok 8/8 | ok | FAIL | ⬛ expected fail |
+| TAG-129 | example-12.19.ms.ipl | Implemented | ok | BAD TB | ok | ok | ❌ FAIL |
+| TAG-130 | example-12.1.ms.ipl | Partial | ok | FAIL 0/8 | ok | FAIL | ⬛ expected fail |
 | TAG-136 | example-12.45.ms.ipl | Implemented | ok | ok 14/14 | ok | - | ✅ PASS |
-| TAG-137 | example-12.41.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
+| TAG-137 | example-12.41.ms.ipl | Implemented | ok | FAIL 0/4 | ok | - | ❌ FAIL |
 | TAG-138 | example-12.40.ms.ipl | Implemented | FAIL | - | - | - | ❌ FAIL |
-| TAG-142 | example-12.3.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
-| TAG-143 | example-12.2.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
+| TAG-142 | example-12.3.ms.ipl | Implemented | ok | FAIL 0/4 | ok | - | ❌ FAIL |
+| TAG-143 | example-12.2.ms.ipl | Implemented | ok | FAIL 0/4 | ok | - | ❌ FAIL |
 | TAG-147 | example-12.13.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-148 | example-12.11.ms.ipl | Implemented | ok | ok 8/8 | ok | ok | ✅ PASS |
-| TAG-149 | example-12.9.ms.ipl | Implemented | ok | ok 4/4 | ok | ok | ✅ PASS |
+| TAG-149 | example-12.9.ms.ipl | Implemented | ok | FAIL 0/4 | ok | ok | ❌ FAIL |
 | TAG-151 | example-12.17.ms.ipl | Implemented | ok | - | ok | ok | ✅ PASS |
 | TAG-160 | example-12.33.ms.ipl | Implemented | ok | ok 4/4 | ok | ok | ✅ PASS |
 | TAG-163 | example-12.36.ms.ipl | Implemented | ok | ok 4/4 | ok | ok | ✅ PASS |
@@ -24,7 +24,7 @@
 | TAG-184 | example-12.24.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
 | TAG-185 | case-unique-signals.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-187 | generate_syntax.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
-| TAG-189 | example-12.14-arbitration.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
+| TAG-189 | example-12.14-arbitration.ms.ipl | Implemented | ok | ok 2/2 | ok | - | ✅ PASS |
 | TAG-190 | example-12.5.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-192 | entity_labeling.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
 | TAG-196 | cube.ms.ipl | Implemented | ok | - | ok | - | ✅ PASS |
@@ -37,4 +37,4 @@
 | TAG-212 | and3.ms.ipl | Implemented | ok | ok 8/8 | ok | - | ✅ PASS |
 | TAG-217 | parity.ms.ipl | Implemented | ok | ok 4/4 | ok | - | ✅ PASS |
 | TAG-218 | tag-218.ms.ipl | Implemented | ok | ok 2/2 | ok | - | ✅ PASS |
-| TAG-236 | bundle_expansion.ms.ipl | Implemented | ok | ok 8/8 | ok | ok | ✅ PASS |
+| TAG-236 | bundle_expansion.ms.ipl | Implemented | ok | ok 8/8 | ok | FAIL | ❌ FAIL |

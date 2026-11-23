@@ -163,6 +163,55 @@ fn parseContent(
     return .{ .token = trimmed };
 }
 
+fn dupeBindings(
+    allocator: std.mem.Allocator,
+    src: []const Binding,
+    translate: bool,
+) ![]const Binding {
+    const out = try allocator.alloc(Binding, src.len);
+    for (src, 0..) |b, i| {
+        var members: []const []const u8 = &.{};
+        if (b.members.len > 0) {
+            const m = try allocator.alloc([]const u8, b.members.len);
+            for (b.members, 0..) |name, j| {
+                m[j] = if (translate) try sanitizer.translateMemberRef(allocator, name) else name;
+            }
+            members = m;
+        }
+        out[i] = .{
+            .callee = b.callee,
+            .caller = if (translate) try sanitizer.translateMemberRef(allocator, b.caller) else b.caller,
+            .members = members,
+        };
+    }
+    return out;
+}
+
+fn rewriteBindings(
+    allocator: std.mem.Allocator,
+    prefix: []const u8,
+    outer_bindings: []const Binding,
+    src: []const Binding,
+) ![]const Binding {
+    const out = try allocator.alloc(Binding, src.len);
+    for (src, 0..) |b, i| {
+        var members: []const []const u8 = &.{};
+        if (b.members.len > 0) {
+            const m = try allocator.alloc([]const u8, b.members.len);
+            for (b.members, 0..) |name, j| {
+                m[j] = try mapName(allocator, prefix, outer_bindings, name);
+            }
+            members = m;
+        }
+        out[i] = .{
+            .callee = b.callee,
+            .caller = try mapName(allocator, prefix, outer_bindings, b.caller),
+            .members = members,
+        };
+    }
+    return out;
+}
+
 /// Decompose a parsed Definition into a `RuleSet`.
 ///
 /// Reads the shape the parser produces for value-transform rules:
@@ -478,7 +527,14 @@ fn argListHasPlace(args: []const network.Arg, name: []const u8) bool {
 }
 
 fn producedBy(rules: []const ExecutableRule, name: []const u8) bool {
-    for (rules) |r| if (std.mem.eql(u8, r.dest, name)) return true;
+    for (rules) |r| {
+        if (std.mem.eql(u8, r.dest, name)) return true;
+        if (r.action == .consumable_call) {
+            for (r.action.consumable_call.dest_bindings) |b| {
+                if (std.mem.eql(u8, b.caller, name)) return true;
+            }
+        }
+    }
     return false;
 }
 
@@ -697,7 +753,12 @@ fn inlineInvocation(
                 }
                 break :blk .{ .select = mapped };
             },
-            .consumable_call => unreachable,
+            .consumable_call => |cc| .{ .consumable_call = .{
+                .callee = cc.callee,
+                .rules = cc.rules,
+                .source_bindings = try dupeBindings(allocator, cc.source_bindings, true),
+                .dest_bindings = try dupeBindings(allocator, cc.dest_bindings, true),
+            } },
         };
         try callee_rules_list.append(allocator, .{
             .inputs = inputs,
@@ -760,7 +821,12 @@ fn inlineInvocation(
                 }
                 break :blk .{ .select = mapped };
             },
-            .consumable_call => unreachable,
+            .consumable_call => |cc| .{ .consumable_call = .{
+                .callee = cc.callee,
+                .rules = cc.rules,
+                .source_bindings = try rewriteBindings(allocator, prefix, bindings.items, cc.source_bindings),
+                .dest_bindings = try rewriteBindings(allocator, prefix, bindings.items, cc.dest_bindings),
+            } },
         };
 
         try out.append(allocator, .{
@@ -984,30 +1050,30 @@ pub const CompletionReport = struct {
     stuck: []const StuckPlace, // empty when complete
 };
 
-/// Resolves each arbitration binding on a rule by copying the value
-/// of the first valid caller-scope member onto the binding's
-/// synthesized virtual wire. Returns true if at least one
-/// arbitration was resolved (i.e., at least one virtual wire was
-/// newly populated); false if all arbitrations found no valid
-/// member, meaning the rule cannot fire yet.
-fn resolveArbitrations(
-    env: *Environment,
-    bindings: []const Binding,
-) !bool {
-    var resolved_any = false;
-    for (bindings) |b| {
-        if (b.members.len == 0) continue; // not an arbitration binding
-        if (env.isValid(b.caller)) continue; // virtual wire already populated this pass
-
-        for (b.members) |member| {
+/// Resolves each arbitration binding by consuming the first valid
+/// member's value and copying it to the binding's virtual wire. The
+/// winner's original wire is invalidated so its value doesn't
+/// continue to compete; the losers are left untouched, per Fant's
+/// arbitration model ("contents that lose the competition will
+/// remain and wait their turn"). Each call resolves each arbitration
+/// at most once, so subsequent run loops on the same environment
+/// are free to pick the next valid member.
+///
+/// This is the atomic arbitration operation: N inputs, one winner
+/// per call. Synchronization (when the caller decides to allow the
+/// next wavefront to flow into the arbiter) is a caller-side concern
+/// and not modeled here.
+pub fn resolveArbitrations(env: *Environment, arbitrations: []const Binding) !void {
+    for (arbitrations) |arb| {
+        if (env.isValid(arb.caller)) continue; // virtual wire already resolved this pass
+        for (arb.members) |member| {
             if (env.isValid(member)) {
-                try env.copyFrom(b.caller, member);
-                resolved_any = true;
+                try env.copyFrom(arb.caller, member);
+                try env.invalidate(member); // consume the winner
                 break;
             }
         }
     }
-    return resolved_any;
 }
 
 pub fn run(
@@ -1022,9 +1088,8 @@ pub fn run(
         for (rules) |rule| {
             if (rule.action != .consumable_call and env.isValid(rule.dest)) continue;
             if (rule.arbitrations.len > 0) {
-                if (try resolveArbitrations(env, rule.arbitrations)) {
-                    changed = true;
-                }
+                try resolveArbitrations(env, rule.arbitrations);
+                changed = true;
             }
             if (!env.allValid(rule.inputs)) continue;
             std.debug.print("[rules.run] firing rule dest='{s}' inputs.len={d} action={s}\n", .{ rule.dest, rule.inputs.len, @tagName(rule.action) });

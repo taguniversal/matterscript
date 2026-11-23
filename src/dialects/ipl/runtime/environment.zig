@@ -1,4 +1,3 @@
-
 // Holds the current state of every named place during a single
 // definition's fixed-point evaluation (see rules.zig for the driver). A
 // place is either null (unresolved) or valid, carrying an interned
@@ -49,6 +48,15 @@ pub const Environment = struct {
     pub fn assertLiteral(self: *Environment, place: []const u8, value: u64) !void {
         if (self.isValid(place)) return;
         try self.places.put(self.allocator, place, .{ .valid = value });
+    }
+
+    /// Reset a place to null. Used by arbitration (the winner's member
+    /// is consumed when its value moves to the virtual wire) and by any
+    /// other mechanism that needs to clear a place. Symmetric with
+    /// assertSymbol / copyFrom.
+    pub fn invalidate(self: *Environment, name: []const u8) !void {
+        const ptr = self.places.getPtr(name) orelse return;
+        ptr.* = .null_value;
     }
 
     /// Copies another place's current value onto `place` ("$name"

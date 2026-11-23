@@ -10,7 +10,7 @@ pub fn build(b: *std.Build) void {
     const verbose = b.option(bool, "verbose", "Print verbose parser/runtime dumps") orelse false;
     const build_options = b.addOptions();
     build_options.addOption(bool, "verbose_dumps", verbose);
-   
+
     // VERBOSE
 
     // ------------------------------------------------------------------------
@@ -428,6 +428,19 @@ pub fn build(b: *std.Build) void {
 
     const run_tb_vectors_test = b.addRunArtifact(tb_vectors_test);
 
+    const rules_test = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests/rules_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "matterscript", .module = matterscript_mod },
+            },
+        }),
+    });
+
+    const run_rules_test = b.addRunArtifact(rules_test);
+
     const hierarchy_test = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/tests/hierarchy_test.zig"),
@@ -485,6 +498,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_tb_vectors_test.step);
     test_step.dependOn(&run_hierarchy_test.step);
     test_step.dependOn(&run_classifier_shapes_test.step);
+    test_step.dependOn(&run_rules_test.step);
     // --- Code Coverage Step (using kcov) ---
     const coverage_step = b.step("coverage", "Generate code coverage report using kcov");
 

@@ -1,5 +1,5 @@
 // Linear - TAG-163 Set of definitions establishing correspondence name connvention
-
+TAG163_TOP($a $b)(result<>)
 TAG163_TOP[(a<> b<>)($result)
   BINEQ($a $b)(eq<>)
   BIGT($a $b)(gt<>)

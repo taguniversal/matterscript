@@ -3,7 +3,7 @@
 // Inputs: A0..A3, B0..B3 (the two 4-bit operands, LSB first),
 //         CI (carry-in).
 // Outputs: SUM0..SUM3 (the 4-bit sum, LSB first), CO (carry-out).
-@dut(4BITADD)
+@dut(4BITADD_TEST)
 @vectors(A0,A1,A2,A3,B0,B1,B2,B3,CI : SUM0,SUM1,SUM2,SUM3,CO)
 @mode(wavefront)
 

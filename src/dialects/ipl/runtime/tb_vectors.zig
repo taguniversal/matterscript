@@ -237,13 +237,18 @@ fn portExists(args: []const network.Arg, name: []const u8) bool {
     return false;
 }
 
-fn resolve(a: std.mem.Allocator, v: Vectors, def: network.Definition, diag: *Diag) ParseError![]const Resolved {
+fn nameInList(list: []const []const u8, name: []const u8) bool {
+    for (list) |n| if (std.mem.eql(u8, n, name)) return true;
+    return false;
+}
+
+fn resolve(a: std.mem.Allocator, v: Vectors, def: network.Definition, extra_in_names: []const []const u8, extra_out_names: []const []const u8, diag: *Diag) ParseError![]const Resolved {
     for (v.in_cols) |c| {
-        if (!portExists(def.sources, c))
+        if (!portExists(def.sources, c) and !nameInList(extra_in_names, c))
             return bad(a, diag, 0, "input column '{s}' is not a source place of {s}", .{ c, def.name });
     }
     for (v.out_cols) |c| {
-        if (!portExists(def.destinations, c))
+        if (!portExists(def.destinations, c) and !nameInList(extra_out_names, c))
             return bad(a, diag, 0, "output column '{s}' is not a destination place of {s}", .{ c, def.name });
     }
     for (v.carries) |c| {
@@ -339,13 +344,71 @@ pub fn runVectors(
         error.MalformedTestbench => return badTb(a, label, diag),
     };
 
-    const raw_def = findDut(net, v.dut) orelse {
+    const dut_name = v.dut orelse {
+        diag = .{ .line = 0, .msg = "missing @dut in testbench" };
+        return badTb(a, label, diag);
+    };
+
+    const raw_def = findDut(net, dut_name) orelse {
         diag = .{ .line = 0, .msg = "no matching definition for @dut" };
         return badTb(a, label, diag);
     };
 
+    // The @dut must name an entry invocation. A testbench tests how a
+    // definition behaves when invoked — the invocation carries the
+    // arbitration groups, argument bindings, and destination wires
+    // that a definition alone doesn't have. Every .ms.ipl file used
+    // for testing needs an entry wrapper; see parity.tb.vec / WRAP
+    // for the pattern.
+    var matched_entry: ?network.EntryInvocation = null;
+    for (net.entries) |e| {
+        if (std.ascii.eqlIgnoreCase(e.name, dut_name)) {
+            matched_entry = e;
+            break;
+        }
+    }
+    const entry = matched_entry orelse {
+        diag = .{ .line = 0, .msg = "no matching entry invocation for @dut; a testbench requires an entry wrapper" };
+        return badTb(a, label, diag);
+    };
+
     std.debug.print("[runVectors] {s}: about to resolve, dests={d}\n", .{ label, raw_def.destinations.len });
-    const rows = resolve(a, v, raw_def, &diag) catch |err| switch (err) {
+
+    // Collect arbitration-group members from the entry invocation's
+    // sources. These are valid input columns even though they aren't
+    // direct ports of the DUT — the arbitration mechanism collapses
+    // them onto a single formal port at the invocation boundary.
+    var extra_in: std.ArrayListUnmanaged([]const u8) = .empty;
+    var extra_out: std.ArrayListUnmanaged([]const u8) = .empty;
+
+    for (entry.sources) |src| {
+        if (src.kind == .group) {
+            if (src.group) |g| {
+                if (g.kind == .arbitration) {
+                    for (g.places) |m| {
+                        if (m.name.len > 0) try extra_in.append(a, m.name);
+                    }
+                }
+            }
+        }
+    }
+    for (entry.destinations) |dst| {
+        // The entry invocation's destination list is where the caller
+        // names the wires it expects the callee's outputs to land on.
+        // Those names are legitimate @vectors output columns even
+        // though they aren't the DUT's own formal names.
+        if (dst.kind == .place and dst.name.len > 0) {
+            try extra_out.append(a, dst.name);
+        } else if (dst.kind == .group) {
+            if (dst.group) |g| {
+                for (g.places) |m| {
+                    if (m.name.len > 0) try extra_out.append(a, m.name);
+                }
+            }
+        }
+    }
+
+    const rows = resolve(a, v, raw_def, extra_in.items, extra_out.items, &diag) catch |err| switch (err) {
         error.OutOfMemory => return error.OutOfMemory,
         error.MalformedTestbench => return badTb(a, label, diag),
     };
@@ -354,10 +417,12 @@ pub fn runVectors(
     var passed: usize = 0;
     var last_output: std.StringHashMapUnmanaged([]const u8) = .empty;
     std.debug.print("[runVectors] {s}: about to run {d} rows\n", .{ label, rows.len });
+
     for (rows) |row| {
-        const streams = try a.alloc(testbench.PortStream, v.in_cols.len);
+        // Build one stream per vector input column.
+        const col_streams = try a.alloc(testbench.PortStream, v.in_cols.len);
         var row_had_carry_error = false;
-        for (streams, 0..) |*s, j| {
+        for (col_streams, 0..) |*s, j| {
             const resolved: []const u8 = switch (row.in_cells[j]) {
                 .literal => |sym| sym,
                 .carry_from => |out_name| last_output.get(out_name) orelse {
@@ -365,26 +430,106 @@ pub fn runVectors(
                     row_had_carry_error = true;
                     break;
                 },
-                .null_value => "",  // sentinel: Testbench will interpret this as "seed null"
+                .null_value => "",
             };
             const toks = try a.alloc([]const u8, 1);
             toks[0] = resolved;
             s.* = .{ .port = v.in_cols[j], .tokens = toks };
         }
-        if (row_had_carry_error) continue; // nothing valid to run this row with
+        if (row_had_carry_error) continue;
+
+        // Build one stream per DUT formal port. For a formal whose
+        // entry actual is an arbitration group, synthesize an
+        // arbitration stream whose members are the group members'
+        // column streams. For a scalar formal, pass the matching
+        // column stream through under the formal's port name.
+        const dut_streams = try a.alloc(testbench.PortStream, raw_def.sources.len);
+        var stream_map_failed = false;
+        for (raw_def.sources, 0..) |formal, i| {
+            if (i >= entry.sources.len) {
+                try failures.append(a, try std.fmt.allocPrint(a, "line {d} ({s}): entry has fewer sources than DUT formals", .{ row.line, row.label }));
+                stream_map_failed = true;
+                break;
+            }
+            const actual = entry.sources[i];
+            switch (actual.kind) {
+                .group => if (actual.group) |g| {
+                    if (g.kind != .arbitration) {
+                        try failures.append(a, try std.fmt.allocPrint(a, "line {d} ({s}): unsupported entry group kind '{s}'", .{ row.line, row.label, @tagName(g.kind) }));
+                        stream_map_failed = true;
+                        break;
+                    }
+                    var members: std.ArrayListUnmanaged(testbench.PortStream) = .empty;
+                    for (g.places) |m| {
+                        for (col_streams) |cs| {
+                            if (std.mem.eql(u8, cs.port, m.name)) {
+                                try members.append(a, cs);
+                                break;
+                            }
+                        }
+                    }
+                    dut_streams[i] = .{
+                        .port = formal.name,
+                        .tokens = &.{},
+                        .arbitration_members = try members.toOwnedSlice(a),
+                    };
+                },
+                .place => {
+                    var found = false;
+                    for (col_streams) |cs| {
+                        if (std.mem.eql(u8, cs.port, actual.name)) {
+                            dut_streams[i] = .{ .port = formal.name, .tokens = cs.tokens };
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        try failures.append(a, try std.fmt.allocPrint(a, "line {d} ({s}): no vector column named '{s}' for formal '{s}'", .{ row.line, row.label, actual.name, formal.name }));
+                        stream_map_failed = true;
+                        break;
+                    }
+                },
+                else => {
+                    try failures.append(a, try std.fmt.allocPrint(a, "line {d} ({s}): unsupported entry actual kind '{s}'", .{ row.line, row.label, @tagName(actual.kind) }));
+                    stream_map_failed = true;
+                    break;
+                },
+            }
+        }
+        if (stream_map_failed) continue;
 
         std.debug.print("[runVectors] {s}: about to runRow for row '{s}'\n", .{ label, row.label });
 
-        const pres = runRow(a, raw_def, net.definitions, streams) catch |err| {
+        const pres_raw = runRow(a, raw_def, net.definitions, dut_streams) catch |err| {
             try failures.append(a, try std.fmt.allocPrint(a, "line {d} ({s}): runtime error {s}", .{ row.line, row.label, @errorName(err) }));
             continue;
         };
 
-        std.debug.print("[runVectors] {s}: runRow returned {d} presentations\n", .{ label, pres.len });
+        // Rename presentation outputs from DUT formal destination names
+        // to entry destination names so @vectors output columns match.
+        const pres = try a.alloc(testbench.Presentation, pres_raw.len);
+        for (pres_raw, 0..) |src_p, p_idx| {
+            var renamed: std.StringHashMapUnmanaged([]const u8) = .empty;
+            const n = @min(raw_def.destinations.len, entry.destinations.len);
+            for (0..n) |d_idx| {
+                const formal = raw_def.destinations[d_idx];
+                const actual = entry.destinations[d_idx];
+                if (formal.kind != .place or actual.kind != .place) continue;
+                if (formal.name.len == 0 or actual.name.len == 0) continue;
+                if (src_p.outputs.get(formal.name)) |val| {
+                    try renamed.put(a, actual.name, val);
+                }
+            }
+            var it = src_p.outputs.iterator();
+            while (it.next()) |kv| {
+                if (!renamed.contains(kv.key_ptr.*)) {
+                    try renamed.put(a, kv.key_ptr.*, kv.value_ptr.*);
+                }
+            }
+            pres[p_idx] = .{ .outputs = renamed };
+        }
 
-        // A stall row must not overwrite last_output: carry state is defined to be
-        // unchanged across a stall. Unreachable in @stream mode today (parser
-        // forbids `!stall` there), but kept correct in case that restriction lifts.
+        std.debug.print("[runVectors] {s}: runRow returned {d} presentations\n", .{ label, pres.len });
 
         if (pres.len > 0) {
             for (v.out_cols) |col| {
@@ -417,7 +562,6 @@ pub fn runVectors(
         }
         if (row_ok) passed += 1;
     }
-
     return .{
         .present = true,
         .passed = passed,

@@ -1,0 +1,28 @@
+// TAG-189 Example 12.14 Arbitrated Places
+// Deterministic arbitration test: exactly one member of the
+// arbitration group carries a value per row, and that member wins
+// without competition (per the book: "if only one place has
+// content, the content will flow through the arbiter without
+// competition").
+//
+// The arbitration group is {{$place1 $place2}}. Its members become
+// the testbench's input ports; `next` is the output.
+//
+// The both-members-valid case ("they compete; it cannot be
+// predetermined which content will flow") is deferred until the
+// vector format can express leftover-state or nondeterministic
+// expectations.
+//
+// `null` means the wire carries no content this row.
+// `-` on an output means "no assertion" (don't-care); used only if
+//   needed. Every row below asserts its expected `next`.
+
+@dut(Arbiter)
+@vectors(place1, place2 : next)
+@mode(wavefront)
+
+// Only place1 has content. It wins; next carries K.
+K, null : K
+
+// Only place2 has content. It wins; next carries L.
+null, L : L

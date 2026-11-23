@@ -10,6 +10,12 @@
 // with two outputs (SUM, CARRY), matching the shape of TAG-130's
 // FULLADD130.
 
+ADDER4_TEST($A0 $A1 $A2 $A3 $B0 $B1 $B2 $B3 $CIN)(SUM0<> SUM1<> SUM2<> SUM3<> COUT<>)
+ADDER4_TEST[(A0<> A1<> A2<> A3<> B0<> B1<> B2<> B3<> CIN<>)($SUM0 $SUM1 $SUM2 $SUM3 $COUT)
+  ADDER4([$A0 $A1 $A2 $A3] [$B0 $B1 $B2 $B3] $CIN)([SUM0<> SUM1<> SUM2<> SUM3<>] COUT<>)
+  :
+]
+
 FULLADD[(A<> B<> CI<>)($SUM $CARRY)
   A,B,CI :
     0,0,0[SUM<0> CARRY<0>]
@@ -22,7 +28,6 @@ FULLADD[(A<> B<> CI<>)($SUM $CARRY)
     1,1,1[SUM<1> CARRY<1>]
 ]
 
-ADDER4($A $B $CIN)(SUM<> COUT<>)
 ADDER4[([A<> 0..3] [B<> 0..3] CIN<>)([$SUM 0..3] $COUT)
   // Four full-adder instances, chained by carry.
   FULLADD($A.0 $B.0 $CIN)(SUM.0<> C1<>)
