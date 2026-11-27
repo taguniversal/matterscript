@@ -1,5 +1,7 @@
 # Time is Not a Clock
 
+![Time is Not a Clock](images/time_not_clock.png)
+
 Ask a programmer what time is, and they will probably reach for a datatype.
 
 Maybe it is a Unix timestamp. Maybe it is a `DateTime`. Maybe it is a floating-point number representing seconds since some epoch. Maybe it is a string containing a date, a time, and a time zone.

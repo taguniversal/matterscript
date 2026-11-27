@@ -1,5 +1,7 @@
 # The Cost of Abstraction
 
+![Cost of Abstraction](images/cost_abstraction.png)
+
 Abstraction is one of the great achievements of computer science.
 
 It is also one of the great hidden expenses of civilization.
@@ -64,7 +66,7 @@ The expression first exists as text.
 
 That text must be interpreted according to the grammar of the language. It must be tokenized. Parsed. Represented internally. Compiled or interpreted. Perhaps transformed into bytecode. Perhaps passed through a virtual machine. Perhaps dispatched through a runtime. Perhaps represented as dynamically typed objects. Perhaps allocated in memory. Eventually, some sequence of machine instructions must reach a processor.
 
-The processor itself contains instruction decoders, registers, caches, branch predictors, memory-management machinery, execution units, interconnects, and enormous amounts of control logic.
+The processor itself contains instruction decoders, registers, caches, branch predictors, memory-management machinery, interconnects, execution units, and enormous amounts of control logic.
 
 And somewhere down toward the bottom of all of this machinery, a relatively tiny collection of digital gates performs the arithmetic.
 
@@ -220,7 +222,107 @@ The problem was never "blockchains are inherently expensive."
 
 The problem was that one particular mechanism for establishing distributed agreement was extremely expensive.
 
-And this is precisely the sort of question MatterScript asks.
+But there is another possibility worth examining.
+
+What if the computational operation underlying a digital ledger could be made extraordinarily inexpensive—not by deploying more processors, but by changing the computation itself?
+
+### MKRAND: A different physical cost
+
+MKRAND approaches this question from a different direction.
+
+Rather than repeatedly performing expensive general-purpose computation, MKRAND generates a deterministic sequence of 128-bit states using a cellular automaton.
+
+Its foundation is Stephen Wolfram's Rule 30, a simple one-dimensional cellular automaton in which each bit in the next generation is determined by its left, center, and right neighbors.
+
+The implementation begins with a 128-bit seed and evolves a wrapped cellular-automaton field through 256 generations. It extracts the center column, discards the first 128 bits, and uses the resulting 128-bit value as the SHA30 transformation.
+
+The next state is calculated by XORing the current state with that transformation:
+
+```text
+Next State =
+    Current State
+    XOR
+    SHA30(Current State)
+```
+
+The result is another 128-bit state.
+
+The process can be repeated indefinitely. Each generated block can also serve as the seed for a future invocation, making the sequence reproducible and allowing it to be continued from a stored checkpoint.
+
+This is a very different computational architecture from a general-purpose blockchain workload.
+
+The following comparison uses the energy-per-block and block-time figures for the three systems:
+
+| **System** | **Energy per Block** | **Block Time** | **Relative Efficiency** |
+| --- | ---: | ---: | ---: |
+| Bitcoin | ~1.8 billion joules | 10 minutes | 545 quadrillion × |
+| Ethereum | ~108,000 joules | 12 seconds | 32 trillion × |
+| MKRAND | ~3.3 nanojoules | 1.3 microseconds | 𝕀 |
+
+The MKRAND figures represent a radically different energy scale.
+
+At approximately **3.3 nanojoules per block**, the energy required for the operation is measured in billionths of a joule.
+
+The reported block interval is approximately **1.3 microseconds**.
+
+These figures should be understood as measurements or estimates for the respective block-generation operations, not as a complete comparison of the security, networking, storage, and consensus costs of three equivalent distributed networks. MKRAND's deterministic generator is not, by itself, a replacement for Bitcoin's or Ethereum's full consensus protocols.
+
+That distinction matters.
+
+But it does not diminish the architectural question.
+
+**How much energy should it take to produce a deterministic digital state?**
+
+MKRAND suggests that the answer can be dramatically smaller when the computation is designed around a compact, reproducible digital transformation rather than a general-purpose computational process.
+
+### A blockchain sequence you can reproduce
+
+The output of MKRAND is not merely an ephemeral random-looking value.
+
+It is a deterministic sequence of 128-bit blocks.
+
+Given the same initial seed, the same sequence can be generated again. Any block can become a continuation seed, allowing the sequence to be resumed from a known point.
+
+Here is an example of a ten-block MKRAND sequence, represented in PSI format:
+
+```text
+[<:d9ca177b669ab95b6fef270657dff32c:>]
+[<:4aa0da9e7b0a5fd5985ab55c0f0192fe:>]
+[<:affef8aaa5f381d99f2c9a4205ed9e10:>]
+[<:7661d6c41a9bd75730fa5160e233f3de:>]
+[<:ca378cb8cd68321d91335094614b8fff:>]
+[<:9e6d4585fcc73f087aa104d2bab6dc1b:>]
+[<:b131ec698bdae1c88212280449c1a176:>]
+[<:d5def201fc978836748d15de86367879:>]
+[<:233d13184cfd19263ff222af821203eb:>]
+[<:40badba7f81ad5ae20d1958813305c51:>]
+```
+
+The second block, for example, can be used as a seed to continue the sequence:
+
+```bash
+mkrand --format psi -n 5 -s "[<:4aa0da9e7b0a5fd5985ab55c0f0192fe:>]"
+```
+
+Generation resumes with the next blocks in the original sequence.
+
+This makes every block both output data and a potential checkpoint.
+
+The sequence can be generated, transmitted, stored, and reproduced without requiring the entire history to be held in memory.
+
+The implementation and technical details are available here:
+
+**[MKRAND — GitHub](https://github.com/taguniversal/mkrand)**
+
+The interesting feature is not simply that the output looks random.
+
+It is that a small, deterministic digital process produces a reproducible stream of states that can be used as the foundation for a ledger architecture.
+
+The broader research question is whether this kind of computational primitive can support new forms of offline-capable digital ledgers, deterministic state progression, and intermittent synchronization.
+
+That is a different design space from simply scaling up conventional blockchain infrastructure.
+
+And it brings us back to the central question of abstraction.
 
 What if a problem that currently requires enormous computational machinery could instead be represented directly in the physical structure of the computation?
 

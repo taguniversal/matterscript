@@ -1,5 +1,6 @@
 # Why Software Forgot Geometry
 
+![Why Software Forgot Geometry](images/software_forgot_geometry.png)
 
 Programming languages are built on an assumption so fundamental that most programmers never think to question it.
 
