@@ -1,5 +1,7 @@
 # Geometry as Information
 
+![Geometry As Information](images/geometry_as_information.jpg)
+
 When programmers hear the word *geometry*, they usually think about graphics.
 
 Points.

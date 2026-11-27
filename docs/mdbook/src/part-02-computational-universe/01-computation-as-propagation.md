@@ -1,5 +1,7 @@
 # Computation as Propagation
 
+![Computation As Propagation](images/computation_as_propagation.jpg)
+
 Most programmers learn to think of computation as a sequence of instructions.
 
 Read a value.

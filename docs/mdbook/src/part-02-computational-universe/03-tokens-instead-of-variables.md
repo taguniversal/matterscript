@@ -1,5 +1,7 @@
 # Tokens Instead of Variables
 
+![Tokens Instead of Variables](images/tokens_instead_variables.jpg)
+
 Every programming language has a fundamental unit of computation.
 
 In C and C++, it is the variable.

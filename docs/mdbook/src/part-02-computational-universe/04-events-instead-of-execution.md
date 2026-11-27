@@ -1,5 +1,7 @@
 # Events Instead of Execution
 
+![Events Instead of Execution](images/events_instead_execution.jpg)
+
 For more than seventy years, programming languages have encouraged us to think of computation as the execution of instructions.
 
 Fetch the next instruction.

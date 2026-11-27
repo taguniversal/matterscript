@@ -1,5 +1,7 @@
 # Time and Memory
 
+![Time And Memory](images/time_and_memory.jpg)
+
 Computation is usually described as something that happens **in time**.
 
 A program starts. Instructions execute. Memory is read and written. The program continues. Eventually it produces a result.
